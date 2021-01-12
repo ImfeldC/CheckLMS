@@ -836,6 +836,8 @@ rem        - Move CheckLMS script (Version: 07-Jan-2021) under source control: h
 rem     11-Jan-2021:
 rem        - Check if newer CheckLMS.bat is available in C:\ProgramData\Siemens\LMS\Download (see task 1046557)
 rem        - Create new download folder for download from github: %DOWNLOAD_LMS_PATH%\git\
+rem     12-Jan-2021:
+rem        - Support USBDeview tool (see task 1198261)
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -855,8 +857,8 @@ rem              - /donotstartnewerscript       don't start newer script even if
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 11-Jan-2021"
-set LMS_SCRIPT_BUILD=20210111
+set LMS_SCRIPT_VERSION="CheckLMS Script 12-Jan-2021"
+set LMS_SCRIPT_BUILD=20210112
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_BUILD=824
@@ -1658,8 +1660,8 @@ if "%ConnectionTestStatus%" == "Passed" (
 			%DOWNLOAD_LMS_PATH%\CheckLMS.exe -y -o"%DOWNLOAD_LMS_PATH%\"                                                                                                               >> %REPORT_LOGFILE% 2>&1
 			IF EXIST "%DOWNLOAD_LMS_PATH%\CheckLMS.bat" (
 				for /f "tokens=2 delims== eol=@" %%i in ('type %DOWNLOAD_LMS_PATH%\CheckLMS.bat ^|find "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_EXE set LMS_SCRIPT_BUILD_DOWNLOAD_EXE=%%i
-				echo     Check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_EXE!, Running script version: !LMS_SCRIPT_BUILD!.
-				echo Check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_EXE!, Running script version: !LMS_SCRIPT_BUILD!.                                    >> %REPORT_LOGFILE% 2>&1
+				echo     Check script downloaded from akamai share. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_EXE!, Running script version: !LMS_SCRIPT_BUILD!.
+				echo Check script downloaded from akamai share. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_EXE!, Running script version: !LMS_SCRIPT_BUILD!.                  >> %REPORT_LOGFILE% 2>&1
 			)
 		)			
 		rem Download newest LMS check script from github
@@ -1726,6 +1728,23 @@ if "%ConnectionTestStatus%" == "Passed" (
 			echo Don't download SigCheck tool [Sigcheck.zip], because it exist already.                                             >> %REPORT_LOGFILE% 2>&1
 		)
 		
+		rem Download USBDeview tool
+		IF NOT EXIST "%DOWNLOAD_LMS_PATH%\usbdeview-x64.zip" (
+			echo     Download USBDeview tool: %DOWNLOAD_LMS_PATH%\usbdeview-x64.zip
+			echo Download USBDeview tool: %DOWNLOAD_LMS_PATH%\usbdeview-x64.zip                                                           >> %REPORT_LOGFILE% 2>&1
+			powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.nirsoft.net/utils/usbdeview-x64.zip', '%DOWNLOAD_LMS_PATH%\usbdeview-x64.zip')"   >> %REPORT_LOGFILE% 2>&1
+			
+			if defined UNZIP_TOOL (
+				"!UNZIP_TOOL!" x -o!DOWNLOAD_LMS_PATH!\usbdeview -y %DOWNLOAD_LMS_PATH%\usbdeview-x64.zip                                 >> %REPORT_LOGFILE% 2>&1
+			) else (
+				echo Can't unzip USBDeview tool [usbdeview-x64.zip], because no unzip tool is available.                                  >> %REPORT_LOGFILE% 2>&1
+			)
+			
+		) else (
+			echo     Don't download USBDeview tool [usbdeview-x64.zip], because it exist already.
+			echo Don't download USBDeview tool [usbdeview-x64.zip], because it exist already.                                             >> %REPORT_LOGFILE% 2>&1
+		)
+		
 	)
 ) else (
 	echo     Don't download additional libraries and files, because no internet connection available.
@@ -1775,6 +1794,11 @@ set SIGCHECK_TOOL=
 IF EXIST "!DOWNLOAD_LMS_PATH!\SigCheck\SigCheck.exe" (
 	set SIGCHECK_TOOL=!DOWNLOAD_LMS_PATH!\SigCheck\SigCheck.exe
 	set SIGCHECK_OPTIONS=-nobanner -accepteula -a -h -i
+)
+rem -- USBDeview.exe
+set USBDEVIEW_TOOL=
+IF EXIST "!DOWNLOAD_LMS_PATH!\usbdeview\USBDeview.exe" (
+	set USBDEVIEW_TOOL=!DOWNLOAD_LMS_PATH!\usbdeview\USBDeview.exe
 )
 rem -- appactutil.exe
 set LMS_APPACTUTIL=
@@ -1993,6 +2017,7 @@ echo ... start collecting information ...
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 echo Use '%UNZIP_TOOL%' to unzip files.                                                                                      >> %REPORT_LOGFILE% 2>&1
 echo Use '%SIGCHECK_TOOL%' with option '!SIGCHECK_OPTIONS!' to check signatutes of files.                                    >> %REPORT_LOGFILE% 2>&1
+echo Use '%USBDEVIEW_TOOL%' to check USB devices connected to this system.                                                   >> %REPORT_LOGFILE% 2>&1
 echo Use '%REPORT_LOG_PATH%' to search for logfiles.                                                                         >> %REPORT_LOGFILE% 2>&1
 echo Use '%LMS_SERVERTOOL_PATH%' as path to call FNP library tools.                                                          >> %REPORT_LOGFILE% 2>&1
 echo Use '%LMS_SERVERTOOL_DW_PATH%' as path to call FNP library tools just downloaded.                                       >> %REPORT_LOGFILE% 2>&1
@@ -2952,10 +2977,10 @@ if defined LMS_LMUTOOL (
 	echo     LmuTool is not available with LMS %LMS_VERSION%, cannot perform operation.                                      >> %REPORT_LOGFILE% 2>&1 
 )
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo ... retrieve dongle driver information ...
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo LMS License Mode: %LMS_LICENSE_MODE% (read from registry)                                                               >> %REPORT_LOGFILE% 2>&1
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+echo ... retrieve dongle driver information ...
 if defined DONGLE_DRIVER_PKG_VERSION (
 	echo Dongle Driver: %DONGLE_DRIVER_VERSION% [%DONGLE_DRIVER_PKG_VERSION%] / Major=[!DONGLE_DRIVER_MAJ_VERSION!] / Minor=[!DONGLE_DRIVER_MIN_VERSION!] / installed %DONGLE_DRIVER_INST_COUNT% times     >> %REPORT_LOGFILE% 2>&1
 	if /I !DONGLE_DRIVER_MAJ_VERSION! GTR !MOST_RECENT_DONGLE_DRIVER_MAJ_VERSION! (
@@ -3051,6 +3076,21 @@ if !ERRORLEVEL!==0 (
 	echo     Retrieve diagnostic information of dongle driver FAILED, cannot access %DONGLE_DOWNLOAD_FILE%
 	echo Retrieve diagnostic information of dongle driver FAILED, cannot access %DONGLE_DOWNLOAD_FILE%                       >> %REPORT_LOGFILE% 2>&1
 )
+echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+rem Check attached USB devices on this system, incl. attached dongles
+if defined USBDEVIEW_TOOL (
+    echo Check USB devices with: !USBDEVIEW_TOOL! ...                                                                        >> %REPORT_LOGFILE% 2>&1
+	"!USBDEVIEW_TOOL!" /stabular "!CHECKLMS_REPORT_LOG_PATH!\usb_dongles.txt"                                                >> %REPORT_LOGFILE% 2>&1
+    echo ... see '!CHECKLMS_REPORT_LOG_PATH!\usb_dongles.txt'.                                                               >> %REPORT_LOGFILE% 2>&1
+	"!USBDEVIEW_TOOL!" /shtml "!CHECKLMS_REPORT_LOG_PATH!\usb_dongles.html"                                                  >> %REPORT_LOGFILE% 2>&1
+    echo ... see '!CHECKLMS_REPORT_LOG_PATH!\usb_dongles.html'.                                                              >> %REPORT_LOGFILE% 2>&1
+	echo -- extract vendor id 'VID_0529' from usb_dongles.txt [start] --                                                     >> %REPORT_LOGFILE% 2>&1
+	Type "!CHECKLMS_REPORT_LOG_PATH!\usb_dongles.txt" | findstr "VID_0529"                                                   >> %REPORT_LOGFILE% 2>&1
+	echo -- extract vendor id 'VID_0529' from usb_dongles.txt [end] --                                                       >> %REPORT_LOGFILE% 2>&1
+) else (
+    echo Cannot check USB devices with USBDeview.exe, because the tool is not available/installed.                           >> %REPORT_LOGFILE% 2>&1
+)
+echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 :alm_section
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
