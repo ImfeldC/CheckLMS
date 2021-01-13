@@ -838,6 +838,10 @@ rem        - Check if newer CheckLMS.bat is available in C:\ProgramData\Siemens\
 rem        - Create new download folder for download from github: %DOWNLOAD_LMS_PATH%\git\
 rem     12-Jan-2021:
 rem        - Support USBDeview tool (see task 1198261)
+rem     13-Jan-2021: (see also 09-Nov-2020)
+rem        - Consider “ecmcommonutil.exe” (V1.19) (see task 1200154)
+rem        - Download "ecmcommonutil_1.19.exe" (similar to "GetVMGenerationIdentifier.exe") from 'https://static.siemens.com/btdownloads/lms/FNP/ecmcommonutil_1.19.exe'
+rem        - Execute in script the commands: ecmcommonutil_1.19.exe -l -f -d device; ecmcommonutil_1.19.exe -l -f -d net; ecmcommonutil_1.19.exe -l -f -d smbios; ecmcommonutil_1.19.exe -l -f -d vm
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -857,8 +861,8 @@ rem              - /donotstartnewerscript       don't start newer script even if
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 12-Jan-2021"
-set LMS_SCRIPT_BUILD=20210112
+set LMS_SCRIPT_VERSION="CheckLMS Script 13-Jan-2021"
+set LMS_SCRIPT_BUILD=20210113
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_BUILD=824
@@ -1704,6 +1708,16 @@ if "%ConnectionTestStatus%" == "Passed" (
 		) else (
 			echo     Don't download ecmcommonutil app [ecmcommonutil.exe], because they exist already.
 			echo Don't download ecmcommonutil app [ecmcommonutil.exe], because they exist already.                                  >> %REPORT_LOGFILE% 2>&1
+		)
+		
+		rem Download tool "ecmcommonutil.exe" V1.19 (=ecmcommonutil_1.19.exe) (from Flexera) to read-out host id's
+		IF NOT EXIST "%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" (
+			echo     Download ecmcommonutil app: %DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe
+			echo Download ecmcommonutil app: %DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe                                             >> %REPORT_LOGFILE% 2>&1
+			powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/ecmcommonutil_1.19.exe', '%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe')"   >> %REPORT_LOGFILE% 2>&1
+		) else (
+			echo     Don't download ecmcommonutil app V1.19 [ecmcommonutil_1.19.exe], because they exist already.
+			echo Don't download ecmcommonutil app V1.19 [ecmcommonutil_1.19.exe], because they exist already.                       >> %REPORT_LOGFILE% 2>&1
 		)
 		
 		rem Download newest dongle driver always, to ensure that older driver get overwritten
@@ -3897,6 +3911,20 @@ IF EXIST "%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" (
 	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d vm                                                                      >> %REPORT_LOGFILE% 2>&1
 ) else (
     echo     ecmcommonutil.exe doesn't exist, cannot perform operation.                                                      >> %REPORT_LOGFILE% 2>&1
+)
+echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+echo ... read host id's [using ecmcommonutil_1.19.exe] ...
+IF EXIST "%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" (
+	echo Read host id: device [using ecmcommonutil_1.19.exe -l -f -d device]:                                                >> %REPORT_LOGFILE% 2>&1
+	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d device                                                             >> %REPORT_LOGFILE% 2>&1
+	echo Read host id: net [using ecmcommonutil_1.19.exe -l -f -d net]:                                                      >> %REPORT_LOGFILE% 2>&1
+	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d net                                                                >> %REPORT_LOGFILE% 2>&1
+	echo Read host id: smbios [using ecmcommonutil_1.19.exe -l -f -d smbios]:                                                >> %REPORT_LOGFILE% 2>&1
+	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d smbios                                                             >> %REPORT_LOGFILE% 2>&1
+	echo Read host id: vm [using ecmcommonutil_1.19.exe -l -f -d vm]:                                                        >> %REPORT_LOGFILE% 2>&1
+	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d vm                                                                 >> %REPORT_LOGFILE% 2>&1
+) else (
+    echo     ecmcommonutil_1.19.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
 )
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
