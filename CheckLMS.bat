@@ -842,6 +842,10 @@ rem     13-Jan-2021: (see also 09-Nov-2020)
 rem        - Consider “ecmcommonutil.exe” (V1.19) (see task 1200154)
 rem        - Download "ecmcommonutil_1.19.exe" (similar to "GetVMGenerationIdentifier.exe") from 'https://static.siemens.com/btdownloads/lms/FNP/ecmcommonutil_1.19.exe'
 rem        - Execute in script the commands: ecmcommonutil_1.19.exe -l -f -d device; ecmcommonutil_1.19.exe -l -f -d net; ecmcommonutil_1.19.exe -l -f -d smbios; ecmcommonutil_1.19.exe -l -f -d vm
+rem     14-Jan-2021:
+rem        - show message at file upload
+rem        - add 'ping %COMPUTERNAME%' to connection test section
+rem        - Retrieve content of %WinDir%\System32\Drivers\Etc folder (see task 1202358)
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -861,8 +865,8 @@ rem              - /donotstartnewerscript       don't start newer script even if
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 13-Jan-2021"
-set LMS_SCRIPT_BUILD=20210113
+set LMS_SCRIPT_VERSION="CheckLMS Script 14-Jan-2021"
+set LMS_SCRIPT_BUILD=20210114
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_BUILD=824
@@ -2392,6 +2396,30 @@ IF EXIST "%DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe" (
 	echo ... read VM Generation Id [using GetVMGenerationIdentifier.exe] ...
 	echo Read VM Generation Id [using GetVMGenerationIdentifier.exe]:                                                        >> %REPORT_LOGFILE% 2>&1
 	"%DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe"                                                                      >> %REPORT_LOGFILE% 2>&1
+	echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
+)
+echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+echo Content of folder: "%WinDir%\System32\Drivers\Etc"                                                                      >> %REPORT_LOGFILE% 2>&1
+dir /S /A /X /4 /W "%WinDir%\System32\Drivers\Etc"                                                                           >> %REPORT_LOGFILE% 2>&1
+mkdir !CHECKLMS_REPORT_LOG_PATH!\etc\  >nul 2>&1
+xcopy "%WinDir%\System32\Drivers\Etc\*" !CHECKLMS_REPORT_LOG_PATH!\etc\ /E /Y /H /I                                          >> %REPORT_LOGFILE% 2>&1 
+echo --- Files automatically copied from '%WinDir%\System32\Drivers\Etc\*' to '!CHECKLMS_REPORT_LOG_PATH!\etc\' --- > !CHECKLMS_REPORT_LOG_PATH!\etc\__README.txt 2>&1
+if exist "%WinDir%\System32\Drivers\Etc\hosts" (
+	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+	echo Content of '%WinDir%\System32\Drivers\Etc\hosts':                                                                   >> %REPORT_LOGFILE% 2>&1
+	type "%WinDir%\System32\Drivers\Etc\hosts"                                                                               >> %REPORT_LOGFILE% 2>&1
+	echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
+)
+if exist "%WinDir%\System32\Drivers\Etc\networks" (
+	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+	echo Content of '%WinDir%\System32\Drivers\Etc\networks':                                                                >> %REPORT_LOGFILE% 2>&1
+	type "%WinDir%\System32\Drivers\Etc\networks"                                                                            >> %REPORT_LOGFILE% 2>&1
+	echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
+)
+if exist "%WinDir%\System32\Drivers\Etc\protocol" (
+	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+	echo Content of '%WinDir%\System32\Drivers\Etc\protocol':                                                                >> %REPORT_LOGFILE% 2>&1
+	type "%WinDir%\System32\Drivers\Etc\protocol"                                                                            >> %REPORT_LOGFILE% 2>&1
 	echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
 )
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
@@ -5545,6 +5573,11 @@ if not defined LMS_SKIPCONTEST (
 	)
 	echo -------------------------------------------------------                                                                              >> %REPORT_LOGFILE% 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                                          >> %REPORT_LOGFILE% 2>&1
+	echo Ping %COMPUTERNAME% ...                                                                                                              >> %REPORT_LOGFILE% 2>&1
+	echo     Ping %COMPUTERNAME% ...
+	ping %COMPUTERNAME%                                                                                                                       >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                              >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                                          >> %REPORT_LOGFILE% 2>&1
 	echo Start enhanced connection test [using 'act_connection_test'] ...                                                                     >> %REPORT_LOGFILE% 2>&1
 	echo     Start enhanced connection test [using 'act_connection_test'] ...
 	if defined LMS_LMUTOOL (
@@ -6311,10 +6344,15 @@ if defined UNZIP_TOOL (
 		rem access to internal public share, copy zipped archive to this share
 		echo -------------------------------------------------------                       >> !CHECKLMS_REPORT_LOG_PATH!\zip_logfile_archive.log 2>&1
 		echo Start at !DATE! !TIME! to copy '!REPORT_LOGARCHIVE!' ....                     >> !CHECKLMS_REPORT_LOG_PATH!\zip_logfile_archive.log 2>&1
-		echo     start copying '!REPORT_LOGARCHIVE!' to '!CHECKLMS_PUBLIC_SHARE!' ...
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;33m    be patient, the upload of the archive requires some time, up to several hours [1;37m
+		) else (
+			echo    be patient, the upload of the archive requires some time, up to several hours
+		)
+		echo     start upload '!REPORT_LOGARCHIVE!' to '!CHECKLMS_PUBLIC_SHARE!' at !DATE! !TIME! ...
 		xcopy "!REPORT_LOGARCHIVE!" "!CHECKLMS_PUBLIC_SHARE!" /Y /H /I                     >> !CHECKLMS_REPORT_LOG_PATH!\zip_logfile_archive.log 2>&1
 		echo     ... '!REPORT_LOGARCHIVE!' copied to '!CHECKLMS_PUBLIC_SHARE!'!            >> !CHECKLMS_REPORT_LOG_PATH!\zip_logfile_archive.log 2>&1
-		echo     ... copied to '!CHECKLMS_PUBLIC_SHARE!'!
+		echo     ... copied to '!CHECKLMS_PUBLIC_SHARE!' at !DATE! !TIME!!
 	)
 	echo .
 	echo .
