@@ -846,6 +846,9 @@ rem     14-Jan-2021:
 rem        - show message at file upload
 rem        - add 'ping %COMPUTERNAME%' to connection test section
 rem        - Retrieve content of %WinDir%\System32\Drivers\Etc folder (see task 1202358)
+rem     15-Jan-2021:
+rem        - investigate some suspect crash of CheckLMS.bat in case newer script is downloaded (seen on Christian's laptop)
+rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -865,8 +868,8 @@ rem              - /donotstartnewerscript       don't start newer script even if
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 14-Jan-2021"
-set LMS_SCRIPT_BUILD=20210114
+set LMS_SCRIPT_VERSION="CheckLMS Script 15-Jan-2021"
+set LMS_SCRIPT_BUILD=20210115
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_BUILD=824
@@ -1771,6 +1774,8 @@ if "%ConnectionTestStatus%" == "Passed" (
 
 rem Check if newer CheckLMS.bat is available in %DOWNLOAD_LMS_PATH%\CheckLMS.bat (even if connection test doesn't run succesful)
 IF EXIST "%DOWNLOAD_LMS_PATH%\CheckLMS.bat" (
+	echo     Check script on '%DOWNLOAD_LMS_PATH%\CheckLMS.bat' ... 
+	echo Check script on '%DOWNLOAD_LMS_PATH%\CheckLMS.bat' ...                                                                                                                    >> %REPORT_LOGFILE% 2>&1
 	for /f "tokens=2 delims== eol=@" %%i in ('type %DOWNLOAD_LMS_PATH%\CheckLMS.bat ^|find "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD set LMS_SCRIPT_BUILD_DOWNLOAD=%%i
 	if /I !LMS_SCRIPT_BUILD_DOWNLOAD! GTR !LMS_SCRIPT_BUILD! (
 		echo     Newer check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD!, Running script version: !LMS_SCRIPT_BUILD!.
