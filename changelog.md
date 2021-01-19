@@ -50,7 +50,7 @@ rem        - Add check function for (at least) one trusted store feature
 rem     10-Aug-2018:
 rem        - Check if a log-file exists (prevent from throwing an error)
 rem        - Add extract of scheduled tasks
-rem        - Add version information from Flexera (servercomptranutil.exe ñversion)
+rem        - Add version information from Flexera (servercomptranutil.exe ‚Äìversion)
 rem     13-Aug-2018:
 rem        - Check availablity of Flexera tools
 rem        - Check that at least one feature exists to test, otherwise print error message.
@@ -81,10 +81,10 @@ rem     30-Aug-2018:
 rem        - List ALL programs (https://community.spiceworks.com/topic/647939-show-all-programs-using-wmic-command)
 rem          Problem: wmic unfortunately doesn't show all the programs installed on the pc, it only show some of the programs.
 rem          That command uses the Win32_Product class, which according to MS (http://msdn.microsoft.com/en-us/library/aa394378%28VS.85%29.aspx?), only "represents products as they are installed by Windows Installer."?
-rem          The venerable "Uninstall" key in the registry is the be-all/end-all of installed software. †
+rem          The venerable "Uninstall" key in the registry is the be-all/end-all of installed software. ¬†
 rem          You can do this at the Command Prompt using:?          
 rem               reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall" /s | findstr /B ".*DisplayName"
-rem               reg query "??HKLM\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall" /s | findstr /B ".*DisplayName"? (Wow6432Node for capturing†32-bit programs)
+rem               reg query "??HKLM\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall" /s | findstr /B ".*DisplayName"? (Wow6432Node for capturing¬†32-bit programs)
 rem          or Powershell
 rem               gp HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* |Select DisplayName, DisplayVersion, Publisher, InstallDate, HelpLink, UninstallString |ogv
 rem     06-Sep-2018:
@@ -235,9 +235,9 @@ rem     05-Apr-2019
 rem        - Support info.txt; in case the file exists, the content is added to log-file (helps to keep track of different machines in a large system or test environment)
 rem        - Add "wmic csproduct get UUID" (see https://www.nextofwindows.com/the-best-way-to-uniquely-identify-a-windows-machine)
 rem        - Read machine GUID from HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography\MachineGuid
-rem          Find the key called ìMachineGuidî this key is generated uniquely during the installation of Windows and it wonít change regardless of any hardware swap 
+rem          Find the key called ‚ÄúMachineGuid‚Äù this key is generated uniquely during the installation of Windows and it won‚Äôt change regardless of any hardware swap 
 rem          (apart from replacing the boot-able hard drive where the OS are installed on). That means if you want to keep tracking installation per OS this is another alternative. 
-rem          It wonít change unless you do a fresh reinstall of Windows.) (see https://www.nextofwindows.com/the-best-way-to-uniquely-identify-a-windows-machine)
+rem          It won‚Äôt change unless you do a fresh reinstall of Windows.) (see https://www.nextofwindows.com/the-best-way-to-uniquely-identify-a-windows-machine)
 rem        - Analyze output of "servercomptranutil.exe -view format=long" and count untrusted trust flag (**BROKEN**)
 rem        - Anaylze output of "servercomptranutil.exe -view format=long" for disabled licenses
 rem        - Run LmuTool /LOG only on LMS versions 2.1.681 and higher
@@ -349,8 +349,8 @@ rem     24-Jul-2019
 rem        - Count number of installed Siemens software, to avoid issue of exceeded request size
 rem          see https://bt-clmserver01.hqs.sbt.siemens.com/ccm/resource/itemName/com.ibm.team.workitem.WorkItem/822161
 rem        - Add check for ATOS updates provided by ATOS:
-rem          - If a machine has been updated to V7.92 with the dongle driver provided by ATOS, you can see this under installed programs ìSentinel License Manager R01î (from ìGemaltoî with Version ì7.92.28470.60000î). It has been published at 16-Jul-2019.
-rem          - If a machine has been updated to V7.81 with the dongle driver provided by ATOS, you can see this under installed programs ìSentinel Runtime R01î (from ìGemaltoî with Version ì7.81.20638.60000î). It has been published at 14-Feb-2019.
+rem          - If a machine has been updated to V7.92 with the dongle driver provided by ATOS, you can see this under installed programs ‚ÄúSentinel License Manager R01‚Äù (from ‚ÄúGemalto‚Äù with Version ‚Äú7.92.28470.60000‚Äù). It has been published at 16-Jul-2019.
+rem          - If a machine has been updated to V7.81 with the dongle driver provided by ATOS, you can see this under installed programs ‚ÄúSentinel Runtime R01‚Äù (from ‚ÄúGemalto‚Äù with Version ‚Äú7.81.20638.60000‚Äù). It has been published at 14-Feb-2019.
 rem        - Adjust IF statement with /I with LEQ, GEQ and EQU (remove unecessary "-sign)
 rem     26-Jul-2019
 rem        - read-out more information of windows version (see https://stackoverflow.com/questions/14648796/currentversion-value-in-registry-for-each-windows-operating-system)
@@ -410,8 +410,8 @@ rem        - Copy known crash dumps to %REPORT_LOG_PATH%
 rem        - Update message at the end, to display udpated information (https://bt-clmserver01.hqs.sbt.siemens.com/ccm/resource/itemName/com.ibm.team.workitem.WorkItem/855731)
 rem     09-Sep-2019:
 rem        - Copy content of ALM logging folder (Automation License Manager\logging)
-rem        - read "DumpType" from ìHKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumpsî
-rem          >> add/change with regedit under ìHKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumpsî are REG_DOWRD subkey with name ìDumpTypeî and value ì2î 
+rem        - read "DumpType" from ‚ÄúHKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps‚Äù
+rem          >> add/change with regedit under ‚ÄúHKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps‚Äù are REG_DOWRD subkey with name ‚ÄúDumpType‚Äù and value ‚Äú2‚Äù 
 rem          >> (see also https://docs.microsoft.com/en-us/windows/win32/wer/collecting-user-mode-dumps )
 rem        - Change crash dump location to %REPORT_LOG_PATH%\CrashDumps\
 rem        - Upload CheckLMS.exe on \\khed452a.ww004.siemens.net\webservices$\www\10330\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
@@ -500,7 +500,7 @@ rem
 rem     15-Jan-2020:
 rem        - Improve section with powershell commands, store return values in environment variables (ready for further processing)
 rem        - FIX wrong culture id, set them accordignly (see https://bt-clmserver01.hqs.sbt.siemens.com/ccm/resource/itemName/com.ibm.team.workitem.WorkItem/948637 )
-rem          The script supports GERMAN (1031) and ENGLISH (1033); in case of ìunknownî culture id, it uses ENGLISH (1033) per default 
+rem          The script supports GERMAN (1031) and ENGLISH (1033); in case of ‚Äúunknown‚Äù culture id, it uses ENGLISH (1033) per default 
 rem        - Add colored ouptut in green (https://stackoverflow.com/questions/2048509/how-to-echo-with-different-colors-in-the-windows-command-line )
 rem     16-Jan-2020:
 rem        - Check for empty/invalid access token (see https://bt-clmserver01.hqs.sbt.siemens.com/ccm/resource/itemName/com.ibm.team.workitem.WorkItem/846744)
@@ -666,7 +666,7 @@ rem        - Upload CheckLMS.bat to https://wiki.siemens.com/display/en/LMS%3A+H
 rem        - Requested to integrate into LMS 2.4.813 build (Sprint 10)
 rem     24-Jul-2020:
 rem        - Adjust LMS version check, consider LMS 2.4 (2.4.814)
-rem        - run MainMenu.exe program with a command line parameter ì/testî which generates the debugs including the LMU error messages (MainMenuUnitTest.txt). 
+rem        - run MainMenu.exe program with a command line parameter ‚Äú/test‚Äù which generates the debugs including the LMU error messages (MainMenuUnitTest.txt). 
 rem     27-Jul-2020:
 rem        - Call hasp driver with option to supress dialog messages: haspdinst.exe -install -killprocess -cm
 rem        - Check for "C:\MainMenuUnitTest.txt" and list them if available (as part of DMA product)
@@ -816,7 +816,7 @@ rem        - Add some addtional command window output at start of script executi
 rem     03-Dec-2020:
 rem        - clean-up logfiles created with older CheckLMS script
 rem     10-Dec-2020:
-rem        - collect ìBits Clientî and ìNetworkProfileî event log
+rem        - collect ‚ÄúBits Client‚Äù and ‚ÄúNetworkProfile‚Äù event log
 rem        - extract SSU registry keys for HKLM and HKCU: \SOFTWARE\Siemens\SSU
 rem     14-Dec-2020:
 rem        - Adjust LMS version check, consider LMS 2.5 (2.5.823)
