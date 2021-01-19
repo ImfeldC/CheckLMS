@@ -44,6 +44,7 @@ rem        - add option "checkdownload"
 rem        - Create download archive
 rem        - retrieve adapter bidnings for TCP/IP: Get-NetAdapterBinding -ComponentID ms_tcpip / Get-NetAdapterBinding -ComponentID ms_tcpip6 
 rem          (see also https://www.majorgeeks.com/content/page/how_to_enable_or_disable_ipv6_in_windows.html#:~:text=Windows%20offers%20a%20few%20ways,Get%2DNetAdapterBinding%20%2DComponentID%20ms_tcpip6. )
+rem        - call "netstat -a -f" only when extended mode is enabled
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -1800,9 +1801,13 @@ if not defined LMS_SKIPNETSTAT (
     echo     More details see '%CHECKLMS_REPORT_LOG_PATH%\netstat_o_f.log'														 >> %REPORT_LOGFILE% 2>&1                  
 	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 	echo ---------------- Displays all connections and listening ports: netstat -a -f                                            >> %REPORT_LOGFILE% 2>&1
-	echo     Displays all connections and listening ports: netstat -a -f
-	netstat -a -f   > %CHECKLMS_REPORT_LOG_PATH%\netstat_a_f.log 2>&1
-    echo     More details see '%CHECKLMS_REPORT_LOG_PATH%\netstat_a_f.log'														 >> %REPORT_LOGFILE% 2>&1                  
+	if defined LMS_EXTENDED_CONTENT (
+		echo     Displays all connections and listening ports: netstat -a -f
+		netstat -a -f   > %CHECKLMS_REPORT_LOG_PATH%\netstat_a_f.log 2>&1
+		echo     More details see '%CHECKLMS_REPORT_LOG_PATH%\netstat_a_f.log'												     >> %REPORT_LOGFILE% 2>&1                  
+	) else (
+		echo Displays all connections and listening ports: 'netstat -a -f' skipped, start script with option '/extend' to enable extended content.             >> %REPORT_LOGFILE% 2>&1
+	)
 	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 	echo ---------------- Displays the current connection offload state: netstat -t -f                                           >> %REPORT_LOGFILE% 2>&1
 	echo     Displays the current connection offload state: netstat -t -f
