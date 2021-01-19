@@ -41,6 +41,9 @@ rem        - consider script name (%0) when newer script is downloaded; do not r
 rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem     19-Jan-2021:
 rem        - add option "checkdownload"
+rem        - Create download archive
+rem        - retrieve adapter bidnings for TCP/IP: Get-NetAdapterBinding -ComponentID ms_tcpip / Get-NetAdapterBinding -ComponentID ms_tcpip6 
+rem          (see also https://www.majorgeeks.com/content/page/how_to_enable_or_disable_ipv6_in_windows.html#:~:text=Windows%20offers%20a%20few%20ways,Get%2DNetAdapterBinding%20%2DComponentID%20ms_tcpip6. )
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -195,6 +198,10 @@ IF NOT EXIST "!LMS_SERVERTOOL_PATH!" (
 
 rem Set documentation path
 set DOCUMENTATION_PATH=%ALLUSERSPROFILE%\Siemens\LMS\Documentation
+
+set DOWNLOAD_ARCHIVE=%ALLUSERSPROFILE%\Siemens\LMS\LMSDownloadArchive_%COMPUTERNAME%_!LMS_REPORT_START!.7z
+set DOWNLOAD_PATH=%ALLUSERSPROFILE%\Siemens\LMS\Download
+
 
 rem Create report log filename(s)
 set REPORT_LOGARCHIVE=%ALLUSERSPROFILE%\Siemens\LMS\LMSLogArchive_%COMPUTERNAME%_!LMS_REPORT_START!.7z
@@ -1013,8 +1020,14 @@ if defined LMS_SCRIPT_BUILD_DOWNLOAD_1 (
 )
 
 if defined LMS_CHECK_DOWNLOAD (
-	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-	echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                                  >> %REPORT_LOGFILE% 2>&1
+	if defined UNZIP_TOOL (
+		echo -------------------------------------------------------                           >> %REPORT_LOGFILE% 2>&1
+		echo Create download archive '!DOWNLOAD_ARCHIVE!' ....
+		echo Start at !DATE! !TIME! to create !DOWNLOAD_ARCHIVE! ....                          >> %REPORT_LOGFILE% 2>&1
+		"!UNZIP_TOOL!" a -ssw -t7z "!DOWNLOAD_ARCHIVE!" "!DOWNLOAD_PATH!"                      >> %REPORT_LOGFILE% 2>&1
+	)
+	echo -------------------------------------------------------                               >> %REPORT_LOGFILE% 2>&1
+	echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                >> %REPORT_LOGFILE% 2>&1
 	rem save (single) report in full report file
 	Type %REPORT_LOGFILE% >> %REPORT_FULL_LOGFILE%
 	exit /b
@@ -1814,6 +1827,14 @@ if not defined LMS_SKIPNETSTAT (
 	)
 	echo SKIPPED netstat section. The script didn't execute the netstat commands.                                            >> %REPORT_LOGFILE% 2>&1
 )
+echo ---------------- powershell -command "Get-NetAdapterBinding -ComponentID ms_tcpip"                                      >> %REPORT_LOGFILE% 2>&1
+echo ... retrieve adapter bindings for IPv4 ...
+echo Retrieve powershell version [using 'powershell -command "Get-NetAdapterBinding -ComponentID ms_tcpip"']:                >> %REPORT_LOGFILE% 2>&1
+powershell -command "Get-NetAdapterBinding -ComponentID ms_tcpip"                                                            >> %REPORT_LOGFILE% 2>&1
+echo ---------------- powershell -command "Get-NetAdapterBinding -ComponentID ms_tcpip6"                                     >> %REPORT_LOGFILE% 2>&1
+echo ... retrieve adapter bindings for IPv6 ...
+echo Retrieve powershell version [using 'powershell -command "Get-NetAdapterBinding -ComponentID ms_tcpip6"']:               >> %REPORT_LOGFILE% 2>&1
+powershell -command "Get-NetAdapterBinding -ComponentID ms_tcpip6"                                                           >> %REPORT_LOGFILE% 2>&1
 echo ---------------- Displays the current ephemeral port range: netsh int ipv4 show dynamicport tcp                         >> %REPORT_LOGFILE% 2>&1
 echo     Displays the current ephemeral port range: netsh int ipv4 show dynamicport tcp
 netsh int ipv4 show dynamicport tcp                                                                                          >> %REPORT_LOGFILE% 2>&1
