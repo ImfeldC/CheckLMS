@@ -45,6 +45,10 @@ rem        - Create download archive
 rem        - retrieve adapter bidnings for TCP/IP: Get-NetAdapterBinding -ComponentID ms_tcpip / Get-NetAdapterBinding -ComponentID ms_tcpip6 
 rem          (see also https://www.majorgeeks.com/content/page/how_to_enable_or_disable_ipv6_in_windows.html#:~:text=Windows%20offers%20a%20few%20ways,Get%2DNetAdapterBinding%20%2DComponentID%20ms_tcpip6. )
 rem        - call "netstat -a -f" only when extended mode is enabled
+rem     25-Jan-2021:
+rem        - Retrieve installed security protocols [using 'powershell -command "[Net.ServicePointManager]::SecurityProtocol"']
+rem        - Retreive registry key: powershell -Command "Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\.NetFramework\v4.0.30319' -Name 'SchUseStrongCrypto'" 
+rem          (see https://trailheadtechnology.com/solving-could-not-create-ssl-tls-secure-channel-error-in-net-4-6-x/)
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -65,8 +69,8 @@ rem              - /checkdownload               perform downloads and print file
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 19-Jan-2021"
-set LMS_SCRIPT_BUILD=20210119
+set LMS_SCRIPT_VERSION="CheckLMS Script 25-Jan-2021"
+set LMS_SCRIPT_BUILD=20210125
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_BUILD=824
@@ -1597,6 +1601,14 @@ echo ---------------- powershell -command "Get-Host"                            
 echo ... retrieve powershell version ...
 echo Retrieve powershell version [using 'powershell -command "Get-Host"']:                                                   >> %REPORT_LOGFILE% 2>&1
 powershell -command "Get-Host"                                                                                               >> %REPORT_LOGFILE% 2>&1
+echo ---------------- powershell -command "[Net.ServicePointManager]::SecurityProtocol"                                      >> %REPORT_LOGFILE% 2>&1
+echo ... retrieve installed security protocols ...
+echo Retrieve installed security protocols [using 'powershell -command "[Net.ServicePointManager]::SecurityProtocol"']:      >> %REPORT_LOGFILE% 2>&1
+powershell -command "[Net.ServicePointManager]::SecurityProtocol"                                                            >> %REPORT_LOGFILE% 2>&1
+echo ---------------- powershell -command "Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\.NetFramework\v4.0.30319' ..."   >> %REPORT_LOGFILE% 2>&1
+echo ... retrieve regitry key 'SchUseStrongCrypto' ...
+echo Retrieve regitry key 'SchUseStrongCrypto' [using 'powershell -command "Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\.NetFramework\v4.0.30319' ..."']: >> %REPORT_LOGFILE% 2>&1
+powershell -Command "Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\.NetFramework\v4.0.30319' -Name 'SchUseStrongCrypto'"  >> %REPORT_LOGFILE% 2>&1
 echo ---------------- powershell -command "Get-ExecutionPolicy"                                                              >> %REPORT_LOGFILE% 2>&1
 echo ... retrieve powershell execution policy ...
 echo Retrieve powershell execution policy [using 'powershell -command "Get-ExecutionPolicy"']:                               >> %REPORT_LOGFILE% 2>&1
