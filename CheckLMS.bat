@@ -49,6 +49,8 @@ rem     25-Jan-2021:
 rem        - Retrieve installed security protocols [using 'powershell -command "[Net.ServicePointManager]::SecurityProtocol"']
 rem        - Retreive registry key: powershell -Command "Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\.NetFramework\v4.0.30319' -Name 'SchUseStrongCrypto'" 
 rem          (see https://trailheadtechnology.com/solving-could-not-create-ssl-tls-secure-channel-error-in-net-4-6-x/)
+rem     27-Jan-2021:
+rem        - store results of connection tests in separate files: !CHECKLMS_REPORT_LOG_PATH!\connection_test_XXXX.txt
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -69,8 +71,8 @@ rem              - /checkdownload               perform downloads and print file
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 25-Jan-2021"
-set LMS_SCRIPT_BUILD=20210125
+set LMS_SCRIPT_VERSION="CheckLMS Script 27-Jan-2021"
+set LMS_SCRIPT_BUILD=20210127
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_BUILD=824
@@ -788,7 +790,7 @@ IF EXIST "!CHECKLMS_PUBLIC_SHARE!\!CHECKLMS_CONNECTION_TEST_FILE!" (
 )
 rem Connection Test to BT download site
 set ConnectionTestStatus=Unknown
-powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/ReadMe.txt', '%DOWNLOAD_LMS_PATH%\ReadMe.txt')" >nul 2>&1
+powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/ReadMe.txt', '%DOWNLOAD_LMS_PATH%\ReadMe.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_btdownloads.txt 2>&1
 if !ERRORLEVEL!==0 (
 	rem Connection Test: PASSED
 	echo     Connection Test PASSED, can access https://static.siemens.com/btdownloads/
@@ -809,8 +811,8 @@ if "%ConnectionTestStatus%" == "Passed" (
 		rem see also https://sourceforge.net/p/sevenzip/discussion/45798/thread/b599cf02/?limit=25
 		IF NOT EXIST "%DOWNLOAD_LMS_PATH%\7zr.exe" (
 			echo     Download 7zip app: https://www.7-zip.org/a/7zr.exe
-			echo Download 7zip app: https://www.7-zip.org/a/7zr.exe                                                                 >> %REPORT_LOGFILE% 2>&1
-			powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.7-zip.org/a/7zr.exe', '%DOWNLOAD_LMS_PATH%\7zr.exe')"                                            >> %REPORT_LOGFILE% 2>&1
+			echo Download 7zip app: https://www.7-zip.org/a/7zr.exe                                                                         >> %REPORT_LOGFILE% 2>&1
+			powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.7-zip.org/a/7zr.exe', '%DOWNLOAD_LMS_PATH%\7zr.exe')" >> %REPORT_LOGFILE% 2>&1
 
 		) else (
 			echo     Don't download 7zip app [ https://www.7-zip.org/a/7zr.exe ], because they exist already.
@@ -831,8 +833,8 @@ if "%ConnectionTestStatus%" == "Passed" (
 			rem Download and unzip FNP toolkit [as ZIP]
 			IF NOT EXIST "%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip" (
 				echo     Download FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip
-				echo Download FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip                                                                                                                       >> %REPORT_LOGFILE% 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/%LMS_SERVERTOOL_DW%.zip', '%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip')"               >> %REPORT_LOGFILE% 2>&1
+				echo Download FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip                                                                                                           >> %REPORT_LOGFILE% 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/%LMS_SERVERTOOL_DW%.zip', '%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip')"   >> %REPORT_LOGFILE% 2>&1
 
 				REM Unzip FNP Siemens Library
 				REM See https://sourceforge.net/p/sevenzip/discussion/45798/thread/8cb61347/?limit=25
@@ -852,8 +854,8 @@ if "%ConnectionTestStatus%" == "Passed" (
 			rem Download and unzip FNP toolkit [as EXE]
 			IF NOT EXIST "%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe" (
 				echo     Download FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe
-				echo Download FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe                                                                                                                       >> %REPORT_LOGFILE% 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/%LMS_SERVERTOOL_DW%.exe', '%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe')"               >> %REPORT_LOGFILE% 2>&1
+				echo Download FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe                                                                                                           >> %REPORT_LOGFILE% 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/%LMS_SERVERTOOL_DW%.exe', '%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe')"   >> %REPORT_LOGFILE% 2>&1
 
 				REM Unzip FNP Siemens Library
 				REM see https://stackoverflow.com/questions/17687390/how-do-i-silently-install-a-7-zip-self-extracting-archive-to-a-specific-director for more information
@@ -1774,7 +1776,7 @@ echo     Displays Windows IP Configuration: ipconfig /all
 ipconfig /all                                                                                                                >> %REPORT_LOGFILE% 2>&1
 echo ---------------- Retrieve public IP address: from http://ip4only.me/api/                                                >> %REPORT_LOGFILE% 2>&1
 rem Connection Test to http://ip4only.me/api/
-powershell -Command "(New-Object Net.WebClient).DownloadFile('http://ip4only.me/api/', '!CHECKLMS_REPORT_LOG_PATH!\ip_address.txt')" >nul 2>&1
+powershell -Command "(New-Object Net.WebClient).DownloadFile('http://ip4only.me/api/', '!CHECKLMS_REPORT_LOG_PATH!\ip_address.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_ip4only.txt 2>&1
 if !ERRORLEVEL!==0 (
 	rem Connection Test: PASSED
 	echo     Connection Test PASSED, can access http://ip4only.me/api/
@@ -1784,6 +1786,7 @@ if !ERRORLEVEL!==0 (
 	rem Connection Test: FAILED
 	echo     Connection Test FAILED, cannot access http://ip4only.me/api/
 	echo Connection Test FAILED, cannot access http://ip4only.me/api/                                                        >> %REPORT_LOGFILE% 2>&1
+	type !CHECKLMS_REPORT_LOG_PATH!\connection_test_ip4only.txt                                                              >> %REPORT_LOGFILE% 2>&1
 )
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo Read network statistics (netstat reports)                                                                               >> %REPORT_LOGFILE% 2>&1
@@ -2387,7 +2390,7 @@ rem Configuration:  config.html, config_users.html, config_to.html, config_from.
 rem Retrieve information: diagnostics.html
 set DONGLE_DOWNLOAD_FILE=http://localhost:1947/_int_/diagnostics.html
 set DONGLE_REPORT_FILE=%CHECKLMS_REPORT_LOG_PATH%\dongledriver_diagnostics.html
-powershell -Command "(New-Object Net.WebClient).DownloadFile('%DONGLE_DOWNLOAD_FILE%', '%DONGLE_REPORT_FILE%')" >nul 2>&1
+powershell -Command "(New-Object Net.WebClient).DownloadFile('%DONGLE_DOWNLOAD_FILE%', '%DONGLE_REPORT_FILE%')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_dongledriverdiagnostics.txt 2>&1
 if !ERRORLEVEL!==0 (
 	rem Retrieve information: PASSED
 	echo     Retrieve diagnostic information of dongle driver PASSED, can access %DONGLE_DOWNLOAD_FILE%
@@ -2397,6 +2400,7 @@ if !ERRORLEVEL!==0 (
 	rem Retrieve information: FAILED
 	echo     Retrieve diagnostic information of dongle driver FAILED, cannot access %DONGLE_DOWNLOAD_FILE%
 	echo Retrieve diagnostic information of dongle driver FAILED, cannot access %DONGLE_DOWNLOAD_FILE%                       >> %REPORT_LOGFILE% 2>&1
+	type !CHECKLMS_REPORT_LOG_PATH!\connection_test_dongledriverdiagnostics.txt                                              >> %REPORT_LOGFILE% 2>&1
 )
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 rem Check attached USB devices on this system, incl. attached dongles
@@ -4154,7 +4158,7 @@ echo -------------------------------------------------------                    
 echo ... test connection to OSD server ...
 echo Test connection to OSD server                                                                                           >> %REPORT_LOGFILE% 2>&1 
 rem Connection Test to OSD server
-powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.automation.siemens.com/swdl/servertest/', '%TEMP%\OSD_servertest.txt')" >nul 2>&1
+powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.automation.siemens.com/swdl/servertest/', '%TEMP%\OSD_servertest.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_swdl.txt 2>&1
 if !ERRORLEVEL!==0 (
 	rem Connection Test: PASSED
 	echo     Connection Test PASSED, can access https://www.automation.siemens.com/swdl/servertest/
@@ -4166,13 +4170,14 @@ if !ERRORLEVEL!==0 (
 	rem Connection Test: FAILED
 	echo     Connection Test FAILED, cannot access https://www.automation.siemens.com/swdl/servertest/
 	echo Connection Test FAILED, cannot access https://www.automation.siemens.com/swdl/servertest/                           >> %REPORT_LOGFILE% 2>&1            
+	type !CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_swdl.txt                                                             >> %REPORT_LOGFILE% 2>&1
 	set OSDServerConnectionTestStatus=Failed
 )
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1 
 echo ... test connection to OSD software udpate server ...
 echo Test connection to OSD software udpate server                                                                           >> %REPORT_LOGFILE% 2>&1                                                                                            
 rem Connection Test to OSD software udpate server
-powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.automation.siemens.com/softwareupdater/servertest.aspx', '%TEMP%\OSD_softwareudpateservertest.txt')" >nul 2>&1
+powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.automation.siemens.com/softwareupdater/servertest.aspx', '%TEMP%\OSD_softwareudpateservertest.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_softwareupdate.txt 2>&1
 if !ERRORLEVEL!==0 (
 	rem Connection Test: PASSED
 	echo     Connection Test PASSED, can access https://www.automation.siemens.com/softwareupdater/servertest.aspx
@@ -4184,13 +4189,14 @@ if !ERRORLEVEL!==0 (
 	rem Connection Test: FAILED
 	echo     Connection Test FAILED, cannot access https://www.automation.siemens.com/softwareupdater/servertest.aspx
 	echo Connection Test FAILED, cannot access https://www.automation.siemens.com/softwareupdater/servertest.aspx            >> %REPORT_LOGFILE% 2>&1                       
+	type !CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_softwareupdate.txt                                                   >> %REPORT_LOGFILE% 2>&1
 	set OSDSoftwareUpdateServerConnectionTestStatus=Failed
 )
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 echo ... test connection to FNC cloud ...
 echo Test connection to FNC cloud                                                                                            >> %REPORT_LOGFILE% 2>&1
 rem Connection Test to FNC Cloud
-powershell -Command "(New-Object Net.WebClient).DownloadFile('http://updates.installshield.com/ClientInterfaces.asp', '%TEMP%\ClientInterfaces.txt')" >nul 2>&1
+powershell -Command "(New-Object Net.WebClient).DownloadFile('http://updates.installshield.com/ClientInterfaces.asp', '%TEMP%\ClientInterfaces.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_fnccloud.txt 2>&1
 if !ERRORLEVEL!==0 (
 	rem Connection Test: PASSED
 	echo     Connection Test PASSED, can access http://updates.installshield.com/ClientInterfaces.asp
@@ -4201,6 +4207,7 @@ if !ERRORLEVEL!==0 (
 	rem Connection Test: FAILED
 	echo     Connection Test FAILED, cannot access http://updates.installshield.com/ClientInterfaces.asp
 	echo Connection Test FAILED, cannot access http://updates.installshield.com/ClientInterfaces.asp                         >> %REPORT_LOGFILE% 2>&1
+	type !CHECKLMS_REPORT_LOG_PATH!\connection_test_fnccloud.txt                                                             >> %REPORT_LOGFILE% 2>&1
 	set FNCCloudConnectionTestStatus=Failed
 )
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
@@ -4794,7 +4801,7 @@ echo Start at !DATE! !TIME! ....                                                
 if not defined LMS_SKIPCONTEST (
 	rem Connection Test to Siemens site
 	set CONNECTION_TEST_URL=http://new.siemens.com/global/en/general/legal.html
-	powershell -Command "(New-Object Net.WebClient).DownloadFile('!CONNECTION_TEST_URL!', '%temp%\downloadtest.txt')"  >nul 2>&1
+	powershell -Command "(New-Object Net.WebClient).DownloadFile('!CONNECTION_TEST_URL!', '%temp%\downloadtest.txt')"  >!CHECKLMS_REPORT_LOG_PATH!\connection_test_siemens.txt 2>&1
 	if !ERRORLEVEL!==0 (
 		rem Connection Test: PASSED
 		echo     Connection Test PASSED, can access !CONNECTION_TEST_URL!
@@ -4803,10 +4810,11 @@ if not defined LMS_SKIPCONTEST (
 		rem Connection Test: FAILED
 		echo     Connection Test FAILED, cannot access !CONNECTION_TEST_URL!
 		echo Connection Test FAILED, cannot access !CONNECTION_TEST_URL!                                                                      >> %REPORT_LOGFILE% 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_siemens.txt                                                                           >> %REPORT_LOGFILE% 2>&1
 	)
 	echo -------------------------------------------------------                                                                              >> %REPORT_LOGFILE% 2>&1
 	set CONNECTION_TEST_URL=https://lms.bt.siemens.com/flexnet/services/ActivationService
-	powershell -Command "(New-Object Net.WebClient).DownloadFile('!CONNECTION_TEST_URL!', '%temp%\downloadtest.txt')"  >nul 2>&1
+	powershell -Command "(New-Object Net.WebClient).DownloadFile('!CONNECTION_TEST_URL!', '%temp%\downloadtest.txt')"  >!CHECKLMS_REPORT_LOG_PATH!\connection_test_btlms_activationservice.txt 2>&1
 	if !ERRORLEVEL!==0 (
 		rem Connection Test: PASSED
 		echo     Connection Test PASSED, can access !CONNECTION_TEST_URL!
@@ -4815,10 +4823,11 @@ if not defined LMS_SKIPCONTEST (
 		rem Connection Test: FAILED
 		echo     Connection Test FAILED, cannot access !CONNECTION_TEST_URL!
 		echo Connection Test FAILED, cannot access !CONNECTION_TEST_URL!                                                                      >> %REPORT_LOGFILE% 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_btlms_activationservice.txt                                                           >> %REPORT_LOGFILE% 2>&1
 	)
 	echo -------------------------------------------------------                                                                              >> %REPORT_LOGFILE% 2>&1
 	set CONNECTION_TEST_URL=https://lms-quality.bt.siemens.com/flexnet/services/ActivationService
-	powershell -Command "(New-Object Net.WebClient).DownloadFile('!CONNECTION_TEST_URL!', '%temp%\downloadtest.txt')"  >nul 2>&1
+	powershell -Command "(New-Object Net.WebClient).DownloadFile('!CONNECTION_TEST_URL!', '%temp%\downloadtest.txt')"  >!CHECKLMS_REPORT_LOG_PATH!\connection_test_btqual_activationservice.txt 2>&1
 	if !ERRORLEVEL!==0 (
 		rem Connection Test: PASSED
 		echo     Connection Test PASSED, can access !CONNECTION_TEST_URL!
@@ -4827,10 +4836,11 @@ if not defined LMS_SKIPCONTEST (
 		rem Connection Test: FAILED
 		echo     Connection Test FAILED, cannot access !CONNECTION_TEST_URL!
 		echo Connection Test FAILED, cannot access !CONNECTION_TEST_URL!                                                                      >> %REPORT_LOGFILE% 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_btqual_activationservice.txt                                                          >> %REPORT_LOGFILE% 2>&1
 	)
 	echo -------------------------------------------------------                                                                              >> %REPORT_LOGFILE% 2>&1
 	set CONNECTION_TEST_URL=http://194.138.12.72/flexnet/services/ActivationService
-	powershell -Command "(New-Object Net.WebClient).DownloadFile('!CONNECTION_TEST_URL!', '%temp%\downloadtest.txt')"  >nul 2>&1
+	powershell -Command "(New-Object Net.WebClient).DownloadFile('!CONNECTION_TEST_URL!', '%temp%\downloadtest.txt')"  >!CHECKLMS_REPORT_LOG_PATH!\connection_test_1941381272.txt 2>&1
 	if !ERRORLEVEL!==0 (
 		rem Connection Test: PASSED
 		echo     Connection Test PASSED, can access !CONNECTION_TEST_URL!
@@ -4839,10 +4849,11 @@ if not defined LMS_SKIPCONTEST (
 		rem Connection Test: FAILED
 		echo     Connection Test FAILED, cannot access !CONNECTION_TEST_URL!
 		echo Connection Test FAILED, cannot access !CONNECTION_TEST_URL!                                                                      >> %REPORT_LOGFILE% 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_1941381272.txt                                                                        >> %REPORT_LOGFILE% 2>&1
 	)
 	echo -------------------------------------------------------                                                                              >> %REPORT_LOGFILE% 2>&1
 	set CONNECTION_TEST_URL=http://158.226.135.60/flexnet/services/ActivationService
-	powershell -Command "(New-Object Net.WebClient).DownloadFile('!CONNECTION_TEST_URL!', '%temp%\downloadtest.txt')"  >nul 2>&1
+	powershell -Command "(New-Object Net.WebClient).DownloadFile('!CONNECTION_TEST_URL!', '%temp%\downloadtest.txt')"  >!CHECKLMS_REPORT_LOG_PATH!\connection_test_15822613560.txt 2>&1
 	if !ERRORLEVEL!==0 (
 		rem Connection Test: PASSED
 		echo     Connection Test PASSED, can access !CONNECTION_TEST_URL!
@@ -4851,6 +4862,7 @@ if not defined LMS_SKIPCONTEST (
 		rem Connection Test: FAILED
 		echo     Connection Test FAILED, cannot access !CONNECTION_TEST_URL!
 		echo Connection Test FAILED, cannot access !CONNECTION_TEST_URL!                                                                      >> %REPORT_LOGFILE% 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_15822613560.txt                                                                       >> %REPORT_LOGFILE% 2>&1
 	)
 	echo Start at !DATE! !TIME! ....                                                                                                          >> %REPORT_LOGFILE% 2>&1
 	echo -------------------------------------------------------                                                                              >> %REPORT_LOGFILE% 2>&1
