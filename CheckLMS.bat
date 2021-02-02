@@ -54,7 +54,8 @@ rem        - store results of connection tests in separate files: !CHECKLMS_REPO
 rem     28-Jan-2021:
 rem        - add also result of conection test to akamai download share
 rem     02-Feb-2021:
-rem        - support VMGENID.EXE from Stratusm to read-out geneartion id
+rem        - support VMGENID.EXE from Stratus to read-out geneartion id
+rem        - remove hint, that GetVMGenerationIdentifier.exe is from Flexera; it seems this tool is NOT from Flexera.
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -924,14 +925,14 @@ if "%ConnectionTestStatus%" == "Passed" (
 			echo Don't download VM GENID app [from Stratus] [VMGENID.EXE], because they exist already.                              >> %REPORT_LOGFILE% 2>&1
 		)
 		
-		rem Download tool "GetVMGenerationIdentifier.exe" (from Flexera) to read-out generation id
+		rem Download tool "GetVMGenerationIdentifier.exe" to read-out generation id
 		IF NOT EXIST "%DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe" (
-			echo     Download VM GENID app [from Flexera]: %DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe
-			echo Download VM GENID app [from Flexera]: %DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe                            >> %REPORT_LOGFILE% 2>&1
+			echo     Download VM GENID app: %DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe
+			echo Download VM GENID app: %DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe                                           >> %REPORT_LOGFILE% 2>&1
 			powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/GetVMGenerationIdentifier.exe', '%DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe')"   >> %REPORT_LOGFILE% 2>&1
 		) else (
-			echo     Don't download VM GENID app [from Flexera] [GetVMGenerationIdentifier.exe], because they exist already.
-			echo Don't download VM GENID app [from Flexera] [GetVMGenerationIdentifier.exe], because they exist already.            >> %REPORT_LOGFILE% 2>&1
+			echo     Don't download VM GENID app [GetVMGenerationIdentifier.exe], because they exist already.
+			echo Don't download VM GENID app [GetVMGenerationIdentifier.exe], because they exist already.                           >> %REPORT_LOGFILE% 2>&1
 		)
 		
 		rem Download tool "ecmcommonutil.exe" (from Flexera) to read-out host id's
