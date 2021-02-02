@@ -51,6 +51,10 @@ rem        - Retreive registry key: powershell -Command "Get-ItemProperty -Path 
 rem          (see https://trailheadtechnology.com/solving-could-not-create-ssl-tls-secure-channel-error-in-net-4-6-x/)
 rem     27-Jan-2021:
 rem        - store results of connection tests in separate files: !CHECKLMS_REPORT_LOG_PATH!\connection_test_XXXX.txt
+rem     28-Jan-2021:
+rem        - add also result of conection test to akamai download share
+rem     02-Feb-2021:
+rem        - support VMGENID.EXE from Stratusm to read-out geneartion id
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -71,8 +75,8 @@ rem              - /checkdownload               perform downloads and print file
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 27-Jan-2021"
-set LMS_SCRIPT_BUILD=20210127
+set LMS_SCRIPT_VERSION="CheckLMS Script 02-Feb-2021"
+set LMS_SCRIPT_BUILD=20210202
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_BUILD=824
@@ -800,6 +804,7 @@ if !ERRORLEVEL!==0 (
 	rem Connection Test: FAILED
 	echo     Connection Test FAILED, cannot access https://static.siemens.com/btdownloads/
 	echo Connection Test FAILED, cannot access https://static.siemens.com/btdownloads/                                       >> %REPORT_LOGFILE% 2>&1
+	type !CHECKLMS_REPORT_LOG_PATH!\connection_test_btdownloads.txt                                                          >> %REPORT_LOGFILE% 2>&1
 	set ConnectionTestStatus=Failed
 )
 REM Download FNP Siemens Library
@@ -909,14 +914,24 @@ if "%ConnectionTestStatus%" == "Passed" (
 			echo Skip download from github,  because option 'donotstartnewerscript' is set. '%0'                                                                                            >> %REPORT_LOGFILE% 2>&1
 		) 
 		
+		rem Download tool "VMGENID.EXE" (from Stratus) to read-out generation id
+		IF NOT EXIST "%DOWNLOAD_LMS_PATH%\VMGENID.EXE" (
+			echo     Download VM GENID app [from Stratus]: %DOWNLOAD_LMS_PATH%\VMGENID.EXE
+			echo Download VM GENID app [from Stratus]: %DOWNLOAD_LMS_PATH%\VMGENID.EXE                                              >> %REPORT_LOGFILE% 2>&1
+			powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/tools/VMGENID.EXE', '%DOWNLOAD_LMS_PATH%\VMGENID.EXE')"   >> %REPORT_LOGFILE% 2>&1
+		) else (
+			echo     Don't download VM GENID app [from Stratus] [VMGENID.EXE], because they exist already.
+			echo Don't download VM GENID app [from Stratus] [VMGENID.EXE], because they exist already.                              >> %REPORT_LOGFILE% 2>&1
+		)
+		
 		rem Download tool "GetVMGenerationIdentifier.exe" (from Flexera) to read-out generation id
 		IF NOT EXIST "%DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe" (
-			echo     Download VM GENID app: %DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe
-			echo Download VM GENID app: %DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe                                           >> %REPORT_LOGFILE% 2>&1
+			echo     Download VM GENID app [from Flexera]: %DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe
+			echo Download VM GENID app [from Flexera]: %DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe                            >> %REPORT_LOGFILE% 2>&1
 			powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/GetVMGenerationIdentifier.exe', '%DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe')"   >> %REPORT_LOGFILE% 2>&1
 		) else (
-			echo     Don't download  VM GENID app [GetVMGenerationIdentifier.exe], because they exist already.
-			echo Don't download  VM GENID app [GetVMGenerationIdentifier.exe], because they exist already.                          >> %REPORT_LOGFILE% 2>&1
+			echo     Don't download VM GENID app [from Flexera] [GetVMGenerationIdentifier.exe], because they exist already.
+			echo Don't download VM GENID app [from Flexera] [GetVMGenerationIdentifier.exe], because they exist already.            >> %REPORT_LOGFILE% 2>&1
 		)
 		
 		rem Download tool "ecmcommonutil.exe" (from Flexera) to read-out host id's
@@ -1661,6 +1676,13 @@ echo List installed powershell commandlets (using Get-Module powershell command)
 echo For more details, see %CHECKLMS_REPORT_LOG_PATH%\InstalledPowershellCommandlets.txt                                     >> %REPORT_LOGFILE% 2>&1
 powershell -PSConsoleFile "%ProgramFiles%\Siemens\LMS\scripts\lmu.psc1" -command "& {Get-Module -ListAvailable -All}" >> %CHECKLMS_REPORT_LOG_PATH%\InstalledPowershellCommandlets.txt 2>&1
 rem Read VM Generation Id
+IF EXIST "%DOWNLOAD_LMS_PATH%\VMGENID.EXE" (
+	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+	echo ... read VM Generation Id [using VMGENID.EXE] ...
+	echo Read VM Generation Id [using VMGENID.EXE]:                                                                          >> %REPORT_LOGFILE% 2>&1
+	"%DOWNLOAD_LMS_PATH%\VMGENID.EXE"                                                                                        >> %REPORT_LOGFILE% 2>&1
+	echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
+)
 IF EXIST "%DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe" (
 	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
 	echo ... read VM Generation Id [using GetVMGenerationIdentifier.exe] ...
