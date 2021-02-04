@@ -1004,9 +1004,9 @@ if "%ConnectionTestStatus%" == "Passed" (
 	echo Don't download additional libraries and files, because no internet connection available.                                         >> %REPORT_LOGFILE% 2>&1
 	
 	rem in case no connection is available, check local folder for a "download" zip archive
-	dir /S /A /B !LMS_PROGRAMDATA!\LMSDownloadArchive_*.7z > %CHECKLMS_REPORT_LOG_PATH%\LMSDownloadArchivesFound.txt                      >> %REPORT_LOGFILE% 2>&1
+	dir /S /A /B "!LMS_PROGRAMDATA!\LMSDownloadArchive_*.7z" > "%CHECKLMS_REPORT_LOG_PATH%\LMSDownloadArchivesFound.txt"  
 	rem type %CHECKLMS_REPORT_LOG_PATH%\LMSDownloadArchivesFound.txt
-	FOR /F "eol=@ delims=@" %%i IN (%CHECKLMS_REPORT_LOG_PATH%\LMSDownloadArchivesFound.txt) DO ( 
+	FOR /F "eol=@ delims=@" %%i IN (%CHECKLMS_REPORT_LOG_PATH%\LMSDownloadArchivesFound.txt) DO (                       
 		rem see https://stackoverflow.com/questions/15567809/batch-extract-path-and-filename-from-a-variable/15568164
 		set file=%%i
 		set filedrive=%%~di
