@@ -56,6 +56,9 @@ rem        - add also result of conection test to akamai download share
 rem     02-Feb-2021:
 rem        - support VMGENID.EXE from Stratus to read-out geneartion id
 rem        - remove hint, that GetVMGenerationIdentifier.exe is from Flexera; it seems this tool is NOT from Flexera.
+rem     04-Feb-2021:
+rem        - introduce !LMS_PROGRAMDATA! as root path for LMS program data.
+rem        - In case internet connection is not possible, search for download zip archive - created on another machine - and prcoess them on this machine.
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -76,8 +79,8 @@ rem              - /checkdownload               perform downloads and print file
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 02-Feb-2021"
-set LMS_SCRIPT_BUILD=20210202
+set LMS_SCRIPT_VERSION="CheckLMS Script 04-Feb-2021"
+set LMS_SCRIPT_BUILD=20210204
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_BUILD=824
@@ -124,7 +127,8 @@ IF %ERRORLEVEL%==0 (
 )
 
 rem Check report log path
-set REPORT_LOG_PATH=%ALLUSERSPROFILE%\Siemens\LMS\Logs
+set LMS_PROGRAMDATA=%ALLUSERSPROFILE%\Siemens\LMS
+set REPORT_LOG_PATH=!LMS_PROGRAMDATA!\Logs
 IF NOT EXIST "%REPORT_LOG_PATH%\" (
     set REPORT_LOG_PATH=%TEMP%
     echo This is not a valid LMS Installation, use %TEMP% as path to store log files 
@@ -188,7 +192,7 @@ IF NOT EXIST "%CHECKLMS_ALM_PATH%\" (
 )
 
 rem Check & create download path
-set DOWNLOAD_LMS_PATH=%ALLUSERSPROFILE%\Siemens\LMS\Download
+set DOWNLOAD_LMS_PATH=!LMS_PROGRAMDATA!\Download
 IF NOT EXIST "%DOWNLOAD_LMS_PATH%\" (
 	rem echo Create new folder: %DOWNLOAD_LMS_PATH%\
 	mkdir %DOWNLOAD_LMS_PATH%\ >nul 2>&1
@@ -209,14 +213,14 @@ IF NOT EXIST "!LMS_SERVERTOOL_PATH!" (
 )
 
 rem Set documentation path
-set DOCUMENTATION_PATH=%ALLUSERSPROFILE%\Siemens\LMS\Documentation
+set DOCUMENTATION_PATH=!LMS_PROGRAMDATA!\Documentation
 
-set DOWNLOAD_ARCHIVE=%ALLUSERSPROFILE%\Siemens\LMS\LMSDownloadArchive_%COMPUTERNAME%_!LMS_REPORT_START!.7z
-set DOWNLOAD_PATH=%ALLUSERSPROFILE%\Siemens\LMS\Download
+set DOWNLOAD_ARCHIVE=!LMS_PROGRAMDATA!\LMSDownloadArchive_%COMPUTERNAME%_!LMS_REPORT_START!.7z
+set DOWNLOAD_PATH=!LMS_PROGRAMDATA!\Download
 
 
 rem Create report log filename(s)
-set REPORT_LOGARCHIVE=%ALLUSERSPROFILE%\Siemens\LMS\LMSLogArchive_%COMPUTERNAME%_!LMS_REPORT_START!.7z
+set REPORT_LOGARCHIVE=!LMS_PROGRAMDATA!\LMSLogArchive_%COMPUTERNAME%_!LMS_REPORT_START!.7z
 set REPORT_LOGFILE=%REPORT_LOG_PATH%\LMSStatusReport_%COMPUTERNAME%.log 
 set REPORT_FULL_LOGFILE=%REPORT_LOG_PATH%\LMSStatusReports_%COMPUTERNAME%.log 
 set REPORT_WMIC_INSTALLED_SW_LOGFILE=%CHECKLMS_REPORT_LOG_PATH%\WMIC_Installed_SW_Report.log 
@@ -997,7 +1001,38 @@ if "%ConnectionTestStatus%" == "Passed" (
 	)
 ) else (
 	echo     Don't download additional libraries and files, because no internet connection available.
-	echo Don't download additional libraries and files, because no internet connection available.                                                                                    >> %REPORT_LOGFILE% 2>&1
+	echo Don't download additional libraries and files, because no internet connection available.                                         >> %REPORT_LOGFILE% 2>&1
+	
+	rem in case no connection is available, check local folder for a "download" zip archive
+	dir /S /A /B !LMS_PROGRAMDATA!\LMSDownloadArchive_*.7z > %CHECKLMS_REPORT_LOG_PATH%\LMSDownloadArchivesFound.txt                      >> %REPORT_LOGFILE% 2>&1
+	rem type %CHECKLMS_REPORT_LOG_PATH%\LMSDownloadArchivesFound.txt
+	FOR /F "eol=@ delims=@" %%i IN (%CHECKLMS_REPORT_LOG_PATH%\LMSDownloadArchivesFound.txt) DO ( 
+		rem see https://stackoverflow.com/questions/15567809/batch-extract-path-and-filename-from-a-variable/15568164
+		set file=%%i
+		set filedrive=%%~di
+		set filepath=%%~pi
+		set filename=%%~ni
+		set fileextension=%%~xi
+		rem ECHO filedrive=!filedrive! / filepath=!filepath! /  filename=!filename! / fileextension=!fileextension!
+		for /f "tokens=1,2,3 eol=@ delims=_" %%a in ("!filename!") do set filemachine=%%b
+		for /f "tokens=1,2,3 eol=@ delims=_" %%a in ("!filename!") do set filetimestamp=%%c
+		rem echo filemachine=!filemachine! / filetimestamp=!filetimestamp!
+		if "%COMPUTERNAME%" == "!filemachine!" (
+			echo Skip download zip archive '!file!', as it was created on this machine!                                                   >> %REPORT_LOGFILE% 2>&1
+		) else (
+			echo Found download zip archive '!file!' from machine '!filemachine!'.                                                        >> %REPORT_LOGFILE% 2>&1
+			if exist "!file!.processed.%COMPUTERNAME%.txt" (
+				rem this zip archive has been processed already
+				echo Skip download zip archive '!file!', as it was processed already on this machine!                                     >> %REPORT_LOGFILE% 2>&1
+				type "!file!.processed.%COMPUTERNAME%.txt"                                                                                >> %REPORT_LOGFILE% 2>&1
+			) else (
+				rem unzip this zip archive on this machine
+				echo Unzip download zip archive '!file!' into '!LMS_PROGRAMDATA!' ...                                                     >> %REPORT_LOGFILE% 2>&1
+				"!UNZIP_TOOL!" x -y -spe -o"!LMS_PROGRAMDATA!" "!file!"                                                                   >> %REPORT_LOGFILE% 2>&1
+				echo ZIP archive !file! processed on %COMPUTERNAME% and unzipped into '!LMS_PROGRAMDATA!' at !DATE! !TIME! > "!file!.processed.%COMPUTERNAME%.txt"
+			)
+		)
+	)
 )
 
 rem Check if newer CheckLMS.bat is available in %DOWNLOAD_LMS_PATH%\CheckLMS.bat (even if connection test doesn't run succesful)
@@ -2940,24 +2975,24 @@ if defined LMS_SERVERACTUTIL (
 )
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo lmdiag.exe -c "%ALLUSERSPROFILE%\Siemens\LMS\Server Certificates\" -n                                                   >> %REPORT_LOGFILE% 2>&1
+echo lmdiag.exe -c "!LMS_PROGRAMDATA!\Server Certificates\" -n                                                               >> %REPORT_LOGFILE% 2>&1
 if defined LMS_LMDIAG (
-	"%LMS_LMDIAG%" -c "%ALLUSERSPROFILE%\Siemens\LMS\Server Certificates\" -n                                                >> %REPORT_LOGFILE% 2>&1
+	"%LMS_LMDIAG%" -c "!LMS_PROGRAMDATA!\Server Certificates\" -n                                                            >> %REPORT_LOGFILE% 2>&1
 ) else (
     echo     lmdiag.exe doesn't exist, cannot perform operation.                                                             >> %REPORT_LOGFILE% 2>&1
 )
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo lmstat.exe -c "%ALLUSERSPROFILE%\Siemens\LMS\Server Certificates\SIEMBT.lic" -A                                         >> %REPORT_LOGFILE% 2>&1
+echo lmstat.exe -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -A                                         >> %REPORT_LOGFILE% 2>&1
 if defined LMS_LMSTAT (
-    "%LMS_LMSTAT%" -c "%ALLUSERSPROFILE%\Siemens\LMS\Server Certificates\SIEMBT.lic" -A                                      >> %REPORT_LOGFILE% 2>&1
+    "%LMS_LMSTAT%" -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -A                                      >> %REPORT_LOGFILE% 2>&1
 ) else (
     echo     lmstat.exe doesn't exist, cannot perform operation.                                                             >> %REPORT_LOGFILE% 2>&1
 )
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo lmstat.exe -c "%ALLUSERSPROFILE%\Siemens\LMS\Server Certificates\SIEMBT.lic" -a                                         >> %REPORT_LOGFILE% 2>&1
+echo lmstat.exe -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -a                                         >> %REPORT_LOGFILE% 2>&1
 if defined LMS_LMSTAT (
-    "%LMS_LMSTAT%" -c "%ALLUSERSPROFILE%\Siemens\LMS\Server Certificates\SIEMBT.lic" -a                                      >> %REPORT_LOGFILE% 2>&1
+    "%LMS_LMSTAT%" -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -a                                      >> %REPORT_LOGFILE% 2>&1
 ) else (
     echo     lmstat.exe doesn't exist, cannot perform operation.                                                             >> %REPORT_LOGFILE% 2>&1
 )
@@ -3265,11 +3300,11 @@ echo ===========================================================================
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo ... list available offline request files ...
 echo List available offline request files:                                                                                   >> %REPORT_LOGFILE% 2>&1
-echo Content of folder: "%ALLUSERSPROFILE%\Siemens\LMS\Requests"                                                             >> %REPORT_LOGFILE% 2>&1
-dir /S /A /X /4 /W "%ALLUSERSPROFILE%\Siemens\LMS\Requests"                                                                  >> %REPORT_LOGFILE% 2>&1
+echo Content of folder: "!LMS_PROGRAMDATA!\Requests"                                                             >> %REPORT_LOGFILE% 2>&1
+dir /S /A /X /4 /W "!LMS_PROGRAMDATA!\Requests"                                                                  >> %REPORT_LOGFILE% 2>&1
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 del %CHECKLMS_REPORT_LOG_PATH%\license_all_requests.txt >nul 2>&1
-FOR %%i IN ("%ALLUSERSPROFILE%\Siemens\LMS\Requests\*") DO (
+FOR %%i IN ("!LMS_PROGRAMDATA!\Requests\*") DO (
     rem echo %%i:                                                                                                                >> %REPORT_LOGFILE% 2>&1
     rem Type "%%i"                                                                                                               >> %REPORT_LOGFILE% 2>&1
     rem echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
@@ -3281,11 +3316,11 @@ echo ===========================================================================
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo ... analyze installed/available local certificates ...
 echo Installed/available local certificates:                                                                                 >> %REPORT_LOGFILE% 2>&1
-echo Content of folder: "%ALLUSERSPROFILE%\Siemens\LMS\Certificates"                                                         >> %REPORT_LOGFILE% 2>&1
-dir /S /A /X /4 /W "%ALLUSERSPROFILE%\Siemens\LMS\Certificates"                                                              >> %REPORT_LOGFILE% 2>&1
+echo Content of folder: "!LMS_PROGRAMDATA!\Certificates"                                                         >> %REPORT_LOGFILE% 2>&1
+dir /S /A /X /4 /W "!LMS_PROGRAMDATA!\Certificates"                                                              >> %REPORT_LOGFILE% 2>&1
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 del %CHECKLMS_REPORT_LOG_PATH%\license_all_certificates.txt >nul 2>&1
-FOR %%i IN ("%ALLUSERSPROFILE%\Siemens\LMS\Certificates\*") DO (    
+FOR %%i IN ("!LMS_PROGRAMDATA!\Certificates\*") DO (    
     echo %%i:                                                                                                                >> %REPORT_LOGFILE% 2>&1
     Type "%%i"                                                                                                               >> %REPORT_LOGFILE% 2>&1
     echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
@@ -3311,11 +3346,11 @@ echo ===========================================================================
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo ... analyze installed/available server certificates ...
 echo Installed/available server certificates:                                                                                >> %REPORT_LOGFILE% 2>&1
-echo Content of folder: "%ALLUSERSPROFILE%\Siemens\LMS\Server Certificates"                                                  >> %REPORT_LOGFILE% 2>&1
-dir /S /A /X /4 /W "%ALLUSERSPROFILE%\Siemens\LMS\Server Certificates"                                                       >> %REPORT_LOGFILE% 2>&1
+echo Content of folder: "!LMS_PROGRAMDATA!\Server Certificates"                                                  >> %REPORT_LOGFILE% 2>&1
+dir /S /A /X /4 /W "!LMS_PROGRAMDATA!\Server Certificates"                                                       >> %REPORT_LOGFILE% 2>&1
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 del %CHECKLMS_REPORT_LOG_PATH%\license_all_servercertificates.txt >nul 2>&1
-FOR %%i IN ("%ALLUSERSPROFILE%\Siemens\LMS\Server Certificates\*") DO (
+FOR %%i IN ("!LMS_PROGRAMDATA!\Server Certificates\*") DO (
     echo %%i:                                                                                                                >> %REPORT_LOGFILE% 2>&1
     Type "%%i"                                                                                                               >> %REPORT_LOGFILE% 2>&1
     echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
@@ -4053,10 +4088,10 @@ echo ===========================================================================
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo Configuration File: CSID CONFIG                                                                                         >> %REPORT_LOGFILE% 2>&1
 if defined LMS_LMUTOOL (
-	"!LMS_LMUTOOL!" /DEC2:%ALLUSERSPROFILE%\Siemens\LMS\Config\CsidCfg                                                       >> %REPORT_LOGFILE% 2>&1
-	if exist "%ALLUSERSPROFILE%\Siemens\LMS\Config\CsidCfg.dec" (
-		Type %ALLUSERSPROFILE%\Siemens\LMS\Config\CsidCfg.dec                                                                >> %REPORT_LOGFILE% 2>&1
-		del %ALLUSERSPROFILE%\Siemens\LMS\Config\CsidCfg.dec >nul 2>&1
+	"!LMS_LMUTOOL!" /DEC2:!LMS_PROGRAMDATA!\Config\CsidCfg                                                       >> %REPORT_LOGFILE% 2>&1
+	if exist "!LMS_PROGRAMDATA!\Config\CsidCfg.dec" (
+		Type !LMS_PROGRAMDATA!\Config\CsidCfg.dec                                                                >> %REPORT_LOGFILE% 2>&1
+		del !LMS_PROGRAMDATA!\Config\CsidCfg.dec >nul 2>&1
 		echo .                                                                                                               >> %REPORT_LOGFILE% 2>&1
 	)
 ) else (
@@ -4066,10 +4101,10 @@ echo ===========================================================================
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo Configuration File: LICENSE CONFIG                                                                                      >> %REPORT_LOGFILE% 2>&1
 if defined LMS_LMUTOOL (
-	"!LMS_LMUTOOL!" /DEC2:%ALLUSERSPROFILE%\Siemens\LMS\Config\LicCfg                                                        >> %REPORT_LOGFILE% 2>&1
-	if exist "%ALLUSERSPROFILE%\Siemens\LMS\Config\LicCfg.dec" (
-		Type %ALLUSERSPROFILE%\Siemens\LMS\Config\LicCfg.dec                                                                 >> %REPORT_LOGFILE% 2>&1
-		del %ALLUSERSPROFILE%\Siemens\LMS\Config\LicCfg.dec >nul 2>&1
+	"!LMS_LMUTOOL!" /DEC2:!LMS_PROGRAMDATA!\Config\LicCfg                                                        >> %REPORT_LOGFILE% 2>&1
+	if exist "!LMS_PROGRAMDATA!\Config\LicCfg.dec" (
+		Type !LMS_PROGRAMDATA!\Config\LicCfg.dec                                                                 >> %REPORT_LOGFILE% 2>&1
+		del !LMS_PROGRAMDATA!\Config\LicCfg.dec >nul 2>&1
 		echo .                                                                                                               >> %REPORT_LOGFILE% 2>&1
 	)
 ) else (
@@ -4089,12 +4124,12 @@ Type "%ProgramFiles%\Siemens\LMS\bin\LmuTool.profile"                           
 echo .                                                                                                                       >> %REPORT_LOGFILE% 2>&1
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo Configuration File: LMU SETTINGS [%ALLUSERSPROFILE%\Siemens\LMS\Config\LmuSettings]                                     >> %REPORT_LOGFILE% 2>&1
-Type %ALLUSERSPROFILE%\Siemens\LMS\Config\LmuSettings                                                                        >> %REPORT_LOGFILE% 2>&1
+echo Configuration File: LMU SETTINGS [!LMS_PROGRAMDATA!\Config\LmuSettings]                                     >> %REPORT_LOGFILE% 2>&1
+Type !LMS_PROGRAMDATA!\Config\LmuSettings                                                                        >> %REPORT_LOGFILE% 2>&1
 echo .                                                                                                                       >> %REPORT_LOGFILE% 2>&1
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 set backuppath=
-IF EXIST "%ALLUSERSPROFILE%\Siemens\LMS\Config\LmuSettings" for /f "tokens=3 delims=<> eol=@" %%i in ('type %ALLUSERSPROFILE%\Siemens\LMS\Config\LmuSettings ^|find "BackupRestorePath"') do set "backuppath=%%i"
+IF EXIST "!LMS_PROGRAMDATA!\Config\LmuSettings" for /f "tokens=3 delims=<> eol=@" %%i in ('type !LMS_PROGRAMDATA!\Config\LmuSettings ^|find "BackupRestorePath"') do set "backuppath=%%i"
 if defined backuppath (
     echo Configured backup path: %backuppath%                                                                                >> %REPORT_LOGFILE% 2>&1
     echo Configured backup path, show content of %backuppath%\LMU_Backup                                                     >> %REPORT_LOGFILE% 2>&1
@@ -4808,11 +4843,11 @@ echo ===========================================================================
 echo Start at !DATE! !TIME! ....                                                                                                          >> %REPORT_LOGFILE% 2>&1
 echo ... get 'LMS Notifications Report' ...
 echo Get 'LMS Notifications Report'                                                                                                       >> %REPORT_LOGFILE% 2>&1
-IF EXIST "%ALLUSERSPROFILE%\Siemens\LMS\Documentation\reports\report.htm" (
-    Type %ALLUSERSPROFILE%\Siemens\LMS\Documentation\reports\report.htm                                                                   >> %REPORT_LOGFILE% 2>&1
-    copy %ALLUSERSPROFILE%\Siemens\LMS\Documentation\reports\report.htm !CHECKLMS_REPORT_LOG_PATH!\                                       >> %REPORT_LOGFILE% 2>&1
+IF EXIST "!LMS_PROGRAMDATA!\Documentation\reports\report.htm" (
+    Type !LMS_PROGRAMDATA!\Documentation\reports\report.htm                                                                   >> %REPORT_LOGFILE% 2>&1
+    copy !LMS_PROGRAMDATA!\Documentation\reports\report.htm !CHECKLMS_REPORT_LOG_PATH!\                                       >> %REPORT_LOGFILE% 2>&1
 ) else (
-    echo     %ALLUSERSPROFILE%\Siemens\LMS\Documentation\reports\report.htm not found.                                                    >> %REPORT_LOGFILE% 2>&1
+    echo     !LMS_PROGRAMDATA!\Documentation\reports\report.htm not found.                                                    >> %REPORT_LOGFILE% 2>&1
 )
 echo Start at !DATE! !TIME! ....                                                                                                          >> %REPORT_LOGFILE% 2>&1
 :connection_test
