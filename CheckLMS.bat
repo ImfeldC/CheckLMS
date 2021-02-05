@@ -59,6 +59,11 @@ rem        - remove hint, that GetVMGenerationIdentifier.exe is from Flexera; it
 rem     04-Feb-2021:
 rem        - introduce !LMS_PROGRAMDATA! as root path for LMS program data.
 rem        - In case internet connection is not possible, search for download zip archive - created on another machine - and prcoess them on this machine.
+rem     04-Feb-2021:
+rem        - Improve unzip; as 7zr.exe seems not working on windows 2019 server. Use "Expand-Archive" of PowerShell V5.
+rem          See also https://ridicurious.com/2019/07/29/3-ways-to-unzip-compressed-files-using-powershell/
+rem        - to access desktop, use also %userprofile%\desktop, as %desktop% is not available on all windows systems 
+rem          See also https://stackoverflow.com/questions/18629768/path-of-user-desktop-in-batch-files
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -79,8 +84,8 @@ rem              - /checkdownload               perform downloads and print file
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 04-Feb-2021"
-set LMS_SCRIPT_BUILD=20210204
+set LMS_SCRIPT_VERSION="CheckLMS Script 05-Feb-2021"
+set LMS_SCRIPT_BUILD=20210205
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_BUILD=824
@@ -969,13 +974,6 @@ if "%ConnectionTestStatus%" == "Passed" (
 			echo     Download SigCheck tool: %DOWNLOAD_LMS_PATH%\Sigcheck.zip
 			echo Download SigCheck tool: %DOWNLOAD_LMS_PATH%\Sigcheck.zip                                                           >> %REPORT_LOGFILE% 2>&1
 			powershell -Command "(New-Object Net.WebClient).DownloadFile('https://download.sysinternals.com/files/Sigcheck.zip', '%DOWNLOAD_LMS_PATH%\Sigcheck.zip')"   >> %REPORT_LOGFILE% 2>&1
-			
-			if defined UNZIP_TOOL (
-				"!UNZIP_TOOL!" x -o!DOWNLOAD_LMS_PATH!\SigCheck -y %DOWNLOAD_LMS_PATH%\Sigcheck.zip                                 >> %REPORT_LOGFILE% 2>&1
-			) else (
-				echo Can't unzip SigCheck tool [Sigcheck.zip], because no unzip tool is available.                                  >> %REPORT_LOGFILE% 2>&1
-			)
-			
 		) else (
 			echo     Don't download SigCheck tool [Sigcheck.zip], because it exist already.
 			echo Don't download SigCheck tool [Sigcheck.zip], because it exist already.                                             >> %REPORT_LOGFILE% 2>&1
@@ -986,13 +984,6 @@ if "%ConnectionTestStatus%" == "Passed" (
 			echo     Download USBDeview tool: %DOWNLOAD_LMS_PATH%\usbdeview-x64.zip
 			echo Download USBDeview tool: %DOWNLOAD_LMS_PATH%\usbdeview-x64.zip                                                           >> %REPORT_LOGFILE% 2>&1
 			powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.nirsoft.net/utils/usbdeview-x64.zip', '%DOWNLOAD_LMS_PATH%\usbdeview-x64.zip')"   >> %REPORT_LOGFILE% 2>&1
-			
-			if defined UNZIP_TOOL (
-				"!UNZIP_TOOL!" x -o!DOWNLOAD_LMS_PATH!\usbdeview -y %DOWNLOAD_LMS_PATH%\usbdeview-x64.zip                                 >> %REPORT_LOGFILE% 2>&1
-			) else (
-				echo Can't unzip USBDeview tool [usbdeview-x64.zip], because no unzip tool is available.                                  >> %REPORT_LOGFILE% 2>&1
-			)
-			
 		) else (
 			echo     Don't download USBDeview tool [usbdeview-x64.zip], because it exist already.
 			echo Don't download USBDeview tool [usbdeview-x64.zip], because it exist already.                                             >> %REPORT_LOGFILE% 2>&1
@@ -1028,11 +1019,55 @@ if "%ConnectionTestStatus%" == "Passed" (
 			) else (
 				rem unzip this zip archive on this machine
 				echo Unzip download zip archive '!file!' into '!LMS_PROGRAMDATA!' ...                                                     >> %REPORT_LOGFILE% 2>&1
-				"!UNZIP_TOOL!" x -y -spe -o"!LMS_PROGRAMDATA!" "!file!"                                                                   >> %REPORT_LOGFILE% 2>&1
+				if defined UNZIP_TOOL (
+					"!UNZIP_TOOL!" x -y -spe -o"!LMS_PROGRAMDATA!" "!file!"                                                               >> %REPORT_LOGFILE% 2>&1
+				) else (
+					echo Can't unzip download zip archive [LMSDownloadArchive_*.7z], because no unzip tool is available.                  >> %REPORT_LOGFILE% 2>&1
+				)
+				powershell -Command "Expand-Archive -Path !file! -DestinationPath !LMS_PROGRAMDATA! -Verbose -Force"                      >> %REPORT_LOGFILE% 2>&1
 				echo ZIP archive !file! processed on %COMPUTERNAME% and unzipped into '!LMS_PROGRAMDATA!' at !DATE! !TIME! > "!file!.processed.%COMPUTERNAME%.txt"
 			)
 		)
 	)
+)
+
+if defined LMS_SERVERTOOL_DW (
+	REM Unzip FNP Siemens Library
+	REM See https://sourceforge.net/p/sevenzip/discussion/45798/thread/8cb61347/?limit=25
+	IF EXIST "%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip" (
+		echo     Extract FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip
+		echo Extract FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip                                             >> %REPORT_LOGFILE% 2>&1
+		if defined UNZIP_TOOL (
+			"!UNZIP_TOOL!" x -y -spe -o"%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%\" "%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip"   >> %REPORT_LOGFILE% 2>&1
+		) else (
+			echo Can't unzip FNP Siemens Library [%LMS_SERVERTOOL_DW%.zip], because no unzip tool is available.                   >> %REPORT_LOGFILE% 2>&1
+		)
+		powershell -Command "Expand-Archive -Path %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip -DestinationPath %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%\ -Verbose -Force"   >> %REPORT_LOGFILE% 2>&1
+	)
+)
+rem Unzip SigCheck tool
+IF EXIST "%DOWNLOAD_LMS_PATH%\Sigcheck.zip" (
+	if defined UNZIP_TOOL (
+		"!UNZIP_TOOL!" x -o!DOWNLOAD_LMS_PATH!\SigCheck -y %DOWNLOAD_LMS_PATH%\Sigcheck.zip                                       >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo Can't unzip SigCheck tool [Sigcheck.zip], because no unzip tool is available.                                        >> %REPORT_LOGFILE% 2>&1
+	)
+	powershell -Command "Expand-Archive -Path %DOWNLOAD_LMS_PATH%\Sigcheck.zip -DestinationPath !DOWNLOAD_LMS_PATH!\SigCheck -Verbose -Force"   >> %REPORT_LOGFILE% 2>&1
+) else (
+	echo     Don't unzip SigCheck tool [Sigcheck.zip], because zip archive doesn't exists.
+	echo Don't unzip SigCheck tool [Sigcheck.zip], because zip archive doesn't exists.                                            >> %REPORT_LOGFILE% 2>&1
+)
+rem Unzip USBDeview tool
+IF EXIST "%DOWNLOAD_LMS_PATH%\usbdeview-x64.zip" (
+	if defined UNZIP_TOOL (
+		"!UNZIP_TOOL!" x -o!DOWNLOAD_LMS_PATH!\usbdeview -y %DOWNLOAD_LMS_PATH%\usbdeview-x64.zip                                 >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo Can't unzip USBDeview tool [usbdeview-x64.zip], because no unzip tool is available.                                  >> %REPORT_LOGFILE% 2>&1
+	)
+	powershell -Command "Expand-Archive -Path %DOWNLOAD_LMS_PATH%\usbdeview-x64.zip -DestinationPath !DOWNLOAD_LMS_PATH!\usbdeview -Verbose -Force"   >> %REPORT_LOGFILE% 2>&1
+) else (
+	echo     Don't unzip USBDeview tool [usbdeview-x64.zip], because zip archive doesn't exists.
+	echo Don't unzip USBDeview tool [usbdeview-x64.zip], because zip archive doesn't exists.                                      >> %REPORT_LOGFILE% 2>&1
 )
 
 rem Check if newer CheckLMS.bat is available in %DOWNLOAD_LMS_PATH%\CheckLMS.bat (even if connection test doesn't run succesful)
@@ -1767,12 +1802,18 @@ echo ... retrieve Windows Update Log ...
 echo Retrieve Windows Update Log (using 'powershell -command "Get-WindowsUpdateLog"'):                                       >> %REPORT_LOGFILE% 2>&1
 powershell -command "Get-WindowsUpdateLog"     >> %CHECKLMS_REPORT_LOG_PATH%\Get-WindowsUpdateLog.log 2>&1
 if exist "%desktop%\WindowsUpdate.log" (
-	rem echo ---------------- %desktop%\WindowsUpdate.log:                                                                       >> %REPORT_LOGFILE% 2>&1
-	rem type "%desktop%\WindowsUpdate.log"                                                                                       >> %REPORT_LOGFILE% 2>&1
-	robocopy.exe %desktop%  "%CHECKLMS_REPORT_LOG_PATH%" WindowsUpdate.log /MOV /NP /R:1 /W:1 /LOG+:%CHECKLMS_REPORT_LOG_PATH%\robocopy.log   >> %REPORT_LOGFILE% 2>&1
-	echo See %CHECKLMS_REPORT_LOG_PATH%\WindowsUpdate.log                                                                                     >> %REPORT_LOGFILE% 2>&1
+	rem echo ---------------- %desktop%\WindowsUpdate.log:                                                                                                   >> %REPORT_LOGFILE% 2>&1
+	rem type "%desktop%\WindowsUpdate.log"                                                                                                                   >> %REPORT_LOGFILE% 2>&1
+	robocopy.exe %desktop%  "%CHECKLMS_REPORT_LOG_PATH%" WindowsUpdate.log /MOV /NP /R:1 /W:1 /LOG+:%CHECKLMS_REPORT_LOG_PATH%\robocopy.log                  >> %REPORT_LOGFILE% 2>&1
+	echo See %CHECKLMS_REPORT_LOG_PATH%\WindowsUpdate.log                                                                                                    >> %REPORT_LOGFILE% 2>&1
 ) else (
-	echo WARNING: The logfile '%desktop%\WindowsUpdate.log' doesn't exists; cannot copy it!                                  >> %REPORT_LOGFILE% 2>&1
+	if exist "%userprofile%\desktop\WindowsUpdate.log" (
+		rem echo ---------------- %userprofile%\desktop\WindowsUpdate.log:                                                                                   >> %REPORT_LOGFILE% 2>&1
+		robocopy.exe %userprofile%\desktop "%CHECKLMS_REPORT_LOG_PATH%" WindowsUpdate.log /MOV /NP /R:1 /W:1 /LOG+:%CHECKLMS_REPORT_LOG_PATH%\robocopy.log   >> %REPORT_LOGFILE% 2>&1
+		echo See %CHECKLMS_REPORT_LOG_PATH%\WindowsUpdate.log                                                                                                >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo WARNING: The logfile 'WindowsUpdate.log' doesn't exists; cannot copy it!                                        >> %REPORT_LOGFILE% 2>&1
+	)
 )
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo ... collect user information ...
