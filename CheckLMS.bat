@@ -59,7 +59,7 @@ rem        - remove hint, that GetVMGenerationIdentifier.exe is from Flexera; it
 rem     04-Feb-2021:
 rem        - introduce !LMS_PROGRAMDATA! as root path for LMS program data.
 rem        - In case internet connection is not possible, search for download zip archive - created on another machine - and prcoess them on this machine.
-rem     04-Feb-2021:
+rem     05-Feb-2021:
 rem        - Improve unzip; as 7zr.exe seems not working on windows 2019 server. Use "Expand-Archive" of PowerShell V5.
 rem          See also https://ridicurious.com/2019/07/29/3-ways-to-unzip-compressed-files-using-powershell/
 rem        - to access desktop, use also %userprofile%\desktop, as %desktop% is not available on all windows systems 
