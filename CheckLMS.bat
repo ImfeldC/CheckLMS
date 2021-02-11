@@ -64,6 +64,15 @@ rem        - Improve unzip; as 7zr.exe seems not working on windows 2019 server.
 rem          See also https://ridicurious.com/2019/07/29/3-ways-to-unzip-compressed-files-using-powershell/
 rem        - to access desktop, use also %userprofile%\desktop, as %desktop% is not available on all windows systems 
 rem          See also https://stackoverflow.com/questions/18629768/path-of-user-desktop-in-batch-files
+rem     09-Feb-2021:
+rem        - Extract 'Host Info' from SIEMBT.log
+rem        - adjust parsing of 'servercomptranutil_listRequests_XML.xml' and 'fake_id_request_file.xml' to avoid duplicate lines (using 'LMS_START_LOG' pattern).
+rem        - adjust logic for 'LMS_START_LOG' pattern, to find end of section/block.
+rem     10-Feb-2021:
+rem        - Extract important identifiers from SIEMBT.log: LMS_SIEMBT_HOSTNAME, LMS_SIEMBT_HYPERVISOR and LMS_SIEMBT_HOSTIDS
+rem        - Add values retrived from SIMEBT to summary at end of logfile. Display error message in case of "suspect" values.
+rem     11-Feb-2021:
+rem        - adjust format of LMS_REPORT_START to be more "humable" readable
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -84,8 +93,8 @@ rem              - /checkdownload               perform downloads and print file
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 05-Feb-2021"
-set LMS_SCRIPT_BUILD=20210205
+set LMS_SCRIPT_VERSION="CheckLMS Script 11-Feb-2021"
+set LMS_SCRIPT_BUILD=20210211
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_BUILD=824
@@ -115,7 +124,7 @@ rem https://stackoverflow.com/questions/7727114/batch-command-date-and-time-in-f
 for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /format:list') do set lms_report_datetime=%%I
 set lms_report_datetime=%lms_report_datetime:~0,8%-%lms_report_datetime:~8,6%
 rem Store report start date & time
-set LMS_REPORT_START=!lms_report_datetime!
+set LMS_REPORT_START=!DATE! !TIME!
 echo Report Start at !LMS_REPORT_START! ....
 
 rem check administrator priviledge (see https://stackoverflow.com/questions/4051883/batch-script-how-to-check-for-admin-rights)
@@ -220,12 +229,12 @@ IF NOT EXIST "!LMS_SERVERTOOL_PATH!" (
 rem Set documentation path
 set DOCUMENTATION_PATH=!LMS_PROGRAMDATA!\Documentation
 
-set DOWNLOAD_ARCHIVE=!LMS_PROGRAMDATA!\LMSDownloadArchive_%COMPUTERNAME%_!LMS_REPORT_START!.7z
+set DOWNLOAD_ARCHIVE=!LMS_PROGRAMDATA!\LMSDownloadArchive_%COMPUTERNAME%_!lms_report_datetime!.7z
 set DOWNLOAD_PATH=!LMS_PROGRAMDATA!\Download
 
 
 rem Create report log filename(s)
-set REPORT_LOGARCHIVE=!LMS_PROGRAMDATA!\LMSLogArchive_%COMPUTERNAME%_!LMS_REPORT_START!.7z
+set REPORT_LOGARCHIVE=!LMS_PROGRAMDATA!\LMSLogArchive_%COMPUTERNAME%_!lms_report_datetime!.7z
 set REPORT_LOGFILE=%REPORT_LOG_PATH%\LMSStatusReport_%COMPUTERNAME%.log 
 set REPORT_FULL_LOGFILE=%REPORT_LOG_PATH%\LMSStatusReports_%COMPUTERNAME%.log 
 set REPORT_WMIC_INSTALLED_SW_LOGFILE=%CHECKLMS_REPORT_LOG_PATH%\WMIC_Installed_SW_Report.log 
@@ -1478,6 +1487,7 @@ echo -------------------------------------------------------                    
 echo WMIC Report [using PowerShell: Get-WmiObject -class Win32_BIOS]:                                                        >> %REPORT_LOGFILE% 2>&1
 powershell -c Get-WmiObject -class Win32_BIOS                                                                                >> %REPORT_LOGFILE% 2>&1
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 rem see https://www.lisenet.com/2014/get-windows-system-information-via-wmi-command-line-wmic/
 echo WMIC Report                                                                                                             >> %REPORT_LOGFILE% 2>&1
 del %REPORT_WMIC_LOGFILE% >nul 2>&1
@@ -1628,6 +1638,7 @@ if defined NUM_OF_INSTALLED_SW_FROM_SIEMENS (
 	)
 )
 echo ---------------- wmic product get name, version, InstallDate, vendor                                                    >> %REPORT_LOGFILE% 2>&1
+echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo     Read installed products and version (with wmic product get name, version, InstallDate, vendor)
 echo Read installed products and version (with wmic)                                                                         >> %REPORT_LOGFILE% 2>&1
 wmic /output:%REPORT_WMIC_INSTALLED_SW_LOGFILE% product get name, version, InstallDate, vendor                               >> %REPORT_LOGFILE% 2>&1
@@ -1666,6 +1677,7 @@ echo ... display environment variables (using set command) ...
 echo Display environment variables (using set command):                                                                      >> %REPORT_LOGFILE% 2>&1
 set                                                                                                                          >> %REPORT_LOGFILE% 2>&1
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo ... retrieve list of drivers (using driverquery) ...
 echo Retrieve list of drivers (using driverquery):                                                                           >> %REPORT_LOGFILE% 2>&1
 driverquery /v                                                                                                               >> %REPORT_LOGFILE% 2>&1
@@ -1710,6 +1722,7 @@ echo ... retrieve powershell information ...
 echo Retrieve powershell information [using 'powershell -command "$PSVersionTable"']:                                        >> %REPORT_LOGFILE% 2>&1
 powershell -command "$PSVersionTable"                                                                                        >> %REPORT_LOGFILE% 2>&1
 echo ---------------- powershell -command "& {Get-Service -Name *}"                                                          >> %REPORT_LOGFILE% 2>&1
+echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo ... list installed services (using Get-Service powershell command) ...
 echo List relevant installed services (using Get-Service powershell command):                                                >> %REPORT_LOGFILE% 2>&1
 powershell -command "& {Get-Service -Name 'Siemens BT Licensing Server'}" > %CHECKLMS_REPORT_LOG_PATH%\getservice.txt 2>&1
@@ -1786,6 +1799,7 @@ if exist "%WinDir%\System32\Drivers\Etc\protocol" (
 	echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
 )
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo ... collect system information ...
 echo Collect system information ...                                                                                          >> %REPORT_LOGFILE% 2>&1
 echo ---------------- systeminfo                                                                                             >> %REPORT_LOGFILE% 2>&1
@@ -1816,6 +1830,7 @@ if exist "%desktop%\WindowsUpdate.log" (
 	)
 )
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo ... collect user information ...
 echo Collect user information ...                                                                                            >> %REPORT_LOGFILE% 2>&1
 echo ---------------- whoami                                                                                                 >> %REPORT_LOGFILE% 2>&1
@@ -1848,6 +1863,7 @@ if defined LMS_EXTENDED_CONTENT (
 	echo Creation of 'GpResultUser.html' skipped, start script with option '/extend' to enable extended content.             >> %REPORT_LOGFILE% 2>&1
 )
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo ... collect task list (process information) ...
 echo Task List (Process Infromation)                                                                                         >> %REPORT_LOGFILE% 2>&1
 echo ---------------- Displays task list: for specific LMS processes                                                         >> %REPORT_LOGFILE% 2>&1
@@ -2740,21 +2756,22 @@ if defined LMS_SERVERCOMTRANUTIL (
 	findstr /m /c:"StorageBreakInfo" "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml"                           >> %REPORT_LOGFILE% 2>&1
 	if !ERRORLEVEL!==0 (
 		echo     'StorageBreakInfo' section was found in %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml ...     >> %REPORT_LOGFILE% 2>&1
+		Set LMS_START_LOG=0
 		FOR /F "eol=@ delims=@" %%i IN (%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml) DO ( 
 			ECHO "%%i" | FINDSTR /C:"<StorageBreakInfo>" 1>nul 
 			if !ERRORLEVEL!==0 (
 				echo     Start of 'StorageBreakInfo' section found ...                                               >> %REPORT_LOGFILE% 2>&1
-				echo     %%i                                                                                         >> %REPORT_LOGFILE% 2>&1
 				Set LMS_START_LOG=1
-			)
-			ECHO "%%i" | FINDSTR /C:"</StorageBreakInfo>" 1>nul 
-			if !ERRORLEVEL!==0 (
-				echo     %%i                                                                                         >> %REPORT_LOGFILE% 2>&1
-				echo     End of 'StorageBreakInfo' section found ...                                                 >> %REPORT_LOGFILE% 2>&1
-				Set LMS_START_LOG=0
 			)
 			if !LMS_START_LOG!==1 (
 				echo     %%i                                                                                         >> %REPORT_LOGFILE% 2>&1
+				
+				rem check for end of 'StorageBreakInfo' section
+				ECHO "%%i" | FINDSTR /C:"</StorageBreakInfo>" 1>nul 
+				if !ERRORLEVEL!==0 (
+					echo     End of 'StorageBreakInfo' section found ...                                             >> %REPORT_LOGFILE% 2>&1
+					Set LMS_START_LOG=0
+				)
 			)
 		)
 	) else (
@@ -3637,18 +3654,55 @@ FOR %%X IN (%ALLUSERSPROFILE%\FLEXnet\*.log) DO (
     copy %%X %CHECKLMS_REPORT_LOG_PATH%\                                                                                     >> %REPORT_LOGFILE% 2>&1
 )
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo LOG FILE: SIEMBT.log [last %LOG_FILE_LINES% lines]                                                                      >> %REPORT_LOGFILE% 2>&1
+echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 IF EXIST "!REPORT_LOG_PATH!\SIEMBT.log" (
 	FOR /F "usebackq" %%A IN ('!REPORT_LOG_PATH!\SIEMBT.log') DO set SIEMBTLOG_FILESIZE=%%~zA
+	echo     Filesize of SIEMBT.log is !SIEMBTLOG_FILESIZE! bytes !                                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                         >> %REPORT_LOGFILE% 2>&1
 	if /I !SIEMBTLOG_FILESIZE! GEQ !LOG_FILESIZE_LIMIT! (
 		echo     ATTENTION: Filesize of SIEMBT.log with !SIEMBTLOG_FILESIZE! bytes, is exceeding critical limit of !LOG_FILESIZE_LIMIT! bytes!
 
 		echo     ATTENTION: Filesize of SIEMBT.log with !SIEMBTLOG_FILESIZE! bytes, is exceeding critical limit of !LOG_FILESIZE_LIMIT! bytes!   >> %REPORT_LOGFILE% 2>&1
 		echo     Because filesize of SIEMBT.log with !SIEMBTLOG_FILESIZE! bytes exceeds critical limit it is not further processed!              >> %REPORT_LOGFILE% 2>&1
 	) else (
+		rem Extract important identifiers from SIEMBT.log
+		for /f "tokens=3* eol=@ delims= " %%A in ('type %REPORT_LOG_PATH%\SIEMBT.log ^|find "Host used in license file"') do for /f "tokens=5* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HOSTNAME=%%B
+		for /f "tokens=3* eol=@ delims= " %%A in ('type %REPORT_LOG_PATH%\SIEMBT.log ^|find "Running on Hypervisor"') do for /f "tokens=3* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HYPERVISOR=%%B
+		for /f "tokens=3* eol=@ delims= " %%A in ('type %REPORT_LOG_PATH%\SIEMBT.log ^|find "HostID of the License Server"') do for /f "tokens=5* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HOSTIDS=%%B
+
 		echo -- extract ERROR messages from SIEMBT.log [start] --                                                            >> %REPORT_LOGFILE% 2>&1
 		Type "!REPORT_LOG_PATH!\SIEMBT.log" | findstr "ERROR:"                                                               >> %REPORT_LOGFILE% 2>&1
 		echo -- extract ERROR messages from SIEMBT.log [end] --                                                              >> %REPORT_LOGFILE% 2>&1
+
+		rem Extract "Host Info"
+		Set LMS_START_LOG=0
+		del "%CHECKLMS_REPORT_LOG_PATH%\SIEMBT_HostInfo.txt" >nul 2>&1
+		FOR /F "eol=@ delims=" %%i IN ('type !REPORT_LOG_PATH!\SIEMBT.log') DO ( 
+			ECHO "%%i" | FINDSTR /C:"=== Host Info ===" 1>nul 
+			if !ERRORLEVEL!==0 (
+				echo Start of 'Host Info' section found ... > %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_HostInfo.txt 2>&1
+				Set LMS_START_LOG=1
+			)
+			if !LMS_START_LOG!==1 (
+				echo %%i                                    >> %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_HostInfo.txt 2>&1
+				
+				rem check for end of 'Host Info' block
+				ECHO "%%i" | FINDSTR /C:"===============================================" 1>nul 
+				if !ERRORLEVEL!==0 (
+					echo End of 'Host Info' section found ...   >> %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_HostInfo.txt 2>&1
+					Set LMS_START_LOG=0
+				)
+			)
+		)
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\SIEMBT_HostInfo.txt" (
+			type "%CHECKLMS_REPORT_LOG_PATH%\SIEMBT_HostInfo.txt"                                                            >> %REPORT_LOGFILE% 2>&1
+		) else (
+			echo     ATTENTION: No 'Host Info' found in '!REPORT_LOG_PATH!\SIEMBT.log'!                                      >> %REPORT_LOGFILE% 2>&1
+		)
+
+		rem SIEMBT.log
+		echo Start at !DATE! !TIME! ....                                                                                     >> %REPORT_LOGFILE% 2>&1
+		echo LOG FILE: SIEMBT.log [last %LOG_FILE_LINES% lines]                                                              >> %REPORT_LOGFILE% 2>&1
 		powershell -command "& {Get-Content '!REPORT_LOG_PATH!\SIEMBT.log' | Select-Object -last %LOG_FILE_LINES%}"          >> %REPORT_LOGFILE% 2>&1
 	)
 
@@ -3695,21 +3749,22 @@ if defined LMS_SERVERCOMTRANUTIL (
 	findstr /m /c:"StorageBreakInfo" "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_listRequests_XML.xml"                        >> %REPORT_LOGFILE% 2>&1
 	if !ERRORLEVEL!==0 (
 		echo     'StorageBreakInfo' section was found in %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_listRequests_XML.xml ...  >> %REPORT_LOGFILE% 2>&1
+		Set LMS_START_LOG=0
 		FOR /F "eol=@ delims=@" %%i IN (%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_listRequests_XML.xml) DO ( 
 			ECHO "%%i" | FINDSTR /C:"<StorageBreakInfo>" 1>nul 
 			if !ERRORLEVEL!==0 (
 				echo     Start of 'StorageBreakInfo' section found ...                                                       >> %REPORT_LOGFILE% 2>&1
-				echo     %%i                                                                                                 >> %REPORT_LOGFILE% 2>&1
 				Set LMS_START_LOG=1
-			)
-			ECHO "%%i" | FINDSTR /C:"</StorageBreakInfo>" 1>nul 
-			if !ERRORLEVEL!==0 (
-				echo     %%i                                                                                                 >> %REPORT_LOGFILE% 2>&1
-				echo     End of 'StorageBreakInfo' section found ...                                                         >> %REPORT_LOGFILE% 2>&1
-				Set LMS_START_LOG=0
 			)
 			if !LMS_START_LOG!==1 (
 				echo     %%i                                                                                                 >> %REPORT_LOGFILE% 2>&1
+				
+				rem check for end of 'StorageBreakInfo' section
+				ECHO "%%i" | FINDSTR /C:"</StorageBreakInfo>" 1>nul 
+				if !ERRORLEVEL!==0 (
+					echo     End of 'StorageBreakInfo' section found ...                                                     >> %REPORT_LOGFILE% 2>&1
+					Set LMS_START_LOG=0
+				)
 			)
 		)
 	) else (
@@ -5398,6 +5453,23 @@ echo -------------------------------------------------------                    
 echo     PublisherId: !LMS_TS_PUBLISHER!  /  TS ClientVersion: !LMS_TS_CLIENT_VERSION!                                   >> %REPORT_LOGFILE% 2>&1
 echo     MachineIdentifier: !LMS_TS_MACHINE_IDENTIFIER!  /  TrustedStorageSerialNumber: !LMS_TS_SERIAL_NUMBER!           >> %REPORT_LOGFILE% 2>&1
 echo     TS Status: !LMS_TS_STATUS!  /  TS SequenceNumber: !LMS_TS_SEQ_NUM!  /  TS Revision: !LMS_TS_REVISION!           >> %REPORT_LOGFILE% 2>&1
+echo     SIEMBT Hostname: !LMS_SIEMBT_HOSTNAME! / SIEMBT HostID: !LMS_SIEMBT_HOSTIDS!                                    >> %REPORT_LOGFILE% 2>&1
+if "!LMS_SIEMBT_HOSTIDS!" == "ffffffff" (
+	if defined SHOW_COLORED_OUTPUT (
+		echo [1;31m    ERROR: Invalid HostID found in SIEMBT.log. SIEMBT HostID: !LMS_SIEMBT_HOSTIDS! [1;37m
+	) else (
+		echo     ERROR: Invalid HostID found in SIEMBT.log. SIEMBT HostID: !LMS_SIEMBT_HOSTIDS!
+	)
+	echo ERROR: Invalid HostID found in SIEMBT.log. SIEMBT HostID: !LMS_SIEMBT_HOSTIDS!                                  >> %REPORT_LOGFILE% 2>&1
+)
+if "!LMS_SIEMBT_HYPERVISOR!" == "Unknown Hypervisor" (
+	if defined SHOW_COLORED_OUTPUT (
+		echo [1;31m    ERROR: Unknown Hypervisor found in SIEMBT.log. Running on Hypervisor: !LMS_SIEMBT_HYPERVISOR! [1;37m
+	) else (
+		echo     ERROR: Unknown Hypervisor found in SIEMBT.log. Running on Hypervisor: !LMS_SIEMBT_HYPERVISOR!
+	)
+	echo ERROR: Unknown Hypervisor found in SIEMBT.log. Running on Hypervisor: !LMS_SIEMBT_HYPERVISOR!                   >> %REPORT_LOGFILE% 2>&1
+)
 IF EXIST "%DOCUMENTATION_PATH%\\info.txt" (
 	echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
 	Type "%DOCUMENTATION_PATH%\\info.txt"                                                                                >> %REPORT_LOGFILE% 2>&1
@@ -5444,6 +5516,7 @@ if defined VM_DETECTED (
 	echo Detection of physical or virtual machine failed. Not able to determine.                                         >> %REPORT_LOGFILE% 2>&1
 	echo     ATTENTION: VM detection failed.                                                                             >> %REPORT_LOGFILE% 2>&1
 )
+echo     SIEMBT Virtual Environment: !LMS_SIEMBT_HYPERVISOR!                                                             >> %REPORT_LOGFILE% 2>&1
 echo Number of UMN used to bind TS: !UMN_COUNT!                                                                          >> %REPORT_LOGFILE% 2>&1
 echo     UMN1=!UMN1! / UMN2=!UMN2! / UMN3=!UMN3! / UMN4=!UMN4! / UMN5=!UMN5!                                             >> %REPORT_LOGFILE% 2>&1
 if defined DONGLE_DRIVER_PKG_VERSION (
@@ -5553,14 +5626,14 @@ if defined TS_BROKEN (
 		) else (
 			echo     ATTENTION: Trusted Store is still BROKEN. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE!
 		)
-		echo ATTENTION: Trusted Store is still BROKEN. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE!                                               >> %REPORT_LOGFILE% 2>&1
+		echo ATTENTION: Trusted Store is still BROKEN. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE!                  >> %REPORT_LOGFILE% 2>&1
 	) else (
 		if defined SHOW_COLORED_OUTPUT (
 			echo [1;31m    ATTENTION: Trusted Store was BROKEN, but has been FIXED. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE! [1;37m
 		) else (
 			echo     ATTENTION: Trusted Store was BROKEN, but has been FIXED. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE!
 		)
-		echo ATTENTION: Trusted Store was BROKEN, but has been FIXED. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE!                                >> %REPORT_LOGFILE% 2>&1
+		echo ATTENTION: Trusted Store was BROKEN, but has been FIXED. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE!   >> %REPORT_LOGFILE% 2>&1
 	)
 )
 if defined TS_DISABLED (
@@ -5678,7 +5751,9 @@ if /I %LMS_BUILD_VERSION% GEQ 681 (
 	if defined LMS_LMUTOOL (
 		echo -------------------------------------------------------                                                     >> %REPORT_LOGFILE% 2>&1
 		"!LMS_LMUTOOL!" /LOG:"UMN1=!UMN1! / UMN2=!UMN2! / UMN3=!UMN3! / UMN4=!UMN4! / UMN5=!UMN5!"                       >> %REPORT_LOGFILE% 2>&1
-		"!LMS_LMUTOOL!" /LOG:"VM_FAMILY=%VM_FAMILY% / VM_NAME=%VM_NAME% / VM_UUID=%VM_UUID% / VM_GENID=%VM_GENID%"       >> %REPORT_LOGFILE% 2>&1
+		if defined VM_FAMILY (
+			"!LMS_LMUTOOL!" /LOG:"VM_FAMILY=%VM_FAMILY% / VM_NAME=%VM_NAME% / VM_UUID=%VM_UUID% / VM_GENID=%VM_GENID%"   >> %REPORT_LOGFILE% 2>&1
+		)
 	) else (
 		echo     LmuTool is not available with LMS %LMS_VERSION%, cannot perform operation.                              >> %REPORT_LOGFILE% 2>&1 
 	)
