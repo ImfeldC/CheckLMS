@@ -73,6 +73,10 @@ rem        - Extract important identifiers from SIEMBT.log: LMS_SIEMBT_HOSTNAME,
 rem        - Add values retrived from SIMEBT to summary at end of logfile. Display error message in case of "suspect" values.
 rem     11-Feb-2021:
 rem        - adjust format of LMS_REPORT_START to be more "humable" readable
+rem     16-Feb-2021:
+rem        - add option: /setfirewall
+rem        - change firewall settings analyze part, to use extract of 'Powershell -command "Show-NetFirewallRule"' instead of 'netsh advfirewall firewall show rule name=all verbose';
+rem          because the ouptut of netsh is language specific and the further pasring doesn't work correct on "non-English" systems.
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -89,12 +93,13 @@ rem              - /skipnetstat                 skip section wich performs netst
 rem              - /skipcontest                 skip section wich performs connection tests.
 rem              - /extend                      run extended content, increases script running time!
 rem              - /donotstartnewerscript       don't start newer script even if available (mainly to ensure proper handling of command line options) 
-rem              - /checkdownload               perform downloads and print file versions. 
+rem              - /checkdownload               perform downloads and print file versions.
+rem              - /setfirewall                 sets firewall for external access to LMS. 
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 11-Feb-2021"
-set LMS_SCRIPT_BUILD=20210211
+set LMS_SCRIPT_VERSION="CheckLMS Script 16-Feb-2021"
+set LMS_SCRIPT_BUILD=20210216
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_BUILD=824
@@ -299,6 +304,9 @@ FOR %%A IN (%*) DO (
 		)
 		if "!var!"=="checkdownload" (
 			set LMS_CHECK_DOWNLOAD=1
+		)
+		if "!var!"=="setfirewall" (
+			set LMS_SET_FIREWALL=1
 		)
 		if "!var!"=="goto" (
 			set LMS_GOTO=1
@@ -1387,6 +1395,81 @@ if defined LMS_GOTO (
 	goto !LMS_GOTO!
 )
 
+if defined LMS_SET_FIREWALL (
+	echo ... set firewall settings ...
+	echo Set firewall settings ...                                                                                                                        >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
+		rem set firewall settings ...
+		echo Delete rule: netsh advfirewall firewall delete rule name="LMS lmgrd"                                                                              >> %REPORT_LOGFILE% 2>&1
+		netsh advfirewall firewall delete rule name="LMS lmgrd"                                                                                                >> %REPORT_LOGFILE% 2>&1
+		echo Delete rule: netsh advfirewall firewall delete rule name="LMS SIEMBT"                                                                             >> %REPORT_LOGFILE% 2>&1
+		netsh advfirewall firewall delete rule name="LMS SIEMBT"                                                                                               >> %REPORT_LOGFILE% 2>&1
+		echo Set rule: netsh advfirewall firewall add rule name="LMS lmgrd" dir=in action=allow program="%ProgramFiles(x86)%\Siemens\LMS\server\lmgrd.exe"     >> %REPORT_LOGFILE% 2>&1
+		netsh advfirewall firewall add rule name="LMS lmgrd" dir=in action=allow program="%ProgramFiles(x86)%\Siemens\LMS\server\lmgrd.exe"                    >> %REPORT_LOGFILE% 2>&1
+		echo Setrule : netsh advfirewall firewall add rule name="LMS siembt" dir=in action=allow program="%ProgramFiles(x86)%\Siemens\LMS\server\siembt.exe"   >> %REPORT_LOGFILE% 2>&1
+		netsh advfirewall firewall add rule name="LMS siembt" dir=in action=allow program="%ProgramFiles(x86)%\Siemens\LMS\server\siembt.exe"                  >> %REPORT_LOGFILE% 2>&1
+		echo     DONE
+		echo Set firewall settings ... DONE                                                                                                                    >> %REPORT_LOGFILE% 2>&1
+	) else (
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;33m    WARNING: Cannot set firewall settings, start script with administrator priviledge. [1;37m
+		) else (
+			echo     WARNING: Cannot set firewall settings, start script with administrator priviledge.
+		)
+		echo WARNING: Cannot set firewall settings, start script with administrator priviledge.                                                           >> %REPORT_LOGFILE% 2>&1
+	)
+	echo -------------------------------------------------------                               >> %REPORT_LOGFILE% 2>&1
+	Powershell -command "Show-NetFirewallRule"  > %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_PS.txt 2>&1
+	rem Anaylze firewall rules (retrieved with PS); check for LMS entries
+	del %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_extract.txt >nul 2>&1
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\firewall_rules_PS.txt" for /f "tokens=1* eol=@ delims=<>: " %%A in (%CHECKLMS_REPORT_LOG_PATH%\firewall_rules_PS.txt) do (
+		rem echo [%%A] [%%B]
+		set PARAMETER_NAME=%%A
+		set PARAMETER_VALUE=%%B
+		rem echo [!PARAMETER_NAME!] [!PARAMETER_VALUE!]
+		for /f "tokens=* delims= " %%a in ("!PARAMETER_NAME!") do set PARAMETER_NAME=%%a
+		for /f "tokens=* delims= " %%a in ("!PARAMETER_VALUE!") do set PARAMETER_VALUE=%%a
+		rem echo [!PARAMETER_NAME!] [!PARAMETER_VALUE!]
+		if "!PARAMETER_NAME!" EQU "DisplayName" (
+			set FIREWALL_RULE_NAME=!PARAMETER_VALUE!
+			rem echo Rule Name: !FIREWALL_RULE_NAME!
+		)
+		if "!PARAMETER_NAME!" EQU "Program" (
+			set FIREWALL_PROG_NAME=!PARAMETER_VALUE!
+			rem echo [Rule Name=!FIREWALL_RULE_NAME!][Program Name=!FIREWALL_PROG_NAME!]
+			echo [Rule Name=!FIREWALL_RULE_NAME!][Program Name=!FIREWALL_PROG_NAME!] >> %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_extract.txt  2>&1
+		)
+	)
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\firewall_rules_extract.txt" (
+		for /f "tokens=1,2 eol=@ delims==<>[]" %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_extract.txt ^|find /I "lmgrd.exe"') do set "LMGRD_FOUND=%%B"
+		for /f "tokens=1,2 eol=@ delims==<>[]" %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_extract.txt ^|find /I "SIEMBT.exe"') do set "SIEMBT_FOUND=%%B"
+	)
+	del %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_LMS.txt >nul 2>&1
+	if defined LMGRD_FOUND (
+		echo     Rule for lmgrd.exe found, with name "!LMGRD_FOUND!".                                                            >> %REPORT_LOGFILE% 2>&1
+		echo     Rule for lmgrd.exe found, with name "!LMGRD_FOUND!".
+		netsh advfirewall firewall show rule name="!LMGRD_FOUND!" verbose >> %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_LMS.txt 2>&1
+	) else (
+		echo     NO Rule for lmgrd.exe found.                                                                                    >> %REPORT_LOGFILE% 2>&1
+		echo     NO Rule for lmgrd.exe found.
+	)
+	if defined SIEMBT_FOUND (
+		echo     Rule for SIEMBT.exe found, with name "!SIEMBT_FOUND!".                                                          >> %REPORT_LOGFILE% 2>&1
+		echo     Rule for SIEMBT.exe found, with name "!SIEMBT_FOUND!".
+		netsh advfirewall firewall show rule name="!SIEMBT_FOUND!" verbose >> %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_LMS.txt 2>&1
+	) else (
+		echo     NO Rule for SIEMBT.exe found.                                                                                   >> %REPORT_LOGFILE% 2>&1
+		echo     NO Rule for SIEMBT.exe found.
+	)
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\firewall_rules_LMS.txt" type "%CHECKLMS_REPORT_LOG_PATH%\firewall_rules_LMS.txt"        >> %REPORT_LOGFILE% 2>&1
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                                  >> %REPORT_LOGFILE% 2>&1
+	rem save (single) report in full report file
+	Type %REPORT_LOGFILE% >> %REPORT_FULL_LOGFILE%
+	exit /b
+	rem STOP EXECUTION HERE
+)
+
 echo ... start collecting information ...
 
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
@@ -1987,26 +2070,34 @@ echo -------------------------------------------------------                    
 echo Retrieve firewall settings [with 'netsh advfirewall firewall show rule name=all verbose']                               >> %REPORT_LOGFILE% 2>&1
 echo     full list see %CHECKLMS_REPORT_LOG_PATH%\firewall_rules.txt                                                         >> %REPORT_LOGFILE% 2>&1
 netsh advfirewall firewall show rule name=all verbose > %CHECKLMS_REPORT_LOG_PATH%\firewall_rules.txt 2>&1
-rem Anaylze firewall rules; check for LMS entries
+echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+echo Retrieve firewall settings [with 'Powershell -command "Show-NetFirewallRule"']                                          >> %REPORT_LOGFILE% 2>&1
+echo     full list see %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_PS.txt                                                      >> %REPORT_LOGFILE% 2>&1
+echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+echo Anaylze firewall rules [retrieved with Powershell], check for LMS entries ...                                           >> %REPORT_LOGFILE% 2>&1
+Powershell -command "Show-NetFirewallRule"  > %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_PS.txt 2>&1
 del %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_extract.txt >nul 2>&1
-IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\firewall_rules.txt" for /f "tokens=1,2,3 eol=@ delims=<>:" %%A in (%CHECKLMS_REPORT_LOG_PATH%\firewall_rules.txt) do (
+IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\firewall_rules_PS.txt" for /f "tokens=1* eol=@ delims=<>: " %%A in (%CHECKLMS_REPORT_LOG_PATH%\firewall_rules_PS.txt) do (
 	rem echo [%%A] [%%B]
 	set PARAMETER_NAME=%%A
-	set PARAMETER_VALUE=%%B%%C
+	set PARAMETER_VALUE=%%B
 	rem echo [!PARAMETER_NAME!] [!PARAMETER_VALUE!]
+	for /f "tokens=* delims= " %%a in ("!PARAMETER_NAME!") do set PARAMETER_NAME=%%a
 	for /f "tokens=* delims= " %%a in ("!PARAMETER_VALUE!") do set PARAMETER_VALUE=%%a
-	if "!PARAMETER_NAME!" EQU "Rule Name" (
+	rem echo [!PARAMETER_NAME!] [!PARAMETER_VALUE!]
+	if "!PARAMETER_NAME!" EQU "DisplayName" (
 		set FIREWALL_RULE_NAME=!PARAMETER_VALUE!
 		rem echo Rule Name: !FIREWALL_RULE_NAME!
 	)
 	if "!PARAMETER_NAME!" EQU "Program" (
 		set FIREWALL_PROG_NAME=!PARAMETER_VALUE!
+		rem echo [Rule Name=!FIREWALL_RULE_NAME!][Program Name=!FIREWALL_PROG_NAME!]
 		echo [Rule Name=!FIREWALL_RULE_NAME!][Program Name=!FIREWALL_PROG_NAME!] >> %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_extract.txt  2>&1
 	)
 )
 IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\firewall_rules_extract.txt" (
-	for /f "tokens=1,2 eol=@ delims==<>[]" %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_extract.txt ^|find "lmgrd.exe"') do set "LMGRD_FOUND=%%B"
-	for /f "tokens=1,2 eol=@ delims==<>[]" %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_extract.txt ^|find "SIEMBT.exe"') do set "SIEMBT_FOUND=%%B"
+	for /f "tokens=1,2 eol=@ delims==<>[]" %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_extract.txt ^|find /I "lmgrd.exe"') do set "LMGRD_FOUND=%%B"
+	for /f "tokens=1,2 eol=@ delims==<>[]" %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_extract.txt ^|find /I "SIEMBT.exe"') do set "SIEMBT_FOUND=%%B"
 )
 del %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_LMS.txt >nul 2>&1
 if defined LMGRD_FOUND (
@@ -5440,6 +5531,7 @@ if defined DMA_CONFIGURATION (
 ) else (
 	echo Apogee Datamate Advanced [DMA] not installed on this machine.                                                   >> %REPORT_LOGFILE% 2>&1
 )	
+:summary
 echo ... summarize collected information ...
 echo ==============================================================================                                      >> %REPORT_LOGFILE% 2>&1
 echo =   S U M M A R Y                                                            =                                      >> %REPORT_LOGFILE% 2>&1
@@ -5841,6 +5933,7 @@ if defined UNZIP_TOOL (
 	echo Send this log file together with zipped archive of !REPORT_LOG_PATH! folder to ....
 	echo NOTE: Make sure to zip whole "Logs" folder, including any sub-folder.
 )
+:script_end
 echo .
 echo Send all files to ....
 echo      - your local system supplier
