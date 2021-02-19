@@ -77,6 +77,20 @@ rem     16-Feb-2021:
 rem        - add option: /setfirewall
 rem        - change firewall settings analyze part, to use extract of 'Powershell -command "Show-NetFirewallRule"' instead of 'netsh advfirewall firewall show rule name=all verbose';
 rem          because the ouptut of netsh is language specific and the further pasring doesn't work correct on "non-English" systems.
+rem     17-Feb-2021:
+rem        - correct typo (Anaylze)
+rem        - change type of download archive from 7zip to zip, to make it independent of target system.
+rem          Because: Expand-Archive : .7z is not a supported archive file format. .zip is the only supported archive file format.
+rem     18-Feb-2021:
+rem        - add option /info, to allow user to pass addtional information to be tracked in logfile (e.g. )
+rem        - replace 'find' with 'find /I' to make comparisions independent of uppercase/lowercase
+rem        - correct typo: desigcc_reistry.txt -> desigocc_registry.txt
+rem        - use own subfolder for GMS (CHECKLMS_GMS_PATH=!CHECKLMS_REPORT_LOG_PATH!\GMS)
+rem        - make sure that project-specific subfolders are only created when the product is installed (otherwise empty folders have been created).
+rem        - Search for desigo cc logfiles [PVSS_II.*, WCCOActrl253.*] and copy them into CheckLMS logfolder.
+rem     19-Feb-2021:
+rem        - Adjust search algorithm for Desigo CC logfiles, somehow "for /r" doesn't work as expected :-(
+rem        - Adjust search for TS files, serach only for '*tsf.data' instead '*tsf*'
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -95,11 +109,12 @@ rem              - /extend                      run extended content, increases 
 rem              - /donotstartnewerscript       don't start newer script even if available (mainly to ensure proper handling of command line options) 
 rem              - /checkdownload               perform downloads and print file versions.
 rem              - /setfirewall                 sets firewall for external access to LMS. 
+rem              - /info "Any text"             Adds this text to the output, e.g. reference to field issue /info "SR1-XXXX"
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 16-Feb-2021"
-set LMS_SCRIPT_BUILD=20210216
+set LMS_SCRIPT_VERSION="CheckLMS Script 19-Feb-2021"
+set LMS_SCRIPT_BUILD=20210219
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_BUILD=824
@@ -180,6 +195,8 @@ del %REPORT_LOG_PATH%\InstalledPowershellCommandlets.txt >nul 2>&1
 del %REPORT_LOG_PATH%\dongledriver_diagnostics.html >nul 2>&1
 del %REPORT_LOG_PATH%\SIEMBT_*_event.log >nul 2>&1
 del %REPORT_LOG_PATH%\yes.txt >nul 2>&1
+del %CHECKLMS_REPORT_LOG_PATH%\desigcc_reistry.txt >nul 2>&1
+del %CHECKLMS_REPORT_LOG_PATH%\desigocc_installed_EM.txt >nul 2>&1
 
 rem remove former used local path (clean-up no longer used data)
 rmdir /S /Q !REPORT_LOG_PATH!\CrashDumps >nul 2>&1
@@ -234,7 +251,7 @@ IF NOT EXIST "!LMS_SERVERTOOL_PATH!" (
 rem Set documentation path
 set DOCUMENTATION_PATH=!LMS_PROGRAMDATA!\Documentation
 
-set DOWNLOAD_ARCHIVE=!LMS_PROGRAMDATA!\LMSDownloadArchive_%COMPUTERNAME%_!lms_report_datetime!.7z
+set DOWNLOAD_ARCHIVE=!LMS_PROGRAMDATA!\LMSDownloadArchive_%COMPUTERNAME%_!lms_report_datetime!.zip
 set DOWNLOAD_PATH=!LMS_PROGRAMDATA!\Download
 
 
@@ -281,9 +298,11 @@ FOR %%A IN (%*) DO (
 		echo Start Logfile with Command Line Options: %* ....  > !LMS_LOGFILENAME!
 	) else if "!LMS_GOTO!" == "1" (
 		set LMS_GOTO=!var!
+	) else if "!LMS_SET_INFO!" == "1" (
+		set LMS_SET_INFO=!var!
 	) else (
 		set var=!var:~1!
-		echo var=!var!
+		echo     var=!var!
 		if "!var!"=="nouserinput" (
 			set LMS_NOUSERINPUT=1
 		)
@@ -308,6 +327,12 @@ FOR %%A IN (%*) DO (
 		if "!var!"=="setfirewall" (
 			set LMS_SET_FIREWALL=1
 		)
+		if "!var!"=="info" (
+			set LMS_SET_INFO=1
+		)
+		if "!var!"=="setinfo" (
+			set LMS_SET_INFO=1
+		)
 		if "!var!"=="goto" (
 			set LMS_GOTO=1
 		)
@@ -315,6 +340,10 @@ FOR %%A IN (%*) DO (
 			set LMS_EXTENDED_CONTENT=1
 		)
 	)
+)
+
+if defined LMS_SET_INFO (
+    echo     Info: '!LMS_SET_INFO!' ....
 )
 
 REM -- .NET Framework Version
@@ -336,7 +365,7 @@ set NETVersionHex=
 set NETVersionDec=
 set KEY_NAME=HKLM\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full
 set VALUE_NAME=Release
-for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find "%VALUE_NAME%"`) do (
+for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
 	set NETVersionHex=%%A
 	rem convert hex in decimal (see https://stackoverflow.com/questions/9453246/reg-query-returning-hexadecimal-value)
 	set /A NETVersionDec=%%A
@@ -430,7 +459,7 @@ if "%PROCESSOR_ARCHITECTURE%" == "x86" (
 )
 set VALUE_NAME=Version
 set VC_REDIST_VERSION=
-for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find "%VALUE_NAME%"`) do (
+for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
 	set VC_REDIST_VERSION=%%A
 )
 
@@ -439,12 +468,12 @@ REM -- OS Version and Productname
 set KEY_NAME=HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion
 set VALUE_NAME=CurrentVersion
 set OS_VERSION=
-for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find "%VALUE_NAME%"`) do (
+for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
 	set OS_VERSION=%%A
 )
 set VALUE_NAME=ProductName
 set OS_PRODUCTNAME=
-for /F "usebackq tokens=3,4,5,6,7" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find "%VALUE_NAME%"`) do (
+for /F "usebackq tokens=3,4,5,6,7" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
 	set OS_PRODUCTNAME=%%A %%B %%C %%D %%E
 )
 
@@ -452,21 +481,21 @@ REM -- OS Version (Win10)
 set KEY_NAME=HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion
 set VALUE_NAME=CurrentMajorVersionNumber
 set OS_MAJ_VERSION=
-for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find "%VALUE_NAME%"`) do (
+for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
 	rem convert hex in decimal (see https://stackoverflow.com/questions/9453246/reg-query-returning-hexadecimal-value)
 	set /A OS_MAJ_VERSION=%%A
 )
 set KEY_NAME=HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion
 set VALUE_NAME=CurrentMinorVersionNumber
 set OS_MIN_VERSION=
-for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find "%VALUE_NAME%"`) do (
+for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
 	rem convert hex in decimal (see https://stackoverflow.com/questions/9453246/reg-query-returning-hexadecimal-value)
 	set /A OS_MIN_VERSION=%%A
 )
 REM -- Read MachineGuid
 set KEY_NAME=HKLM\SOFTWARE\Microsoft\Cryptography
 set VALUE_NAME=MachineGuid
-for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find "%VALUE_NAME%"`) do (
+for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
 	set OS_MACHINEGUID=%%A
 )
 if not defined OS_MACHINEGUID (
@@ -479,47 +508,47 @@ REM -- LMS Registry Keys
 set LMS_MAIN_REGISTRY_KEY=HKLM\SOFTWARE\Siemens\LMS
 set KEY_NAME=!LMS_MAIN_REGISTRY_KEY!
 set VALUE_NAME=Version
-for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find "%VALUE_NAME%"`) do (
+for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
 	set LMS_VERSION=%%A
 )
 set VALUE_NAME=SystemId
-for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find "%VALUE_NAME%"`) do (
+for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
 	set LMS_SYSTEMID=%%A
 )
 set VALUE_NAME=LicenseMode
-for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find "%VALUE_NAME%"`) do (
+for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
 	set LMS_LICENSE_MODE=%%A
 )
 set VALUE_NAME=SkipALMBtPluginInstallation
-for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find "%VALUE_NAME%"`) do (
+for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
 	set LMS_SKIP_ALM_BT_PUGIN_INSTALLATION=%%A
 )
 REM -- LMS Registry Keys (ATOS)
 rem "HKLM\SOFTWARE\LicenseManagementSystem\IsInstalled" is set to "1" if LMS has been installed by ATOS (2nd package of LMS 2.4.815)
 set KEY_NAME=HKLM\SOFTWARE\LicenseManagementSystem
 set VALUE_NAME=IsInstalled
-for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find "%VALUE_NAME%"`) do (
+for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
 	set LMS_INSTALLED_BY_ATOS=%%A
 )
 REM -- SSU Registry Keys
 set SSU_MAIN_REGISTRY_KEY=HKLM\SOFTWARE\Siemens\SSU
 set KEY_NAME=!SSU_MAIN_REGISTRY_KEY!
 set VALUE_NAME=SystemId
-for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find "%VALUE_NAME%"`) do (
+for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
 	set SSU_SYSTEMID=%%A
 )
 REM -- Dongle Driver Registry Keys
 set KEY_NAME=HKLM\SOFTWARE\Aladdin Knowledge Systems\HASP\Driver\Installer
 set VALUE_NAME=DrvPkgVersion
-for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find "%VALUE_NAME%"`) do (
+for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
 	set DONGLE_DRIVER_PKG_VERSION=%%A
 )
 set VALUE_NAME=Version
-for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find "%VALUE_NAME%"`) do (
+for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
 	set DONGLE_DRIVER_VERSION=%%A
 )
 set VALUE_NAME=InstCount
-for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find "%VALUE_NAME%"`) do (
+for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
 	rem convert hex in decimal (see https://stackoverflow.com/questions/9453246/reg-query-returning-hexadecimal-value)
 	set /A DONGLE_DRIVER_INST_COUNT=%%A
 )
@@ -532,33 +561,33 @@ for /f "tokens=2 delims=." %%a in ("!DONGLE_DRIVER_PKG_VERSION!") do set DONGLE_
 REM -- Automation License Manager (ALM) Registry Keys
 set KEY_NAME=HKLM\SOFTWARE\Siemens\AUTSW\LicenseManager
 set VALUE_NAME=Release
-for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find "%VALUE_NAME%"`) do (
+for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
 	set ALM_RELEASE=%%A
 )
 set VALUE_NAME=TechnVersion
-for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find "%VALUE_NAME%"`) do (
+for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
 	set ALM_TECH_VERSION=%%A
 )
 set VALUE_NAME=Version
-for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find "%VALUE_NAME%"`) do (
+for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
 	set ALM_VERSION=%%A
 )
 set VALUE_NAME=VersionString
-for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find "%VALUE_NAME%"`) do (
+for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
 	set ALM_VERSION_STRING=%%A
 )
 REM -- Check FIPS mode
 REM HKLM\System\CurrentControlSet\Control\Lsa\FIPSAlgorithmPolicy\Enabled
 set KEY_NAME=HKLM\System\CurrentControlSet\Control\Lsa\FIPSAlgorithmPolicy
 set VALUE_NAME=Enabled
-for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find "%VALUE_NAME%"`) do (
+for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
 	rem convert hex in decimal (see https://stackoverflow.com/questions/9453246/reg-query-returning-hexadecimal-value)
 	set /A FIPS_MODE_ENABLED=%%A
 )
 REM -- Get Language Code
 wmic os get locale, oslanguage, codeset /format:list > %temp%\wmic_output.txt
-IF EXIST "%temp%\wmic_output.txt" for /f "tokens=2 delims== eol=@" %%i in ('type %temp%\wmic_output.txt ^|find "OSLanguage"') do set "OS_LANGUAGE=%%i"
-IF EXIST "%temp%\wmic_output.txt" for /f "tokens=2 delims== eol=@" %%i in ('type %temp%\wmic_output.txt ^|find "Locale"') do set /A "LOCAL_LANGUAGE=0x%%i"
+IF EXIST "%temp%\wmic_output.txt" for /f "tokens=2 delims== eol=@" %%i in ('type %temp%\wmic_output.txt ^|find /I "OSLanguage"') do set "OS_LANGUAGE=%%i"
+IF EXIST "%temp%\wmic_output.txt" for /f "tokens=2 delims== eol=@" %%i in ('type %temp%\wmic_output.txt ^|find /I "Locale"') do set /A "LOCAL_LANGUAGE=0x%%i"
 if /I !OS_LANGUAGE! NEQ 1033 if /I !OS_LANGUAGE! NEQ 1031 (
 	rem Non standard OS language (1031, 1033) found
 	set NON_STANDARD_OS_LANGUAGE=!OS_LANGUAGE!
@@ -589,19 +618,19 @@ REM NOTE: %ProgramFiles(x86)% and %ProgramFiles% doesn't work together with "wmi
 set FNPVersion=
 if exist "C:\Program Files\Common Files\Macrovision Shared\FlexNet Publisher\FNPLicensingService64.exe" (
 	wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService64.exe" get Manufacturer,Name,Version  /format:list
-	IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=2 delims== eol=@" %%i in ('type %REPORT_WMIC_LOGFILE% ^|find "Version"') do set "FNPVersion=%%i"
+	IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=2 delims== eol=@" %%i in ('type %REPORT_WMIC_LOGFILE% ^|find /I "Version"') do set "FNPVersion=%%i"
 )
 if not defined FNPVersion (
 	if exist "C:\Program Files (x86)\Common Files\Macrovision Shared\FlexNet Publisher\FNPLicensingService.exe" (
 		wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="C:\\Program Files (x86)\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list
-		IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=2 delims== eol=@" %%i in ('type %REPORT_WMIC_LOGFILE% ^|find "Version"') do set "FNPVersion=%%i"
+		IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=2 delims== eol=@" %%i in ('type %REPORT_WMIC_LOGFILE% ^|find /I "Version"') do set "FNPVersion=%%i"
 	)
 )
 if not defined FNPVersion (
 	if exist "C:\Program Files\Common Files\Macrovision Shared\FlexNet Publisher\FNPLicensingService.exe" (
 		REM Covers the case of Win7 32-bit
 		wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list
-		IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=2 delims== eol=@" %%i in ('type %REPORT_WMIC_LOGFILE% ^|find "Version"') do set "FNPVersion=%%i"
+		IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=2 delims== eol=@" %%i in ('type %REPORT_WMIC_LOGFILE% ^|find /I "Version"') do set "FNPVersion=%%i"
 	)
 )
 
@@ -703,9 +732,13 @@ if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
 	echo =  Script started with: normal priviledge                                                                           >> %REPORT_LOGFILE% 2>&1
 )
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-IF EXIST "%DOCUMENTATION_PATH%\\info.txt" (
+if defined LMS_SET_INFO (
+	echo Info: [!LMS_REPORT_START!] !LMS_SET_INFO! ....                                                                      >> %REPORT_LOGFILE% 2>&1
+	echo [!LMS_REPORT_START!] !LMS_SET_INFO! >> "%DOCUMENTATION_PATH%\info.txt" 2>&1
+)
+IF EXIST "%DOCUMENTATION_PATH%\info.txt" (
 	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-	Type "%DOCUMENTATION_PATH%\\info.txt"                                                                                    >> %REPORT_LOGFILE% 2>&1
+	Type "%DOCUMENTATION_PATH%\info.txt"                                                                                     >> %REPORT_LOGFILE% 2>&1
 	echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
 	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
 )
@@ -917,7 +950,7 @@ if "%ConnectionTestStatus%" == "Passed" (
 				echo Extract LMS check script: %DOWNLOAD_LMS_PATH%\CheckLMS.exe                                                                                                            >> %REPORT_LOGFILE% 2>&1
 				%DOWNLOAD_LMS_PATH%\CheckLMS.exe -y -o"%DOWNLOAD_LMS_PATH%\"                                                                                                               >> %REPORT_LOGFILE% 2>&1
 				IF EXIST "%DOWNLOAD_LMS_PATH%\CheckLMS.bat" (
-					for /f "tokens=2 delims== eol=@" %%i in ('type %DOWNLOAD_LMS_PATH%\CheckLMS.bat ^|find "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_EXE set LMS_SCRIPT_BUILD_DOWNLOAD_EXE=%%i
+					for /f "tokens=2 delims== eol=@" %%i in ('type %DOWNLOAD_LMS_PATH%\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_EXE set LMS_SCRIPT_BUILD_DOWNLOAD_EXE=%%i
 					echo     Check script downloaded from akamai share. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_EXE!, Running script version: !LMS_SCRIPT_BUILD!.
 					echo Check script downloaded from akamai share. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_EXE!, Running script version: !LMS_SCRIPT_BUILD!.                  >> %REPORT_LOGFILE% 2>&1
 				)
@@ -933,7 +966,7 @@ if "%ConnectionTestStatus%" == "Passed" (
 			powershell -Command "(New-Object Net.WebClient).DownloadFile('https://raw.githubusercontent.com/ImfeldC/CheckLMS/master/CheckLMS.bat', '%DOWNLOAD_LMS_PATH%\git\CheckLMS.bat')" >> %REPORT_LOGFILE% 2>&1
 			IF EXIST "%DOWNLOAD_LMS_PATH%\git\CheckLMS.bat" (
 				rem CheckLMS.bat has been downloaded from github
-				for /f "tokens=2 delims== eol=@" %%i in ('type %DOWNLOAD_LMS_PATH%\git\CheckLMS.bat ^|find "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_GIT set LMS_SCRIPT_BUILD_DOWNLOAD_GIT=%%i
+				for /f "tokens=2 delims== eol=@" %%i in ('type %DOWNLOAD_LMS_PATH%\git\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_GIT set LMS_SCRIPT_BUILD_DOWNLOAD_GIT=%%i
 				echo     Check script downloaded from github. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_GIT!, Running script version: !LMS_SCRIPT_BUILD!.
 				echo Check script downloaded from github. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_GIT!, Running script version: !LMS_SCRIPT_BUILD!.                             >> %REPORT_LOGFILE% 2>&1
 			)			
@@ -1012,7 +1045,7 @@ if "%ConnectionTestStatus%" == "Passed" (
 	echo Don't download additional libraries and files, because no internet connection available.                                         >> %REPORT_LOGFILE% 2>&1
 	
 	rem in case no connection is available, check local folder for a "download" zip archive
-	dir /S /A /B "!LMS_PROGRAMDATA!\LMSDownloadArchive_*.7z" > "%CHECKLMS_REPORT_LOG_PATH%\LMSDownloadArchivesFound.txt"  
+	dir /S /A /B "!LMS_PROGRAMDATA!\LMSDownloadArchive_*.zip" > "%CHECKLMS_REPORT_LOG_PATH%\LMSDownloadArchivesFound.txt"  
 	rem type %CHECKLMS_REPORT_LOG_PATH%\LMSDownloadArchivesFound.txt
 	FOR /F "eol=@ delims=@" %%i IN (%CHECKLMS_REPORT_LOG_PATH%\LMSDownloadArchivesFound.txt) DO (                       
 		rem see https://stackoverflow.com/questions/15567809/batch-extract-path-and-filename-from-a-variable/15568164
@@ -1026,23 +1059,25 @@ if "%ConnectionTestStatus%" == "Passed" (
 		for /f "tokens=1,2,3 eol=@ delims=_" %%a in ("!filename!") do set filetimestamp=%%c
 		rem echo filemachine=!filemachine! / filetimestamp=!filetimestamp!
 		if "%COMPUTERNAME%" == "!filemachine!" (
-			echo Skip download zip archive '!file!', as it was created on this machine!                                                   >> %REPORT_LOGFILE% 2>&1
+			echo Skip download archive '!file!', as it was created on this machine!                                                   >> %REPORT_LOGFILE% 2>&1
 		) else (
-			echo Found download zip archive '!file!' from machine '!filemachine!'.                                                        >> %REPORT_LOGFILE% 2>&1
+			echo Found download archive '!file!' from machine '!filemachine!'.                                                        >> %REPORT_LOGFILE% 2>&1
 			if exist "!file!.processed.%COMPUTERNAME%.txt" (
-				rem this zip archive has been processed already
-				echo Skip download zip archive '!file!', as it was processed already on this machine!                                     >> %REPORT_LOGFILE% 2>&1
-				type "!file!.processed.%COMPUTERNAME%.txt"                                                                                >> %REPORT_LOGFILE% 2>&1
+				rem this download archive has been processed already
+				echo Skip download archive '!file!', as it was processed already on this machine!                                     >> %REPORT_LOGFILE% 2>&1
+				type "!file!.processed.%COMPUTERNAME%.txt"                                                                            >> %REPORT_LOGFILE% 2>&1
 			) else (
-				rem unzip this zip archive on this machine
-				echo Unzip download zip archive '!file!' into '!LMS_PROGRAMDATA!' ...                                                     >> %REPORT_LOGFILE% 2>&1
+				rem unzip this download archive on this machine
+				echo Unzip download archive '!file!' into '!LMS_PROGRAMDATA!' ...                                                     >> %REPORT_LOGFILE% 2>&1
 				if defined UNZIP_TOOL (
-					"!UNZIP_TOOL!" x -y -spe -o"!LMS_PROGRAMDATA!" "!file!"                                                               >> %REPORT_LOGFILE% 2>&1
+					echo Unzip download archive [LMSDownloadArchive_*.zip] with unzip tool '!UNZIP_TOOL!'.                            >> %REPORT_LOGFILE% 2>&1
+					"!UNZIP_TOOL!" x -y -spe -o"!LMS_PROGRAMDATA!" "!file!"                                                           >> %REPORT_LOGFILE% 2>&1
 				) else (
-					echo Can't unzip download zip archive [LMSDownloadArchive_*.7z], because no unzip tool is available.                  >> %REPORT_LOGFILE% 2>&1
+					echo Can't unzip download archive [LMSDownloadArchive_*.zip], because no unzip tool is available.                 >> %REPORT_LOGFILE% 2>&1
 				)
-				powershell -Command "Expand-Archive -Path !file! -DestinationPath !LMS_PROGRAMDATA! -Verbose -Force"                      >> %REPORT_LOGFILE% 2>&1
-				echo ZIP archive !file! processed on %COMPUTERNAME% and unzipped into '!LMS_PROGRAMDATA!' at !DATE! !TIME! > "!file!.processed.%COMPUTERNAME%.txt"
+				echo Unzip download archive [LMSDownloadArchive_*.zip] with powershell tool 'Expand-Archive'.                         >> %REPORT_LOGFILE% 2>&1
+				powershell -Command "Expand-Archive -Path !file! -DestinationPath !LMS_PROGRAMDATA! -Verbose -Force"                  >> %REPORT_LOGFILE% 2>&1
+				echo Download archive !file! processed on %COMPUTERNAME% and unzipped into '!LMS_PROGRAMDATA!' at !DATE! !TIME! > "!file!.processed.%COMPUTERNAME%.txt"
 			)
 		)
 	)
@@ -1091,7 +1126,7 @@ rem Check if newer CheckLMS.bat is available in %DOWNLOAD_LMS_PATH%\CheckLMS.bat
 IF EXIST "%DOWNLOAD_LMS_PATH%\CheckLMS.bat" (
 	echo     Check script on '%DOWNLOAD_LMS_PATH%\CheckLMS.bat' ... 
 	echo Check script on '%DOWNLOAD_LMS_PATH%\CheckLMS.bat' ...                                                                                                                      >> %REPORT_LOGFILE% 2>&1
-	for /f "tokens=2 delims== eol=@" %%i in ('type %DOWNLOAD_LMS_PATH%\CheckLMS.bat ^|find "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_1 set LMS_SCRIPT_BUILD_DOWNLOAD_1=%%i
+	for /f "tokens=2 delims== eol=@" %%i in ('type %DOWNLOAD_LMS_PATH%\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_1 set LMS_SCRIPT_BUILD_DOWNLOAD_1=%%i
 	if /I !LMS_SCRIPT_BUILD_DOWNLOAD_1! GTR !LMS_SCRIPT_BUILD! (
 		echo     Newer check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_1!, Running script version: !LMS_SCRIPT_BUILD!.
 		echo Newer check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_1!, Running script version: !LMS_SCRIPT_BUILD!.                                      >> %REPORT_LOGFILE% 2>&1
@@ -1102,7 +1137,7 @@ rem Check if newer CheckLMS.bat is available in %DOWNLOAD_LMS_PATH%\git\CheckLMS
 IF EXIST "%DOWNLOAD_LMS_PATH%\git\CheckLMS.bat" (
 	echo     Check script on '%DOWNLOAD_LMS_PATH%\git\CheckLMS.bat' ... 
 	echo Check script on '%DOWNLOAD_LMS_PATH%\git\CheckLMS.bat' ...                                                                                                                  >> %REPORT_LOGFILE% 2>&1
-	for /f "tokens=2 delims== eol=@" %%i in ('type %DOWNLOAD_LMS_PATH%\git\CheckLMS.bat ^|find "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_2 set LMS_SCRIPT_BUILD_DOWNLOAD_2=%%i
+	for /f "tokens=2 delims== eol=@" %%i in ('type %DOWNLOAD_LMS_PATH%\git\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_2 set LMS_SCRIPT_BUILD_DOWNLOAD_2=%%i
 	if /I !LMS_SCRIPT_BUILD_DOWNLOAD_2! GTR !LMS_SCRIPT_BUILD! (
 		echo     Newer check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_2!, Running script version: !LMS_SCRIPT_BUILD!.
 		echo Newer check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_2!, Running script version: !LMS_SCRIPT_BUILD!.                                      >> %REPORT_LOGFILE% 2>&1
@@ -1134,7 +1169,7 @@ if defined LMS_CHECK_DOWNLOAD (
 		echo -------------------------------------------------------                           >> %REPORT_LOGFILE% 2>&1
 		echo Create download archive '!DOWNLOAD_ARCHIVE!' ....
 		echo Start at !DATE! !TIME! to create !DOWNLOAD_ARCHIVE! ....                          >> %REPORT_LOGFILE% 2>&1
-		"!UNZIP_TOOL!" a -ssw -t7z "!DOWNLOAD_ARCHIVE!" "!DOWNLOAD_PATH!"                      >> %REPORT_LOGFILE% 2>&1
+		"!UNZIP_TOOL!" a -ssw -tzip "!DOWNLOAD_ARCHIVE!" "!DOWNLOAD_PATH!"                     >> %REPORT_LOGFILE% 2>&1
 	)
 	echo -------------------------------------------------------                               >> %REPORT_LOGFILE% 2>&1
 	echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                >> %REPORT_LOGFILE% 2>&1
@@ -1420,7 +1455,7 @@ if defined LMS_SET_FIREWALL (
 	)
 	echo -------------------------------------------------------                               >> %REPORT_LOGFILE% 2>&1
 	Powershell -command "Show-NetFirewallRule"  > %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_PS.txt 2>&1
-	rem Anaylze firewall rules (retrieved with PS); check for LMS entries
+	rem Analyze firewall rules (retrieved with PS); check for LMS entries
 	del %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_extract.txt >nul 2>&1
 	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\firewall_rules_PS.txt" for /f "tokens=1* eol=@ delims=<>: " %%A in (%CHECKLMS_REPORT_LOG_PATH%\firewall_rules_PS.txt) do (
 		rem echo [%%A] [%%B]
@@ -1512,9 +1547,9 @@ echo Get LmuTool Configuration: (read with LmuTool)                             
 echo     Get LmuTool Configuration: (read with LmuTool)
 if defined LMS_LMUTOOL "!LMS_LMUTOOL!" /??  > %CHECKLMS_REPORT_LOG_PATH%\LmsCfg.txt 2>&1
 set LMS_CFG_LICENSE_SRV_NAME=
-IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\LmsCfg.txt" for /f "tokens=3 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\LmsCfg.txt ^|find "LicenseSrvName"') do set "LMS_CFG_LICENSE_SRV_NAME=%%i"
+IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\LmsCfg.txt" for /f "tokens=3 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\LmsCfg.txt ^|find /I "LicenseSrvName"') do set "LMS_CFG_LICENSE_SRV_NAME=%%i"
 set LMS_CFG_LICENSE_SRV_PORT=
-IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\LmsCfg.txt" for /f "tokens=3 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\LmsCfg.txt ^|find "LicenseSrvPort"') do set "LMS_CFG_LICENSE_SRV_PORT=%%i"
+IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\LmsCfg.txt" for /f "tokens=3 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\LmsCfg.txt ^|find /I "LicenseSrvPort"') do set "LMS_CFG_LICENSE_SRV_PORT=%%i"
 if defined LMS_CFG_LICENSE_SRV_NAME (
     echo Configured license server: %LMS_CFG_LICENSE_SRV_NAME% with port %LMS_CFG_LICENSE_SRV_PORT%                          >> %REPORT_LOGFILE% 2>&1
     echo     Configured license server: %LMS_CFG_LICENSE_SRV_NAME% with port %LMS_CFG_LICENSE_SRV_PORT%
@@ -1523,8 +1558,8 @@ if defined LMS_CFG_LICENSE_SRV_NAME (
     echo     Configured license server: no server configured.
 )
 set LMS_FNO_SERVER=
-rem IF EXIST "%ProgramFiles%\Siemens\LMS\bin\LmuTool.profile" for /f "tokens=1,3 delims=<> eol=@" %%A in ('type "%ProgramFiles%\Siemens\LMS\bin\LmuTool.profile" ^|find "Fno"') do set "LMS_FNO_SERVER=%%B"
-IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\LmsCfg.txt" for /f "tokens=3 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\LmsCfg.txt ^|find "FlexServiceAddress"') do set "LMS_FNO_SERVER=%%i"
+rem IF EXIST "%ProgramFiles%\Siemens\LMS\bin\LmuTool.profile" for /f "tokens=1,3 delims=<> eol=@" %%A in ('type "%ProgramFiles%\Siemens\LMS\bin\LmuTool.profile" ^|find /I "Fno"') do set "LMS_FNO_SERVER=%%B"
+IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\LmsCfg.txt" for /f "tokens=3 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\LmsCfg.txt ^|find /I "FlexServiceAddress"') do set "LMS_FNO_SERVER=%%i"
 if defined LMS_FNO_SERVER (
     echo Configured FNO server: %LMS_FNO_SERVER%                                                                             >> %REPORT_LOGFILE% 2>&1 
     echo     Configured FNO server: %LMS_FNO_SERVER% 
@@ -1534,7 +1569,7 @@ if defined LMS_FNO_SERVER (
     echo     Configured FNO server: no server configured, use %LMS_FNO_SERVER% instead.
 )
 set LMS_CFG_CULTUREID=
-IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\LmsCfg.txt" for /f "tokens=3 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\LmsCfg.txt ^|find "CultureId"') do set "LMS_CFG_CULTUREID=%%i"
+IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\LmsCfg.txt" for /f "tokens=3 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\LmsCfg.txt ^|find /I "CultureId"') do set "LMS_CFG_CULTUREID=%%i"
 if defined LMS_CFG_CULTUREID (
     echo Configured culture Id: %LMS_CFG_CULTUREID%                                                                          >> %REPORT_LOGFILE% 2>&1 
     echo     Configured culture Id: %LMS_CFG_CULTUREID% 
@@ -1645,7 +1680,7 @@ echo ---------------- analyze installed software (%REPORT_WMIC_INSTALLED_SW_LOGF
 set DONGLE_DRIVER_INSTALL_DATE=N/A
 set SSU_INSTALL_DATE=N/A
 set LMS_INSTALL_DATE=N/A
-IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=1 eol=@ delims=<> " %%i in ('type %REPORT_WMIC_LOGFILE% ^|find "Siemens License Management"') do set LMS_INSTALL_DATE=%%i
+IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=1 eol=@ delims=<> " %%i in ('type %REPORT_WMIC_LOGFILE% ^|find /I "Siemens License Management"') do set LMS_INSTALL_DATE=%%i
 IF EXIST "%REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV%" for /f "tokens=1,2,3,4,5 eol=@ delims=," %%A in ('type %REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV%') do (
 	if "%%C" == "Sentinel Runtime" (
 		set DONGLE_DRIVER_INSTALL_DATE=%%B
@@ -1815,8 +1850,8 @@ type %CHECKLMS_REPORT_LOG_PATH%\getservice.txt                                  
 set /A PROC_RUNNING = 0
 set /A PROC_STOPPED = 0
 set /A PROC_FOUND = 0
-IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\getservice.txt" for /f "tokens=1 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\getservice.txt ^|find "Running"') do set /A PROC_RUNNING += 1
-IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\getservice.txt" for /f "tokens=1 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\getservice.txt ^|find "Stopped"') do set /A PROC_STOPPED += 1
+IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\getservice.txt" for /f "tokens=1 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\getservice.txt ^|find /I "Running"') do set /A PROC_RUNNING += 1
+IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\getservice.txt" for /f "tokens=1 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\getservice.txt ^|find /I "Stopped"') do set /A PROC_STOPPED += 1
 set /a "PROC_FOUND=%PROC_RUNNING%+%PROC_STOPPED%"
 echo Relevant services: Total !PROC_FOUND! services. !PROC_RUNNING! services running and !PROC_STOPPED! services stopped!    >> %REPORT_LOGFILE% 2>&1
 if /I !PROC_STOPPED! NEQ 0 (
@@ -2074,7 +2109,7 @@ echo -------------------------------------------------------                    
 echo Retrieve firewall settings [with 'Powershell -command "Show-NetFirewallRule"']                                          >> %REPORT_LOGFILE% 2>&1
 echo     full list see %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_PS.txt                                                      >> %REPORT_LOGFILE% 2>&1
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo Anaylze firewall rules [retrieved with Powershell], check for LMS entries ...                                           >> %REPORT_LOGFILE% 2>&1
+echo Analyze firewall rules [retrieved with Powershell], check for LMS entries ...                                           >> %REPORT_LOGFILE% 2>&1
 Powershell -command "Show-NetFirewallRule"  > %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_PS.txt 2>&1
 del %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_extract.txt >nul 2>&1
 IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\firewall_rules_PS.txt" for /f "tokens=1* eol=@ delims=<>: " %%A in (%CHECKLMS_REPORT_LOG_PATH%\firewall_rules_PS.txt) do (
@@ -2157,7 +2192,7 @@ echo Get crash dump settings ...                                                
 REM -- WER "DumpType" Registry Key
 set KEY_NAME=HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps
 set VALUE_NAME=DumpType
-for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find "%VALUE_NAME%"`) do (
+for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
 	set WER_DUMPTYPE=%%A
 )
 if defined WER_DUMPTYPE (
@@ -2537,9 +2572,9 @@ if defined DONGLE_DRIVER_PKG_VERSION (
 )
 rem analyse installed software (retrieved with 'wmic product get name, version, InstallDate, vendor')
 set DONGLE_DRIVER_UPDATE_TO781_BY_ATOS=
-IF EXIST "%REPORT_WMIC_INSTALLED_SW_LOGFILE%" for /f "tokens=1 eol=@ delims=<> " %%i in ('type %REPORT_WMIC_INSTALLED_SW_LOGFILE% ^|find "Sentinel Runtime R01"') do set DONGLE_DRIVER_UPDATE_TO781_BY_ATOS=%%i
+IF EXIST "%REPORT_WMIC_INSTALLED_SW_LOGFILE%" for /f "tokens=1 eol=@ delims=<> " %%i in ('type %REPORT_WMIC_INSTALLED_SW_LOGFILE% ^|find /I "Sentinel Runtime R01"') do set DONGLE_DRIVER_UPDATE_TO781_BY_ATOS=%%i
 set DONGLE_DRIVER_UPDATE_TO792_BY_ATOS=
-IF EXIST "%REPORT_WMIC_INSTALLED_SW_LOGFILE%" for /f "tokens=1 eol=@ delims=<> " %%i in ('type %REPORT_WMIC_INSTALLED_SW_LOGFILE% ^|find "Sentinel License Manager R01"') do set DONGLE_DRIVER_UPDATE_TO792_BY_ATOS=%%i
+IF EXIST "%REPORT_WMIC_INSTALLED_SW_LOGFILE%" for /f "tokens=1 eol=@ delims=<> " %%i in ('type %REPORT_WMIC_INSTALLED_SW_LOGFILE% ^|find /I "Sentinel License Manager R01"') do set DONGLE_DRIVER_UPDATE_TO792_BY_ATOS=%%i
 if defined DONGLE_DRIVER_UPDATE_TO781_BY_ATOS (
 	echo     NOTE: There was a dongle driver update to version V7.81 at %DONGLE_DRIVER_UPDATE_TO781_BY_ATOS% provided by ATOS.    >> %REPORT_LOGFILE% 2>&1
 )
@@ -2645,7 +2680,7 @@ IF EXIST "%LMS_ALMBTPLUGIN_FOLDER%\\AlmBtPg.dll" (
 	echo wmic datafile where Name="%LMS_ALMBTPLUGIN_FOLDER%\\AlmBtPg.dll" get Manufacturer,Name,Version  /format:list        >> %REPORT_LOGFILE% 2>&1
 	wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="%LMS_ALMBTPLUGIN_FOLDER%\\AlmBtPg.dll" get Manufacturer,Name,Version  /format:list
 	type %REPORT_WMIC_LOGFILE% >> %REPORT_LOGFILE% 2>&1
-	IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=2 delims== eol=@" %%i in ('type %REPORT_WMIC_LOGFILE% ^|find "Version"') do set "BTALMPLUGINVersion=%%i"
+	IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=2 delims== eol=@" %%i in ('type %REPORT_WMIC_LOGFILE% ^|find /I "Version"') do set "BTALMPLUGINVersion=%%i"
 	echo     Installed BT ALM Plugin Version: !BTALMPLUGINVersion!
 	echo --- Installed BT ALM Plugin Version: !BTALMPLUGINVersion!                                                           >> %REPORT_LOGFILE% 2>&1
 	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
@@ -2676,7 +2711,7 @@ IF EXIST "%LMS_ALMBTPLUGIN_FOLDER_X86%\\AlmBtPg.dll" (
 	echo wmic datafile where Name="%LMS_ALMBTPLUGIN_FOLDER_X86%\\AlmBtPg.dll" get Manufacturer,Name,Version  /format:list    >> %REPORT_LOGFILE% 2>&1
 	wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="%LMS_ALMBTPLUGIN_FOLDER_X86%\\AlmBtPg.dll" get Manufacturer,Name,Version  /format:list
 	type %REPORT_WMIC_LOGFILE% >> %REPORT_LOGFILE% 2>&1
-	IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=2 delims== eol=@" %%i in ('type %REPORT_WMIC_LOGFILE% ^|find "Version"') do set "BTALMPLUGINVersion=%%i"
+	IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=2 delims== eol=@" %%i in ('type %REPORT_WMIC_LOGFILE% ^|find /I "Version"') do set "BTALMPLUGINVersion=%%i"
 	echo     Installed BT ALM Plugin Version: !BTALMPLUGINVersion!
 	echo --- Installed BT ALM Plugin Version: !BTALMPLUGINVersion!                                                           >> %REPORT_LOGFILE% 2>&1
 	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
@@ -2823,23 +2858,23 @@ if defined LMS_SERVERCOMTRANUTIL (
 	Powershell -ExecutionPolicy Bypass -Command "& '%lms_ps_script2%'"
 	
 	rem read machine identifiers from offline request file
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml ^|find "<PublisherId>"') do set "LMS_TS_PUBLISHER=%%i"
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml ^|find "<ClientVersion>"') do set "LMS_TS_CLIENT_VERSION=%%i"
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml ^|find "<Revision>"') do set "LMS_TS_REVISION=%%i"
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml ^|find "<MachineIdentifier>"') do set "LMS_TS_MACHINE_IDENTIFIER=%%i"
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml ^|find "<TrustedStorageSerialNumber>"') do set "LMS_TS_SERIAL_NUMBER=%%i"
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml ^|find "<SequenceNumber>"') do set "LMS_TS_SEQ_NUM=%%i"
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml ^|find "<Status>"') do set "LMS_TS_STATUS=%%i"	
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml ^|find /I "<PublisherId>"') do set "LMS_TS_PUBLISHER=%%i"
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml ^|find /I "<ClientVersion>"') do set "LMS_TS_CLIENT_VERSION=%%i"
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml ^|find /I "<Revision>"') do set "LMS_TS_REVISION=%%i"
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml ^|find /I "<MachineIdentifier>"') do set "LMS_TS_MACHINE_IDENTIFIER=%%i"
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml ^|find /I "<TrustedStorageSerialNumber>"') do set "LMS_TS_SERIAL_NUMBER=%%i"
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml ^|find /I "<SequenceNumber>"') do set "LMS_TS_SEQ_NUM=%%i"
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml ^|find /I "<Status>"') do set "LMS_TS_STATUS=%%i"	
 	echo     PublisherId: !LMS_TS_PUBLISHER!  /  TS ClientVersion: !LMS_TS_CLIENT_VERSION!                                   >> %REPORT_LOGFILE% 2>&1
 	echo     MachineIdentifier: !LMS_TS_MACHINE_IDENTIFIER!  /  TrustedStorageSerialNumber: !LMS_TS_SERIAL_NUMBER!           >> %REPORT_LOGFILE% 2>&1
 	echo     TS Status: !LMS_TS_STATUS!  /  TS SequenceNumber: !LMS_TS_SEQ_NUM!  /  TS Revision: !LMS_TS_REVISION!           >> %REPORT_LOGFILE% 2>&1
 
 	rem retreieve UMN values from offline request file
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml ^|find "<Type>1"') do if "%%i" NEQ "/Value" set "UMN1_TS=%%i"
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml ^|find "<Type>2"') do if "%%i" NEQ "/Value" set "UMN2_TS=%%i"
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml ^|find "<Type>3"') do if "%%i" NEQ "/Value" set "UMN3_TS=%%i"
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml ^|find "<Type>4"') do if "%%i" NEQ "/Value" set "UMN4_TS=%%i"
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml ^|find "<Type>5"') do if "%%i" NEQ "/Value" set "UMN5_TS=%%i"
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml ^|find /I "<Type>1"') do if "%%i" NEQ "/Value" set "UMN1_TS=%%i"
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml ^|find /I "<Type>2"') do if "%%i" NEQ "/Value" set "UMN2_TS=%%i"
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml ^|find /I "<Type>3"') do if "%%i" NEQ "/Value" set "UMN3_TS=%%i"
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml ^|find /I "<Type>4"') do if "%%i" NEQ "/Value" set "UMN4_TS=%%i"
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml ^|find /I "<Type>5"') do if "%%i" NEQ "/Value" set "UMN5_TS=%%i"
 	echo     UMN1=!UMN1_TS! / UMN2=!UMN2_TS! / UMN3=!UMN3_TS! / UMN4=!UMN4_TS! / UMN5=!UMN5_TS!                              >> %REPORT_LOGFILE% 2>&1
 	echo     UMN1=!UMN1_TS! / UMN2=!UMN2_TS! / UMN3=!UMN3_TS! / UMN4=!UMN4_TS! / UMN5=!UMN5_TS! at !DATE! / !TIME! / retrieved from offline request file >> %REPORT_LOG_PATH%\UMN.txt 2>&1
 
@@ -2912,11 +2947,11 @@ if defined LMS_SERVERCOMTRANUTIL (
 	) else (
 		"%LMS_SERVERCOMTRANUTIL%" -unique > %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt  2>&1
 		type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt                                                    >> %REPORT_LOGFILE% 2>&1
-		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt ^|find "UMN1"') do set "UMN1_A=%%B"   
-		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt ^|find "UMN2"') do set "UMN2_A=%%B"   
-		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt ^|find "UMN3"') do set "UMN3_A=%%B"   
-		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt ^|find "UMN4"') do set "UMN4_A=%%B"   
-		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt ^|find "UMN5"') do set "UMN5_A=%%B"   
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt ^|find /I "UMN1"') do set "UMN1_A=%%B"   
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt ^|find /I "UMN2"') do set "UMN2_A=%%B"   
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt ^|find /I "UMN3"') do set "UMN3_A=%%B"   
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt ^|find /I "UMN4"') do set "UMN4_A=%%B"   
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt ^|find /I "UMN5"') do set "UMN5_A=%%B"   
 		rem Evaluate number of UMN used for TS binding
 		set /a UMN_COUNT_A = 0
 		if defined UMN1_A SET /A UMN_COUNT_A += 1
@@ -2947,11 +2982,11 @@ if defined LMS_APPACTUTIL (
 	"%LMS_APPACTUTIL%" -unique > %CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt  2>&1
 	type %CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt                                                                    >> %REPORT_LOGFILE% 2>&1
 	
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt ^|find "one"')   do if "%%A" NEQ "ERROR" set "UMN1_B=%%B"   
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt ^|find "two"')   do if "%%A" NEQ "ERROR" set "UMN2_B=%%B"   
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt ^|find "three"') do if "%%A" NEQ "ERROR" set "UMN3_B=%%B"   
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt ^|find "four"')  do if "%%A" NEQ "ERROR" set "UMN4_B=%%B"   
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt ^|find "five"')  do if "%%A" NEQ "ERROR" set "UMN5_B=%%B"   
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt ^|find /I "one"')   do if "%%A" NEQ "ERROR" set "UMN1_B=%%B"   
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt ^|find /I "two"')   do if "%%A" NEQ "ERROR" set "UMN2_B=%%B"   
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt ^|find /I "three"') do if "%%A" NEQ "ERROR" set "UMN3_B=%%B"   
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt ^|find /I "four"')  do if "%%A" NEQ "ERROR" set "UMN4_B=%%B"   
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt ^|find /I "five"')  do if "%%A" NEQ "ERROR" set "UMN5_B=%%B"   
 	rem Evaluate number of UMN used for TS binding
 	set /a UMN_COUNT_B = 0
 	if defined UMN1_B SET /A UMN_COUNT_B += 1
@@ -3070,13 +3105,13 @@ if defined LMS_SERVERCOMTRANUTIL (
 		type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt                                                   >> %REPORT_LOGFILE% 2>&1
 
 		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt" (
-			for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt ^|find "physical"') do set "VM_DETECTED=NO"   
+			for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt ^|find /I "physical"') do set "VM_DETECTED=NO"   
 			if not defined VM_DETECTED (
-				for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt ^|find "virtual"')  do set "VM_DETECTED=YES"   
-				for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt ^|find "FAMILY"')   do set "VM_FAMILY=%%B"   
-				for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt ^|find "NAME"')     do set "VM_NAME=%%B"   
-				for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt ^|find "UUID"')     do set "VM_UUID=%%B"   
-				for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt ^|find "GENID"')    do set "VM_GENID=%%B"   
+				for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt ^|find /I "virtual"')  do set "VM_DETECTED=YES"   
+				for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt ^|find /I "FAMILY"')   do set "VM_FAMILY=%%B"   
+				for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt ^|find /I "NAME"')     do set "VM_NAME=%%B"   
+				for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt ^|find /I "UUID"')     do set "VM_UUID=%%B"   
+				for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt ^|find /I "GENID"')    do set "VM_GENID=%%B"   
 				rem Handle "  GENID    Not available on this platform"
 				if "!VM_GENID!" == "Not" (
 					set VM_GENID=
@@ -3153,13 +3188,13 @@ if defined LMS_LMVMINFO (
     "%LMS_LMVMINFO%" -long  > %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt  2>&1
 	type %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt                                                                        >> %REPORT_LOGFILE% 2>&1
 	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt" (
-		for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt ^|find "Physical"') do set "VM_DETECTED_2=NO"   
+		for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt ^|find /I "Physical"') do set "VM_DETECTED_2=NO"   
 		if not defined VM_DETECTED_2 (
-			for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt ^|find "Virtual"')  do set "VM_DETECTED_2=YES"   
-			for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt ^|find "FAMILY"')   do set "VM_FAMILY_2=%%B"   
-			for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt ^|find "NAME"')     do set "VM_NAME_2=%%B"   
-			for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt ^|find "UUID"')     do set "VM_UUID_2=%%B"   
-			for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt ^|find "GENID"')    do set "VM_GENID_2=%%B"   
+			for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt ^|find /I "Virtual"')  do set "VM_DETECTED_2=YES"   
+			for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt ^|find /I "FAMILY"')   do set "VM_FAMILY_2=%%B"   
+			for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt ^|find /I "NAME"')     do set "VM_NAME_2=%%B"   
+			for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt ^|find /I "UUID"')     do set "VM_UUID_2=%%B"   
+			for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt ^|find /I "GENID"')    do set "VM_GENID_2=%%B"   
 			rem Handle "GENID: ERROR - Unavailable."
 			if "!VM_GENID_2!" == "ERROR" (
 				set VM_GENID_2=
@@ -3477,7 +3512,7 @@ FOR %%i IN ("!LMS_PROGRAMDATA!\Certificates\*") DO (
     echo -------------------------------------------------------   >> %CHECKLMS_REPORT_LOG_PATH%\license_all_certificates.txt 2>&1
 )
 set certfeature=
-IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\license_all_certificates.txt" for /f "tokens=2 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\license_all_certificates.txt ^|find "INCREMENT"') do set "certfeature=%%i"   
+IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\license_all_certificates.txt" for /f "tokens=2 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\license_all_certificates.txt ^|find /I "INCREMENT"') do set "certfeature=%%i"   
 if defined LMS_LMUTOOL (
 	if defined certfeature (
 		echo Check certificate feature: %certfeature%, with LmuTool.exe /CHECK:%certfeature%                                 >> %REPORT_LOGFILE% 2>&1
@@ -3507,7 +3542,7 @@ FOR %%i IN ("!LMS_PROGRAMDATA!\Server Certificates\*") DO (
     echo -------------------------------------------------------   >> %CHECKLMS_REPORT_LOG_PATH%\license_all_servercertificates.txt 2>&1
 )
 set servercertfeature=
-IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\license_all_servercertificates.txt" for /f "tokens=2 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\license_all_servercertificates.txt ^|find "INCREMENT"') do if not "%%i" == "Dummy_valid_feature" set "servercertfeature=%%i"
+IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\license_all_servercertificates.txt" for /f "tokens=2 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\license_all_servercertificates.txt ^|find /I "INCREMENT"') do if not "%%i" == "Dummy_valid_feature" set "servercertfeature=%%i"
 if defined LMS_LMUTOOL (
 	if defined servercertfeature (
 		echo Check server certificate feature: %servercertfeature%, with LmuTool.exe /CHECK:%servercertfeature%              >> %REPORT_LOGFILE% 2>&1
@@ -3531,7 +3566,8 @@ echo -------------------------------------------------------                    
 echo ... search trusted store file(s) ...
 echo Search trusted store file(s):                                                                                           >> %REPORT_LOGFILE% 2>&1
 del %CHECKLMS_REPORT_LOG_PATH%\tfsFilesFound.txt >nul 2>&1
-FOR /r %ALLUSERSPROFILE%\FLEXnet\ %%X IN (*tsf*) DO echo %%~dpnxX >> %CHECKLMS_REPORT_LOG_PATH%\tfsFilesFound.txt
+cd %ALLUSERSPROFILE%\FLEXnet\
+FOR /r %ALLUSERSPROFILE%\FLEXnet\ %%X IN (*tsf.data) DO echo %%~dpnxX >> %CHECKLMS_REPORT_LOG_PATH%\tfsFilesFound.txt
 Type %CHECKLMS_REPORT_LOG_PATH%\tfsFilesFound.txt                                                                            >> %REPORT_LOGFILE% 2>&1
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
@@ -3736,6 +3772,7 @@ echo Start at !DATE! !TIME! ....                                                
 echo ... search Flexera logfiles ...
 echo Search Flexera logfiles:                                                                                                >> %REPORT_LOGFILE% 2>&1
 del %CHECKLMS_REPORT_LOG_PATH%\FlexeraLogFilesFound.txt >nul 2>&1
+cd %ALLUSERSPROFILE%\FLEXnet\
 FOR /r %ALLUSERSPROFILE%\FLEXnet\ %%X IN (*.log) DO echo %%~dpnxX >> %CHECKLMS_REPORT_LOG_PATH%\FlexeraLogFilesFound.txt
 Type %CHECKLMS_REPORT_LOG_PATH%\FlexeraLogFilesFound.txt                                                                     >> %REPORT_LOGFILE% 2>&1
 FOR %%X IN (%ALLUSERSPROFILE%\FLEXnet\*.log) DO ( 
@@ -3757,9 +3794,9 @@ IF EXIST "!REPORT_LOG_PATH!\SIEMBT.log" (
 		echo     Because filesize of SIEMBT.log with !SIEMBTLOG_FILESIZE! bytes exceeds critical limit it is not further processed!              >> %REPORT_LOGFILE% 2>&1
 	) else (
 		rem Extract important identifiers from SIEMBT.log
-		for /f "tokens=3* eol=@ delims= " %%A in ('type %REPORT_LOG_PATH%\SIEMBT.log ^|find "Host used in license file"') do for /f "tokens=5* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HOSTNAME=%%B
-		for /f "tokens=3* eol=@ delims= " %%A in ('type %REPORT_LOG_PATH%\SIEMBT.log ^|find "Running on Hypervisor"') do for /f "tokens=3* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HYPERVISOR=%%B
-		for /f "tokens=3* eol=@ delims= " %%A in ('type %REPORT_LOG_PATH%\SIEMBT.log ^|find "HostID of the License Server"') do for /f "tokens=5* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HOSTIDS=%%B
+		for /f "tokens=3* eol=@ delims= " %%A in ('type %REPORT_LOG_PATH%\SIEMBT.log ^|find /I "Host used in license file"') do for /f "tokens=5* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HOSTNAME=%%B
+		for /f "tokens=3* eol=@ delims= " %%A in ('type %REPORT_LOG_PATH%\SIEMBT.log ^|find /I "Running on Hypervisor"') do for /f "tokens=3* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HYPERVISOR=%%B
+		for /f "tokens=3* eol=@ delims= " %%A in ('type %REPORT_LOG_PATH%\SIEMBT.log ^|find /I "HostID of the License Server"') do for /f "tokens=5* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HOSTIDS=%%B
 
 		echo -- extract ERROR messages from SIEMBT.log [start] --                                                            >> %REPORT_LOGFILE% 2>&1
 		Type "!REPORT_LOG_PATH!\SIEMBT.log" | findstr "ERROR:"                                                               >> %REPORT_LOGFILE% 2>&1
@@ -3886,7 +3923,7 @@ if defined LMS_SERVERCOMTRANUTIL (
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1 
 rem Search for an installed feature and test them
 set tsfeature=
-IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt" for /f "tokens=2 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find "INCREMENT"') do set "tsfeature=%%i"
+IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt" for /f "tokens=2 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find /I "INCREMENT"') do set "tsfeature=%%i"
 if defined LMS_LMUTOOL (
 	if defined tsfeature (
 		echo Check trusted store feature: %tsfeature%, with LmuTool.exe /CHECK:%tsfeature%                                   >> %REPORT_LOGFILE% 2>&1
@@ -3902,14 +3939,14 @@ if defined LMS_LMUTOOL (
 )
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1 
 rem Analyze output regarding broken trusted store
-IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt" for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find "**BROKEN**"') do set "TS_BROKEN=%%i"
+IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt" for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find /I "**BROKEN**"') do set "TS_BROKEN=%%i"
 if defined TS_BROKEN (
 	set /a TS_TF_TIME = 0
 	set /a TS_TF_HOST = 0
 	set /a TS_TF_RESTORE = 0
-	for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find "**BROKEN**"') do if "%%i" == "Time" SET /A TS_TF_TIME += 1
-	for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find "**BROKEN**"') do if "%%i" == "Host" SET /A TS_TF_HOST += 1
-	for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find "**BROKEN**"') do if "%%i" == "Restore" SET /A TS_TF_RESTORE += 1
+	for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find /I "**BROKEN**"') do if "%%i" == "Time" SET /A TS_TF_TIME += 1
+	for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find /I "**BROKEN**"') do if "%%i" == "Host" SET /A TS_TF_HOST += 1
+	for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find /I "**BROKEN**"') do if "%%i" == "Restore" SET /A TS_TF_RESTORE += 1
 	rem echo TS Broken ... TS_TF_TIME=!TS_TF_TIME! / TS_TF_HOST=!TS_TF_HOST! / TS_TF_RESTORE=!TS_TF_RESTORE!
 	if defined SHOW_COLORED_OUTPUT (
 		echo [1;31m    ATTENTION: Trusted Store is BROKEN. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE! [1;37m
@@ -3921,11 +3958,11 @@ if defined TS_BROKEN (
 	echo Trusted Store is NOT broken.                                                                                        >> %REPORT_LOGFILE% 2>&1
 )
 rem Analyze output regarding disabled licenses
-IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt" for /f "tokens=4 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find "Viewed"') do set "TS_TOTAL_COUNT=%%i"
-IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt" for /f "tokens=3 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find "Disabled"') do set "TS_DISABLED=%%i"
+IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt" for /f "tokens=4 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find /I "Viewed"') do set "TS_TOTAL_COUNT=%%i"
+IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt" for /f "tokens=3 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find /I "Disabled"') do set "TS_DISABLED=%%i"
 if defined TS_DISABLED (
 	set /a TS_DISABLED_COUNT = 0
-	for /f "tokens=3 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find "Status"') do if "%%i" == "Disabled" SET /A TS_DISABLED_COUNT += 1
+	for /f "tokens=3 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find /I "Status"') do if "%%i" == "Disabled" SET /A TS_DISABLED_COUNT += 1
 	if defined SHOW_COLORED_OUTPUT (
 		echo [1;31m    Disabled licenses found. Disabled=!TS_DISABLED_COUNT! of !TS_TOTAL_COUNT! [1;37m
 	) else (
@@ -4093,14 +4130,14 @@ if "%NeedRepair%" == "Yes" (
 	)
 	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1 
 	rem Analyze output regarding broken trusted store
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepair.txt" for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepair.txt ^|find "**BROKEN**"') do set "TS_BROKEN_AFTER_REPAIR=%%i"
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepair.txt" for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepair.txt ^|find /I "**BROKEN**"') do set "TS_BROKEN_AFTER_REPAIR=%%i"
 	if defined TS_BROKEN_AFTER_REPAIR (
 		set /a TS_TF_TIME = 0
 		set /a TS_TF_HOST = 0
 		set /a TS_TF_RESTORE = 0
-		for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepair.txt ^|find "**BROKEN**"') do if "%%i" == "Time" SET /A TS_TF_TIME += 1
-		for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepair.txt ^|find "**BROKEN**"') do if "%%i" == "Host" SET /A TS_TF_HOST += 1
-		for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepair.txt ^|find "**BROKEN**"') do if "%%i" == "Restore" SET /A TS_TF_RESTORE += 1
+		for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepair.txt ^|find /I "**BROKEN**"') do if "%%i" == "Time" SET /A TS_TF_TIME += 1
+		for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepair.txt ^|find /I "**BROKEN**"') do if "%%i" == "Host" SET /A TS_TF_HOST += 1
+		for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepair.txt ^|find /I "**BROKEN**"') do if "%%i" == "Restore" SET /A TS_TF_RESTORE += 1
 		rem echo TS Broken ... TS_TF_TIME=!TS_TF_TIME! / TS_TF_HOST=!TS_TF_HOST! / TS_TF_RESTORE=!TS_TF_RESTORE!
 		if defined SHOW_COLORED_OUTPUT (
 			echo [1;31m    ATTENTION: Trusted Store is BROKEN [AFTER REPAIR]. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE! [1;37m
@@ -4316,7 +4353,7 @@ Type !LMS_PROGRAMDATA!\Config\LmuSettings                                       
 echo .                                                                                                                       >> %REPORT_LOGFILE% 2>&1
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 set backuppath=
-IF EXIST "!LMS_PROGRAMDATA!\Config\LmuSettings" for /f "tokens=3 delims=<> eol=@" %%i in ('type !LMS_PROGRAMDATA!\Config\LmuSettings ^|find "BackupRestorePath"') do set "backuppath=%%i"
+IF EXIST "!LMS_PROGRAMDATA!\Config\LmuSettings" for /f "tokens=3 delims=<> eol=@" %%i in ('type !LMS_PROGRAMDATA!\Config\LmuSettings ^|find /I "BackupRestorePath"') do set "backuppath=%%i"
 if defined backuppath (
     echo Configured backup path: %backuppath%                                                                                >> %REPORT_LOGFILE% 2>&1
     echo Configured backup path, show content of %backuppath%\LMU_Backup                                                     >> %REPORT_LOGFILE% 2>&1
@@ -4356,11 +4393,12 @@ rem NOTE: The logfiles on %TEMP% [e.g. C:\Users\imfeldc\AppData\Local\Temp] are 
 echo ... search MSI and SSU setup logfiles [MSI*.log]  [on %TEMP%] ...
 del %CHECKLMS_SSU_PATH%\MSISetupLogFilesFound.txt >nul 2>&1
 del %CHECKLMS_SSU_PATH%\SSUSetupLogFilesFound.txt >nul 2>&1
+cd %TEMP%
 FOR /r %TEMP% %%X IN (MSI*.log) DO (
 	set SSU_SETUP_LOGFILE_FOUND=
 	echo %%~dpnxX >> %CHECKLMS_SSU_PATH%\MSISetupLogFilesFound.txt
-	for /f "tokens=1 delims= eol=@" %%i in ('type %%~dpnxX ^|find "******* Product:"') do echo %%i >> %CHECKLMS_SSU_PATH%\MSISetupLogFilesFound.txt
-	for /f "tokens=1 delims= eol=@" %%i in ('type %%~dpnxX ^|find "SSU_Setupx64.msi"') do set SSU_SETUP_LOGFILE_FOUND=1
+	for /f "tokens=1 delims= eol=@" %%i in ('type %%~dpnxX ^|find /I "******* Product:"') do echo %%i >> %CHECKLMS_SSU_PATH%\MSISetupLogFilesFound.txt
+	for /f "tokens=1 delims= eol=@" %%i in ('type %%~dpnxX ^|find /I "SSU_Setupx64.msi"') do set SSU_SETUP_LOGFILE_FOUND=1
 	if defined SSU_SETUP_LOGFILE_FOUND (
 		echo %%~dpnxX >> %CHECKLMS_SSU_PATH%\SSUSetupLogFilesFound.txt
 	)
@@ -5156,9 +5194,9 @@ if not defined LMS_SKIPCONTEST (
 		type %CHECKLMS_REPORT_LOG_PATH%\connection_test_step3.log                                                                             >> %REPORT_LOGFILE% 2>&1
 		echo -----------------------------------------------------------------                                                                >> %REPORT_LOGFILE% 2>&1
 		rem check status of each step
-		for /f "tokens=1 delims= eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\connection_test_step1.log ^|find "Success"') do set LMS_CON_TEST_STEP1_PASSED=1
-		for /f "tokens=1 delims= eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\connection_test_step2.log ^|find "Success"') do set LMS_CON_TEST_STEP2_PASSED=1
-		for /f "tokens=1 delims= eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\connection_test_step3.log ^|find "Success"') do set LMS_CON_TEST_STEP3_PASSED=1
+		for /f "tokens=1 delims= eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\connection_test_step1.log ^|find /I "Success"') do set LMS_CON_TEST_STEP1_PASSED=1
+		for /f "tokens=1 delims= eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\connection_test_step2.log ^|find /I "Success"') do set LMS_CON_TEST_STEP2_PASSED=1
+		for /f "tokens=1 delims= eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\connection_test_step3.log ^|find /I "Success"') do set LMS_CON_TEST_STEP3_PASSED=1
 		echo Connection Test Status:                                                                                                          >> %REPORT_LOGFILE% 2>&1
 		if defined LMS_CON_TEST_STEP1_PASSED (
 			echo -[Step 1 of 3] PASSED                                                                                                        >> %REPORT_LOGFILE% 2>&1
@@ -5261,29 +5299,63 @@ echo ===========================================================================
 REM -- Desigo CC (GMS) Registry Keys --
 set KEY_NAME=HKLM\Software\Siemens\Siemens_GMS
 set VALUE_NAME=Version
-for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find "%VALUE_NAME%"`) do (
+for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
 	set GMS_VERSION=%%A
 )
 if defined GMS_VERSION (
 	echo Start at !DATE! !TIME! ....                                                                                     >> %REPORT_LOGFILE% 2>&1
 	echo     Desigo CC [!GMS_VERSION!] found ...
 	echo Desigo CC [!GMS_VERSION!] found ...                                                                             >> %REPORT_LOGFILE% 2>&1
-	REM -- Desigo CC (GMS) Registry Keys --
-	set KEY_NAME=HKLM\Software\Siemens\Siemens_GMS
-	set VALUE_NAME=InstallDir
-	for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find "%VALUE_NAME%"`) do (
-		set GMS_INSTALL_DIR=%%A
+	set CHECKLMS_GMS_PATH=!CHECKLMS_REPORT_LOG_PATH!\GMS
+	rmdir /S /Q "!CHECKLMS_GMS_PATH!\" >nul 2>&1
+	IF NOT EXIST "!CHECKLMS_GMS_PATH!\" (
+		echo Create folder: '!CHECKLMS_GMS_PATH!\'                                                                      >> %REPORT_LOGFILE% 2>&1
+		mkdir "!CHECKLMS_GMS_PATH!\"                                                                                    >> %REPORT_LOGFILE% 2>&1
 	)
-	echo Desigo CC Version: !GMS_VERSION!                                                                                >> %REPORT_LOGFILE% 2>&1
-	echo Desigo CC Installation directory: !GMS_INSTALL_DIR!                                                             >> %REPORT_LOGFILE% 2>&1
+	Powershell -command "Get-ItemProperty HKLM:\SOFTWARE\Siemens\Siemens_GMS | Format-List" > !CHECKLMS_GMS_PATH!\desigocc_registry.txt 2>&1
+	IF EXIST "!CHECKLMS_GMS_PATH!\desigocc_registry.txt" (
+		for /f "tokens=1* eol=@ delims=<>: " %%A in ('type !CHECKLMS_GMS_PATH!\desigocc_registry.txt ^|find /I "GMSActiveProject"') do set GMS_ActiveProject=%%B
+		for /f "tokens=1* eol=@ delims=<>: " %%A in ('type !CHECKLMS_GMS_PATH!\desigocc_registry.txt ^|find /I "InstallDir"') do set GMS_InstallDir=%%B
+		for /f "tokens=1* eol=@ delims=<>: " %%A in ('type !CHECKLMS_GMS_PATH!\desigocc_registry.txt ^|find /I "InstallDir"') do set GMS_InstallDrive=%%~dB
+	)
+	echo Desigo CC Version                : !GMS_VERSION!                                                                >> %REPORT_LOGFILE% 2>&1
+	echo Desigo CC Installation drive     : !GMS_InstallDrive!                                                           >> %REPORT_LOGFILE% 2>&1
+	echo Desigo CC Installation directory : !GMS_InstallDir!                                                             >> %REPORT_LOGFILE% 2>&1
+	echo Desigo CC Active Project         : !GMS_ActiveProject!                                                          >> %REPORT_LOGFILE% 2>&1
 	echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
-	Powershell -command "Get-ItemProperty HKLM:\SOFTWARE\Siemens\Siemens_GMS | Format-List" > %CHECKLMS_REPORT_LOG_PATH%\desigcc_reistry.txt 2>&1
-	type %CHECKLMS_REPORT_LOG_PATH%\desigcc_reistry.txt >> %REPORT_LOGFILE% 2>&1
+	type !CHECKLMS_GMS_PATH!\desigocc_registry.txt >> %REPORT_LOGFILE% 2>&1
 	echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
 	echo     Read list of installed Extensions Modules of Desigo CC from registry ...
 	echo Read list of installed Extensions Modules of Desigo CC from registry                                            >> %REPORT_LOGFILE% 2>&1
-	Powershell -command "Get-ItemProperty HKLM:\Software\Siemens\Siemens_GMS\EM\* | Select-Object DisplayName, DisplayVersion, ExtensionSuite, InstallationMode, IsEMWithoutMsi | Format-List" > %CHECKLMS_REPORT_LOG_PATH%\desigocc_installed_EM.txt 2>&1
-	type %CHECKLMS_REPORT_LOG_PATH%\desigocc_installed_EM.txt >> %REPORT_LOGFILE% 2>&1
+	Powershell -command "Get-ItemProperty HKLM:\Software\Siemens\Siemens_GMS\EM\* | Select-Object DisplayName, DisplayVersion, ExtensionSuite, InstallationMode, IsEMWithoutMsi | Format-List" > !CHECKLMS_GMS_PATH!\desigocc_installed_EM.txt 2>&1
+	type !CHECKLMS_GMS_PATH!\desigocc_installed_EM.txt >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
+	echo     Search for desigo cc logfiles [PVSS_II.log, WCCOActrl253.log] [in '!GMS_InstallDir!'] ...
+	echo Search for desigo cc logfiles [PVSS_II.log, WCCOActrl253.log] [in '!GMS_InstallDir!' on drive !GMS_InstallDrive!] ...  >> %REPORT_LOGFILE% 2>&1
+	del !CHECKLMS_GMS_PATH!\DesigoCCLogFilesFound.txt >nul 2>&1
+	rem NOTE: The term 'PVSS_II.log' within IN doesn't work, make sure to have at least one * in it; e.g. 'PVSS_II.*'
+	rem NOTE: If the [drive:]path are not specified they will default to the current drive:path.
+	rem Somehow strange for /r "!GMS_InstallDir!" didn't work, because of that I use the workaound to search in current path nad change path before
+	!GMS_InstallDrive!       >> %REPORT_LOGFILE% 2>&1
+	cd !GMS_InstallDrive!    >> %REPORT_LOGFILE% 2>&1
+	cd !GMS_InstallDir!      >> %REPORT_LOGFILE% 2>&1
+  	for /r "." %%X in (PVSS_II.l?g) do echo %%~dpnxX >> !CHECKLMS_GMS_PATH!\DesigoCCLogFilesFound.txt
+  	for /r "." %%X in (WCCOActrl253.l?g) do echo %%~dpnxX >> !CHECKLMS_GMS_PATH!\DesigoCCLogFilesFound.txt
+	IF EXIST "!CHECKLMS_GMS_PATH!\DesigoCCLogFilesFound.txt" (
+		echo List of desigo cc logfiles found [in '!GMS_InstallDir!' on drive !GMS_InstallDrive!] ...                    >> %REPORT_LOGFILE% 2>&1
+		Type !CHECKLMS_GMS_PATH!\DesigoCCLogFilesFound.txt                                                               >> %REPORT_LOGFILE% 2>&1                                                      
+		set LOG_FILE_COUNT=0
+		echo -------------------------------------------------------                                                     >> %REPORT_LOGFILE% 2>&1                                                                
+		FOR /F "eol=@ delims=@" %%i IN (!CHECKLMS_GMS_PATH!\DesigoCCLogFilesFound.txt) DO ( 
+			set /A LOG_FILE_COUNT += 1
+			echo %%i copy to !CHECKLMS_GMS_PATH!\%%~ni.!LOG_FILE_COUNT!%%~xi                                             >> %REPORT_LOGFILE% 2>&1                                                                                           
+			copy /Y "%%i" "!CHECKLMS_GMS_PATH!\%%~ni.!LOG_FILE_COUNT!%%~xi"                                              >> %REPORT_LOGFILE% 2>&1                                                                                        
+			powershell -command "& {Get-Content '!CHECKLMS_GMS_PATH!\%%~ni.!LOG_FILE_COUNT!%%~xi' | Select-Object -last %LOG_FILE_LINES%}"  >> %REPORT_LOGFILE% 2>&1                                  
+			echo -------------------------------------------------------                                                 >> %REPORT_LOGFILE% 2>&1                                                                
+		)
+	) else (
+		echo     No desigo cc logfiles [PVSS_II.log, WCCOActrl253.log] on '!GMS_InstallDir!' found.                      >> %REPORT_LOGFILE% 2>&1                                                                             
+	)
 	echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                     >> %REPORT_LOGFILE% 2>&1
 ) else (
@@ -5295,7 +5367,7 @@ echo ===========================================================================
 REM -- Sentron powermanager Registry Keys --
 set KEY_NAME=HKLM\SOFTWARE\Siemens\powermanager\V4.20
 set VALUE_NAME=Version
-for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find "%VALUE_NAME%"`) do (
+for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
 	set PM_VERSION=%%A
 )
 if defined PM_VERSION (
@@ -5320,7 +5392,7 @@ echo ===========================================================================
 REM -- XWorks Plus (XWP) Registry Keys --
 set KEY_NAME=HKLM\SOFTWARE\WOW6432Node\Siemens\DESIGO\XWP
 set VALUE_NAME=Version
-for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find "%VALUE_NAME%"`) do (
+for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
 	set XWP_VERSION=%%A
 )
 if defined XWP_VERSION (
@@ -5348,7 +5420,7 @@ echo ===========================================================================
 REM -- Automation Building Tool (ABT) Registry Keys --
 set KEY_NAME=HKLM\SOFTWARE\Siemens\ABTSite
 set VALUE_NAME=Version
-for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find "%VALUE_NAME%"`) do (
+for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
 	set ABT_VERSION=%%A
 )
 if defined ABT_VERSION (
@@ -5357,7 +5429,7 @@ if defined ABT_VERSION (
 	echo ABT [!ABT_VERSION!] found ...                                                                                   >> %REPORT_LOGFILE% 2>&1
 	set KEY_NAME=HKLM\SOFTWARE\Siemens\ABTSite
 	set VALUE_NAME=VersionString
-	for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find "!VALUE_NAME!"`) do (
+	for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
 		set ABT_VERSION_STRING=%%A
 	)
 	echo Automation Building Tool [ABT] Version: !ABT_VERSION_STRING! [!ABT_VERSION!]                                    >> %REPORT_LOGFILE% 2>&1
@@ -5374,7 +5446,7 @@ echo ===========================================================================
 REM -- Siveillance Identity (SiID) Registry Keys --
 set KEY_NAME=HKLM\SOFTWARE\Siemens\SiID
 set VALUE_NAME=Version
-for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find "%VALUE_NAME%"`) do (
+for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
 	set SiID_VERSION=%%A
 )
 if defined SiID_VERSION (
@@ -5403,14 +5475,8 @@ if defined SiID_VERSION (
 echo ==============================================================================                                      >> %REPORT_LOGFILE% 2>&1
 echo =   S I V E I L L A N C E   P A S S  (SiPass)                                =                                      >> %REPORT_LOGFILE% 2>&1
 echo ==============================================================================                                      >> %REPORT_LOGFILE% 2>&1
-set CHECKLMS_SIPASS_PATH=!CHECKLMS_REPORT_LOG_PATH!\SiPass
-rmdir /S /Q !CHECKLMS_SIPASS_PATH!\ >nul 2>&1
-IF NOT EXIST "%CHECKLMS_SIPASS_PATH%\" (
-	rem echo Create new folder: %CHECKLMS_SIPASS_PATH%\
-    mkdir %CHECKLMS_SIPASS_PATH%\ >nul 2>&1
-)
 REM -- SiPass integrated  (SiPass) Registry Keys --
-for /F "usebackq tokens=3" %%A IN (`reg query "HKLM\SOFTWARE\WOW6432Node\Landis & Staefa\ADVANTAGE\Version4\Server" /v "DefaultConfiguration" 2^>nul ^| find "DefaultConfiguration"`) do (
+for /F "usebackq tokens=3" %%A IN (`reg query "HKLM\SOFTWARE\WOW6432Node\Landis & Staefa\ADVANTAGE\Version4\Server" /v "DefaultConfiguration" 2^>nul ^| find /I "DefaultConfiguration"`) do (
 	echo registry value "DefaultConfiguration" found ....                                                                >> %REPORT_LOGFILE% 2>&1
 	set SIPASS_CONFIGURATION=%%A
 	echo SIPASS_CONFIGURATION=!SIPASS_CONFIGURATION!                                                                     >> %REPORT_LOGFILE% 2>&1
@@ -5419,14 +5485,21 @@ if defined SIPASS_CONFIGURATION (
 	echo Start at !DATE! !TIME! ....                                                                                     >> %REPORT_LOGFILE% 2>&1
 	echo     Siveillance Pass [SiPass] found ...
 	echo Siveillance Pass [SiPass] found ...                                                                             >> %REPORT_LOGFILE% 2>&1
+	set CHECKLMS_SIPASS_PATH=!CHECKLMS_REPORT_LOG_PATH!\SiPass
+	rmdir /S /Q !CHECKLMS_SIPASS_PATH!\ >nul 2>&1
+	IF NOT EXIST "!CHECKLMS_SIPASS_PATH!\" (
+		rem echo Create new folder: !CHECKLMS_SIPASS_PATH!\
+		echo Create folder: '!CHECKLMS_SIPASS_PATH!\'                                                                    >> %REPORT_LOGFILE% 2>&1
+		mkdir "!CHECKLMS_SIPASS_PATH!\"                                                                                  >> %REPORT_LOGFILE% 2>&1
+	)
 	set VALUE_NAME=AdvantageDirectory
 	rem "Read registry value that contains spaces using batch file", see https://stackoverflow.com/questions/16281185/read-registry-value-that-contains-spaces-using-batch-file/16282323
-	for /F "usebackq tokens=2*" %%A IN (`reg query "HKLM\SOFTWARE\WOW6432Node\Landis & Staefa\ADVANTAGE\Version4\Server\ServerConfigurations\!SIPASS_CONFIGURATION!" /v "!VALUE_NAME!" 2^>nul ^| find "!VALUE_NAME!"`) do (
+	for /F "usebackq tokens=2*" %%A IN (`reg query "HKLM\SOFTWARE\WOW6432Node\Landis & Staefa\ADVANTAGE\Version4\Server\ServerConfigurations\!SIPASS_CONFIGURATION!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
 		set SIPASS_DIRECTORY=%%B
 	)
 	rem “Version” was just implemented for 2.80 builds and beyond
 	set VALUE_NAME=Version
-	for /F "usebackq tokens=3" %%A IN (`reg query "HKLM\SOFTWARE\Wow6432Node\Landis & Staefa\ADVANTAGE\Version4\Server\ServerConfigurations\!SIPASS_CONFIGURATION!" /v "!VALUE_NAME!" 2^>nul ^| find "!VALUE_NAME!"`) do (
+	for /F "usebackq tokens=3" %%A IN (`reg query "HKLM\SOFTWARE\Wow6432Node\Landis & Staefa\ADVANTAGE\Version4\Server\ServerConfigurations\!SIPASS_CONFIGURATION!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
 		set SIPASS_VERSION=%%A
 	)
 
@@ -5435,13 +5508,13 @@ if defined SIPASS_CONFIGURATION (
 	echo SiPass version             : !SIPASS_VERSION!                                                                   >> %REPORT_LOGFILE% 2>&1
 	
 	echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
-	Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\Wow6432Node\Landis & Staefa\ADVANTAGE\Version4\Server' | Format-List" > %CHECKLMS_SIPASS_PATH%\sipass_registry.txt 2>&1
+	Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\Wow6432Node\Landis & Staefa\ADVANTAGE\Version4\Server' | Format-List" > !CHECKLMS_SIPASS_PATH!\sipass_registry.txt 2>&1
 	echo Content of registry key: "HKLM:\SOFTWARE\Wow6432Node\Landis & Staefa\ADVANTAGE\Version4\Server" ...             >> %REPORT_LOGFILE% 2>&1
-	type %CHECKLMS_SIPASS_PATH%\sipass_registry.txt                                                                      >> %REPORT_LOGFILE% 2>&1
+	type !CHECKLMS_SIPASS_PATH!\sipass_registry.txt                                                                      >> %REPORT_LOGFILE% 2>&1
 	echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
-	Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\Wow6432Node\Landis & Staefa\ADVANTAGE\Version4\Server\ServerConfigurations\!SIPASS_CONFIGURATION!' | Format-List" > %CHECKLMS_SIPASS_PATH%\sipass_configuration_registry.txt 2>&1
+	Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\Wow6432Node\Landis & Staefa\ADVANTAGE\Version4\Server\ServerConfigurations\!SIPASS_CONFIGURATION!' | Format-List" > !CHECKLMS_SIPASS_PATH!\sipass_configuration_registry.txt 2>&1
 	echo Content of registry key: "HKLM:\SOFTWARE\Wow6432Node\Landis & Staefa\ADVANTAGE\Version4\Server\ServerConfigurations\!SIPASS_CONFIGURATION!" ... >> %REPORT_LOGFILE% 2>&1
-	type %CHECKLMS_SIPASS_PATH%\sipass_configuration_registry.txt                                                        >> %REPORT_LOGFILE% 2>&1
+	type !CHECKLMS_SIPASS_PATH!\sipass_configuration_registry.txt                                                        >> %REPORT_LOGFILE% 2>&1
 	echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
 	IF EXIST "!SIPASS_DIRECTORY!\SiServer-log-file.txt" (
 		echo LOG FILE: SiServer-log-file.txt [last %LOG_FILE_LINES% lines]                                               >> %REPORT_LOGFILE% 2>&1
@@ -5460,16 +5533,11 @@ if defined SIPASS_CONFIGURATION (
 echo ==============================================================================                                      >> %REPORT_LOGFILE% 2>&1
 echo =   A P O G E E   D A T A M A T E   A D V A N C E D (DMA, Insight, CommTool) =                                      >> %REPORT_LOGFILE% 2>&1
 echo ==============================================================================                                      >> %REPORT_LOGFILE% 2>&1
-set CHECKLMS_DMA_PATH=!CHECKLMS_REPORT_LOG_PATH!\DMA
-rmdir /S /Q !CHECKLMS_DMA_PATH!\ >nul 2>&1
-IF NOT EXIST "%CHECKLMS_DMA_PATH%\" (
-    mkdir %CHECKLMS_DMA_PATH%\ >nul 2>&1
-)
 REM -- Apogee Datamate Advanced (DMA) Registry Keys --
 rem - Stores the product name (Insight, DMA or CommTool) \HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\LANDIS & GYR\Insight\CurrentVersion\Setup\ProductLine
 rem - Stores the revision: \HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\LANDIS & GYR\Insight\CurrentVersion\Setup\AsyncRevString
 rem - Stores the Product path: HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\LANDIS & GYR\Insight\CurrentVersion\Configuration\Application
-for /F "usebackq tokens=3" %%A IN (`reg query "HKLM\SOFTWARE\WOW6432Node\LANDIS & GYR\Insight\CurrentVersion\Setup" /v "ProductLine" 2^>nul ^| find "ProductLine"`) do (
+for /F "usebackq tokens=3" %%A IN (`reg query "HKLM\SOFTWARE\WOW6432Node\LANDIS & GYR\Insight\CurrentVersion\Setup" /v "ProductLine" 2^>nul ^| find /I "ProductLine"`) do (
 	echo registry value "ProductLine" found ....                                                                         >> %REPORT_LOGFILE% 2>&1
 	set DMA_CONFIGURATION=%%A
 	echo DMA_CONFIGURATION=!DMA_CONFIGURATION!                                                                           >> %REPORT_LOGFILE% 2>&1
@@ -5478,27 +5546,33 @@ if defined DMA_CONFIGURATION (
 	echo Start at !DATE! !TIME! ....                                                                                     >> %REPORT_LOGFILE% 2>&1
 	echo     Apogee Datamate Advanced [DMA] found ...
 	echo Apogee Datamate Advanced [DMA] found ...                                                                        >> %REPORT_LOGFILE% 2>&1
+	set CHECKLMS_DMA_PATH=!CHECKLMS_REPORT_LOG_PATH!\DMA
+	rmdir /S /Q !CHECKLMS_DMA_PATH!\ >nul 2>&1
+	IF NOT EXIST "!CHECKLMS_DMA_PATH!\" (
+		echo Create folder: '!CHECKLMS_DMA_PATH!\'                                                                       >> %REPORT_LOGFILE% 2>&1
+		mkdir "!CHECKLMS_DMA_PATH!\"                                                                                     >> %REPORT_LOGFILE% 2>&1
+	)
 	set VALUE_NAME=Application
 	rem "Read registry value that contains spaces using batch file", see https://stackoverflow.com/questions/16281185/read-registry-value-that-contains-spaces-using-batch-file/16282323
-	for /F "usebackq tokens=2*" %%A IN (`reg query "HKLM\SOFTWARE\WOW6432Node\LANDIS & GYR\Insight\CurrentVersion\Configuration" /v "!VALUE_NAME!" 2^>nul ^| find "!VALUE_NAME!"`) do (
+	for /F "usebackq tokens=2*" %%A IN (`reg query "HKLM\SOFTWARE\WOW6432Node\LANDIS & GYR\Insight\CurrentVersion\Configuration" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
 		set DMA_DIRECTORY=%%B
 	)
 	set VALUE_NAME=AsyncRevString
 	rem "Read registry value that contains spaces using batch file", see https://stackoverflow.com/questions/16281185/read-registry-value-that-contains-spaces-using-batch-file/16282323
-	for /F "usebackq tokens=2*" %%A IN (`reg query "HKLM\SOFTWARE\WOW6432Node\LANDIS & GYR\Insight\CurrentVersion\Setup" /v "!VALUE_NAME!" 2^>nul ^| find "!VALUE_NAME!"`) do (
+	for /F "usebackq tokens=2*" %%A IN (`reg query "HKLM\SOFTWARE\WOW6432Node\LANDIS & GYR\Insight\CurrentVersion\Setup" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
 		set DMA_VERSION=%%B
 	)
 	echo Apogee Datamate Advanced [DMA] configuation: !DMA_CONFIGURATION!                                                >> %REPORT_LOGFILE% 2>&1
 	echo Apogee Datamate Advanced [DMA] directory   : !DMA_DIRECTORY!                                                    >> %REPORT_LOGFILE% 2>&1
 	echo Apogee Datamate Advanced [DMA] version     : !DMA_VERSION!                                                      >> %REPORT_LOGFILE% 2>&1
 	echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
-	Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\LANDIS & GYR\Insight\CurrentVersion\Configuration' | Format-List" > %CHECKLMS_DMA_PATH%\dma_configuration_registry.txt 2>&1
+	Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\LANDIS & GYR\Insight\CurrentVersion\Configuration' | Format-List" > !CHECKLMS_DMA_PATH!\dma_configuration_registry.txt 2>&1
 	echo Content of registry key: "HKLM:\SOFTWARE\WOW6432Node\LANDIS & GYR\Insight\CurrentVersion\Configuration" ...     >> %REPORT_LOGFILE% 2>&1
-	type %CHECKLMS_DMA_PATH%\dma_configuration_registry.txt                                                              >> %REPORT_LOGFILE% 2>&1
+	type !CHECKLMS_DMA_PATH!\dma_configuration_registry.txt                                                              >> %REPORT_LOGFILE% 2>&1
 	echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
-	Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\LANDIS & GYR\Insight\CurrentVersion\Setup' | Format-List" > %CHECKLMS_DMA_PATH%\dma_setup_registry.txt 2>&1
+	Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\LANDIS & GYR\Insight\CurrentVersion\Setup' | Format-List" > !CHECKLMS_DMA_PATH!\dma_setup_registry.txt 2>&1
 	echo Content of registry key: "HKLM:\SOFTWARE\WOW6432Node\LANDIS & GYR\Insight\CurrentVersion\Setup" ...             >> %REPORT_LOGFILE% 2>&1
-	type %CHECKLMS_DMA_PATH%\dma_setup_registry.txt                                                                      >> %REPORT_LOGFILE% 2>&1
+	type !CHECKLMS_DMA_PATH!\dma_setup_registry.txt                                                                      >> %REPORT_LOGFILE% 2>&1
 	echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
 	if exist "!DMA_DIRECTORY!\Main.exe" (
 		echo Run diagnostic tool of DMA [!DMA_DIRECTORY!\Main.exe]                                                       >> %REPORT_LOGFILE% 2>&1
