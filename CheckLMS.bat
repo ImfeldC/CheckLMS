@@ -91,6 +91,10 @@ rem        - Search for desigo cc logfiles [PVSS_II.*, WCCOActrl253.*] and copy 
 rem     19-Feb-2021:
 rem        - Adjust search algorithm for Desigo CC logfiles, somehow "for /r" doesn't work as expected :-(
 rem        - Adjust search for TS files, serach only for '*tsf.data' instead '*tsf*'
+rem     22-Feb-2021:
+rem        - in case command 'powershell -command "Get-WindowsUpdateLog"' fails, print output of command execution in this logfile.
+rem        - retrieve DESKTOP_FOLDER (mainly used in case desktop folder has been moved to another location)
+rem        - check ERRORLEVEL when executing 'dotnet --info'
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -113,8 +117,8 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 19-Feb-2021"
-set LMS_SCRIPT_BUILD=20210219
+set LMS_SCRIPT_VERSION="CheckLMS Script 22-Feb-2021"
+set LMS_SCRIPT_BUILD=20210222
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_BUILD=824
@@ -159,6 +163,12 @@ IF %ERRORLEVEL%==0 (
     rem ECHO NOT PRIVILEGED!  (%guid%)
     echo This script runs with NO administrator priviledge! 
 )
+
+rem Retrieve desktop folder
+FOR /F "usebackq" %%f IN (`PowerShell -NoProfile -Command "Write-Host([Environment]::GetFolderPath('Desktop'))"`) DO (
+  SET "DESKTOP_FOLDER=%%f"
+)
+rem @ECHO DESKTOP_FOLDER=%DESKTOP_FOLDER%
 
 rem Check report log path
 set LMS_PROGRAMDATA=%ALLUSERSPROFILE%\Siemens\LMS
@@ -1775,6 +1785,12 @@ echo -------------------------------------------------------                    
 echo ... read .NET information (dotnet --info) ...
 echo Read .NET information (dotnet --info)                                                                                   >> %REPORT_LOGFILE% 2>&1
 dotnet --info                                                                                                                >> %REPORT_LOGFILE% 2>&1
+if not !ERRORLEVEL!==0 (
+	echo     ERROR: An error occured during execution of 'dotnet --info' [ERRORLEVEL=!ERRORLEVEL!]                           >> %REPORT_LOGFILE% 2>&1
+	if exist "%programfiles%\dotnet\dotnet.exe" (
+		echo     'dotnet.exe' found at '%programfiles%\dotnet\dotnet.exe'!                                                   >> %REPORT_LOGFILE% 2>&1
+	)
+)
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 echo ... read installed products and version (from registry) ...
 echo Read installed products and version (from registry)                                                                     >> %REPORT_LOGFILE% 2>&1
@@ -1934,17 +1950,30 @@ echo ... retrieve Windows Update Log ...
 echo Retrieve Windows Update Log (using 'powershell -command "Get-WindowsUpdateLog"'):                                       >> %REPORT_LOGFILE% 2>&1
 powershell -command "Get-WindowsUpdateLog"     >> %CHECKLMS_REPORT_LOG_PATH%\Get-WindowsUpdateLog.log 2>&1
 if exist "%desktop%\WindowsUpdate.log" (
-	rem echo ---------------- %desktop%\WindowsUpdate.log:                                                                                                   >> %REPORT_LOGFILE% 2>&1
-	rem type "%desktop%\WindowsUpdate.log"                                                                                                                   >> %REPORT_LOGFILE% 2>&1
-	robocopy.exe %desktop%  "%CHECKLMS_REPORT_LOG_PATH%" WindowsUpdate.log /MOV /NP /R:1 /W:1 /LOG+:%CHECKLMS_REPORT_LOG_PATH%\robocopy.log                  >> %REPORT_LOGFILE% 2>&1
-	echo See %CHECKLMS_REPORT_LOG_PATH%\WindowsUpdate.log                                                                                                    >> %REPORT_LOGFILE% 2>&1
+	rem echo ---------------- %desktop%\WindowsUpdate.log:                                                                                                       >> %REPORT_LOGFILE% 2>&1
+	rem type "%desktop%\WindowsUpdate.log"                                                                                                                       >> %REPORT_LOGFILE% 2>&1
+	robocopy.exe %desktop%  "%CHECKLMS_REPORT_LOG_PATH%" WindowsUpdate.log /MOV /NP /R:1 /W:1 /LOG+:%CHECKLMS_REPORT_LOG_PATH%\robocopy.log                      >> %REPORT_LOGFILE% 2>&1
+	echo See %CHECKLMS_REPORT_LOG_PATH%\WindowsUpdate.log                                                                                                        >> %REPORT_LOGFILE% 2>&1
 ) else (
-	if exist "%userprofile%\desktop\WindowsUpdate.log" (
-		rem echo ---------------- %userprofile%\desktop\WindowsUpdate.log:                                                                                   >> %REPORT_LOGFILE% 2>&1
-		robocopy.exe %userprofile%\desktop "%CHECKLMS_REPORT_LOG_PATH%" WindowsUpdate.log /MOV /NP /R:1 /W:1 /LOG+:%CHECKLMS_REPORT_LOG_PATH%\robocopy.log   >> %REPORT_LOGFILE% 2>&1
-		echo See %CHECKLMS_REPORT_LOG_PATH%\WindowsUpdate.log                                                                                                >> %REPORT_LOGFILE% 2>&1
+	if exist "%DESKTOP_FOLDER%\WindowsUpdate.log" (
+		rem echo ---------------- %DESKTOP_FOLDER%\WindowsUpdate.log:                                                                                            >> %REPORT_LOGFILE% 2>&1
+		robocopy.exe %DESKTOP_FOLDER% "%CHECKLMS_REPORT_LOG_PATH%" WindowsUpdate.log /MOV /NP /R:1 /W:1 /LOG+:%CHECKLMS_REPORT_LOG_PATH%\robocopy.log            >> %REPORT_LOGFILE% 2>&1
+		echo See %CHECKLMS_REPORT_LOG_PATH%\WindowsUpdate.log                                                                                                    >> %REPORT_LOGFILE% 2>&1
 	) else (
-		echo WARNING: The logfile 'WindowsUpdate.log' doesn't exists; cannot copy it!                                        >> %REPORT_LOGFILE% 2>&1
+		if exist "%userprofile%\desktop\WindowsUpdate.log" (
+			rem echo ---------------- %userprofile%\desktop\WindowsUpdate.log:                                                                                   >> %REPORT_LOGFILE% 2>&1
+			robocopy.exe %userprofile%\desktop "%CHECKLMS_REPORT_LOG_PATH%" WindowsUpdate.log /MOV /NP /R:1 /W:1 /LOG+:%CHECKLMS_REPORT_LOG_PATH%\robocopy.log   >> %REPORT_LOGFILE% 2>&1
+			echo See %CHECKLMS_REPORT_LOG_PATH%\WindowsUpdate.log                                                                                                >> %REPORT_LOGFILE% 2>&1
+		) else (
+			echo WARNING: The logfile 'WindowsUpdate.log' wasn't found; cannot copy it!                                                                          >> %REPORT_LOGFILE% 2>&1
+			echo          It wasn't found at: [desktop]='%desktop%' / [DESKTOP_FOLDER]='%DESKTOP_FOLDER%' / [userprofile\desktop\]='%userprofile%\desktop\'.     >> %REPORT_LOGFILE% 2>&1
+			if exist "%CHECKLMS_REPORT_LOG_PATH%\Get-WindowsUpdateLog.log" (
+				echo Output of 'powershell -command "Get-WindowsUpdateLog"' ...                                                                                  >> %REPORT_LOGFILE% 2>&1
+				type "%CHECKLMS_REPORT_LOG_PATH%\Get-WindowsUpdateLog.log"                                                                                       >> %REPORT_LOGFILE% 2>&1
+			) else (
+				echo WARNING: The output file '%CHECKLMS_REPORT_LOG_PATH%\Get-WindowsUpdateLog.log' doesn't exists; cannot display it!                           >> %REPORT_LOGFILE% 2>&1
+			)
+		)
 	)
 )
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
