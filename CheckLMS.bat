@@ -95,6 +95,17 @@ rem     22-Feb-2021:
 rem        - in case command 'powershell -command "Get-WindowsUpdateLog"' fails, print output of command execution in this logfile.
 rem        - retrieve DESKTOP_FOLDER (mainly used in case desktop folder has been moved to another location)
 rem        - check ERRORLEVEL when executing 'dotnet --info'
+rem     23-Feb-2021:
+rem        - Download "AccessCHK" from https://download.sysinternals.com/files/AccessChk.zip
+rem     24-Feb-2021:
+rem        - download latest released LMS client; e.g. from https://static.siemens.com/btdownloads/lms/LMSSetup2.6.826/x64/setup64.exe
+rem        - disable one of two TS backups; execute second backup only with /extend option
+rem        - skip GetVMGenerationIdentifier.exe execution, in case MSVCR120.dll doesn't exists.
+rem        - improved output on clean/new machines, check existence of '%ALLUSERSPROFILE%\FLEXnet\'
+rem     26-Feb-2021:
+rem        - disable connection test against quality system, run them only when /extend option is set.
+rem     02-Mar-2021:
+rem        - support FNP 11.18.0.0 (or newer) used in LMS 2.6 (or newer), create donwload path with general rule (doesn't require update of script for future FNP versions)
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -117,11 +128,15 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 22-Feb-2021"
-set LMS_SCRIPT_BUILD=20210222
+set LMS_SCRIPT_VERSION="CheckLMS Script 02-Mar-2021"
+set LMS_SCRIPT_BUILD=20210302
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
+set MOST_RECENT_LMS_VERSION=2.5.824
 set MOST_RECENT_LMS_BUILD=824
+rem most recent lms field test version: 2.6.826 (per 24-Feb-2021)
+set MOST_RECENT_FT_LMS_VERSION=2.6.826
+set MOST_RECENT_FT_LMS_BUILD=826
 rem most recent dongle driver version (per 13-Nov-2020, LMS 2.5)
 set MOST_RECENT_DONGLE_DRIVER_VERSION=8.13
 set MOST_RECENT_DONGLE_DRIVER_MAJ_VERSION=8
@@ -246,6 +261,10 @@ IF NOT EXIST "%DOWNLOAD_LMS_PATH%\" (
 IF NOT EXIST "%DOWNLOAD_LMS_PATH%\git" (
 	rem echo Create new folder: %DOWNLOAD_LMS_PATH%\git\
 	mkdir %DOWNLOAD_LMS_PATH%\git\ >nul 2>&1
+)
+IF NOT EXIST "%DOWNLOAD_LMS_PATH%\LMSSetup" (
+	rem echo Create new folder: %DOWNLOAD_LMS_PATH%\LMSSetup\
+	mkdir %DOWNLOAD_LMS_PATH%\LMSSetup\ >nul 2>&1
 )
 rem Check flexera command line tools path 
 set LMS_SERVERTOOL_PATH=%ProgramFiles(x86)%\Siemens\LMS\server
@@ -684,6 +703,13 @@ if defined FNPVersion (
 			set LMS_SERVERTOOL_DW_PATH=%DOWNLOAD_LMS_PATH%\!LMS_SERVERTOOL_DW!\11.14.0.0\x64
 		)
 	)
+
+	rem if dowload path not already set, set them on general rule.
+	if not defined LMS_SERVERTOOL_DW (
+		rem FNP 11.18.0.0 (or newer) used in LMS 2.6 (or newer)
+		set LMS_SERVERTOOL_DW=SiemensFNP-%FNPVersion%-Binaries
+		set LMS_SERVERTOOL_DW_PATH=%DOWNLOAD_LMS_PATH%\!LMS_SERVERTOOL_DW!\
+	)
 ) else (
     echo This is not a valid LMS Installation, cannot read FNP version. 
 )
@@ -983,15 +1009,51 @@ if "%ConnectionTestStatus%" == "Passed" (
 		) else (
 			echo Skip download from github,  because option 'donotstartnewerscript' is set. '%0'                                                                                            >> %REPORT_LOGFILE% 2>&1
 		) 
+
+		if /I %LMS_BUILD_VERSION% NEQ %MOST_RECENT_LMS_BUILD% (
+			rem Not "most recent" [="released"] build installed, download latest released LMS client; e.g. from https://static.siemens.com/btdownloads/lms/LMSSetup2.6.826/x64/setup64.exe
+			set LMS_SETUP_EXECUTABLE=%DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_LMS_VERSION%\setup64.exe
+			IF NOT EXIST "!LMS_SETUP_EXECUTABLE!" (
+				IF NOT EXIST "%DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_LMS_VERSION%" (
+					rem echo Create new folder: %DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_LMS_VERSION%
+					mkdir %DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_LMS_VERSION% >nul 2>&1
+				)
+				set LMS_SETUP_DOWNLOAD_LINK=https://static.siemens.com/btdownloads/lms/LMSSetup%MOST_RECENT_LMS_VERSION%/x64/setup64.exe
+				echo     Download latest released LMS setup [%MOST_RECENT_LMS_VERSION%]: !LMS_SETUP_EXECUTABLE!
+				echo Download latest released LMS setup [%MOST_RECENT_LMS_VERSION%]: !LMS_SETUP_EXECUTABLE!                                      >> %REPORT_LOGFILE% 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_SETUP_DOWNLOAD_LINK!', '!LMS_SETUP_EXECUTABLE!')"             >> %REPORT_LOGFILE% 2>&1
+			) else (
+				echo     Don't download latest released LMS setup [%MOST_RECENT_LMS_VERSION%], because it exist already: !LMS_SETUP_EXECUTABLE!
+				echo Don't download latest released LMS setup [%MOST_RECENT_LMS_VERSION%], because it exist already: !LMS_SETUP_EXECUTABLE!      >> %REPORT_LOGFILE% 2>&1
+			)
+		)
+		
+		if /I %LMS_BUILD_VERSION% NEQ %MOST_RECENT_FT_LMS_BUILD% (
+			rem Not "most recent" field test build installed, download latest field test LMS client; e.g. from https://static.siemens.com/btdownloads/lms/LMSSetup2.6.826/x64/setup64.exe
+			set LMS_FT_SETUP_EXECUTABLE=%DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_FT_LMS_VERSION%\setup64.exe
+			IF NOT EXIST "!LMS_FT_SETUP_EXECUTABLE!" (
+				IF NOT EXIST "%DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_FT_LMS_VERSION%" (
+					rem echo Create new folder: %DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_FT_LMS_VERSION%
+					mkdir %DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_FT_LMS_VERSION% >nul 2>&1
+				)
+				set LMS_FT_SETUP_DOWNLOAD_LINK=https://static.siemens.com/btdownloads/lms/LMSSetup%MOST_RECENT_FT_LMS_VERSION%/x64/setup64.exe
+				echo     Download latest field test LMS setup [%MOST_RECENT_FT_LMS_VERSION%]: !LMS_FT_SETUP_EXECUTABLE!
+				echo Download latest field test LMS setup [%MOST_RECENT_FT_LMS_VERSION%]: !LMS_FT_SETUP_EXECUTABLE!                                      >> %REPORT_LOGFILE% 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_FT_SETUP_DOWNLOAD_LINK!', '!LMS_FT_SETUP_EXECUTABLE!')"               >> %REPORT_LOGFILE% 2>&1
+			) else (
+				echo     Don't download latest field test LMS setup [%MOST_RECENT_FT_LMS_VERSION%], because it exist already: !LMS_FT_SETUP_EXECUTABLE!
+				echo Don't download latest field test LMS setup [%MOST_RECENT_FT_LMS_VERSION%], because it exist already: !LMS_FT_SETUP_EXECUTABLE!      >> %REPORT_LOGFILE% 2>&1
+			)
+		)
 		
 		rem Download tool "VMGENID.EXE" (from Stratus) to read-out generation id
 		IF NOT EXIST "%DOWNLOAD_LMS_PATH%\VMGENID.EXE" (
 			echo     Download VM GENID app [from Stratus]: %DOWNLOAD_LMS_PATH%\VMGENID.EXE
-			echo Download VM GENID app [from Stratus]: %DOWNLOAD_LMS_PATH%\VMGENID.EXE                                              >> %REPORT_LOGFILE% 2>&1
+			echo Download VM GENID app [from Stratus]: %DOWNLOAD_LMS_PATH%\VMGENID.EXE                                                                                         >> %REPORT_LOGFILE% 2>&1
 			powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/tools/VMGENID.EXE', '%DOWNLOAD_LMS_PATH%\VMGENID.EXE')"   >> %REPORT_LOGFILE% 2>&1
 		) else (
-			echo     Don't download VM GENID app [from Stratus] [VMGENID.EXE], because they exist already.
-			echo Don't download VM GENID app [from Stratus] [VMGENID.EXE], because they exist already.                              >> %REPORT_LOGFILE% 2>&1
+			echo     Don't download VM GENID app [from Stratus] [VMGENID.EXE], because it exist already.
+			echo Don't download VM GENID app [from Stratus] [VMGENID.EXE], because it exist already.                                                                           >> %REPORT_LOGFILE% 2>&1
 		)
 		
 		rem Download tool "GetVMGenerationIdentifier.exe" to read-out generation id
@@ -1028,6 +1090,17 @@ if "%ConnectionTestStatus%" == "Passed" (
 		echo     Download newest dongle driver: %DOWNLOAD_LMS_PATH%\haspdinst.exe [%MOST_RECENT_DONGLE_DRIVER_VERSION%]
 		echo Download newest dongle driver: %DOWNLOAD_LMS_PATH%\haspdinst.exe [%MOST_RECENT_DONGLE_DRIVER_VERSION%]             >> %REPORT_LOGFILE% 2>&1
 		powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/hasp/%MOST_RECENT_DONGLE_DRIVER_VERSION%/haspdinst.exe', '%DOWNLOAD_LMS_PATH%\haspdinst.exe')"   >> %REPORT_LOGFILE% 2>&1
+		
+		
+		rem Download AccessChk tool
+		IF NOT EXIST "%DOWNLOAD_LMS_PATH%\AccessChk.zip" (
+			echo     Download AccessChk tool: %DOWNLOAD_LMS_PATH%\AccessChk.zip
+			echo Download AccessChk tool: %DOWNLOAD_LMS_PATH%\AccessChk.zip                                                         >> %REPORT_LOGFILE% 2>&1
+			powershell -Command "(New-Object Net.WebClient).DownloadFile('https://download.sysinternals.com/files/AccessChk.zip', '%DOWNLOAD_LMS_PATH%\AccessChk.zip')"   >> %REPORT_LOGFILE% 2>&1
+		) else (
+			echo     Don't download AccessChk tool [AccessChk.zip], because it exist already.
+			echo Don't download AccessChk tool [AccessChk.zip], because it exist already.                                           >> %REPORT_LOGFILE% 2>&1
+		)
 		
 		rem Download SigCheck tool
 		IF NOT EXIST "%DOWNLOAD_LMS_PATH%\Sigcheck.zip" (
@@ -1106,6 +1179,18 @@ if defined LMS_SERVERTOOL_DW (
 		)
 		powershell -Command "Expand-Archive -Path %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip -DestinationPath %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%\ -Verbose -Force"   >> %REPORT_LOGFILE% 2>&1
 	)
+)
+rem Unzip AccessChk tool
+IF EXIST "%DOWNLOAD_LMS_PATH%\AccessChk.zip" (
+	if defined UNZIP_TOOL (
+		"!UNZIP_TOOL!" x -o!DOWNLOAD_LMS_PATH!\AccessChk -y %DOWNLOAD_LMS_PATH%\AccessChk.zip                                     >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo Can't unzip AccessChk tool [AccessChk.zip], because no unzip tool is available.                                      >> %REPORT_LOGFILE% 2>&1
+	)
+	powershell -Command "Expand-Archive -Path %DOWNLOAD_LMS_PATH%\AccessChk.zip -DestinationPath !DOWNLOAD_LMS_PATH!\AccessChk -Verbose -Force"   >> %REPORT_LOGFILE% 2>&1
+) else (
+	echo     Don't unzip AccessChk tool [AccessChk.zip], because zip archive doesn't exists.
+	echo Don't unzip AccessChk tool [AccessChk.zip], because zip archive doesn't exists.                                          >> %REPORT_LOGFILE% 2>&1
 )
 rem Unzip SigCheck tool
 IF EXIST "%DOWNLOAD_LMS_PATH%\Sigcheck.zip" (
@@ -1217,6 +1302,12 @@ if defined LMS_SCRIPT_BUILD_DOWNLOAD_TO_START (
 	)
 )	
 
+rem -- AccessChk.exe
+set ACCESSCHECK_TOOL=
+IF EXIST "!DOWNLOAD_LMS_PATH!\AccessChk\AccessChk.exe" (
+	set ACCESSCHECK_TOOL=!DOWNLOAD_LMS_PATH!\AccessChk\AccessChk.exe
+	set ACCESSCHECK_TOOL=-nobanner -accepteula
+)
 rem -- Sigcheck.exe
 set SIGCHECK_TOOL=
 IF EXIST "!DOWNLOAD_LMS_PATH!\SigCheck\SigCheck.exe" (
@@ -1543,11 +1634,13 @@ echo Use '%DOCUMENTATION_PATH%' to search for documentation.                    
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 SET STAMP=%DATE:/=-% %TIME::=.%
 echo Backup trusted store file(s):  %STAMP%                                                                                  >> %REPORT_LOGFILE% 2>&1
-xcopy %ALLUSERSPROFILE%\FLEXnet\SIEMBT* "%ALLUSERSPROFILE%\FLEXnet\TSbackup %STAMP%" /Y /H /I                                >> %REPORT_LOGFILE% 2>&1
-echo     ... copied to %ALLUSERSPROFILE%\FLEXnet\TSbackup %STAMP%                                                            >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1 
+if defined LMS_EXTENDED_CONTENT (
+	xcopy %ALLUSERSPROFILE%\FLEXnet\SIEMBT* "%ALLUSERSPROFILE%\FLEXnet\TSbackup %STAMP%" /Y /H /I                            >> %REPORT_LOGFILE% 2>&1
+	echo     ... copied to '%ALLUSERSPROFILE%\FLEXnet\TSbackup %STAMP%'                                                      >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1 
+)
 xcopy %ALLUSERSPROFILE%\FLEXnet\SIEMBT* "%REPORT_LOG_PATH%\TSbackup %STAMP%" /Y /H /I                                        >> %REPORT_LOGFILE% 2>&1
-echo     ... copied to %REPORT_LOG_PATH%\TSbackup %STAMP%                                                                    >> %REPORT_LOGFILE% 2>&1
+echo     ... copied to '%REPORT_LOG_PATH%\TSbackup %STAMP%'                                                                  >> %REPORT_LOGFILE% 2>&1
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo     Read installed products and version (with wmic /format:csv product get name, version, InstallDate, vendor)
 echo Read installed products and version (with wmic product get name, version, InstallDate, vendor /format:csv)              >> %REPORT_LOGFILE% 2>&1
@@ -1902,11 +1995,16 @@ IF EXIST "%DOWNLOAD_LMS_PATH%\VMGENID.EXE" (
 	echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
 )
 IF EXIST "%DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe" (
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-	echo ... read VM Generation Id [using GetVMGenerationIdentifier.exe] ...
-	echo Read VM Generation Id [using GetVMGenerationIdentifier.exe]:                                                        >> %REPORT_LOGFILE% 2>&1
-	"%DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe"                                                                      >> %REPORT_LOGFILE% 2>&1
-	echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                                 >> %REPORT_LOGFILE% 2>&1
+	if exist "C:\WINDOWS\system32\MSVCR120.dll" (
+		echo ... read VM Generation Id [using GetVMGenerationIdentifier.exe] ...
+		echo Read VM Generation Id [using GetVMGenerationIdentifier.exe]:                                                                        >> %REPORT_LOGFILE% 2>&1
+		"%DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe"                                                                                      >> %REPORT_LOGFILE% 2>&1
+		echo .                                                                                                                                   >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo ... read VM Generation Id [using GetVMGenerationIdentifier.exe], skipped because 'C:\WINDOWS\system32\MSVCR120.dll' doesn't exist.
+		echo Read VM Generation Id [using GetVMGenerationIdentifier.exe], skipped because 'C:\WINDOWS\system32\MSVCR120.dll' doesn't exist.      >> %REPORT_LOGFILE% 2>&1
+	)
 )
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 echo Content of folder: "%WinDir%\System32\Drivers\Etc"                                                                      >> %REPORT_LOGFILE% 2>&1
@@ -3594,10 +3692,14 @@ dir /S /A /X /4 /W "%ALLUSERSPROFILE%\FLEXnet"                                  
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1 
 echo ... search trusted store file(s) ...
 echo Search trusted store file(s):                                                                                           >> %REPORT_LOGFILE% 2>&1
-del %CHECKLMS_REPORT_LOG_PATH%\tfsFilesFound.txt >nul 2>&1
-cd %ALLUSERSPROFILE%\FLEXnet\
-FOR /r %ALLUSERSPROFILE%\FLEXnet\ %%X IN (*tsf.data) DO echo %%~dpnxX >> %CHECKLMS_REPORT_LOG_PATH%\tfsFilesFound.txt
-Type %CHECKLMS_REPORT_LOG_PATH%\tfsFilesFound.txt                                                                            >> %REPORT_LOGFILE% 2>&1
+if exist "%ALLUSERSPROFILE%\FLEXnet\" (
+	del %CHECKLMS_REPORT_LOG_PATH%\tfsFilesFound.txt >nul 2>&1
+	cd %ALLUSERSPROFILE%\FLEXnet\
+	FOR /r %ALLUSERSPROFILE%\FLEXnet\ %%X IN (*tsf.data) DO echo %%~dpnxX >> %CHECKLMS_REPORT_LOG_PATH%\tfsFilesFound.txt
+	Type %CHECKLMS_REPORT_LOG_PATH%\tfsFilesFound.txt                                                                        >> %REPORT_LOGFILE% 2>&1
+) else (
+	echo     No files found, the directory '%ALLUSERSPROFILE%\FLEXnet\' doesn't exist.                                       >> %REPORT_LOGFILE% 2>&1
+)
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo ... decrypt Flexera logfiles ... 
@@ -3800,15 +3902,19 @@ echo -------------------------------------------------------                    
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo ... search Flexera logfiles ...
 echo Search Flexera logfiles:                                                                                                >> %REPORT_LOGFILE% 2>&1
-del %CHECKLMS_REPORT_LOG_PATH%\FlexeraLogFilesFound.txt >nul 2>&1
-cd %ALLUSERSPROFILE%\FLEXnet\
-FOR /r %ALLUSERSPROFILE%\FLEXnet\ %%X IN (*.log) DO echo %%~dpnxX >> %CHECKLMS_REPORT_LOG_PATH%\FlexeraLogFilesFound.txt
-Type %CHECKLMS_REPORT_LOG_PATH%\FlexeraLogFilesFound.txt                                                                     >> %REPORT_LOGFILE% 2>&1
-FOR %%X IN (%ALLUSERSPROFILE%\FLEXnet\*.log) DO ( 
-    echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1 
-    echo %%X                                                                                                                 >> %REPORT_LOGFILE% 2>&1 
-    powershell -command "& {Get-Content '%%X' | Select-Object -last %LOG_FILE_LINES%}"                                       >> %REPORT_LOGFILE% 2>&1 
-    copy %%X %CHECKLMS_REPORT_LOG_PATH%\                                                                                     >> %REPORT_LOGFILE% 2>&1
+if exist "%ALLUSERSPROFILE%\FLEXnet\" (
+	del %CHECKLMS_REPORT_LOG_PATH%\FlexeraLogFilesFound.txt >nul 2>&1
+	cd %ALLUSERSPROFILE%\FLEXnet\
+	FOR /r %ALLUSERSPROFILE%\FLEXnet\ %%X IN (*.log) DO echo %%~dpnxX >> %CHECKLMS_REPORT_LOG_PATH%\FlexeraLogFilesFound.txt
+	Type %CHECKLMS_REPORT_LOG_PATH%\FlexeraLogFilesFound.txt                                                                 >> %REPORT_LOGFILE% 2>&1
+	FOR %%X IN (%ALLUSERSPROFILE%\FLEXnet\*.log) DO ( 
+		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1 
+		echo %%X                                                                                                             >> %REPORT_LOGFILE% 2>&1 
+		powershell -command "& {Get-Content '%%X' | Select-Object -last %LOG_FILE_LINES%}"                                   >> %REPORT_LOGFILE% 2>&1 
+		copy %%X %CHECKLMS_REPORT_LOG_PATH%\                                                                                 >> %REPORT_LOGFILE% 2>&1
+	)
+) else (
+	echo     No files found, the directory '%ALLUSERSPROFILE%\FLEXnet\' doesn't exist.                                       >> %REPORT_LOGFILE% 2>&1
 )
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
@@ -4275,29 +4381,33 @@ echo =   R E M O T E   L I C E N S E   S E R V E R                              
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo ... analyze remote license server on %LMS_CFG_LICENSE_SRV_PORT%@%LMS_CFG_LICENSE_SRV_NAME% ...
-if defined LMS_CFG_LICENSE_SRV_NAME if not "%LMS_CFG_LICENSE_SRV_NAME%" == "localhost" (
-    echo Configured license server: %LMS_CFG_LICENSE_SRV_NAME% with port %LMS_CFG_LICENSE_SRV_PORT%                          >> %REPORT_LOGFILE% 2>&1
-	echo servercomptranutil.exe -serverView %LMS_CFG_LICENSE_SRV_PORT%@%LMS_CFG_LICENSE_SRV_NAME%                            >> %REPORT_LOGFILE% 2>&1
-	if defined LMS_SERVERCOMTRANUTIL (
-		"%LMS_SERVERCOMTRANUTIL%" -serverView %LMS_CFG_LICENSE_SRV_PORT%@%LMS_CFG_LICENSE_SRV_NAME%                          >> %REPORT_LOGFILE% 2>&1
+if defined LMS_CFG_LICENSE_SRV_NAME (
+	if not "%LMS_CFG_LICENSE_SRV_NAME%" == "localhost" (
+		echo Configured license server: %LMS_CFG_LICENSE_SRV_NAME% with port %LMS_CFG_LICENSE_SRV_PORT%                      >> %REPORT_LOGFILE% 2>&1
+		echo servercomptranutil.exe -serverView %LMS_CFG_LICENSE_SRV_PORT%@%LMS_CFG_LICENSE_SRV_NAME%                        >> %REPORT_LOGFILE% 2>&1
+		if defined LMS_SERVERCOMTRANUTIL (
+			"%LMS_SERVERCOMTRANUTIL%" -serverView %LMS_CFG_LICENSE_SRV_PORT%@%LMS_CFG_LICENSE_SRV_NAME%                      >> %REPORT_LOGFILE% 2>&1
+			echo ==============================================================================                              >> %REPORT_LOGFILE% 2>&1
+			echo Start at !DATE! !TIME! ....                                                                                 >> %REPORT_LOGFILE% 2>&1
+			echo servercomptranutil.exe -serverView %LMS_CFG_LICENSE_SRV_PORT%@%LMS_CFG_LICENSE_SRV_NAME% format=full        >> %REPORT_LOGFILE% 2>&1
+			"%LMS_SERVERCOMTRANUTIL%" -serverView %LMS_CFG_LICENSE_SRV_PORT%@%LMS_CFG_LICENSE_SRV_NAME% format=full          >> %REPORT_LOGFILE% 2>&1
+		) else (
+			echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                         >> %REPORT_LOGFILE% 2>&1
+		)
 		echo ==============================================================================                                  >> %REPORT_LOGFILE% 2>&1
 		echo Start at !DATE! !TIME! ....                                                                                     >> %REPORT_LOGFILE% 2>&1
-		echo servercomptranutil.exe -serverView %LMS_CFG_LICENSE_SRV_PORT%@%LMS_CFG_LICENSE_SRV_NAME% format=full            >> %REPORT_LOGFILE% 2>&1
-		"%LMS_SERVERCOMTRANUTIL%" -serverView %LMS_CFG_LICENSE_SRV_PORT%@%LMS_CFG_LICENSE_SRV_NAME% format=full              >> %REPORT_LOGFILE% 2>&1
-	) else (
-		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                             >> %REPORT_LOGFILE% 2>&1
-	)
-	echo ==============================================================================                                      >> %REPORT_LOGFILE% 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                         >> %REPORT_LOGFILE% 2>&1
 
-	echo appactutil.exe -serverview -commServer %LMS_CFG_LICENSE_SRV_PORT%@%LMS_CFG_LICENSE_SRV_NAME% -long                  >> %REPORT_LOGFILE% 2>&1
-	if defined LMS_APPACTUTIL (
-		"%LMS_APPACTUTIL%" -serverview -commServer %LMS_CFG_LICENSE_SRV_PORT%@%LMS_CFG_LICENSE_SRV_NAME% -long               >> %REPORT_LOGFILE% 2>&1
+		echo appactutil.exe -serverview -commServer %LMS_CFG_LICENSE_SRV_PORT%@%LMS_CFG_LICENSE_SRV_NAME% -long              >> %REPORT_LOGFILE% 2>&1
+		if defined LMS_APPACTUTIL (
+			"%LMS_APPACTUTIL%" -serverview -commServer %LMS_CFG_LICENSE_SRV_PORT%@%LMS_CFG_LICENSE_SRV_NAME% -long           >> %REPORT_LOGFILE% 2>&1
+		) else (
+			echo     appactutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
+		)
 	) else (
-		echo     appactutil.exe doesn't exist, cannot perform operation.                                                     >> %REPORT_LOGFILE% 2>&1
+		echo Configured license server: localhost as server configured; do not perform operations.                           >> %REPORT_LOGFILE% 2>&1
 	)
 ) else (
-    echo Configured license server: either no server configured or localhost; do not perform operations.                     >> %REPORT_LOGFILE% 2>&1
+    echo Configured license server: no server configured; do not perform operations.                                         >> %REPORT_LOGFILE% 2>&1
 )
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
@@ -5138,17 +5248,21 @@ if not defined LMS_SKIPCONTEST (
 		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_btlms_activationservice.txt                                                           >> %REPORT_LOGFILE% 2>&1
 	)
 	echo -------------------------------------------------------                                                                              >> %REPORT_LOGFILE% 2>&1
-	set CONNECTION_TEST_URL=https://lms-quality.bt.siemens.com/flexnet/services/ActivationService
-	powershell -Command "(New-Object Net.WebClient).DownloadFile('!CONNECTION_TEST_URL!', '%temp%\downloadtest.txt')"  >!CHECKLMS_REPORT_LOG_PATH!\connection_test_btqual_activationservice.txt 2>&1
-	if !ERRORLEVEL!==0 (
-		rem Connection Test: PASSED
-		echo     Connection Test PASSED, can access !CONNECTION_TEST_URL!
-		echo Connection Test PASSED, can access !CONNECTION_TEST_URL!                                                                         >> %REPORT_LOGFILE% 2>&1
-	) else if !ERRORLEVEL!==1 (
-		rem Connection Test: FAILED
-		echo     Connection Test FAILED, cannot access !CONNECTION_TEST_URL!
-		echo Connection Test FAILED, cannot access !CONNECTION_TEST_URL!                                                                      >> %REPORT_LOGFILE% 2>&1
-		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_btqual_activationservice.txt                                                          >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_EXTENDED_CONTENT (
+		set CONNECTION_TEST_URL=https://lms-quality.bt.siemens.com/flexnet/services/ActivationService
+		powershell -Command "(New-Object Net.WebClient).DownloadFile('!CONNECTION_TEST_URL!', '%temp%\downloadtest.txt')"  >!CHECKLMS_REPORT_LOG_PATH!\connection_test_btqual_activationservice.txt 2>&1
+		if !ERRORLEVEL!==0 (
+			rem Connection Test: PASSED
+			echo     Connection Test PASSED, can access !CONNECTION_TEST_URL!
+			echo Connection Test PASSED, can access !CONNECTION_TEST_URL!                                                                     >> %REPORT_LOGFILE% 2>&1
+		) else if !ERRORLEVEL!==1 (
+			rem Connection Test: FAILED
+			echo     Connection Test FAILED, cannot access !CONNECTION_TEST_URL!
+			echo Connection Test FAILED, cannot access !CONNECTION_TEST_URL!                                                                  >> %REPORT_LOGFILE% 2>&1
+			type !CHECKLMS_REPORT_LOG_PATH!\connection_test_btqual_activationservice.txt                                                      >> %REPORT_LOGFILE% 2>&1
+		)
+	) else (
+		echo Skipped 'Connection Test to Quality System', to execute this test run with /extend otion.                                        >> %REPORT_LOGFILE% 2>&1
 	)
 	echo -------------------------------------------------------                                                                              >> %REPORT_LOGFILE% 2>&1
 	set CONNECTION_TEST_URL=http://194.138.12.72/flexnet/services/ActivationService
@@ -5164,17 +5278,21 @@ if not defined LMS_SKIPCONTEST (
 		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_1941381272.txt                                                                        >> %REPORT_LOGFILE% 2>&1
 	)
 	echo -------------------------------------------------------                                                                              >> %REPORT_LOGFILE% 2>&1
-	set CONNECTION_TEST_URL=http://158.226.135.60/flexnet/services/ActivationService
-	powershell -Command "(New-Object Net.WebClient).DownloadFile('!CONNECTION_TEST_URL!', '%temp%\downloadtest.txt')"  >!CHECKLMS_REPORT_LOG_PATH!\connection_test_15822613560.txt 2>&1
-	if !ERRORLEVEL!==0 (
-		rem Connection Test: PASSED
-		echo     Connection Test PASSED, can access !CONNECTION_TEST_URL!
-		echo Connection Test PASSED, can access !CONNECTION_TEST_URL!                                                                         >> %REPORT_LOGFILE% 2>&1
-	) else if !ERRORLEVEL!==1 (
-		rem Connection Test: FAILED
-		echo     Connection Test FAILED, cannot access !CONNECTION_TEST_URL!
-		echo Connection Test FAILED, cannot access !CONNECTION_TEST_URL!                                                                      >> %REPORT_LOGFILE% 2>&1
-		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_15822613560.txt                                                                       >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_EXTENDED_CONTENT (
+		set CONNECTION_TEST_URL=http://158.226.135.60/flexnet/services/ActivationService
+		powershell -Command "(New-Object Net.WebClient).DownloadFile('!CONNECTION_TEST_URL!', '%temp%\downloadtest.txt')"  >!CHECKLMS_REPORT_LOG_PATH!\connection_test_15822613560.txt 2>&1
+		if !ERRORLEVEL!==0 (
+			rem Connection Test: PASSED
+			echo     Connection Test PASSED, can access !CONNECTION_TEST_URL!
+			echo Connection Test PASSED, can access !CONNECTION_TEST_URL!                                                                     >> %REPORT_LOGFILE% 2>&1
+		) else if !ERRORLEVEL!==1 (
+			rem Connection Test: FAILED
+			echo     Connection Test FAILED, cannot access !CONNECTION_TEST_URL!
+			echo Connection Test FAILED, cannot access !CONNECTION_TEST_URL!                                                                  >> %REPORT_LOGFILE% 2>&1
+			type !CHECKLMS_REPORT_LOG_PATH!\connection_test_15822613560.txt                                                                   >> %REPORT_LOGFILE% 2>&1
+		)
+	) else (
+		echo Skipped 'Connection Test to 158.226.135.60', to execute this test run with /extend otion.                                        >> %REPORT_LOGFILE% 2>&1
 	)
 	echo Start at !DATE! !TIME! ....                                                                                                          >> %REPORT_LOGFILE% 2>&1
 	echo -------------------------------------------------------                                                                              >> %REPORT_LOGFILE% 2>&1
@@ -5194,26 +5312,35 @@ if not defined LMS_SKIPCONTEST (
 	echo Start at !DATE! !TIME! ....                                                                                                          >> %REPORT_LOGFILE% 2>&1
 	echo Start enhanced connection test [using 'act_connection_test'] ...                                                                     >> %REPORT_LOGFILE% 2>&1
 	echo     Start enhanced connection test [using 'act_connection_test'] ...
+	del %CHECKLMS_REPORT_LOG_PATH%\connection_test_step1.log >nul 2>&1
+	del %CHECKLMS_REPORT_LOG_PATH%\connection_test_step2.log >nul 2>&1
+	del %CHECKLMS_REPORT_LOG_PATH%\connection_test_step3.log >nul 2>&1
 	if defined LMS_LMUTOOL (
 		rem Execute each step of enhanced connection test
 		echo         -[Step 1 of 3] Activate 'act_connection_test' ...
 		echo          Started at !DATE! !TIME! ...
 		echo Started at !DATE! !TIME! ....                      >  %CHECKLMS_REPORT_LOG_PATH%\connection_test_step1.log 2>&1
 		"!LMS_LMUTOOL!" /A:act_connection_test /M:O /Partial:1  >> %CHECKLMS_REPORT_LOG_PATH%\connection_test_step1.log 2>&1
-		echo          Finished at !DATE! !TIME!!
+		rem supress error message: "Der Prozess kann nicht auf die Datei zugreifen, da sie von einem anderen Prozess verwendet wird."
+		rem delaying - doesn't work -- powershell.exe -Command "Start-Sleep -Seconds 15"
 		echo Finished at !DATE! !TIME! ....                     >> %CHECKLMS_REPORT_LOG_PATH%\connection_test_step1.log 2>&1
+		echo          Finished at !DATE! !TIME!!
 		echo         -[Step 2 of 3] Check 'act_connection_test' ...
 		echo          Started at !DATE! !TIME! ...
 		echo Started at !DATE! !TIME! ....                      >  %CHECKLMS_REPORT_LOG_PATH%\connection_test_step2.log 2>&1
 		"!LMS_LMUTOOL!" /CHECK:sbt_lms_connection_test          >> %CHECKLMS_REPORT_LOG_PATH%\connection_test_step2.log 2>&1
-		echo          Finished at !DATE! !TIME!!
+		rem supress error message: "Der Prozess kann nicht auf die Datei zugreifen, da sie von einem anderen Prozess verwendet wird."
+		rem delaying - doesn't work -- powershell.exe -Command "Start-Sleep -Seconds 15"
 		echo Finished at !DATE! !TIME! ....                     >> %CHECKLMS_REPORT_LOG_PATH%\connection_test_step2.log 2>&1
+		echo          Finished at !DATE! !TIME!!
 		echo         -[Step 3 of 3] Return 'act_connection_test' ...
 		echo          Started at !DATE! !TIME! ...
 		echo Started at !DATE! !TIME! ....                      >  %CHECKLMS_REPORT_LOG_PATH%\connection_test_step3.log 2>&1
 		"!LMS_LMUTOOL!" /RA:act_connection_test                 >> %CHECKLMS_REPORT_LOG_PATH%\connection_test_step3.log 2>&1
-		echo          Finished at !DATE! !TIME!!
+		rem supress error message: "Der Prozess kann nicht auf die Datei zugreifen, da sie von einem anderen Prozess verwendet wird."
+		rem delaying - doesn't work -- powershell.exe -Command "Start-Sleep -Seconds 15"
 		echo Finished at !DATE! !TIME! ....                     >> %CHECKLMS_REPORT_LOG_PATH%\connection_test_step3.log 2>&1
+		echo          Finished at !DATE! !TIME!!
 		rem add output of each step to common logfile
 		echo -[Step 1 of 3] Activate 'act_connection_test' -------------------                                                                >> %REPORT_LOGFILE% 2>&1
 		type %CHECKLMS_REPORT_LOG_PATH%\connection_test_step1.log                                                                             >> %REPORT_LOGFILE% 2>&1
@@ -5222,6 +5349,7 @@ if not defined LMS_SKIPCONTEST (
 		echo -[Step 3 of 3] Return 'act_connection_test' ---------------------                                                                >> %REPORT_LOGFILE% 2>&1
 		type %CHECKLMS_REPORT_LOG_PATH%\connection_test_step3.log                                                                             >> %REPORT_LOGFILE% 2>&1
 		echo -----------------------------------------------------------------                                                                >> %REPORT_LOGFILE% 2>&1
+		echo Start at !DATE! !TIME! ....                                                                                                      >> %REPORT_LOGFILE% 2>&1
 		rem check status of each step
 		for /f "tokens=1 delims= eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\connection_test_step1.log ^|find /I "Success"') do set LMS_CON_TEST_STEP1_PASSED=1
 		for /f "tokens=1 delims= eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\connection_test_step2.log ^|find /I "Success"') do set LMS_CON_TEST_STEP2_PASSED=1
@@ -5298,19 +5426,23 @@ if not defined LMS_SKIPCONTEST (
 	ping lms.bt.siemens.com                                                                                                                   >> %REPORT_LOGFILE% 2>&1
 	echo -------------------------------------------------------                                                                              >> %REPORT_LOGFILE% 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                                          >> %REPORT_LOGFILE% 2>&1
-	echo Trace route IPv4 to lms.bt.siemens.com [max. 15 hops] ...                                                                            >> %REPORT_LOGFILE% 2>&1
-	echo     Trace route IPv4 to lms.bt.siemens.com [max. 15 hops] ...
-	tracert -h 15  -4 lms.bt.siemens.com                                                                                                      >> %REPORT_LOGFILE% 2>&1
+	echo Trace route IPv4 to lms.bt.siemens.com [max. 10 hops] ...                                                                            >> %REPORT_LOGFILE% 2>&1
+	echo     Trace route IPv4 to lms.bt.siemens.com [max. 10 hops] ...
+	tracert -h 10  -4 lms.bt.siemens.com                                                                                                      >> %REPORT_LOGFILE% 2>&1
 	echo -------------------------------------------------------                                                                              >> %REPORT_LOGFILE% 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                                          >> %REPORT_LOGFILE% 2>&1
-	echo Trace route IPv6 to lms.bt.siemens.com [max. 15 hops] ...                                                                            >> %REPORT_LOGFILE% 2>&1
-	echo     Trace route IPv6 to lms.bt.siemens.com [max. 15 hops] ...
-	tracert -h 15  -6 lms.bt.siemens.com                                                                                                      >> %REPORT_LOGFILE% 2>&1
+	echo Trace route IPv6 to lms.bt.siemens.com [max. 10 hops] ...                                                                            >> %REPORT_LOGFILE% 2>&1
+	echo     Trace route IPv6 to lms.bt.siemens.com [max. 10 hops] ...
+	tracert -h 10  -6 lms.bt.siemens.com                                                                                                      >> %REPORT_LOGFILE% 2>&1
 	echo -------------------------------------------------------                                                                              >> %REPORT_LOGFILE% 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                                          >> %REPORT_LOGFILE% 2>&1
-	echo Ping lms-quality.bt.siemens.com ...                                                                                                  >> %REPORT_LOGFILE% 2>&1
-	echo     Ping lms-quality.bt.siemens.com ...
-	ping lms-quality.bt.siemens.com                                                                                                           >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_EXTENDED_CONTENT (
+		echo Start at !DATE! !TIME! ....                                                                                                      >> %REPORT_LOGFILE% 2>&1
+		echo Ping lms-quality.bt.siemens.com ...                                                                                              >> %REPORT_LOGFILE% 2>&1
+		echo     Ping lms-quality.bt.siemens.com ...
+		ping lms-quality.bt.siemens.com                                                                                                       >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo Skipped 'Ping Test to Quality System', to execute this test run with /extend otion.                                              >> %REPORT_LOGFILE% 2>&1
+	)
 ) else (
 	if defined SHOW_COLORED_OUTPUT (
 		echo [1;33m    SKIPPED connection test. The script didn't execute the connections tests. [1;37m
