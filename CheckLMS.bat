@@ -74,7 +74,7 @@ rem        - Add values retrived from SIMEBT to summary at end of logfile. Displ
 rem     11-Feb-2021:
 rem        - adjust format of LMS_REPORT_START to be more "humable" readable
 rem     16-Feb-2021:
-rem        - add option: /setfirewall
+rem        - add option: /setfirewall; see also https://wiki.siemens.com/display/en/LMS+VMware+configuration
 rem        - change firewall settings analyze part, to use extract of 'Powershell -command "Show-NetFirewallRule"' instead of 'netsh advfirewall firewall show rule name=all verbose';
 rem          because the ouptut of netsh is language specific and the further pasring doesn't work correct on "non-English" systems.
 rem     17-Feb-2021:
@@ -106,6 +106,8 @@ rem     26-Feb-2021:
 rem        - disable connection test against quality system, run them only when /extend option is set.
 rem     02-Mar-2021:
 rem        - support FNP 11.18.0.0 (or newer) used in LMS 2.6 (or newer), create donwload path with general rule (doesn't require update of script for future FNP versions)
+rem     10-Mar-2021:
+rem        - set field test version to LMS 2.6.828
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -128,15 +130,15 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 02-Mar-2021"
-set LMS_SCRIPT_BUILD=20210302
+set LMS_SCRIPT_VERSION="CheckLMS Script 10-Mar-2021"
+set LMS_SCRIPT_BUILD=20210310
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
 set MOST_RECENT_LMS_BUILD=824
-rem most recent lms field test version: 2.6.826 (per 24-Feb-2021)
-set MOST_RECENT_FT_LMS_VERSION=2.6.826
-set MOST_RECENT_FT_LMS_BUILD=826
+rem most recent lms field test version: 2.6.828 (per 10-Mar-2021)
+set MOST_RECENT_FT_LMS_VERSION=2.6.828
+set MOST_RECENT_FT_LMS_BUILD=828
 rem most recent dongle driver version (per 13-Nov-2020, LMS 2.5)
 set MOST_RECENT_DONGLE_DRIVER_VERSION=8.13
 set MOST_RECENT_DONGLE_DRIVER_MAJ_VERSION=8
@@ -1540,6 +1542,7 @@ if defined LMS_SET_FIREWALL (
 		netsh advfirewall firewall delete rule name="LMS lmgrd"                                                                                                >> %REPORT_LOGFILE% 2>&1
 		echo Delete rule: netsh advfirewall firewall delete rule name="LMS SIEMBT"                                                                             >> %REPORT_LOGFILE% 2>&1
 		netsh advfirewall firewall delete rule name="LMS SIEMBT"                                                                                               >> %REPORT_LOGFILE% 2>&1
+		rem see also https://wiki.siemens.com/display/en/LMS+VMware+configuration
 		echo Set rule: netsh advfirewall firewall add rule name="LMS lmgrd" dir=in action=allow program="%ProgramFiles(x86)%\Siemens\LMS\server\lmgrd.exe"     >> %REPORT_LOGFILE% 2>&1
 		netsh advfirewall firewall add rule name="LMS lmgrd" dir=in action=allow program="%ProgramFiles(x86)%\Siemens\LMS\server\lmgrd.exe"                    >> %REPORT_LOGFILE% 2>&1
 		echo Setrule : netsh advfirewall firewall add rule name="LMS siembt" dir=in action=allow program="%ProgramFiles(x86)%\Siemens\LMS\server\siembt.exe"   >> %REPORT_LOGFILE% 2>&1
