@@ -118,6 +118,9 @@ rem     16-Mar-2021:
 rem        - add VMID.txt to track changes in virtual ids, like VMGENID, etc.
 rem        - reduce output in general logfile for unzip operations (keep them in own files, do not add them to general logfile)
 rem        - remove log entry "Run CheckLMS.bat 64-Bit" and "Run CheckLMS.bat 32-Bit"
+rem     17-Mar-2021:
+rem        - add option /checkid (incl. LMS_SKIPDOWNLOAD, LMS_SKIPTSBACKUP, LMS_SKIPBTALMPLUGIN, LMS_SKIPSIGCHECK, LMS_SKIPWMIC, LMS_SKIPFIREWALL, LMS_SKIPSCHEDTASK, LMS_SKIPWER, LMS_SKIPSSU, LMS_SKIPFNP, LMS_SKIPLMS)
+rem        - content of "%WinDir%\System32\Drivers\Etc" is only copied, no longer addded to general logfile.
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -135,13 +138,14 @@ rem              - /skipcontest                 skip section wich performs conne
 rem              - /extend                      run extended content, increases script running time!
 rem              - /donotstartnewerscript       don't start newer script even if available (mainly to ensure proper handling of command line options) 
 rem              - /checkdownload               perform downloads and print file versions.
+rem              - /checkid                     check machine identifiers, like UMN, VMGENID, ...
 rem              - /setfirewall                 sets firewall for external access to LMS. 
 rem              - /info "Any text"             Adds this text to the output, e.g. reference to field issue /info "SR1-XXXX"
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 16-Mar-2021"
-set LMS_SCRIPT_BUILD=20210316
+set LMS_SCRIPT_VERSION="CheckLMS Script 17-Mar-2021"
+set LMS_SCRIPT_BUILD=20210317
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -364,6 +368,22 @@ FOR %%A IN (%*) DO (
 		)
 		if "!var!"=="checkdownload" (
 			set LMS_CHECK_DOWNLOAD=1
+		)
+		if "!var!"=="checkid" (
+			set LMS_CHECK_ID=1
+			set LMS_SKIPNETSTAT=1
+			set LMS_SKIPCONTEST=1
+			set LMS_SKIPDOWNLOAD=1
+			set LMS_SKIPTSBACKUP=1
+			set LMS_SKIPBTALMPLUGIN=1
+			set LMS_SKIPSIGCHECK=1
+			set LMS_SKIPWMIC=1
+			set LMS_SKIPFIREWALL=1
+			set LMS_SKIPSCHEDTASK=1
+			set LMS_SKIPWER=1
+			set LMS_SKIPSSU=1
+			set LMS_SKIPFNP=1
+			set LMS_SKIPLMS=1
 		)
 		if "!var!"=="setfirewall" (
 			set LMS_SET_FIREWALL=1
@@ -893,296 +913,305 @@ if defined VC_REDIST_VERSION (
 	echo Installed VC++ redistributable package: was not able to determine installed version.                                >> %REPORT_LOGFILE% 2>&1
 )
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo ... download additional tools and libraries ...
-rem Connection Test to CheckLMS share
-set SiemensConnectionTestStatus=Unknown
-IF EXIST "!CHECKLMS_PUBLIC_SHARE!\!CHECKLMS_CONNECTION_TEST_FILE!" (
-	rem Connection Test: PASSED
-	echo     Connection Test to public share PASSED, can access '!CHECKLMS_CONNECTION_TEST_FILE!'
-	echo Connection Test to public share PASSED, can access !CHECKLMS_PUBLIC_SHARE!\!CHECKLMS_CONNECTION_TEST_FILE!          >> %REPORT_LOGFILE% 2>&1
-	set SiemensConnectionTestStatus=Passed
-) else (
-	rem Connection Test: FAILED
-	echo     Connection Test to public share FAILED, cannot access '!CHECKLMS_CONNECTION_TEST_FILE!'
-	echo Connection Test to public share FAILED, cannot access !CHECKLMS_PUBLIC_SHARE!\!CHECKLMS_CONNECTION_TEST_FILE!       >> %REPORT_LOGFILE% 2>&1
-	set SiemensConnectionTestStatus=Failed
-)
-rem Connection Test to BT download site
-set ConnectionTestStatus=Unknown
-powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/ReadMe.txt', '%DOWNLOAD_LMS_PATH%\ReadMe.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_btdownloads.txt 2>&1
-if !ERRORLEVEL!==0 (
-	rem Connection Test: PASSED
-	echo     Connection Test PASSED, can access https://static.siemens.com/btdownloads/
-	echo Connection Test PASSED, can access https://static.siemens.com/btdownloads/                                          >> %REPORT_LOGFILE% 2>&1
-	set ConnectionTestStatus=Passed
-) else if !ERRORLEVEL!==1 (
-	rem Connection Test: FAILED
-	echo     Connection Test FAILED, cannot access https://static.siemens.com/btdownloads/
-	echo Connection Test FAILED, cannot access https://static.siemens.com/btdownloads/                                       >> %REPORT_LOGFILE% 2>&1
-	type !CHECKLMS_REPORT_LOG_PATH!\connection_test_btdownloads.txt                                                          >> %REPORT_LOGFILE% 2>&1
-	set ConnectionTestStatus=Failed
-)
-REM Download FNP Siemens Library
-REM see https://stackoverflow.com/questions/4619088/windows-batch-file-file-download-from-a-url for more information
-if "%ConnectionTestStatus%" == "Passed" (
-
-	if defined DOWNLOAD_LMS_PATH (
-		rem Download 7zip tool [64-bit]
-		rem see also https://sourceforge.net/p/sevenzip/discussion/45798/thread/b599cf02/?limit=25
-		IF NOT EXIST "%DOWNLOAD_LMS_PATH%\7zr.exe" (
-			echo     Download 7zip app: https://www.7-zip.org/a/7zr.exe
-			echo Download 7zip app: https://www.7-zip.org/a/7zr.exe                                                                         >> %REPORT_LOGFILE% 2>&1
-			powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.7-zip.org/a/7zr.exe', '%DOWNLOAD_LMS_PATH%\7zr.exe')" >> %REPORT_LOGFILE% 2>&1
-
-		) else (
-			echo     Don't download 7zip app [ https://www.7-zip.org/a/7zr.exe ], because they exist already.
-			echo Don't download 7zip app [ https://www.7-zip.org/a/7zr.exe ], because they exist already.                           >> %REPORT_LOGFILE% 2>&1
-		)
-		rem Set unzip tool: %DOWNLOAD_LMS_PATH%\7zr.exe
-		IF EXIST "%DOWNLOAD_LMS_PATH%\7zr.exe" (
-			if not defined UNZIP_TOOL (
-				set UNZIP_TOOL=%DOWNLOAD_LMS_PATH%\7zr.exe
-				echo     Set Unzip tool [%DOWNLOAD_LMS_PATH%\7zr.exe].                                                              >> %REPORT_LOGFILE% 2>&1
-			)
-		) else (
-			echo     No unzip tool [%DOWNLOAD_LMS_PATH%\7zr.exe] downloaded.                                                        >> %REPORT_LOGFILE% 2>&1
-		)
+if not defined LMS_SKIPDOWNLOAD (
+	echo ... download additional tools and libraries ...
+	rem Connection Test to CheckLMS share
+	set SiemensConnectionTestStatus=Unknown
+	IF EXIST "!CHECKLMS_PUBLIC_SHARE!\!CHECKLMS_CONNECTION_TEST_FILE!" (
+		rem Connection Test: PASSED
+		echo     Connection Test to public share PASSED, can access '!CHECKLMS_CONNECTION_TEST_FILE!'
+		echo Connection Test to public share PASSED, can access !CHECKLMS_PUBLIC_SHARE!\!CHECKLMS_CONNECTION_TEST_FILE!          >> %REPORT_LOGFILE% 2>&1
+		set SiemensConnectionTestStatus=Passed
+	) else (
+		rem Connection Test: FAILED
+		echo     Connection Test to public share FAILED, cannot access '!CHECKLMS_CONNECTION_TEST_FILE!'
+		echo Connection Test to public share FAILED, cannot access !CHECKLMS_PUBLIC_SHARE!\!CHECKLMS_CONNECTION_TEST_FILE!       >> %REPORT_LOGFILE% 2>&1
+		set SiemensConnectionTestStatus=Failed
 	)
-	if defined LMS_SERVERTOOL_DW (
-		if defined UNZIP_TOOL (
-			rem Download and unzip FNP toolkit [as ZIP]
-			IF NOT EXIST "%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip" (
-				echo     Download FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip
-				echo Download FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip                                                                                                           >> %REPORT_LOGFILE% 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/%LMS_SERVERTOOL_DW%.zip', '%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip')"   >> %REPORT_LOGFILE% 2>&1
-
-				REM Unzip FNP Siemens Library
-				REM See https://sourceforge.net/p/sevenzip/discussion/45798/thread/8cb61347/?limit=25
-				IF EXIST "%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip" (
-					echo     Extract FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip
-					echo Extract FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip                                       >> %REPORT_LOGFILE% 2>&1
-					"!UNZIP_TOOL!" x -y -spe -o"%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%\" "%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip" > %CHECKLMS_REPORT_LOG_PATH%\unzip_fnp_library_zip.txt 2>&1
-				)
-			) else (
-				echo     Don't download FNP Siemens Library [ZIP], because they exist already.
-				echo Don't download FNP Siemens Library [ZIP], because they exist already.                                              >> %REPORT_LOGFILE% 2>&1
-			)
-		) else (
-			rem 
-			rem NO LONGER USED EXE DOWNLOAD, as UNZIP tool is also provided 
-			rem 
-			rem Download and unzip FNP toolkit [as EXE]
-			IF NOT EXIST "%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe" (
-				echo     Download FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe
-				echo Download FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe                                                                                                           >> %REPORT_LOGFILE% 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/%LMS_SERVERTOOL_DW%.exe', '%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe')"   >> %REPORT_LOGFILE% 2>&1
-
-				REM Unzip FNP Siemens Library
-				REM see https://stackoverflow.com/questions/17687390/how-do-i-silently-install-a-7-zip-self-extracting-archive-to-a-specific-director for more information
-				IF EXIST "%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe" (
-					echo     Extract FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe
-					echo Extract FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe                                       >> %REPORT_LOGFILE% 2>&1
-					%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe -y -o"%DOWNLOAD_LMS_PATH%\"                                             > %CHECKLMS_REPORT_LOG_PATH%\unzip_fnp_library_exe.txt 2>&1
-				)
-			) else (
-				echo     Don't download FNP Siemens Library [EXE], because they exist already.
-				echo Don't download FNP Siemens Library [EXE], because they exist already.                                              >> %REPORT_LOGFILE% 2>&1
-			)
-		)
-	)	
-	if defined DOWNLOAD_LMS_PATH (
-	
-		rem Download newest LMS check script from akamai share
-		if not defined LMS_DONOTSTARTNEWERSCRIPT (
-			echo     Download newest LMS check script: %DOWNLOAD_LMS_PATH%\CheckLMS.exe
-			echo Download newest LMS check script: %DOWNLOAD_LMS_PATH%\CheckLMS.exe                                                                                                        >> %REPORT_LOGFILE% 2>&1
-			del %DOWNLOAD_LMS_PATH%\CheckLMS.exe >nul 2>&1
-			powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe', '%DOWNLOAD_LMS_PATH%\CheckLMS.exe')"          >> %REPORT_LOGFILE% 2>&1
-			IF EXIST "%DOWNLOAD_LMS_PATH%\CheckLMS.exe" (
-				rem CheckLMS.exe has been downloaded from akamai share
-				del %DOWNLOAD_LMS_PATH%\CheckLMS.bat >nul 2>&1
-				echo     Extract LMS check script: %DOWNLOAD_LMS_PATH%\CheckLMS.exe
-				echo Extract LMS check script: %DOWNLOAD_LMS_PATH%\CheckLMS.exe                                                                                                            >> %REPORT_LOGFILE% 2>&1
-				%DOWNLOAD_LMS_PATH%\CheckLMS.exe -y -o"%DOWNLOAD_LMS_PATH%\"                                                                                                               >> %REPORT_LOGFILE% 2>&1
-				IF EXIST "%DOWNLOAD_LMS_PATH%\CheckLMS.bat" (
-					for /f "tokens=2 delims== eol=@" %%i in ('type %DOWNLOAD_LMS_PATH%\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_EXE set LMS_SCRIPT_BUILD_DOWNLOAD_EXE=%%i
-					echo     Check script downloaded from akamai share. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_EXE!, Running script version: !LMS_SCRIPT_BUILD!.
-					echo Check script downloaded from akamai share. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_EXE!, Running script version: !LMS_SCRIPT_BUILD!.                  >> %REPORT_LOGFILE% 2>&1
-				)
-			)
-		) else (
-			echo Skip download from akamai share, because option 'donotstartnewerscript' is set. '%0'                                                                                      >> %REPORT_LOGFILE% 2>&1
-		) 
-		rem Download newest LMS check script from github
-		if not defined LMS_DONOTSTARTNEWERSCRIPT (
-			echo     Download newest LMS check script from github: %DOWNLOAD_LMS_PATH%\git\CheckLMS.bat
-			echo Download newest LMS check script: %DOWNLOAD_LMS_PATH%\git\CheckLMS.bat                                                                                                     >> %REPORT_LOGFILE% 2>&1
-			del %DOWNLOAD_LMS_PATH%\git\CheckLMS.bat >nul 2>&1
-			powershell -Command "(New-Object Net.WebClient).DownloadFile('https://raw.githubusercontent.com/ImfeldC/CheckLMS/master/CheckLMS.bat', '%DOWNLOAD_LMS_PATH%\git\CheckLMS.bat')" >> %REPORT_LOGFILE% 2>&1
-			IF EXIST "%DOWNLOAD_LMS_PATH%\git\CheckLMS.bat" (
-				rem CheckLMS.bat has been downloaded from github
-				for /f "tokens=2 delims== eol=@" %%i in ('type %DOWNLOAD_LMS_PATH%\git\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_GIT set LMS_SCRIPT_BUILD_DOWNLOAD_GIT=%%i
-				echo     Check script downloaded from github. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_GIT!, Running script version: !LMS_SCRIPT_BUILD!.
-				echo Check script downloaded from github. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_GIT!, Running script version: !LMS_SCRIPT_BUILD!.                             >> %REPORT_LOGFILE% 2>&1
-			)			
-		) else (
-			echo Skip download from github,  because option 'donotstartnewerscript' is set. '%0'                                                                                            >> %REPORT_LOGFILE% 2>&1
-		) 
-
-		if /I %LMS_BUILD_VERSION% NEQ %MOST_RECENT_LMS_BUILD% (
-			rem Not "most recent" [="released"] build installed, download latest released LMS client; e.g. from https://static.siemens.com/btdownloads/lms/LMSSetup2.6.826/x64/setup64.exe
-			set LMS_SETUP_EXECUTABLE=%DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_LMS_VERSION%\setup64.exe
-			IF NOT EXIST "!LMS_SETUP_EXECUTABLE!" (
-				IF NOT EXIST "%DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_LMS_VERSION%" (
-					rem echo Create new folder: %DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_LMS_VERSION%
-					mkdir %DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_LMS_VERSION% >nul 2>&1
-				)
-				set LMS_SETUP_DOWNLOAD_LINK=https://static.siemens.com/btdownloads/lms/LMSSetup%MOST_RECENT_LMS_VERSION%/x64/setup64.exe
-				echo     Download latest released LMS setup [%MOST_RECENT_LMS_VERSION%]: !LMS_SETUP_EXECUTABLE!
-				echo Download latest released LMS setup [%MOST_RECENT_LMS_VERSION%]: !LMS_SETUP_EXECUTABLE!                                      >> %REPORT_LOGFILE% 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_SETUP_DOWNLOAD_LINK!', '!LMS_SETUP_EXECUTABLE!')"             >> %REPORT_LOGFILE% 2>&1
-			) else (
-				echo     Don't download latest released LMS setup [%MOST_RECENT_LMS_VERSION%], because it exist already: !LMS_SETUP_EXECUTABLE!
-				echo Don't download latest released LMS setup [%MOST_RECENT_LMS_VERSION%], because it exist already: !LMS_SETUP_EXECUTABLE!      >> %REPORT_LOGFILE% 2>&1
-			)
-		)
-		
-		if /I %LMS_BUILD_VERSION% NEQ %MOST_RECENT_FT_LMS_BUILD% (
-			rem Not "most recent" field test build installed, download latest field test LMS client; e.g. from https://static.siemens.com/btdownloads/lms/LMSSetup2.6.826/x64/setup64.exe
-			set LMS_FT_SETUP_EXECUTABLE=%DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_FT_LMS_VERSION%\setup64.exe
-			IF NOT EXIST "!LMS_FT_SETUP_EXECUTABLE!" (
-				IF NOT EXIST "%DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_FT_LMS_VERSION%" (
-					rem echo Create new folder: %DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_FT_LMS_VERSION%
-					mkdir %DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_FT_LMS_VERSION% >nul 2>&1
-				)
-				set LMS_FT_SETUP_DOWNLOAD_LINK=https://static.siemens.com/btdownloads/lms/LMSSetup%MOST_RECENT_FT_LMS_VERSION%/x64/setup64.exe
-				echo     Download latest field test LMS setup [%MOST_RECENT_FT_LMS_VERSION%]: !LMS_FT_SETUP_EXECUTABLE!
-				echo Download latest field test LMS setup [%MOST_RECENT_FT_LMS_VERSION%]: !LMS_FT_SETUP_EXECUTABLE!                                      >> %REPORT_LOGFILE% 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_FT_SETUP_DOWNLOAD_LINK!', '!LMS_FT_SETUP_EXECUTABLE!')"               >> %REPORT_LOGFILE% 2>&1
-			) else (
-				echo     Don't download latest field test LMS setup [%MOST_RECENT_FT_LMS_VERSION%], because it exist already: !LMS_FT_SETUP_EXECUTABLE!
-				echo Don't download latest field test LMS setup [%MOST_RECENT_FT_LMS_VERSION%], because it exist already: !LMS_FT_SETUP_EXECUTABLE!      >> %REPORT_LOGFILE% 2>&1
-			)
-		)
-		
-		rem Download tool "VMGENID.EXE" (from Stratus) to read-out generation id
-		IF NOT EXIST "%DOWNLOAD_LMS_PATH%\VMGENID.EXE" (
-			echo     Download VM GENID app [from Stratus]: %DOWNLOAD_LMS_PATH%\VMGENID.EXE
-			echo Download VM GENID app [from Stratus]: %DOWNLOAD_LMS_PATH%\VMGENID.EXE                                                                                         >> %REPORT_LOGFILE% 2>&1
-			powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/tools/VMGENID.EXE', '%DOWNLOAD_LMS_PATH%\VMGENID.EXE')"   >> %REPORT_LOGFILE% 2>&1
-		) else (
-			echo     Don't download VM GENID app [from Stratus] [VMGENID.EXE], because it exist already.
-			echo Don't download VM GENID app [from Stratus] [VMGENID.EXE], because it exist already.                                                                           >> %REPORT_LOGFILE% 2>&1
-		)
-		
-		rem Download tool "GetVMGenerationIdentifier.exe" to read-out generation id
-		IF NOT EXIST "%DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe" (
-			echo     Download VM GENID app: %DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe
-			echo Download VM GENID app: %DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe                                           >> %REPORT_LOGFILE% 2>&1
-			powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/GetVMGenerationIdentifier.exe', '%DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe')"   >> %REPORT_LOGFILE% 2>&1
-		) else (
-			echo     Don't download VM GENID app [GetVMGenerationIdentifier.exe], because they exist already.
-			echo Don't download VM GENID app [GetVMGenerationIdentifier.exe], because they exist already.                           >> %REPORT_LOGFILE% 2>&1
-		)
-		
-		rem Download tool "ecmcommonutil.exe" (from Flexera) to read-out host id's
-		IF NOT EXIST "%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" (
-			echo     Download ecmcommonutil app: %DOWNLOAD_LMS_PATH%\ecmcommonutil.exe
-			echo Download ecmcommonutil app: %DOWNLOAD_LMS_PATH%\ecmcommonutil.exe                                                  >> %REPORT_LOGFILE% 2>&1
-			powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/ecmcommonutil.exe', '%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe')"   >> %REPORT_LOGFILE% 2>&1
-		) else (
-			echo     Don't download ecmcommonutil app [ecmcommonutil.exe], because they exist already.
-			echo Don't download ecmcommonutil app [ecmcommonutil.exe], because they exist already.                                  >> %REPORT_LOGFILE% 2>&1
-		)
-		
-		rem Download tool "ecmcommonutil.exe" V1.19 (=ecmcommonutil_1.19.exe) (from Flexera) to read-out host id's
-		IF NOT EXIST "%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" (
-			echo     Download ecmcommonutil app: %DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe
-			echo Download ecmcommonutil app: %DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe                                             >> %REPORT_LOGFILE% 2>&1
-			powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/ecmcommonutil_1.19.exe', '%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe')"   >> %REPORT_LOGFILE% 2>&1
-		) else (
-			echo     Don't download ecmcommonutil app V1.19 [ecmcommonutil_1.19.exe], because they exist already.
-			echo Don't download ecmcommonutil app V1.19 [ecmcommonutil_1.19.exe], because they exist already.                       >> %REPORT_LOGFILE% 2>&1
-		)
-		
-		rem Download newest dongle driver always, to ensure that older driver get overwritten
-		echo     Download newest dongle driver: %DOWNLOAD_LMS_PATH%\haspdinst.exe [%MOST_RECENT_DONGLE_DRIVER_VERSION%]
-		echo Download newest dongle driver: %DOWNLOAD_LMS_PATH%\haspdinst.exe [%MOST_RECENT_DONGLE_DRIVER_VERSION%]             >> %REPORT_LOGFILE% 2>&1
-		powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/hasp/%MOST_RECENT_DONGLE_DRIVER_VERSION%/haspdinst.exe', '%DOWNLOAD_LMS_PATH%\haspdinst.exe')"   >> %REPORT_LOGFILE% 2>&1
-		
-		
-		rem Download AccessChk tool
-		IF NOT EXIST "%DOWNLOAD_LMS_PATH%\AccessChk.zip" (
-			echo     Download AccessChk tool: %DOWNLOAD_LMS_PATH%\AccessChk.zip
-			echo Download AccessChk tool: %DOWNLOAD_LMS_PATH%\AccessChk.zip                                                         >> %REPORT_LOGFILE% 2>&1
-			powershell -Command "(New-Object Net.WebClient).DownloadFile('https://download.sysinternals.com/files/AccessChk.zip', '%DOWNLOAD_LMS_PATH%\AccessChk.zip')"   >> %REPORT_LOGFILE% 2>&1
-		) else (
-			echo     Don't download AccessChk tool [AccessChk.zip], because it exist already.
-			echo Don't download AccessChk tool [AccessChk.zip], because it exist already.                                           >> %REPORT_LOGFILE% 2>&1
-		)
-		
-		rem Download SigCheck tool
-		IF NOT EXIST "%DOWNLOAD_LMS_PATH%\Sigcheck.zip" (
-			echo     Download SigCheck tool: %DOWNLOAD_LMS_PATH%\Sigcheck.zip
-			echo Download SigCheck tool: %DOWNLOAD_LMS_PATH%\Sigcheck.zip                                                           >> %REPORT_LOGFILE% 2>&1
-			powershell -Command "(New-Object Net.WebClient).DownloadFile('https://download.sysinternals.com/files/Sigcheck.zip', '%DOWNLOAD_LMS_PATH%\Sigcheck.zip')"   >> %REPORT_LOGFILE% 2>&1
-		) else (
-			echo     Don't download SigCheck tool [Sigcheck.zip], because it exist already.
-			echo Don't download SigCheck tool [Sigcheck.zip], because it exist already.                                             >> %REPORT_LOGFILE% 2>&1
-		)
-		
-		rem Download USBDeview tool
-		IF NOT EXIST "%DOWNLOAD_LMS_PATH%\usbdeview-x64.zip" (
-			echo     Download USBDeview tool: %DOWNLOAD_LMS_PATH%\usbdeview-x64.zip
-			echo Download USBDeview tool: %DOWNLOAD_LMS_PATH%\usbdeview-x64.zip                                                           >> %REPORT_LOGFILE% 2>&1
-			powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.nirsoft.net/utils/usbdeview-x64.zip', '%DOWNLOAD_LMS_PATH%\usbdeview-x64.zip')"   >> %REPORT_LOGFILE% 2>&1
-		) else (
-			echo     Don't download USBDeview tool [usbdeview-x64.zip], because it exist already.
-			echo Don't download USBDeview tool [usbdeview-x64.zip], because it exist already.                                             >> %REPORT_LOGFILE% 2>&1
-		)
-		
+	rem Connection Test to BT download site
+	set ConnectionTestStatus=Unknown
+	powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/ReadMe.txt', '%DOWNLOAD_LMS_PATH%\ReadMe.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_btdownloads.txt 2>&1
+	if !ERRORLEVEL!==0 (
+		rem Connection Test: PASSED
+		echo     Connection Test PASSED, can access https://static.siemens.com/btdownloads/
+		echo Connection Test PASSED, can access https://static.siemens.com/btdownloads/                                          >> %REPORT_LOGFILE% 2>&1
+		set ConnectionTestStatus=Passed
+	) else if !ERRORLEVEL!==1 (
+		rem Connection Test: FAILED
+		echo     Connection Test FAILED, cannot access https://static.siemens.com/btdownloads/
+		echo Connection Test FAILED, cannot access https://static.siemens.com/btdownloads/                                       >> %REPORT_LOGFILE% 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_btdownloads.txt                                                          >> %REPORT_LOGFILE% 2>&1
+		set ConnectionTestStatus=Failed
 	)
-) else (
-	echo     Don't download additional libraries and files, because no internet connection available.
-	echo Don't download additional libraries and files, because no internet connection available.                                         >> %REPORT_LOGFILE% 2>&1
-	
-	rem in case no connection is available, check local folder for a "download" zip archive
-	dir /S /A /B "!LMS_PROGRAMDATA!\LMSDownloadArchive_*.zip" > "%CHECKLMS_REPORT_LOG_PATH%\LMSDownloadArchivesFound.txt"  
-	rem type %CHECKLMS_REPORT_LOG_PATH%\LMSDownloadArchivesFound.txt
-	FOR /F "eol=@ delims=@" %%i IN (%CHECKLMS_REPORT_LOG_PATH%\LMSDownloadArchivesFound.txt) DO (                       
-		rem see https://stackoverflow.com/questions/15567809/batch-extract-path-and-filename-from-a-variable/15568164
-		set file=%%i
-		set filedrive=%%~di
-		set filepath=%%~pi
-		set filename=%%~ni
-		set fileextension=%%~xi
-		rem ECHO filedrive=!filedrive! / filepath=!filepath! /  filename=!filename! / fileextension=!fileextension!
-		for /f "tokens=1,2,3 eol=@ delims=_" %%a in ("!filename!") do set filemachine=%%b
-		for /f "tokens=1,2,3 eol=@ delims=_" %%a in ("!filename!") do set filetimestamp=%%c
-		rem echo filemachine=!filemachine! / filetimestamp=!filetimestamp!
-		if "%COMPUTERNAME%" == "!filemachine!" (
-			echo Skip download archive '!file!', as it was created on this machine!                                                   >> %REPORT_LOGFILE% 2>&1
-		) else (
-			echo Found download archive '!file!' from machine '!filemachine!'.                                                        >> %REPORT_LOGFILE% 2>&1
-			if exist "!file!.processed.%COMPUTERNAME%.txt" (
-				rem this download archive has been processed already
-				echo Skip download archive '!file!', as it was processed already on this machine!                                     >> %REPORT_LOGFILE% 2>&1
-				type "!file!.processed.%COMPUTERNAME%.txt"                                                                            >> %REPORT_LOGFILE% 2>&1
+	REM Download FNP Siemens Library
+	REM see https://stackoverflow.com/questions/4619088/windows-batch-file-file-download-from-a-url for more information
+	if "%ConnectionTestStatus%" == "Passed" (
+
+		if defined DOWNLOAD_LMS_PATH (
+			rem Download 7zip tool [64-bit]
+			rem see also https://sourceforge.net/p/sevenzip/discussion/45798/thread/b599cf02/?limit=25
+			IF NOT EXIST "%DOWNLOAD_LMS_PATH%\7zr.exe" (
+				echo     Download 7zip app: https://www.7-zip.org/a/7zr.exe
+				echo Download 7zip app: https://www.7-zip.org/a/7zr.exe                                                                         >> %REPORT_LOGFILE% 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.7-zip.org/a/7zr.exe', '%DOWNLOAD_LMS_PATH%\7zr.exe')" >> %REPORT_LOGFILE% 2>&1
+
 			) else (
-				rem unzip this download archive on this machine
-				echo Unzip download archive '!file!' into '!LMS_PROGRAMDATA!' ...                                                     >> %REPORT_LOGFILE% 2>&1
-				if defined UNZIP_TOOL (
-					echo Unzip download archive [LMSDownloadArchive_*.zip] with unzip tool '!UNZIP_TOOL!'.                            >> %REPORT_LOGFILE% 2>&1
-					"!UNZIP_TOOL!" x -y -spe -o"!LMS_PROGRAMDATA!" "!file!"                                                           > %CHECKLMS_REPORT_LOG_PATH%\unzip_download_archive.txt
+				echo     Don't download 7zip app [ https://www.7-zip.org/a/7zr.exe ], because they exist already.
+				echo Don't download 7zip app [ https://www.7-zip.org/a/7zr.exe ], because they exist already.                           >> %REPORT_LOGFILE% 2>&1
+			)
+			rem Set unzip tool: %DOWNLOAD_LMS_PATH%\7zr.exe
+			IF EXIST "%DOWNLOAD_LMS_PATH%\7zr.exe" (
+				if not defined UNZIP_TOOL (
+					set UNZIP_TOOL=%DOWNLOAD_LMS_PATH%\7zr.exe
+					echo     Set Unzip tool [%DOWNLOAD_LMS_PATH%\7zr.exe].                                                              >> %REPORT_LOGFILE% 2>&1
+				)
+			) else (
+				echo     No unzip tool [%DOWNLOAD_LMS_PATH%\7zr.exe] downloaded.                                                        >> %REPORT_LOGFILE% 2>&1
+			)
+		)
+		if defined LMS_SERVERTOOL_DW (
+			if defined UNZIP_TOOL (
+				rem Download and unzip FNP toolkit [as ZIP]
+				IF NOT EXIST "%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip" (
+					echo     Download FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip
+					echo Download FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip                                                                                                           >> %REPORT_LOGFILE% 2>&1
+					powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/%LMS_SERVERTOOL_DW%.zip', '%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip')"   >> %REPORT_LOGFILE% 2>&1
+
+					REM Unzip FNP Siemens Library
+					REM See https://sourceforge.net/p/sevenzip/discussion/45798/thread/8cb61347/?limit=25
+					IF EXIST "%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip" (
+						echo     Extract FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip
+						echo Extract FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip                                       >> %REPORT_LOGFILE% 2>&1
+						"!UNZIP_TOOL!" x -y -spe -o"%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%\" "%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip" > %CHECKLMS_REPORT_LOG_PATH%\unzip_fnp_library_zip.txt 2>&1
+					)
 				) else (
-					echo Can't unzip download archive [LMSDownloadArchive_*.zip], because no unzip tool is available.                 >> %REPORT_LOGFILE% 2>&1
+					echo     Don't download FNP Siemens Library [ZIP], because they exist already.
+					echo Don't download FNP Siemens Library [ZIP], because they exist already.                                              >> %REPORT_LOGFILE% 2>&1
 				)
-				echo Unzip download archive [LMSDownloadArchive_*.zip] with powershell tool 'Expand-Archive'.                         >> %REPORT_LOGFILE% 2>&1
-				powershell -Command "Expand-Archive -Path !file! -DestinationPath !LMS_PROGRAMDATA! -Verbose -Force"                  >> %REPORT_LOGFILE% 2>&1
-				echo Download archive !file! processed on %COMPUTERNAME% and unzipped into '!LMS_PROGRAMDATA!' at !DATE! !TIME! > "!file!.processed.%COMPUTERNAME%.txt"
+			) else (
+				rem 
+				rem NO LONGER USED EXE DOWNLOAD, as UNZIP tool is also provided 
+				rem 
+				rem Download and unzip FNP toolkit [as EXE]
+				IF NOT EXIST "%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe" (
+					echo     Download FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe
+					echo Download FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe                                                                                                           >> %REPORT_LOGFILE% 2>&1
+					powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/%LMS_SERVERTOOL_DW%.exe', '%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe')"   >> %REPORT_LOGFILE% 2>&1
+
+					REM Unzip FNP Siemens Library
+					REM see https://stackoverflow.com/questions/17687390/how-do-i-silently-install-a-7-zip-self-extracting-archive-to-a-specific-director for more information
+					IF EXIST "%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe" (
+						echo     Extract FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe
+						echo Extract FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe                                       >> %REPORT_LOGFILE% 2>&1
+						%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe -y -o"%DOWNLOAD_LMS_PATH%\"                                             > %CHECKLMS_REPORT_LOG_PATH%\unzip_fnp_library_exe.txt 2>&1
+					)
+				) else (
+					echo     Don't download FNP Siemens Library [EXE], because they exist already.
+					echo Don't download FNP Siemens Library [EXE], because they exist already.                                              >> %REPORT_LOGFILE% 2>&1
+				)
+			)
+		)	
+		if defined DOWNLOAD_LMS_PATH (
+		
+			rem Download newest LMS check script from akamai share
+			if not defined LMS_DONOTSTARTNEWERSCRIPT (
+				echo     Download newest LMS check script: %DOWNLOAD_LMS_PATH%\CheckLMS.exe
+				echo Download newest LMS check script: %DOWNLOAD_LMS_PATH%\CheckLMS.exe                                                                                                        >> %REPORT_LOGFILE% 2>&1
+				del %DOWNLOAD_LMS_PATH%\CheckLMS.exe >nul 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe', '%DOWNLOAD_LMS_PATH%\CheckLMS.exe')"          >> %REPORT_LOGFILE% 2>&1
+				IF EXIST "%DOWNLOAD_LMS_PATH%\CheckLMS.exe" (
+					rem CheckLMS.exe has been downloaded from akamai share
+					del %DOWNLOAD_LMS_PATH%\CheckLMS.bat >nul 2>&1
+					echo     Extract LMS check script: %DOWNLOAD_LMS_PATH%\CheckLMS.exe
+					echo Extract LMS check script: %DOWNLOAD_LMS_PATH%\CheckLMS.exe                                                                                                            >> %REPORT_LOGFILE% 2>&1
+					%DOWNLOAD_LMS_PATH%\CheckLMS.exe -y -o"%DOWNLOAD_LMS_PATH%\"                                                                                                               >> %REPORT_LOGFILE% 2>&1
+					IF EXIST "%DOWNLOAD_LMS_PATH%\CheckLMS.bat" (
+						for /f "tokens=2 delims== eol=@" %%i in ('type %DOWNLOAD_LMS_PATH%\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_EXE set LMS_SCRIPT_BUILD_DOWNLOAD_EXE=%%i
+						echo     Check script downloaded from akamai share. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_EXE!, Running script version: !LMS_SCRIPT_BUILD!.
+						echo Check script downloaded from akamai share. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_EXE!, Running script version: !LMS_SCRIPT_BUILD!.                  >> %REPORT_LOGFILE% 2>&1
+					)
+				)
+			) else (
+				echo Skip download from akamai share, because option 'donotstartnewerscript' is set. '%0'                                                                                      >> %REPORT_LOGFILE% 2>&1
+			) 
+			rem Download newest LMS check script from github
+			if not defined LMS_DONOTSTARTNEWERSCRIPT (
+				echo     Download newest LMS check script from github: %DOWNLOAD_LMS_PATH%\git\CheckLMS.bat
+				echo Download newest LMS check script: %DOWNLOAD_LMS_PATH%\git\CheckLMS.bat                                                                                                     >> %REPORT_LOGFILE% 2>&1
+				del %DOWNLOAD_LMS_PATH%\git\CheckLMS.bat >nul 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://raw.githubusercontent.com/ImfeldC/CheckLMS/master/CheckLMS.bat', '%DOWNLOAD_LMS_PATH%\git\CheckLMS.bat')" >> %REPORT_LOGFILE% 2>&1
+				IF EXIST "%DOWNLOAD_LMS_PATH%\git\CheckLMS.bat" (
+					rem CheckLMS.bat has been downloaded from github
+					for /f "tokens=2 delims== eol=@" %%i in ('type %DOWNLOAD_LMS_PATH%\git\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_GIT set LMS_SCRIPT_BUILD_DOWNLOAD_GIT=%%i
+					echo     Check script downloaded from github. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_GIT!, Running script version: !LMS_SCRIPT_BUILD!.
+					echo Check script downloaded from github. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_GIT!, Running script version: !LMS_SCRIPT_BUILD!.                             >> %REPORT_LOGFILE% 2>&1
+				)			
+			) else (
+				echo Skip download from github,  because option 'donotstartnewerscript' is set. '%0'                                                                                            >> %REPORT_LOGFILE% 2>&1
+			) 
+
+			if /I %LMS_BUILD_VERSION% NEQ %MOST_RECENT_LMS_BUILD% (
+				rem Not "most recent" [="released"] build installed, download latest released LMS client; e.g. from https://static.siemens.com/btdownloads/lms/LMSSetup2.6.826/x64/setup64.exe
+				set LMS_SETUP_EXECUTABLE=%DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_LMS_VERSION%\setup64.exe
+				IF NOT EXIST "!LMS_SETUP_EXECUTABLE!" (
+					IF NOT EXIST "%DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_LMS_VERSION%" (
+						rem echo Create new folder: %DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_LMS_VERSION%
+						mkdir %DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_LMS_VERSION% >nul 2>&1
+					)
+					set LMS_SETUP_DOWNLOAD_LINK=https://static.siemens.com/btdownloads/lms/LMSSetup%MOST_RECENT_LMS_VERSION%/x64/setup64.exe
+					echo     Download latest released LMS setup [%MOST_RECENT_LMS_VERSION%]: !LMS_SETUP_EXECUTABLE!
+					echo Download latest released LMS setup [%MOST_RECENT_LMS_VERSION%]: !LMS_SETUP_EXECUTABLE!                                      >> %REPORT_LOGFILE% 2>&1
+					powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_SETUP_DOWNLOAD_LINK!', '!LMS_SETUP_EXECUTABLE!')"             >> %REPORT_LOGFILE% 2>&1
+				) else (
+					echo     Don't download latest released LMS setup [%MOST_RECENT_LMS_VERSION%], because it exist already: !LMS_SETUP_EXECUTABLE!
+					echo Don't download latest released LMS setup [%MOST_RECENT_LMS_VERSION%], because it exist already: !LMS_SETUP_EXECUTABLE!      >> %REPORT_LOGFILE% 2>&1
+				)
+			)
+			
+			if /I %LMS_BUILD_VERSION% NEQ %MOST_RECENT_FT_LMS_BUILD% (
+				rem Not "most recent" field test build installed, download latest field test LMS client; e.g. from https://static.siemens.com/btdownloads/lms/LMSSetup2.6.826/x64/setup64.exe
+				set LMS_FT_SETUP_EXECUTABLE=%DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_FT_LMS_VERSION%\setup64.exe
+				IF NOT EXIST "!LMS_FT_SETUP_EXECUTABLE!" (
+					IF NOT EXIST "%DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_FT_LMS_VERSION%" (
+						rem echo Create new folder: %DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_FT_LMS_VERSION%
+						mkdir %DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_FT_LMS_VERSION% >nul 2>&1
+					)
+					set LMS_FT_SETUP_DOWNLOAD_LINK=https://static.siemens.com/btdownloads/lms/LMSSetup%MOST_RECENT_FT_LMS_VERSION%/x64/setup64.exe
+					echo     Download latest field test LMS setup [%MOST_RECENT_FT_LMS_VERSION%]: !LMS_FT_SETUP_EXECUTABLE!
+					echo Download latest field test LMS setup [%MOST_RECENT_FT_LMS_VERSION%]: !LMS_FT_SETUP_EXECUTABLE!                                      >> %REPORT_LOGFILE% 2>&1
+					powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_FT_SETUP_DOWNLOAD_LINK!', '!LMS_FT_SETUP_EXECUTABLE!')"               >> %REPORT_LOGFILE% 2>&1
+				) else (
+					echo     Don't download latest field test LMS setup [%MOST_RECENT_FT_LMS_VERSION%], because it exist already: !LMS_FT_SETUP_EXECUTABLE!
+					echo Don't download latest field test LMS setup [%MOST_RECENT_FT_LMS_VERSION%], because it exist already: !LMS_FT_SETUP_EXECUTABLE!      >> %REPORT_LOGFILE% 2>&1
+				)
+			)
+			
+			rem Download tool "VMGENID.EXE" (from Stratus) to read-out generation id
+			IF NOT EXIST "%DOWNLOAD_LMS_PATH%\VMGENID.EXE" (
+				echo     Download VM GENID app [from Stratus]: %DOWNLOAD_LMS_PATH%\VMGENID.EXE
+				echo Download VM GENID app [from Stratus]: %DOWNLOAD_LMS_PATH%\VMGENID.EXE                                                                                         >> %REPORT_LOGFILE% 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/tools/VMGENID.EXE', '%DOWNLOAD_LMS_PATH%\VMGENID.EXE')"   >> %REPORT_LOGFILE% 2>&1
+			) else (
+				echo     Don't download VM GENID app [from Stratus] [VMGENID.EXE], because it exist already.
+				echo Don't download VM GENID app [from Stratus] [VMGENID.EXE], because it exist already.                                                                           >> %REPORT_LOGFILE% 2>&1
+			)
+			
+			rem Download tool "GetVMGenerationIdentifier.exe" to read-out generation id
+			IF NOT EXIST "%DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe" (
+				echo     Download VM GENID app: %DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe
+				echo Download VM GENID app: %DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe                                           >> %REPORT_LOGFILE% 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/GetVMGenerationIdentifier.exe', '%DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe')"   >> %REPORT_LOGFILE% 2>&1
+			) else (
+				echo     Don't download VM GENID app [GetVMGenerationIdentifier.exe], because they exist already.
+				echo Don't download VM GENID app [GetVMGenerationIdentifier.exe], because they exist already.                           >> %REPORT_LOGFILE% 2>&1
+			)
+			
+			rem Download tool "ecmcommonutil.exe" (from Flexera) to read-out host id's
+			IF NOT EXIST "%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" (
+				echo     Download ecmcommonutil app: %DOWNLOAD_LMS_PATH%\ecmcommonutil.exe
+				echo Download ecmcommonutil app: %DOWNLOAD_LMS_PATH%\ecmcommonutil.exe                                                  >> %REPORT_LOGFILE% 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/ecmcommonutil.exe', '%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe')"   >> %REPORT_LOGFILE% 2>&1
+			) else (
+				echo     Don't download ecmcommonutil app [ecmcommonutil.exe], because they exist already.
+				echo Don't download ecmcommonutil app [ecmcommonutil.exe], because they exist already.                                  >> %REPORT_LOGFILE% 2>&1
+			)
+			
+			rem Download tool "ecmcommonutil.exe" V1.19 (=ecmcommonutil_1.19.exe) (from Flexera) to read-out host id's
+			IF NOT EXIST "%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" (
+				echo     Download ecmcommonutil app: %DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe
+				echo Download ecmcommonutil app: %DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe                                             >> %REPORT_LOGFILE% 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/ecmcommonutil_1.19.exe', '%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe')"   >> %REPORT_LOGFILE% 2>&1
+			) else (
+				echo     Don't download ecmcommonutil app V1.19 [ecmcommonutil_1.19.exe], because they exist already.
+				echo Don't download ecmcommonutil app V1.19 [ecmcommonutil_1.19.exe], because they exist already.                       >> %REPORT_LOGFILE% 2>&1
+			)
+			
+			rem Download newest dongle driver always, to ensure that older driver get overwritten
+			echo     Download newest dongle driver: %DOWNLOAD_LMS_PATH%\haspdinst.exe [%MOST_RECENT_DONGLE_DRIVER_VERSION%]
+			echo Download newest dongle driver: %DOWNLOAD_LMS_PATH%\haspdinst.exe [%MOST_RECENT_DONGLE_DRIVER_VERSION%]             >> %REPORT_LOGFILE% 2>&1
+			powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/hasp/%MOST_RECENT_DONGLE_DRIVER_VERSION%/haspdinst.exe', '%DOWNLOAD_LMS_PATH%\haspdinst.exe')"   >> %REPORT_LOGFILE% 2>&1
+			
+			
+			rem Download AccessChk tool
+			IF NOT EXIST "%DOWNLOAD_LMS_PATH%\AccessChk.zip" (
+				echo     Download AccessChk tool: %DOWNLOAD_LMS_PATH%\AccessChk.zip
+				echo Download AccessChk tool: %DOWNLOAD_LMS_PATH%\AccessChk.zip                                                         >> %REPORT_LOGFILE% 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://download.sysinternals.com/files/AccessChk.zip', '%DOWNLOAD_LMS_PATH%\AccessChk.zip')"   >> %REPORT_LOGFILE% 2>&1
+			) else (
+				echo     Don't download AccessChk tool [AccessChk.zip], because it exist already.
+				echo Don't download AccessChk tool [AccessChk.zip], because it exist already.                                           >> %REPORT_LOGFILE% 2>&1
+			)
+			
+			rem Download SigCheck tool
+			IF NOT EXIST "%DOWNLOAD_LMS_PATH%\Sigcheck.zip" (
+				echo     Download SigCheck tool: %DOWNLOAD_LMS_PATH%\Sigcheck.zip
+				echo Download SigCheck tool: %DOWNLOAD_LMS_PATH%\Sigcheck.zip                                                           >> %REPORT_LOGFILE% 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://download.sysinternals.com/files/Sigcheck.zip', '%DOWNLOAD_LMS_PATH%\Sigcheck.zip')"   >> %REPORT_LOGFILE% 2>&1
+			) else (
+				echo     Don't download SigCheck tool [Sigcheck.zip], because it exist already.
+				echo Don't download SigCheck tool [Sigcheck.zip], because it exist already.                                             >> %REPORT_LOGFILE% 2>&1
+			)
+			
+			rem Download USBDeview tool
+			IF NOT EXIST "%DOWNLOAD_LMS_PATH%\usbdeview-x64.zip" (
+				echo     Download USBDeview tool: %DOWNLOAD_LMS_PATH%\usbdeview-x64.zip
+				echo Download USBDeview tool: %DOWNLOAD_LMS_PATH%\usbdeview-x64.zip                                                           >> %REPORT_LOGFILE% 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.nirsoft.net/utils/usbdeview-x64.zip', '%DOWNLOAD_LMS_PATH%\usbdeview-x64.zip')"   >> %REPORT_LOGFILE% 2>&1
+			) else (
+				echo     Don't download USBDeview tool [usbdeview-x64.zip], because it exist already.
+				echo Don't download USBDeview tool [usbdeview-x64.zip], because it exist already.                                             >> %REPORT_LOGFILE% 2>&1
+			)
+			
+		)
+	) else (
+		echo     Don't download additional libraries and files, because no internet connection available.
+		echo Don't download additional libraries and files, because no internet connection available.                                         >> %REPORT_LOGFILE% 2>&1
+		
+		rem in case no connection is available, check local folder for a "download" zip archive
+		dir /S /A /B "!LMS_PROGRAMDATA!\LMSDownloadArchive_*.zip" > "%CHECKLMS_REPORT_LOG_PATH%\LMSDownloadArchivesFound.txt"  
+		rem type %CHECKLMS_REPORT_LOG_PATH%\LMSDownloadArchivesFound.txt
+		FOR /F "eol=@ delims=@" %%i IN (%CHECKLMS_REPORT_LOG_PATH%\LMSDownloadArchivesFound.txt) DO (                       
+			rem see https://stackoverflow.com/questions/15567809/batch-extract-path-and-filename-from-a-variable/15568164
+			set file=%%i
+			set filedrive=%%~di
+			set filepath=%%~pi
+			set filename=%%~ni
+			set fileextension=%%~xi
+			rem ECHO filedrive=!filedrive! / filepath=!filepath! /  filename=!filename! / fileextension=!fileextension!
+			for /f "tokens=1,2,3 eol=@ delims=_" %%a in ("!filename!") do set filemachine=%%b
+			for /f "tokens=1,2,3 eol=@ delims=_" %%a in ("!filename!") do set filetimestamp=%%c
+			rem echo filemachine=!filemachine! / filetimestamp=!filetimestamp!
+			if "%COMPUTERNAME%" == "!filemachine!" (
+				echo Skip download archive '!file!', as it was created on this machine!                                                   >> %REPORT_LOGFILE% 2>&1
+			) else (
+				echo Found download archive '!file!' from machine '!filemachine!'.                                                        >> %REPORT_LOGFILE% 2>&1
+				if exist "!file!.processed.%COMPUTERNAME%.txt" (
+					rem this download archive has been processed already
+					echo Skip download archive '!file!', as it was processed already on this machine!                                     >> %REPORT_LOGFILE% 2>&1
+					type "!file!.processed.%COMPUTERNAME%.txt"                                                                            >> %REPORT_LOGFILE% 2>&1
+				) else (
+					rem unzip this download archive on this machine
+					echo Unzip download archive '!file!' into '!LMS_PROGRAMDATA!' ...                                                     >> %REPORT_LOGFILE% 2>&1
+					if defined UNZIP_TOOL (
+						echo Unzip download archive [LMSDownloadArchive_*.zip] with unzip tool '!UNZIP_TOOL!'.                            >> %REPORT_LOGFILE% 2>&1
+						"!UNZIP_TOOL!" x -y -spe -o"!LMS_PROGRAMDATA!" "!file!"                                                           > %CHECKLMS_REPORT_LOG_PATH%\unzip_download_archive.txt
+					) else (
+						echo Can't unzip download archive [LMSDownloadArchive_*.zip], because no unzip tool is available.                 >> %REPORT_LOGFILE% 2>&1
+					)
+					echo Unzip download archive [LMSDownloadArchive_*.zip] with powershell tool 'Expand-Archive'.                         >> %REPORT_LOGFILE% 2>&1
+					powershell -Command "Expand-Archive -Path !file! -DestinationPath !LMS_PROGRAMDATA! -Verbose -Force"                  >> %REPORT_LOGFILE% 2>&1
+					echo Download archive !file! processed on %COMPUTERNAME% and unzipped into '!LMS_PROGRAMDATA!' at !DATE! !TIME! > "!file!.processed.%COMPUTERNAME%.txt"
+				)
 			)
 		)
 	)
+) else (
+	if defined SHOW_COLORED_OUTPUT (
+		echo [1;33m    SKIPPED download section. The script didn't execute the download commands. [1;37m
+	) else (
+		echo     SKIPPED download section. The script didn't execute the download commands.
+	)
+	echo SKIPPED download section. The script didn't execute the download commands.                                               >> %REPORT_LOGFILE% 2>&1
 )
 
 if defined LMS_SERVERTOOL_DW (
@@ -1540,6 +1569,7 @@ rem goto flexera_fnp_information
 rem goto ssu_update_information
 rem goto lms_log_files
 rem goto windows_error_reporting
+rem goto lms_section
 rem goto alm_section
 rem goto connection_test
 rem goto collect_product_info
@@ -1652,22 +1682,27 @@ echo Use '%LMS_LMUTIL%' to call for lmutil.exe.                                 
 echo Use '%LMS_LMVER%' to call for lmver.exe.                                                                                >> %REPORT_LOGFILE% 2>&1
 echo Use '%DOCUMENTATION_PATH%' to search for documentation.                                                                 >> %REPORT_LOGFILE% 2>&1
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-SET STAMP=%DATE:/=-% %TIME::=.%
-echo Backup trusted store file(s):  %STAMP%                                                                                  >> %REPORT_LOGFILE% 2>&1
-if defined LMS_EXTENDED_CONTENT (
-	xcopy %ALLUSERSPROFILE%\FLEXnet\SIEMBT* "%ALLUSERSPROFILE%\FLEXnet\TSbackup %STAMP%" /Y /H /I                            >> %REPORT_LOGFILE% 2>&1
-	echo     ... copied to '%ALLUSERSPROFILE%\FLEXnet\TSbackup %STAMP%'                                                      >> %REPORT_LOGFILE% 2>&1
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1 
+if not defined LMS_SKIPTSBACKUP (
+	SET STAMP=%DATE:/=-% %TIME::=.%
+	echo Backup trusted store files:  %STAMP%                                                                                >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_EXTENDED_CONTENT (
+		xcopy %ALLUSERSPROFILE%\FLEXnet\SIEMBT* "%ALLUSERSPROFILE%\FLEXnet\TSbackup %STAMP%" /Y /H /I                        >> %REPORT_LOGFILE% 2>&1
+		echo     ... copied to '%ALLUSERSPROFILE%\FLEXnet\TSbackup %STAMP%'                                                  >> %REPORT_LOGFILE% 2>&1
+		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1 
+	)
+	xcopy %ALLUSERSPROFILE%\FLEXnet\SIEMBT* "%REPORT_LOG_PATH%\TSbackup %STAMP%" /Y /H /I                                    >> %REPORT_LOGFILE% 2>&1
+	echo     ... copied to '%REPORT_LOG_PATH%\TSbackup %STAMP%'                                                              >> %REPORT_LOGFILE% 2>&1
+) else (
+	if defined SHOW_COLORED_OUTPUT (
+		echo [1;33m    SKIPPED TS backup section. The script didn't execute the TS backup commands. [1;37m
+	) else (
+		echo     SKIPPED TS backup section. The script didn't execute the TS backup commands.
+	)
+	echo SKIPPED TS backup section. The script didn't execute the TS backup commands.                                        >> %REPORT_LOGFILE% 2>&1
 )
-xcopy %ALLUSERSPROFILE%\FLEXnet\SIEMBT* "%REPORT_LOG_PATH%\TSbackup %STAMP%" /Y /H /I                                        >> %REPORT_LOGFILE% 2>&1
-echo     ... copied to '%REPORT_LOG_PATH%\TSbackup %STAMP%'                                                                  >> %REPORT_LOGFILE% 2>&1
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo     Read installed products and version (with wmic /format:csv product get name, version, InstallDate, vendor)
-echo Read installed products and version (with wmic product get name, version, InstallDate, vendor /format:csv)              >> %REPORT_LOGFILE% 2>&1
-wmic /output:%REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV% product get name, version, InstallDate, vendor /format:csv               >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1 
-echo Get LmuTool Configuration: (read with LmuTool)                                                                          >> %REPORT_LOGFILE% 2>&1
-echo     Get LmuTool Configuration: (read with LmuTool)
+echo Get LmuTool Configuration: [read with LmuTool]                                                                          >> %REPORT_LOGFILE% 2>&1
+echo     Get LmuTool Configuration: [read with LmuTool]
 if defined LMS_LMUTOOL "!LMS_LMUTOOL!" /??  > %CHECKLMS_REPORT_LOG_PATH%\LmsCfg.txt 2>&1
 set LMS_CFG_LICENSE_SRV_NAME=
 IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\LmsCfg.txt" for /f "tokens=3 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\LmsCfg.txt ^|find /I "LicenseSrvName"') do set "LMS_CFG_LICENSE_SRV_NAME=%%i"
@@ -1724,180 +1759,193 @@ rem 	) else (
 rem 		echo     works only on "known" languages, for languages !OS_LANGUAGE! check output of systeminfo further down.       >> %REPORT_LOGFILE% 2>&1
 rem 	)
 rem )
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo WMIC Report [using PowerShell: Get-WmiObject -class Win32_BIOS]:                                                        >> %REPORT_LOGFILE% 2>&1
-powershell -c Get-WmiObject -class Win32_BIOS                                                                                >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-rem see https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/identify_ec2_instances.html
-echo WMIC Report [using PowerShell: Get-WmiObject -query 'select uuid from Win32_ComputerSystemProduct']:                    >> %REPORT_LOGFILE% 2>&1
-powershell -c "Get-WmiObject -query 'select uuid from Win32_ComputerSystemProduct' | Select UUID"                            >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-rem see https://www.lisenet.com/2014/get-windows-system-information-via-wmi-command-line-wmic/
-echo WMIC Report                                                                                                             >> %REPORT_LOGFILE% 2>&1
-del %REPORT_WMIC_LOGFILE% >nul 2>&1
-echo ---------------- wmic csproduct get *                                                                                   >> %REPORT_LOGFILE% 2>&1
-echo     wmic csproduct get *
-wmic /output:%REPORT_WMIC_LOGFILE% csproduct get * /format:list                    
-type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
-echo ---------------- wmic OS get Caption,CSDVersion,OSArchitecture,Version                                                  >> %REPORT_LOGFILE% 2>&1
-echo     More information to Windows Version, see https://en.wikipedia.org/wiki/Windows_10_version_history                   >> %REPORT_LOGFILE% 2>&1
-echo     wmic OS get Caption,CSDVersion,OSArchitecture,Version
-wmic /output:%REPORT_WMIC_LOGFILE% OS get Caption,CSDVersion,OSArchitecture,Version /format:list                    
-type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
-wmic /output:%CHECKLMS_REPORT_LOG_PATH%\wmicOS_fullList.txt OS get /format:list                                              >> %REPORT_LOGFILE% 2>&1                    
-echo ---------------- wmic BIOS get Manufacturer,Name,SMBIOSBIOSVersion,Version,BuildNumber,InstallDate,SerialNumber,Description                         >> %REPORT_LOGFILE% 2>&1
-echo     wmic BIOS get Manufacturer,Name,SMBIOSBIOSVersion,Version,BuildNumber,InstallDate,SerialNumber,Description
-wmic /output:%REPORT_WMIC_LOGFILE% BIOS get Manufacturer,Name,SMBIOSBIOSVersion,Version,BuildNumber,InstallDate,SerialNumber,Description  /format:list   >> %REPORT_LOGFILE% 2>&1
-type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
-wmic /output:%CHECKLMS_REPORT_LOG_PATH%\wmicBIOS_fullList.txt BIOS get /format:list                                          >> %REPORT_LOGFILE% 2>&1             
-echo ---------------- wmic CPU get Name,NumberOfCores,NumberOfLogicalProcessors                                              >> %REPORT_LOGFILE% 2>&1
-echo     wmic CPU get Name,NumberOfCores,NumberOfLogicalProcessors
-wmic /output:%REPORT_WMIC_LOGFILE% CPU get Name,NumberOfCores,NumberOfLogicalProcessors /format:list                         >> %REPORT_LOGFILE% 2>&1
-type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
-wmic /output:%CHECKLMS_REPORT_LOG_PATH%\wmicCPU_fullList.txt CPU get /format:list                                            >> %REPORT_LOGFILE% 2>&1
-echo ---------------- wmic MEMPHYSICAL get MaxCapacity                                                                       >> %REPORT_LOGFILE% 2>&1
-echo     wmic MEMPHYSICAL get MaxCapacity
-wmic /output:%REPORT_WMIC_LOGFILE% MEMPHYSICAL get MaxCapacity /format:list                                                  >> %REPORT_LOGFILE% 2>&1
-type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
-wmic /output:%CHECKLMS_REPORT_LOG_PATH%\wmicMEMPHYSICAL_fullList.txt MEMPHYSICAL get /format:list                            >> %REPORT_LOGFILE% 2>&1              
-echo ---------------- wmic MEMORYCHIP get Capacity,DeviceLocator,PartNumber,Tag                                              >> %REPORT_LOGFILE% 2>&1
-echo     wmic MEMORYCHIP get Capacity,DeviceLocator,PartNumber,Tag
-wmic /output:%REPORT_WMIC_LOGFILE% MEMORYCHIP get Capacity,DeviceLocator,PartNumber,Tag                                      >> %REPORT_LOGFILE% 2>&1
-type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
-wmic /output:%CHECKLMS_REPORT_LOG_PATH%\wmicMEMORYCHIP_fullList.txt MEMORYCHIP get /format:list                              >> %REPORT_LOGFILE% 2>&1    
-echo ---------------- wmic NIC get Description,MACAddress,NetEnabled,Speed,PhysicalAdapter,PNPDeviceID                       >> %REPORT_LOGFILE% 2>&1
-echo     wmic NIC get Description,MACAddress,NetEnabled,Speed,PhysicalAdapter,PNPDeviceID
-wmic /output:%REPORT_WMIC_LOGFILE% NIC get Description,MACAddress,NetEnabled,Speed,PhysicalAdapter,PNPDeviceID               >> %REPORT_LOGFILE% 2>&1
-type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
-wmic /output:%CHECKLMS_REPORT_LOG_PATH%\wmicNIC_fullList.txt NIC get /format:list                                            >> %REPORT_LOGFILE% 2>&1
-echo ---------------- wmic DISKDRIVE get InterfaceType,Name,Manufacturer,Model,MediaType,SerialNumber,Size,Status            >> %REPORT_LOGFILE% 2>&1
-echo     wmic DISKDRIVE get InterfaceType,Name,Manufacturer,Model,MediaType,SerialNumber,Size,Status
-wmic /output:%REPORT_WMIC_LOGFILE% DISKDRIVE get InterfaceType,Name,Manufacturer,Model,MediaType,SerialNumber,Size,Status    >> %REPORT_LOGFILE% 2>&1
-type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
-wmic /output:%CHECKLMS_REPORT_LOG_PATH%\wmicDISKDRIVE_fullList.txt DISKDRIVE get /format:list                                >> %REPORT_LOGFILE% 2>&1
-echo ---------------- wmic path win32_physicalmedia get SerialNumber                                                         >> %REPORT_LOGFILE% 2>&1
-echo     wmic path win32_physicalmedia get SerialNumber
-wmic /output:%REPORT_WMIC_LOGFILE% path win32_physicalmedia get SerialNumber                                                 >> %REPORT_LOGFILE% 2>&1
-type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
-wmic /output:%CHECKLMS_REPORT_LOG_PATH%\wmicpathwin32_fullList.txt path win32_physicalmedia get /format:list                 >> %REPORT_LOGFILE% 2>&1     
-echo ---------------- wmic path win32_computersystemproduct get uuid                                                         >> %REPORT_LOGFILE% 2>&1
-rem see https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/identify_ec2_instances.html
-echo     wmic path win32_computersystemproduct get uuid
-wmic /output:%REPORT_WMIC_LOGFILE% path win32_computersystemproduct get uuid                                                 >> %REPORT_LOGFILE% 2>&1
-type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
-wmic /output:%CHECKLMS_REPORT_LOG_PATH%\wmicpathwin32_computersystemproduct_fullList.txt path win32_computersystemproduct get /format:list               >> %REPORT_LOGFILE% 2>&1     
-echo ---------------- wmic path msft_disk get Model,BusType,SerialNumber,AdapterSerialNumber                                 >> %REPORT_LOGFILE% 2>&1
-echo     wmic path msft_disk get Model,BusType,SerialNumber,AdapterSerialNumber
-wmic /output:%REPORT_WMIC_LOGFILE% /namespace:\\root\microsoft\windows\storage path msft_disk get Model,BusType,SerialNumber,AdapterSerialNumber         >> %REPORT_LOGFILE% 2>&1
-type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
-wmic /output:%CHECKLMS_REPORT_LOG_PATH%\wmicpathmsftdisk_fullList.txt /namespace:\\root\microsoft\windows\storage path msft_disk get /format:list        >> %REPORT_LOGFILE% 2>&1     
-echo ---------------- wmic baseboard get manufacturer, product, Serialnumber, version                                        >> %REPORT_LOGFILE% 2>&1
-echo     wmic baseboard get manufacturer, product, Serialnumber, version
-wmic /output:%REPORT_WMIC_LOGFILE% baseboard get manufacturer, product, Serialnumber, version                                >> %REPORT_LOGFILE% 2>&1
-type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
-wmic /output:%CHECKLMS_REPORT_LOG_PATH%\wmicbaseboard_fullList.txt baseboard get /format:list                                >> %REPORT_LOGFILE% 2>&1
-echo ---------------- wmic os get locale, oslanguage, codeset                                                                >> %REPORT_LOGFILE% 2>&1
-echo     wmic os get locale, oslanguage, codeset
-echo see http://www.robvanderwoude.com/languagecodes.php                                                                     >> %REPORT_LOGFILE% 2>&1
-wmic /output:%REPORT_WMIC_LOGFILE% os get locale, oslanguage, codeset /format:list                                           >> %REPORT_LOGFILE% 2>&1
-type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
-wmic /output:%CHECKLMS_REPORT_LOG_PATH%\wmicos_fullList.txt os get /format:list                                              >> %REPORT_LOGFILE% 2>&1
-echo ---------------- wmic product get name, version, InstallDate, vendor (with vendor=Siemens)                              >> %REPORT_LOGFILE% 2>&1
-echo ... read installed products and version (with wmic) ...
-echo     wmic product get name, version, InstallDate, vendor (for vendor=Siemens)
-echo Read installed products and version (with wmic, for vendor=Siemens)                                                     >> %REPORT_LOGFILE% 2>&1
-wmic /output:%REPORT_WMIC_LOGFILE% product where "Vendor like '%%Siemens%%'" get name, version, InstallDate, vendor          >> %REPORT_LOGFILE% 2>&1
-type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
-echo ---------------- analyze installed software (%REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV%)                                    >> %REPORT_LOGFILE% 2>&1
-set DONGLE_DRIVER_INSTALL_DATE=N/A
-set SSU_INSTALL_DATE=N/A
-set LMS_INSTALL_DATE=N/A
-IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=1 eol=@ delims=<> " %%i in ('type %REPORT_WMIC_LOGFILE% ^|find /I "Siemens License Management"') do set LMS_INSTALL_DATE=%%i
-IF EXIST "%REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV%" for /f "tokens=1,2,3,4,5 eol=@ delims=," %%A in ('type %REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV%') do (
-	if "%%C" == "Sentinel Runtime" (
-		set DONGLE_DRIVER_INSTALL_DATE=%%B
-		echo 'Dongle Driver' [Version=%%E] installation date: !DONGLE_DRIVER_INSTALL_DATE!                                   >> %REPORT_LOGFILE% 2>&1
-		echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                                >> %REPORT_LOGFILE% 2>&1
+if not defined LMS_SKIPWMIC (
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1 
+	echo     Read installed products and version [with wmic /format:csv product get name, version, InstallDate, vendor]
+	echo Read installed products and version [with wmic product get name, version, InstallDate, vendor /format:csv]              >> %REPORT_LOGFILE% 2>&1
+	wmic /output:%REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV% product get name, version, InstallDate, vendor /format:csv               >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo WMIC Report [using PowerShell: Get-WmiObject -class Win32_BIOS]:                                                        >> %REPORT_LOGFILE% 2>&1
+	powershell -c Get-WmiObject -class Win32_BIOS                                                                                >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	rem see https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/identify_ec2_instances.html
+	echo WMIC Report [using PowerShell: Get-WmiObject -query 'select uuid from Win32_ComputerSystemProduct']:                    >> %REPORT_LOGFILE% 2>&1
+	powershell -c "Get-WmiObject -query 'select uuid from Win32_ComputerSystemProduct' | Select UUID"                            >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	rem see https://www.lisenet.com/2014/get-windows-system-information-via-wmi-command-line-wmic/
+	echo WMIC Report                                                                                                             >> %REPORT_LOGFILE% 2>&1
+	del %REPORT_WMIC_LOGFILE% >nul 2>&1
+	echo ---------------- wmic csproduct get *                                                                                   >> %REPORT_LOGFILE% 2>&1
+	echo     wmic csproduct get *
+	wmic /output:%REPORT_WMIC_LOGFILE% csproduct get * /format:list                    
+	type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
+	echo ---------------- wmic OS get Caption,CSDVersion,OSArchitecture,Version                                                  >> %REPORT_LOGFILE% 2>&1
+	echo     More information to Windows Version, see https://en.wikipedia.org/wiki/Windows_10_version_history                   >> %REPORT_LOGFILE% 2>&1
+	echo     wmic OS get Caption,CSDVersion,OSArchitecture,Version
+	wmic /output:%REPORT_WMIC_LOGFILE% OS get Caption,CSDVersion,OSArchitecture,Version /format:list                    
+	type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
+	wmic /output:%CHECKLMS_REPORT_LOG_PATH%\wmicOS_fullList.txt OS get /format:list                                              >> %REPORT_LOGFILE% 2>&1                    
+	echo ---------------- wmic BIOS get Manufacturer,Name,SMBIOSBIOSVersion,Version,BuildNumber,InstallDate,SerialNumber,Description                         >> %REPORT_LOGFILE% 2>&1
+	echo     wmic BIOS get Manufacturer,Name,SMBIOSBIOSVersion,Version,BuildNumber,InstallDate,SerialNumber,Description
+	wmic /output:%REPORT_WMIC_LOGFILE% BIOS get Manufacturer,Name,SMBIOSBIOSVersion,Version,BuildNumber,InstallDate,SerialNumber,Description  /format:list   >> %REPORT_LOGFILE% 2>&1
+	type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
+	wmic /output:%CHECKLMS_REPORT_LOG_PATH%\wmicBIOS_fullList.txt BIOS get /format:list                                          >> %REPORT_LOGFILE% 2>&1             
+	echo ---------------- wmic CPU get Name,NumberOfCores,NumberOfLogicalProcessors                                              >> %REPORT_LOGFILE% 2>&1
+	echo     wmic CPU get Name,NumberOfCores,NumberOfLogicalProcessors
+	wmic /output:%REPORT_WMIC_LOGFILE% CPU get Name,NumberOfCores,NumberOfLogicalProcessors /format:list                         >> %REPORT_LOGFILE% 2>&1
+	type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
+	wmic /output:%CHECKLMS_REPORT_LOG_PATH%\wmicCPU_fullList.txt CPU get /format:list                                            >> %REPORT_LOGFILE% 2>&1
+	echo ---------------- wmic MEMPHYSICAL get MaxCapacity                                                                       >> %REPORT_LOGFILE% 2>&1
+	echo     wmic MEMPHYSICAL get MaxCapacity
+	wmic /output:%REPORT_WMIC_LOGFILE% MEMPHYSICAL get MaxCapacity /format:list                                                  >> %REPORT_LOGFILE% 2>&1
+	type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
+	wmic /output:%CHECKLMS_REPORT_LOG_PATH%\wmicMEMPHYSICAL_fullList.txt MEMPHYSICAL get /format:list                            >> %REPORT_LOGFILE% 2>&1              
+	echo ---------------- wmic MEMORYCHIP get Capacity,DeviceLocator,PartNumber,Tag                                              >> %REPORT_LOGFILE% 2>&1
+	echo     wmic MEMORYCHIP get Capacity,DeviceLocator,PartNumber,Tag
+	wmic /output:%REPORT_WMIC_LOGFILE% MEMORYCHIP get Capacity,DeviceLocator,PartNumber,Tag                                      >> %REPORT_LOGFILE% 2>&1
+	type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
+	wmic /output:%CHECKLMS_REPORT_LOG_PATH%\wmicMEMORYCHIP_fullList.txt MEMORYCHIP get /format:list                              >> %REPORT_LOGFILE% 2>&1    
+	echo ---------------- wmic NIC get Description,MACAddress,NetEnabled,Speed,PhysicalAdapter,PNPDeviceID                       >> %REPORT_LOGFILE% 2>&1
+	echo     wmic NIC get Description,MACAddress,NetEnabled,Speed,PhysicalAdapter,PNPDeviceID
+	wmic /output:%REPORT_WMIC_LOGFILE% NIC get Description,MACAddress,NetEnabled,Speed,PhysicalAdapter,PNPDeviceID               >> %REPORT_LOGFILE% 2>&1
+	type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
+	wmic /output:%CHECKLMS_REPORT_LOG_PATH%\wmicNIC_fullList.txt NIC get /format:list                                            >> %REPORT_LOGFILE% 2>&1
+	echo ---------------- wmic DISKDRIVE get InterfaceType,Name,Manufacturer,Model,MediaType,SerialNumber,Size,Status            >> %REPORT_LOGFILE% 2>&1
+	echo     wmic DISKDRIVE get InterfaceType,Name,Manufacturer,Model,MediaType,SerialNumber,Size,Status
+	wmic /output:%REPORT_WMIC_LOGFILE% DISKDRIVE get InterfaceType,Name,Manufacturer,Model,MediaType,SerialNumber,Size,Status    >> %REPORT_LOGFILE% 2>&1
+	type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
+	wmic /output:%CHECKLMS_REPORT_LOG_PATH%\wmicDISKDRIVE_fullList.txt DISKDRIVE get /format:list                                >> %REPORT_LOGFILE% 2>&1
+	echo ---------------- wmic path win32_physicalmedia get SerialNumber                                                         >> %REPORT_LOGFILE% 2>&1
+	echo     wmic path win32_physicalmedia get SerialNumber
+	wmic /output:%REPORT_WMIC_LOGFILE% path win32_physicalmedia get SerialNumber                                                 >> %REPORT_LOGFILE% 2>&1
+	type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
+	wmic /output:%CHECKLMS_REPORT_LOG_PATH%\wmicpathwin32_fullList.txt path win32_physicalmedia get /format:list                 >> %REPORT_LOGFILE% 2>&1     
+	echo ---------------- wmic path win32_computersystemproduct get uuid                                                         >> %REPORT_LOGFILE% 2>&1
+	rem see https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/identify_ec2_instances.html
+	echo     wmic path win32_computersystemproduct get uuid
+	wmic /output:%REPORT_WMIC_LOGFILE% path win32_computersystemproduct get uuid                                                 >> %REPORT_LOGFILE% 2>&1
+	type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
+	wmic /output:%CHECKLMS_REPORT_LOG_PATH%\wmicpathwin32_computersystemproduct_fullList.txt path win32_computersystemproduct get /format:list               >> %REPORT_LOGFILE% 2>&1     
+	echo ---------------- wmic path msft_disk get Model,BusType,SerialNumber,AdapterSerialNumber                                 >> %REPORT_LOGFILE% 2>&1
+	echo     wmic path msft_disk get Model,BusType,SerialNumber,AdapterSerialNumber
+	wmic /output:%REPORT_WMIC_LOGFILE% /namespace:\\root\microsoft\windows\storage path msft_disk get Model,BusType,SerialNumber,AdapterSerialNumber         >> %REPORT_LOGFILE% 2>&1
+	type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
+	wmic /output:%CHECKLMS_REPORT_LOG_PATH%\wmicpathmsftdisk_fullList.txt /namespace:\\root\microsoft\windows\storage path msft_disk get /format:list        >> %REPORT_LOGFILE% 2>&1     
+	echo ---------------- wmic baseboard get manufacturer, product, Serialnumber, version                                        >> %REPORT_LOGFILE% 2>&1
+	echo     wmic baseboard get manufacturer, product, Serialnumber, version
+	wmic /output:%REPORT_WMIC_LOGFILE% baseboard get manufacturer, product, Serialnumber, version                                >> %REPORT_LOGFILE% 2>&1
+	type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
+	wmic /output:%CHECKLMS_REPORT_LOG_PATH%\wmicbaseboard_fullList.txt baseboard get /format:list                                >> %REPORT_LOGFILE% 2>&1
+	echo ---------------- wmic os get locale, oslanguage, codeset                                                                >> %REPORT_LOGFILE% 2>&1
+	echo     wmic os get locale, oslanguage, codeset
+	echo see http://www.robvanderwoude.com/languagecodes.php                                                                     >> %REPORT_LOGFILE% 2>&1
+	wmic /output:%REPORT_WMIC_LOGFILE% os get locale, oslanguage, codeset /format:list                                           >> %REPORT_LOGFILE% 2>&1
+	type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
+	wmic /output:%CHECKLMS_REPORT_LOG_PATH%\wmicos_fullList.txt os get /format:list                                              >> %REPORT_LOGFILE% 2>&1
+	echo ---------------- wmic product get name, version, InstallDate, vendor [with vendor=Siemens]                              >> %REPORT_LOGFILE% 2>&1
+	echo ... read installed products and version [with wmic] ...
+	echo     wmic product get name, version, InstallDate, vendor [for vendor=Siemens]
+	echo Read installed products and version [with wmic, for vendor=Siemens]                                                     >> %REPORT_LOGFILE% 2>&1
+	wmic /output:%REPORT_WMIC_LOGFILE% product where "Vendor like '%%Siemens%%'" get name, version, InstallDate, vendor          >> %REPORT_LOGFILE% 2>&1
+	type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
+	echo ---------------- analyze installed software [%REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV%]                                    >> %REPORT_LOGFILE% 2>&1
+	set DONGLE_DRIVER_INSTALL_DATE=N/A
+	set SSU_INSTALL_DATE=N/A
+	set LMS_INSTALL_DATE=N/A
+	IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=1 eol=@ delims=<> " %%i in ('type %REPORT_WMIC_LOGFILE% ^|find /I "Siemens License Management"') do set LMS_INSTALL_DATE=%%i
+	IF EXIST "%REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV%" for /f "tokens=1,2,3,4,5 eol=@ delims=," %%A in ('type %REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV%') do (
+		if "%%C" == "Sentinel Runtime" (
+			set DONGLE_DRIVER_INSTALL_DATE=%%B
+			echo 'Dongle Driver' [Version=%%E] installation date: !DONGLE_DRIVER_INSTALL_DATE!                                   >> %REPORT_LOGFILE% 2>&1
+			echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                                >> %REPORT_LOGFILE% 2>&1
+		)
+		if "%%C" == "Sentinel Runtime R01" (
+			set DONGLE_DRIVER_INSTALL_DATE=%%B
+			echo 'Dongle Driver' [Version=%%E] installation date: !DONGLE_DRIVER_INSTALL_DATE!                                   >> %REPORT_LOGFILE% 2>&1
+			echo NOTE: There was a dongle driver update to version V7.81 at !DONGLE_DRIVER_INSTALL_DATE! provided by ATOS.       >> %REPORT_LOGFILE% 2>&1
+			echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                                >> %REPORT_LOGFILE% 2>&1
+		)
+		if "%%C" == "Sentinel License Manager R01" (
+			set DONGLE_DRIVER_INSTALL_DATE=%%B
+			echo 'Dongle Driver' [Version=%%E] installation date: !DONGLE_DRIVER_INSTALL_DATE!                                   >> %REPORT_LOGFILE% 2>&1
+			echo NOTE: There was a dongle driver update to version V7.92 at !DONGLE_DRIVER_INSTALL_DATE! provided by ATOS.       >> %REPORT_LOGFILE% 2>&1
+			echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                                >> %REPORT_LOGFILE% 2>&1
+		)
+		if "%%C" == "Siemens Software Updater" (
+			set SSU_INSTALL_DATE=%%B
+			echo 'Siemens Software Updater' [Version=%%E] installation date: !SSU_INSTALL_DATE!                                  >> %REPORT_LOGFILE% 2>&1
+			echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                                >> %REPORT_LOGFILE% 2>&1
+		)
+		if "%%C" == "Siemens License Management" (
+			set LMS_INSTALL_DATE=%%B
+			echo 'License Management System' [Version=%%E] installation date: !LMS_INSTALL_DATE!                                 >> %REPORT_LOGFILE% 2>&1
+			echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                                >> %REPORT_LOGFILE% 2>&1
+		)
+		if "%%C" == "Siemens License Management R01" (
+			set LMS_INSTALL_DATE=%%B
+			echo 'License Management System' [Version=%%E] installation date: !LMS_INSTALL_DATE!                                 >> %REPORT_LOGFILE% 2>&1
+			echo NOTE: LMS 'R01' has been installed at !LMS_INSTALL_DATE! via Software Center [provided by ATOS]                 >> %REPORT_LOGFILE% 2>&1
+			echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                                >> %REPORT_LOGFILE% 2>&1
+		)
+		if "%%C" == "Siemens License Management R02" (
+			set LMS_INSTALL_DATE=%%B
+			echo 'License Management System' [Version=%%E] installation date: !LMS_INSTALL_DATE!                                 >> %REPORT_LOGFILE% 2>&1
+			echo NOTE: LMS 'R02' has been installed at !LMS_INSTALL_DATE! via Software Center [provided by ATOS]                 >> %REPORT_LOGFILE% 2>&1
+			echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                                >> %REPORT_LOGFILE% 2>&1
+		)
 	)
-	if "%%C" == "Sentinel Runtime R01" (
-		set DONGLE_DRIVER_INSTALL_DATE=%%B
-		echo 'Dongle Driver' [Version=%%E] installation date: !DONGLE_DRIVER_INSTALL_DATE!                                   >> %REPORT_LOGFILE% 2>&1
-		echo NOTE: There was a dongle driver update to version V7.81 at !DONGLE_DRIVER_INSTALL_DATE! provided by ATOS.       >> %REPORT_LOGFILE% 2>&1
-		echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                                >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_INSTALLED_BY_ATOS (
+		rem based on registry key: "HKLM\SOFTWARE\LicenseManagementSystem\IsInstalled"
+		echo NOTE: LMS has been installed at !LMS_INSTALL_DATE! via Software Center [provided by ATOS]                           >> %REPORT_LOGFILE% 2>&1
 	)
-	if "%%C" == "Sentinel License Manager R01" (
-		set DONGLE_DRIVER_INSTALL_DATE=%%B
-		echo 'Dongle Driver' [Version=%%E] installation date: !DONGLE_DRIVER_INSTALL_DATE!                                   >> %REPORT_LOGFILE% 2>&1
-		echo NOTE: There was a dongle driver update to version V7.92 at !DONGLE_DRIVER_INSTALL_DATE! provided by ATOS.       >> %REPORT_LOGFILE% 2>&1
-		echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                                >> %REPORT_LOGFILE% 2>&1
-	)
-	if "%%C" == "Siemens Software Updater" (
-		set SSU_INSTALL_DATE=%%B
-		echo 'Siemens Software Updater' [Version=%%E] installation date: !SSU_INSTALL_DATE!                                  >> %REPORT_LOGFILE% 2>&1
-		echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                                >> %REPORT_LOGFILE% 2>&1
-	)
-	if "%%C" == "Siemens License Management" (
-		set LMS_INSTALL_DATE=%%B
-		echo 'License Management System' [Version=%%E] installation date: !LMS_INSTALL_DATE!                                 >> %REPORT_LOGFILE% 2>&1
-		echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                                >> %REPORT_LOGFILE% 2>&1
-	)
-	if "%%C" == "Siemens License Management R01" (
-		set LMS_INSTALL_DATE=%%B
-		echo 'License Management System' [Version=%%E] installation date: !LMS_INSTALL_DATE!                                 >> %REPORT_LOGFILE% 2>&1
-		echo NOTE: LMS 'R01' has been installed at !LMS_INSTALL_DATE! via Software Center [provided by ATOS]                 >> %REPORT_LOGFILE% 2>&1
-		echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                                >> %REPORT_LOGFILE% 2>&1
-	)
-	if "%%C" == "Siemens License Management R02" (
-		set LMS_INSTALL_DATE=%%B
-		echo 'License Management System' [Version=%%E] installation date: !LMS_INSTALL_DATE!                                 >> %REPORT_LOGFILE% 2>&1
-		echo NOTE: LMS 'R02' has been installed at !LMS_INSTALL_DATE! via Software Center [provided by ATOS]                 >> %REPORT_LOGFILE% 2>&1
-		echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                                >> %REPORT_LOGFILE% 2>&1
-	)
-)
-if defined LMS_INSTALLED_BY_ATOS (
-	rem based on registry key: "HKLM\SOFTWARE\LicenseManagementSystem\IsInstalled"
-	echo NOTE: LMS has been installed at !LMS_INSTALL_DATE! via Software Center [provided by ATOS]                           >> %REPORT_LOGFILE% 2>&1
-)
-echo ---------------- analyze installed software (check number of installed Siemens Software)                                >> %REPORT_LOGFILE% 2>&1
-set NUM_OF_INSTALLED_SW_FROM_SIEMENS=
-set NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_1=130
-set NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_2=80
-IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "usebackq" %%A in (`TYPE %REPORT_WMIC_LOGFILE% ^| find /v /c "" `) do set NUM_OF_INSTALLED_SW_FROM_SIEMENS=%%A
-if defined NUM_OF_INSTALLED_SW_FROM_SIEMENS (
-	set /A NUM_OF_INSTALLED_SW_FROM_SIEMENS -= 1 
-	echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
-	echo NOTE: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS!.                               >> %REPORT_LOGFILE% 2>&1
-	echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
-	rem check bumber of installed siemens software, see https://bt-clmserver01.hqs.sbt.siemens.com/ccm/resource/itemName/com.ibm.team.workitem.WorkItem/822161
-	if /I !NUM_OF_INSTALLED_SW_FROM_SIEMENS! GEQ !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_1! (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    NOTE: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS! and exceeds the limit of !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_1!. This will cause problems during activation. [1;37m
+	echo ---------------- analyze installed software [check number of installed Siemens Software]                                >> %REPORT_LOGFILE% 2>&1
+	set NUM_OF_INSTALLED_SW_FROM_SIEMENS=
+	set NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_1=130
+	set NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_2=80
+	IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "usebackq" %%A in (`TYPE %REPORT_WMIC_LOGFILE% ^| find /v /c "" `) do set NUM_OF_INSTALLED_SW_FROM_SIEMENS=%%A
+	if defined NUM_OF_INSTALLED_SW_FROM_SIEMENS (
+		set /A NUM_OF_INSTALLED_SW_FROM_SIEMENS -= 1 
+		echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
+		echo NOTE: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS!.                               >> %REPORT_LOGFILE% 2>&1
+		echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
+		rem check bumber of installed siemens software, see https://bt-clmserver01.hqs.sbt.siemens.com/ccm/resource/itemName/com.ibm.team.workitem.WorkItem/822161
+		if /I !NUM_OF_INSTALLED_SW_FROM_SIEMENS! GEQ !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_1! (
+			if defined SHOW_COLORED_OUTPUT (
+				echo [1;31m    NOTE: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS! and exceeds the limit of !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_1!. This will cause problems during activation. [1;37m
+			) else (
+				echo     NOTE: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS! and exceeds the limit of !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_1!. This will cause problems during activation.
+			)
+			echo NOTE: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS! and exceeds the limit of !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_1!. This will cause problems during activation.              >> %REPORT_LOGFILE% 2>&1
 		) else (
-			echo     NOTE: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS! and exceeds the limit of !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_1!. This will cause problems during activation.
-		)
-		echo NOTE: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS! and exceeds the limit of !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_1!. This will cause problems during activation.              >> %REPORT_LOGFILE% 2>&1
-	) else (
-		if /I !NUM_OF_INSTALLED_SW_FROM_SIEMENS! GEQ !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_2! (
-				if defined SHOW_COLORED_OUTPUT (
-					echo [1;33m    WARNING: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS! and exceeds the limit of !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_2!. This may cause problems during activation. [1;37m
-				) else (
-					echo     WARNING: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS! and exceeds the limit of !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_2!. This may cause problems during activation.
-				)
-				echo WARNING: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS! and exceeds the limit of !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_2!. This may cause problems during activation. >> %REPORT_LOGFILE% 2>&1
+			if /I !NUM_OF_INSTALLED_SW_FROM_SIEMENS! GEQ !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_2! (
+					if defined SHOW_COLORED_OUTPUT (
+						echo [1;33m    WARNING: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS! and exceeds the limit of !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_2!. This may cause problems during activation. [1;37m
+					) else (
+						echo     WARNING: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS! and exceeds the limit of !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_2!. This may cause problems during activation.
+					)
+					echo WARNING: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS! and exceeds the limit of !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_2!. This may cause problems during activation. >> %REPORT_LOGFILE% 2>&1
+			)
 		)
 	)
+	echo ---------------- wmic product get name, version, InstallDate, vendor                                                    >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo     Read installed products and version [with wmic product get name, version, InstallDate, vendor]
+	echo Read installed products and version [with wmic]                                                                         >> %REPORT_LOGFILE% 2>&1
+	wmic /output:%REPORT_WMIC_INSTALLED_SW_LOGFILE% product get name, version, InstallDate, vendor                               >> %REPORT_LOGFILE% 2>&1
+	type %REPORT_WMIC_INSTALLED_SW_LOGFILE%                                                                                      >> %REPORT_LOGFILE% 2>&1
+	echo     Read installed products and version [with wmic *] 
+	echo Read installed products and version [with wmic *]                                                                       >> %REPORT_LOGFILE% 2>&1
+	wmic /output:%CHECKLMS_REPORT_LOG_PATH%\wmicproduct_fullList.txt product get /format:list                                    >> %REPORT_LOGFILE% 2>&1
+	echo     see more details in %CHECKLMS_REPORT_LOG_PATH%\wmicproduct_fullList.txt                                             >> %REPORT_LOGFILE% 2>&1
+) else (
+	if defined SHOW_COLORED_OUTPUT (
+		echo [1;33m    SKIPPED wmic section. The script didn't execute the wmic commands. [1;37m
+	) else (
+		echo     SKIPPED wmic section. The script didn't execute the wmic commands.
+	)
+	echo SKIPPED wmic section. The script didn't execute the wmic commands.                                                  >> %REPORT_LOGFILE% 2>&1
 )
-echo ---------------- wmic product get name, version, InstallDate, vendor                                                    >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo     Read installed products and version (with wmic product get name, version, InstallDate, vendor)
-echo Read installed products and version (with wmic)                                                                         >> %REPORT_LOGFILE% 2>&1
-wmic /output:%REPORT_WMIC_INSTALLED_SW_LOGFILE% product get name, version, InstallDate, vendor                               >> %REPORT_LOGFILE% 2>&1
-type %REPORT_WMIC_INSTALLED_SW_LOGFILE%                                                                                      >> %REPORT_LOGFILE% 2>&1
-echo     Read installed products and version (with wmic *) 
-echo Read installed products and version (with wmic *)                                                                       >> %REPORT_LOGFILE% 2>&1
-wmic /output:%CHECKLMS_REPORT_LOG_PATH%\wmicproduct_fullList.txt product get /format:list                                    >> %REPORT_LOGFILE% 2>&1
-echo     see more details in %CHECKLMS_REPORT_LOG_PATH%\wmicproduct_fullList.txt                                             >> %REPORT_LOGFILE% 2>&1
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 echo ... read installed .NET framework(s) (reg query) ...
 echo Read installed .NET framework(s) (reg query)                                                                            >> %REPORT_LOGFILE% 2>&1
@@ -1915,8 +1963,8 @@ if not !ERRORLEVEL!==0 (
 	)
 )
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo ... read installed products and version (from registry) ...
-echo Read installed products and version (from registry)                                                                     >> %REPORT_LOGFILE% 2>&1
+echo ... read installed products and version [from registry] ...
+echo Read installed products and version [from registry]                                                                     >> %REPORT_LOGFILE% 2>&1
 Powershell -command "Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Format-List" > %CHECKLMS_REPORT_LOG_PATH%\InstalledProgramsReport1.log 2>&1
 Powershell -command "Powershell -command "Get-Item HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*"                                                                      > %CHECKLMS_REPORT_LOG_PATH%\InstalledProgramsReport2.log 2>&1
 rem type %CHECKLMS_REPORT_LOG_PATH%\InstalledProgramsReport.log >> %REPORT_LOGFILE% 2>&1
@@ -2041,25 +2089,25 @@ echo Content of folder: "%WinDir%\System32\Drivers\Etc"                         
 dir /S /A /X /4 /W "%WinDir%\System32\Drivers\Etc"                                                                           >> %REPORT_LOGFILE% 2>&1
 mkdir !CHECKLMS_REPORT_LOG_PATH!\etc\  >nul 2>&1
 xcopy "%WinDir%\System32\Drivers\Etc\*" !CHECKLMS_REPORT_LOG_PATH!\etc\ /E /Y /H /I                                          >> %REPORT_LOGFILE% 2>&1 
-echo --- Files automatically copied from '%WinDir%\System32\Drivers\Etc\*' to '!CHECKLMS_REPORT_LOG_PATH!\etc\' --- > !CHECKLMS_REPORT_LOG_PATH!\etc\__README.txt 2>&1
-if exist "%WinDir%\System32\Drivers\Etc\hosts" (
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-	echo Content of '%WinDir%\System32\Drivers\Etc\hosts':                                                                   >> %REPORT_LOGFILE% 2>&1
-	type "%WinDir%\System32\Drivers\Etc\hosts"                                                                               >> %REPORT_LOGFILE% 2>&1
-	echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
-)
-if exist "%WinDir%\System32\Drivers\Etc\networks" (
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-	echo Content of '%WinDir%\System32\Drivers\Etc\networks':                                                                >> %REPORT_LOGFILE% 2>&1
-	type "%WinDir%\System32\Drivers\Etc\networks"                                                                            >> %REPORT_LOGFILE% 2>&1
-	echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
-)
-if exist "%WinDir%\System32\Drivers\Etc\protocol" (
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-	echo Content of '%WinDir%\System32\Drivers\Etc\protocol':                                                                >> %REPORT_LOGFILE% 2>&1
-	type "%WinDir%\System32\Drivers\Etc\protocol"                                                                            >> %REPORT_LOGFILE% 2>&1
-	echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
-)
+echo --- Files automatically copied from '%WinDir%\System32\Drivers\Etc\*' to '!CHECKLMS_REPORT_LOG_PATH!\etc\' at !DATE! !TIME! --- > !CHECKLMS_REPORT_LOG_PATH!\etc\__README.txt 2>&1
+rem if exist "%WinDir%\System32\Drivers\Etc\hosts" (
+rem 	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+rem 	echo Content of '%WinDir%\System32\Drivers\Etc\hosts':                                                                   >> %REPORT_LOGFILE% 2>&1
+rem 	type "%WinDir%\System32\Drivers\Etc\hosts"                                                                               >> %REPORT_LOGFILE% 2>&1
+rem 	echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
+rem )
+rem if exist "%WinDir%\System32\Drivers\Etc\networks" (
+rem 	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+rem 	echo Content of '%WinDir%\System32\Drivers\Etc\networks':                                                                >> %REPORT_LOGFILE% 2>&1
+rem 	type "%WinDir%\System32\Drivers\Etc\networks"                                                                            >> %REPORT_LOGFILE% 2>&1
+rem 	echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
+rem )
+rem if exist "%WinDir%\System32\Drivers\Etc\protocol" (
+rem 	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+rem 	echo Content of '%WinDir%\System32\Drivers\Etc\protocol':                                                                >> %REPORT_LOGFILE% 2>&1
+rem 	type "%WinDir%\System32\Drivers\Etc\protocol"                                                                            >> %REPORT_LOGFILE% 2>&1
+rem 	echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
+rem )
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo ... collect system information ...
@@ -2255,60 +2303,69 @@ echo     Full details see '%CHECKLMS_REPORT_LOG_PATH%\netsh_wlan.log'           
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo ... retrieve firewall settings ...
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo Retrieve firewall settings [with 'netsh firewall show state']                                                           >> %REPORT_LOGFILE% 2>&1
-netsh firewall show state                                                                                                    >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo Retrieve firewall settings [with 'netsh advfirewall firewall show rule name=all verbose']                               >> %REPORT_LOGFILE% 2>&1
-echo     full list see %CHECKLMS_REPORT_LOG_PATH%\firewall_rules.txt                                                         >> %REPORT_LOGFILE% 2>&1
-netsh advfirewall firewall show rule name=all verbose > %CHECKLMS_REPORT_LOG_PATH%\firewall_rules.txt 2>&1
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo Retrieve firewall settings [with 'Powershell -command "Show-NetFirewallRule"']                                          >> %REPORT_LOGFILE% 2>&1
-echo     full list see %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_PS.txt                                                      >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo Analyze firewall rules [retrieved with Powershell], check for LMS entries ...                                           >> %REPORT_LOGFILE% 2>&1
-Powershell -command "Show-NetFirewallRule"  > %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_PS.txt 2>&1
-del %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_extract.txt >nul 2>&1
-IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\firewall_rules_PS.txt" for /f "tokens=1* eol=@ delims=<>: " %%A in (%CHECKLMS_REPORT_LOG_PATH%\firewall_rules_PS.txt) do (
-	rem echo [%%A] [%%B]
-	set PARAMETER_NAME=%%A
-	set PARAMETER_VALUE=%%B
-	rem echo [!PARAMETER_NAME!] [!PARAMETER_VALUE!]
-	for /f "tokens=* delims= " %%a in ("!PARAMETER_NAME!") do set PARAMETER_NAME=%%a
-	for /f "tokens=* delims= " %%a in ("!PARAMETER_VALUE!") do set PARAMETER_VALUE=%%a
-	rem echo [!PARAMETER_NAME!] [!PARAMETER_VALUE!]
-	if "!PARAMETER_NAME!" EQU "DisplayName" (
-		set FIREWALL_RULE_NAME=!PARAMETER_VALUE!
-		rem echo Rule Name: !FIREWALL_RULE_NAME!
+if not defined LMS_SKIPFIREWALL (
+	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+	echo Retrieve firewall settings [with 'netsh firewall show state']                                                       >> %REPORT_LOGFILE% 2>&1
+	netsh firewall show state                                                                                                >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+	echo Retrieve firewall settings [with 'netsh advfirewall firewall show rule name=all verbose']                           >> %REPORT_LOGFILE% 2>&1
+	echo     full list see %CHECKLMS_REPORT_LOG_PATH%\firewall_rules.txt                                                     >> %REPORT_LOGFILE% 2>&1
+	netsh advfirewall firewall show rule name=all verbose > %CHECKLMS_REPORT_LOG_PATH%\firewall_rules.txt 2>&1
+	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+	echo Retrieve firewall settings [with 'Powershell -command "Show-NetFirewallRule"']                                      >> %REPORT_LOGFILE% 2>&1
+	echo     full list see %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_PS.txt                                                  >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+	echo Analyze firewall rules [retrieved with Powershell], check for LMS entries ...                                       >> %REPORT_LOGFILE% 2>&1
+	Powershell -command "Show-NetFirewallRule"  > %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_PS.txt 2>&1
+	del %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_extract.txt >nul 2>&1
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\firewall_rules_PS.txt" for /f "tokens=1* eol=@ delims=<>: " %%A in (%CHECKLMS_REPORT_LOG_PATH%\firewall_rules_PS.txt) do (
+		rem echo [%%A] [%%B]
+		set PARAMETER_NAME=%%A
+		set PARAMETER_VALUE=%%B
+		rem echo [!PARAMETER_NAME!] [!PARAMETER_VALUE!]
+		for /f "tokens=* delims= " %%a in ("!PARAMETER_NAME!") do set PARAMETER_NAME=%%a
+		for /f "tokens=* delims= " %%a in ("!PARAMETER_VALUE!") do set PARAMETER_VALUE=%%a
+		rem echo [!PARAMETER_NAME!] [!PARAMETER_VALUE!]
+		if "!PARAMETER_NAME!" EQU "DisplayName" (
+			set FIREWALL_RULE_NAME=!PARAMETER_VALUE!
+			rem echo Rule Name: !FIREWALL_RULE_NAME!
+		)
+		if "!PARAMETER_NAME!" EQU "Program" (
+			set FIREWALL_PROG_NAME=!PARAMETER_VALUE!
+			rem echo [Rule Name=!FIREWALL_RULE_NAME!][Program Name=!FIREWALL_PROG_NAME!]
+			echo [Rule Name=!FIREWALL_RULE_NAME!][Program Name=!FIREWALL_PROG_NAME!] >> %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_extract.txt  2>&1
+		)
 	)
-	if "!PARAMETER_NAME!" EQU "Program" (
-		set FIREWALL_PROG_NAME=!PARAMETER_VALUE!
-		rem echo [Rule Name=!FIREWALL_RULE_NAME!][Program Name=!FIREWALL_PROG_NAME!]
-		echo [Rule Name=!FIREWALL_RULE_NAME!][Program Name=!FIREWALL_PROG_NAME!] >> %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_extract.txt  2>&1
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\firewall_rules_extract.txt" (
+		for /f "tokens=1,2 eol=@ delims==<>[]" %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_extract.txt ^|find /I "lmgrd.exe"') do set "LMGRD_FOUND=%%B"
+		for /f "tokens=1,2 eol=@ delims==<>[]" %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_extract.txt ^|find /I "SIEMBT.exe"') do set "SIEMBT_FOUND=%%B"
 	)
-)
-IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\firewall_rules_extract.txt" (
-	for /f "tokens=1,2 eol=@ delims==<>[]" %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_extract.txt ^|find /I "lmgrd.exe"') do set "LMGRD_FOUND=%%B"
-	for /f "tokens=1,2 eol=@ delims==<>[]" %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_extract.txt ^|find /I "SIEMBT.exe"') do set "SIEMBT_FOUND=%%B"
-)
-del %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_LMS.txt >nul 2>&1
-if defined LMGRD_FOUND (
-	echo     Rule for lmgrd.exe found, with name "!LMGRD_FOUND!".                                                            >> %REPORT_LOGFILE% 2>&1
-	echo     Rule for lmgrd.exe found, with name "!LMGRD_FOUND!".
-	netsh advfirewall firewall show rule name="!LMGRD_FOUND!" verbose >> %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_LMS.txt 2>&1
+	del %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_LMS.txt >nul 2>&1
+	if defined LMGRD_FOUND (
+		echo     Rule for lmgrd.exe found, with name "!LMGRD_FOUND!".                                                        >> %REPORT_LOGFILE% 2>&1
+		echo     Rule for lmgrd.exe found, with name "!LMGRD_FOUND!".
+		netsh advfirewall firewall show rule name="!LMGRD_FOUND!" verbose >> %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_LMS.txt 2>&1
+	) else (
+		echo     NO Rule for lmgrd.exe found.                                                                                >> %REPORT_LOGFILE% 2>&1
+		echo     NO Rule for lmgrd.exe found.
+	)
+	if defined SIEMBT_FOUND (
+		echo     Rule for SIEMBT.exe found, with name "!SIEMBT_FOUND!".                                                      >> %REPORT_LOGFILE% 2>&1
+		echo     Rule for SIEMBT.exe found, with name "!SIEMBT_FOUND!".
+		netsh advfirewall firewall show rule name="!SIEMBT_FOUND!" verbose >> %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_LMS.txt 2>&1
+	) else (
+		echo     NO Rule for SIEMBT.exe found.                                                                               >> %REPORT_LOGFILE% 2>&1
+		echo     NO Rule for SIEMBT.exe found.
+	)
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\firewall_rules_LMS.txt" type "%CHECKLMS_REPORT_LOG_PATH%\firewall_rules_LMS.txt"    >> %REPORT_LOGFILE% 2>&1
 ) else (
-	echo     NO Rule for lmgrd.exe found.                                                                                    >> %REPORT_LOGFILE% 2>&1
-	echo     NO Rule for lmgrd.exe found.
+	if defined SHOW_COLORED_OUTPUT (
+		echo [1;33m    SKIPPED firewall section. The script didn't execute the firewall commands. [1;37m
+	) else (
+		echo     SKIPPED firewall section. The script didn't execute the firewall commands.
+	)
+	echo SKIPPED firewall section. The script didn't execute the firewall commands.                                          >> %REPORT_LOGFILE% 2>&1
 )
-if defined SIEMBT_FOUND (
-	echo     Rule for SIEMBT.exe found, with name "!SIEMBT_FOUND!".                                                          >> %REPORT_LOGFILE% 2>&1
-	echo     Rule for SIEMBT.exe found, with name "!SIEMBT_FOUND!".
-	netsh advfirewall firewall show rule name="!SIEMBT_FOUND!" verbose >> %CHECKLMS_REPORT_LOG_PATH%\firewall_rules_LMS.txt 2>&1
-) else (
-	echo     NO Rule for SIEMBT.exe found.                                                                                   >> %REPORT_LOGFILE% 2>&1
-	echo     NO Rule for SIEMBT.exe found.
-)
-IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\firewall_rules_LMS.txt" type "%CHECKLMS_REPORT_LOG_PATH%\firewall_rules_LMS.txt"        >> %REPORT_LOGFILE% 2>&1
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo ... check LMS registry permission ...
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
@@ -2351,24 +2408,33 @@ echo =   L M S   S C H E D U L E D   T A S K S                                  
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo ... collect scheduled tasks defintions ...
-schtasks /Query /V > "!CHECKLMS_REPORT_LOG_PATH!\schtasks.log" 2>&1
-schtasks /QUERY /V /TN \Siemens\ > "!CHECKLMS_REPORT_LOG_PATH!\schtasks_siemens.log" 2>&1
-echo Scheduled Tasks Definitions (for Siemens)                                                                               >> %REPORT_LOGFILE% 2>&1
-IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\schtasks_siemens.log" (
-	Type "!CHECKLMS_REPORT_LOG_PATH!\schtasks_siemens.log"                                                                   >> %REPORT_LOGFILE% 2>&1
-	echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
+if not defined LMS_SKIPSCHEDTASK (
+	schtasks /Query /V > "!CHECKLMS_REPORT_LOG_PATH!\schtasks.log" 2>&1
+	schtasks /QUERY /V /TN \Siemens\ > "!CHECKLMS_REPORT_LOG_PATH!\schtasks_siemens.log" 2>&1
+	echo Scheduled Tasks Definitions [for Siemens]                                                                           >> %REPORT_LOGFILE% 2>&1
+	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\schtasks_siemens.log" (
+		Type "!CHECKLMS_REPORT_LOG_PATH!\schtasks_siemens.log"                                                               >> %REPORT_LOGFILE% 2>&1
+		echo .                                                                                                               >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     No scheduled task found.                                                                                    >> %REPORT_LOGFILE% 2>&1
+	)
+	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+	echo ... get details for 'OnStartup' scheduled task ...
+	echo Get details for 'OnStartup' scheduled task ...                                                                      >> %REPORT_LOGFILE% 2>&1
+	schtasks /query /FO LIST /V /tn "\Siemens\Lms\OnStartup"                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+	echo ... get details for 'WeeklyTask' scheduled task ...
+	echo Get details for 'WeeklyTask' scheduled task ...                                                                     >> %REPORT_LOGFILE% 2>&1
+	schtasks /query /FO LIST /V /tn "\Siemens\Lms\WeeklyTask"                                                                >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                         >> %REPORT_LOGFILE% 2>&1
 ) else (
-	echo     No scheduled task found.                                                                                        >> %REPORT_LOGFILE% 2>&1
+	if defined SHOW_COLORED_OUTPUT (
+		echo [1;33m    SKIPPED scheduled task section. The script didn't execute the scheduled task commands. [1;37m
+	) else (
+		echo     SKIPPED scheduled task section. The script didn't execute the scheduled task commands.
+	)
+	echo SKIPPED scheduled task section. The script didn't execute the scheduled task commands.                              >> %REPORT_LOGFILE% 2>&1
 )
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo ... get details for 'OnStartup' scheduled task ...
-echo Get details for 'OnStartup' scheduled task ...                                                                          >> %REPORT_LOGFILE% 2>&1
-schtasks /query /FO LIST /V /tn "\Siemens\Lms\OnStartup"                                                                     >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo ... get details for 'WeeklyTask' scheduled task ...
-echo Get details for 'WeeklyTask' scheduled task ...                                                                         >> %REPORT_LOGFILE% 2>&1
-schtasks /query /FO LIST /V /tn "\Siemens\Lms\WeeklyTask"                                                                    >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 :windows_error_reporting
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo =   W I N D O W S   E R R O R   R E P O R T I N G  (W E R)                   =                                          >> %REPORT_LOGFILE% 2>&1
@@ -2376,68 +2442,79 @@ echo ===========================================================================
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo ... get crash dump settings ...
 echo Get crash dump settings ...                                                                                             >> %REPORT_LOGFILE% 2>&1
-REM -- WER "DumpType" Registry Key
-set KEY_NAME=HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps
-set VALUE_NAME=DumpType
-for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
-	set WER_DUMPTYPE=%%A
-)
-if defined WER_DUMPTYPE (
-	echo     Dump type is !WER_DUMPTYPE! [0=Custom dump, 1=Mini dump, 2=Full dump]
-	echo Dump type is !WER_DUMPTYPE! [0=Custom dump, 1=Mini dump, 2=Full dump]                                               >> %REPORT_LOGFILE% 2>&1
-) else (
-	echo     Dump type is NOT DEFINED, crash dumps are NOT enabled.
-	echo     More information available on https://wiki.siemens.com/x/DiCNBg
-	echo Dump type is NOT DEFINED, crash dumps are NOT enabled.                                                              >> %REPORT_LOGFILE% 2>&1
-	echo More information available on https://wiki.siemens.com/x/DiCNBg                                                     >> %REPORT_LOGFILE% 2>&1
-)
-echo ... search crash dump file(s) [*.dmp] [on c:\ only] ...
-echo Search crash dump file(s) [*.dmp] [on c:\ only]:                                                                        >> %REPORT_LOGFILE% 2>&1
-del !CHECKLMS_CRASH_DUMP_PATH!\CrashDumpFilesFound.txt >nul 2>&1
-FOR /r C:\ %%X IN (*.dmp) DO if "%%~dpX" NEQ "!CHECKLMS_CRASH_DUMP_PATH!\" echo %%~dpnxX >> !CHECKLMS_CRASH_DUMP_PATH!\CrashDumpFilesFound.txt
-IF EXIST "!CHECKLMS_CRASH_DUMP_PATH!\CrashDumpFilesFound.txt" (
-	set CRASHDUMP_FILE_COUNT=0
-	set CRASHDUMP_TOTAL_FILE_COUNT=0
-	FOR /F "eol=@ delims=@" %%i IN (!CHECKLMS_CRASH_DUMP_PATH!\CrashDumpFilesFound.txt) DO ( 
-		set name=%%~nxi
-		set /A CRASHDUMP_TOTAL_FILE_COUNT += 1
-
-		set "first=!name:~0,3!"
-		if /I "!first!" EQU "alm" (
-			set /A CRASHDUMP_FILE_COUNT += 1
-			echo %%i copy to !CHECKLMS_CRASH_DUMP_PATH!\            >> %REPORT_LOGFILE% 2>&1   
-			copy /Y "%%i" !CHECKLMS_CRASH_DUMP_PATH!\               >> %REPORT_LOGFILE% 2>&1
-		)
-		set "first=!name:~0,7!"
-		if /I "!first!" EQU "Siemens" (
-			set /A CRASHDUMP_FILE_COUNT += 1
-			echo %%i copy to !CHECKLMS_CRASH_DUMP_PATH!\            >> %REPORT_LOGFILE% 2>&1   
-			copy /Y "%%i" !CHECKLMS_CRASH_DUMP_PATH!\               >> %REPORT_LOGFILE% 2>&1
-		)
-		set "first=!name:~0,6!"
-		if /I "!first!" EQU "SIEMBT" (
-			set /A CRASHDUMP_FILE_COUNT += 1
-			echo %%i copy to !CHECKLMS_CRASH_DUMP_PATH!\            >> %REPORT_LOGFILE% 2>&1   
-			copy /Y "%%i" !CHECKLMS_CRASH_DUMP_PATH!\               >> %REPORT_LOGFILE% 2>&1
-		)
-		set "first=!name:~0,10!"
-		if /I "!first!" EQU "SSUManager" (
-			set /A CRASHDUMP_FILE_COUNT += 1
-			echo %%i copy to !CHECKLMS_CRASH_DUMP_PATH!\            >> %REPORT_LOGFILE% 2>&1   
-			copy /Y "%%i" !CHECKLMS_CRASH_DUMP_PATH!\               >> %REPORT_LOGFILE% 2>&1
-		)
+if not defined LMS_SKIPWER (
+	REM -- WER "DumpType" Registry Key
+	set KEY_NAME=HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps
+	set VALUE_NAME=DumpType
+	for /F "usebackq tokens=3" %%A IN (`reg query "%KEY_NAME%" /v "%VALUE_NAME%" 2^>nul ^| find /I "%VALUE_NAME%"`) do (
+		set WER_DUMPTYPE=%%A
 	)
-    echo     Total !CRASHDUMP_FILE_COUNT! out of !CRASHDUMP_TOTAL_FILE_COUNT! crash dump files copied.
-    echo     Total !CRASHDUMP_FILE_COUNT! out of !CRASHDUMP_TOTAL_FILE_COUNT! crash dump files copied.   >> %REPORT_LOGFILE% 2>&1
+	if defined WER_DUMPTYPE (
+		echo     Dump type is !WER_DUMPTYPE! [0=Custom dump, 1=Mini dump, 2=Full dump]
+		echo Dump type is !WER_DUMPTYPE! [0=Custom dump, 1=Mini dump, 2=Full dump]                                               >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     Dump type is NOT DEFINED, crash dumps are NOT enabled.
+		echo     More information available on https://wiki.siemens.com/x/DiCNBg
+		echo Dump type is NOT DEFINED, crash dumps are NOT enabled.                                                              >> %REPORT_LOGFILE% 2>&1
+		echo More information available on https://wiki.siemens.com/x/DiCNBg                                                     >> %REPORT_LOGFILE% 2>&1
+	)
+	echo ... search crash dump files [*.dmp] [on c:\ only] ...
+	echo Search crash dump files [*.dmp] [on c:\ only]:                                                                        >> %REPORT_LOGFILE% 2>&1
+	del !CHECKLMS_CRASH_DUMP_PATH!\CrashDumpFilesFound.txt >nul 2>&1
+	FOR /r C:\ %%X IN (*.dmp) DO if "%%~dpX" NEQ "!CHECKLMS_CRASH_DUMP_PATH!\" echo %%~dpnxX >> !CHECKLMS_CRASH_DUMP_PATH!\CrashDumpFilesFound.txt
+	IF EXIST "!CHECKLMS_CRASH_DUMP_PATH!\CrashDumpFilesFound.txt" (
+		set CRASHDUMP_FILE_COUNT=0
+		set CRASHDUMP_TOTAL_FILE_COUNT=0
+		FOR /F "eol=@ delims=@" %%i IN (!CHECKLMS_CRASH_DUMP_PATH!\CrashDumpFilesFound.txt) DO ( 
+			set name=%%~nxi
+			set /A CRASHDUMP_TOTAL_FILE_COUNT += 1
+
+			set "first=!name:~0,3!"
+			if /I "!first!" EQU "alm" (
+				set /A CRASHDUMP_FILE_COUNT += 1
+				echo %%i copy to !CHECKLMS_CRASH_DUMP_PATH!\            >> %REPORT_LOGFILE% 2>&1   
+				copy /Y "%%i" !CHECKLMS_CRASH_DUMP_PATH!\               >> %REPORT_LOGFILE% 2>&1
+			)
+			set "first=!name:~0,7!"
+			if /I "!first!" EQU "Siemens" (
+				set /A CRASHDUMP_FILE_COUNT += 1
+				echo %%i copy to !CHECKLMS_CRASH_DUMP_PATH!\            >> %REPORT_LOGFILE% 2>&1   
+				copy /Y "%%i" !CHECKLMS_CRASH_DUMP_PATH!\               >> %REPORT_LOGFILE% 2>&1
+			)
+			set "first=!name:~0,6!"
+			if /I "!first!" EQU "SIEMBT" (
+				set /A CRASHDUMP_FILE_COUNT += 1
+				echo %%i copy to !CHECKLMS_CRASH_DUMP_PATH!\            >> %REPORT_LOGFILE% 2>&1   
+				copy /Y "%%i" !CHECKLMS_CRASH_DUMP_PATH!\               >> %REPORT_LOGFILE% 2>&1
+			)
+			set "first=!name:~0,10!"
+			if /I "!first!" EQU "SSUManager" (
+				set /A CRASHDUMP_FILE_COUNT += 1
+				echo %%i copy to !CHECKLMS_CRASH_DUMP_PATH!\            >> %REPORT_LOGFILE% 2>&1   
+				copy /Y "%%i" !CHECKLMS_CRASH_DUMP_PATH!\               >> %REPORT_LOGFILE% 2>&1
+			)
+		)
+		echo     Total !CRASHDUMP_FILE_COUNT! out of !CRASHDUMP_TOTAL_FILE_COUNT! crash dump files copied.
+		echo     Total !CRASHDUMP_FILE_COUNT! out of !CRASHDUMP_TOTAL_FILE_COUNT! crash dump files copied.   >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     No crash dump files [*.dmp] found.
+		echo     No crash dump files [*.dmp] found.                     >> %REPORT_LOGFILE% 2>&1
+	)
+	echo Start at !DATE! !TIME! ....                                    >> %REPORT_LOGFILE% 2>&1
 ) else (
-    echo     No crash dump files [*.dmp] found.
-    echo     No crash dump files [*.dmp] found.                     >> %REPORT_LOGFILE% 2>&1
+	if defined SHOW_COLORED_OUTPUT (
+		echo [1;33m    SKIPPED windows error reporting [WER] section. The script didn't execute the windows error reporting [WER] commands. [1;37m
+	) else (
+		echo     SKIPPED windows error reporting [WER] section. The script didn't execute the windows error reporting [WER] commands.
+	)
+	echo SKIPPED windows error reporting [WER] section. The script didn't execute the windows error reporting [WER] commands.             >> %REPORT_LOGFILE% 2>&1
 )
-echo Start at !DATE! !TIME! ....                                    >> %REPORT_LOGFILE% 2>&1
+:lms_section
 echo ==============================================================================                                                                                    >> %REPORT_LOGFILE% 2>&1
 echo =   L M S   S Y S T E M   I N F O R M A T I O N                              =                                                                                    >> %REPORT_LOGFILE% 2>&1
 echo ==============================================================================                                                                                    >> %REPORT_LOGFILE% 2>&1
 echo Start at !DATE! !TIME! ....                                                                                                                                       >> %REPORT_LOGFILE% 2>&1
+echo ... retrieve LMS Information ...
 echo -------------------------------------------------------                                                                                                           >> %REPORT_LOGFILE% 2>&1
 echo Measure execution time: [with LMU PowerShell command: Measure-Command {lmutool.exe /?}]                                                                           >> %REPORT_LOGFILE% 2>&1
 echo     Measure execution time: [with LMU PowerShell command: Measure-Command {lmutool.exe /?}]
@@ -2655,7 +2732,6 @@ IF EXIST "%ProgramFiles%\Siemens\LMS\scripts\lmu.psc1" (
 	echo Start at !DATE! !TIME! ....                                                                                                                                   >> %REPORT_LOGFILE% 2>&1
 	echo Get Product Maintenance: [read with LMU PowerShell command]                                                                                                   >> %REPORT_LOGFILE% 2>&1
 	echo     Get Product Maintenance: [read with LMU PowerShell command]
-	echo powershell -PSConsoleFile "%ProgramFiles%\Siemens\LMS\scripts\lmu.psc1" -command "& {(Select-Product -report -upgrades)[0].Maintenance}"                      >> %REPORT_LOGFILE% 2>&1
 	powershell -PSConsoleFile "%ProgramFiles%\Siemens\LMS\scripts\lmu.psc1" -command "& {(Select-Product -report -upgrades)[0].Maintenance}"                           >> %REPORT_LOGFILE% 2>&1 
 ) else (
 	if defined SHOW_COLORED_OUTPUT (
@@ -2722,7 +2798,7 @@ echo Run TS clean-up, with LmuTool.exe /cleants                                 
 echo     Run TS clean-up, with LmuTool.exe /cleants
 if defined LMS_LMUTOOL (
 	if /I %LMS_BUILD_VERSION% GEQ 800 (
- 		"!LMS_LMUTOOL!" /cleants                                                                                             >> %REPORT_LOGFILE% 2>&1
+		"!LMS_LMUTOOL!" /cleants                                                                                             >> %REPORT_LOGFILE% 2>&1
 	) else (
 		echo     This operation is not supported with LMS %LMS_VERSION%, cannot perform operation.                           >> %REPORT_LOGFILE% 2>&1 
 	)
@@ -2731,7 +2807,7 @@ if defined LMS_LMUTOOL (
 )
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo LMS License Mode: %LMS_LICENSE_MODE% (read from registry)                                                               >> %REPORT_LOGFILE% 2>&1
+echo LMS License Mode: %LMS_LICENSE_MODE% [read from registry]                                                               >> %REPORT_LOGFILE% 2>&1
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo ... retrieve dongle driver information ...
 if defined DONGLE_DRIVER_PKG_VERSION (
@@ -2757,7 +2833,7 @@ if defined DONGLE_DRIVER_PKG_VERSION (
 ) else (
 	echo ATTENTION: No Dongle Driver installed.                                                                              >> %REPORT_LOGFILE% 2>&1
 )
-rem analyse installed software (retrieved with 'wmic product get name, version, InstallDate, vendor')
+rem analyse installed software; retrieved with 'wmic product get name, version, InstallDate, vendor'
 set DONGLE_DRIVER_UPDATE_TO781_BY_ATOS=
 IF EXIST "%REPORT_WMIC_INSTALLED_SW_LOGFILE%" for /f "tokens=1 eol=@ delims=<> " %%i in ('type %REPORT_WMIC_INSTALLED_SW_LOGFILE% ^|find /I "Sentinel Runtime R01"') do set DONGLE_DRIVER_UPDATE_TO781_BY_ATOS=%%i
 set DONGLE_DRIVER_UPDATE_TO792_BY_ATOS=
@@ -2809,8 +2885,8 @@ if defined LMS_LMUTOOL (
 )
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-rem Retrieve diagnostic information from dongle driver ("Sentinel LDK License Manager")
-rem Out of the available "pages" (see below) only diagnostics.html can be retrieved programmatically
+rem Retrieve diagnostic information from dongle driver "Sentinel LDK License Manager"
+rem Out of the available "pages" - see below - only diagnostics.html can be retrieved programmatically
 rem Diagnostic:     about.html, diag.html, diagnostics.html, log.html
 rem Operation:      devices.html, products.html, features.html, sessions.html
 rem Configuration:  config.html, config_users.html, config_to.html, config_from.html, config_detach.html, config_network.html
@@ -2833,195 +2909,148 @@ if !ERRORLEVEL!==0 (
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 rem Check attached USB devices on this system, incl. attached dongles
 if defined USBDEVIEW_TOOL (
-    echo Check USB devices with: !USBDEVIEW_TOOL! ...                                                                        >> %REPORT_LOGFILE% 2>&1
+	echo Check USB devices with: !USBDEVIEW_TOOL! ...                                                                        >> %REPORT_LOGFILE% 2>&1
 	"!USBDEVIEW_TOOL!" /stabular "!CHECKLMS_REPORT_LOG_PATH!\usb_dongles.txt"                                                >> %REPORT_LOGFILE% 2>&1
-    echo ... see '!CHECKLMS_REPORT_LOG_PATH!\usb_dongles.txt'.                                                               >> %REPORT_LOGFILE% 2>&1
+	echo ... see '!CHECKLMS_REPORT_LOG_PATH!\usb_dongles.txt'.                                                               >> %REPORT_LOGFILE% 2>&1
 	"!USBDEVIEW_TOOL!" /shtml "!CHECKLMS_REPORT_LOG_PATH!\usb_dongles.html"                                                  >> %REPORT_LOGFILE% 2>&1
-    echo ... see '!CHECKLMS_REPORT_LOG_PATH!\usb_dongles.html'.                                                              >> %REPORT_LOGFILE% 2>&1
+	echo ... see '!CHECKLMS_REPORT_LOG_PATH!\usb_dongles.html'.                                                              >> %REPORT_LOGFILE% 2>&1
 	echo -- extract vendor id 'VID_0529' from usb_dongles.txt [start] --                                                     >> %REPORT_LOGFILE% 2>&1
 	Type "!CHECKLMS_REPORT_LOG_PATH!\usb_dongles.txt" | findstr "VID_0529"                                                   >> %REPORT_LOGFILE% 2>&1
 	echo -- extract vendor id 'VID_0529' from usb_dongles.txt [end] --                                                       >> %REPORT_LOGFILE% 2>&1
 ) else (
-    echo Cannot check USB devices with USBDeview.exe, because the tool is not available/installed.                           >> %REPORT_LOGFILE% 2>&1
+	echo Cannot check USB devices with USBDeview.exe, because the tool is not available/installed.                           >> %REPORT_LOGFILE% 2>&1
 )
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 :alm_section
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo ALM: %ALM_VERSION_STRING% [%ALM_VERSION%] -- %ALM_RELEASE% [%ALM_TECH_VERSION%]                                         >> %REPORT_LOGFILE% 2>&1
-if defined LMS_SKIP_ALM_BT_PUGIN_INSTALLATION (
-	echo     BT ALM Plugin is NOT handled/installed by LMS client!                                                           >> %REPORT_LOGFILE% 2>&1
-)
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo Retrieve list of installed ALM plugins                                                                                  >> %REPORT_LOGFILE% 2>&1
-echo ... retrieve list of installed ALM plugins ...
-if exist "%ProgramFiles%\Common Files\Siemens\SWS\plugins\bt" (
-	echo Content of folder: "%ProgramFiles%\Common Files\Siemens\SWS\plugins\bt"                                             >> %REPORT_LOGFILE% 2>&1
-	dir /S /A /X /4 /W "%ProgramFiles%\Common Files\Siemens\SWS\plugins\bt"                                                  >> %REPORT_LOGFILE% 2>&1
-) else (
-	echo     No BT ALM Plugin installed at: %ProgramFiles%\Common Files\Siemens\SWS\plugins\bt                               >> %REPORT_LOGFILE% 2>&1
-)
-set BTALMPLUGINVersion=
-IF EXIST "%LMS_ALMBTPLUGIN_FOLDER%\\AlmBtPg.dll" (
+if not defined LMS_SKIPBTALMPLUGIN (
+	echo ALM: %ALM_VERSION_STRING% [%ALM_VERSION%] -- %ALM_RELEASE% [%ALM_TECH_VERSION%]                                     >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_SKIP_ALM_BT_PUGIN_INSTALLATION (
+		echo     BT ALM Plugin is NOT handled/installed by LMS client!                                                       >> %REPORT_LOGFILE% 2>&1
+	)
 	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-	echo wmic datafile where Name="%LMS_ALMBTPLUGIN_FOLDER%\\AlmBtPg.dll" get Manufacturer,Name,Version  /format:list        >> %REPORT_LOGFILE% 2>&1
-	wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="%LMS_ALMBTPLUGIN_FOLDER%\\AlmBtPg.dll" get Manufacturer,Name,Version  /format:list
-	type %REPORT_WMIC_LOGFILE% >> %REPORT_LOGFILE% 2>&1
-	IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=2 delims== eol=@" %%i in ('type %REPORT_WMIC_LOGFILE% ^|find /I "Version"') do set "BTALMPLUGINVersion=%%i"
-	echo     Installed BT ALM Plugin Version: !BTALMPLUGINVersion!
-	echo --- Installed BT ALM Plugin Version: !BTALMPLUGINVersion!                                                           >> %REPORT_LOGFILE% 2>&1
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-	reg query HKCR\CLSID /s /f "{F9D9C9A4-7729-4EC8-82E8-67898FCCF2DF}"                                                      >> %REPORT_LOGFILE% 2>&1
-	if errorlevel 1 (
-		echo --- BT ALM plugin is not registered!                                                                            >> %REPORT_LOGFILE% 2>&1
-		regsvr32 /s "%LMS_ALMBTPLUGIN_FOLDER%\AlmBtPg.dll"                                                                   >> %REPORT_LOGFILE% 2>&1
-		echo --- Registration for "%LMS_ALMBTPLUGIN_FOLDER%\AlmBtPg.dll" done ...                                            >> %REPORT_LOGFILE% 2>&1
+	echo Retrieve list of installed ALM plugins                                                                              >> %REPORT_LOGFILE% 2>&1
+	echo ... retrieve list of installed ALM plugins ...
+	if exist "%ProgramFiles%\Common Files\Siemens\SWS\plugins\bt" (
+		echo Content of folder: "%ProgramFiles%\Common Files\Siemens\SWS\plugins\bt"                                         >> %REPORT_LOGFILE% 2>&1
+		dir /S /A /X /4 /W "%ProgramFiles%\Common Files\Siemens\SWS\plugins\bt"                                              >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     No BT ALM Plugin installed at: %ProgramFiles%\Common Files\Siemens\SWS\plugins\bt                           >> %REPORT_LOGFILE% 2>&1
+	)
+	set BTALMPLUGINVersion=
+	IF EXIST "%LMS_ALMBTPLUGIN_FOLDER%\\AlmBtPg.dll" (
+		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
+		echo wmic datafile where Name="%LMS_ALMBTPLUGIN_FOLDER%\\AlmBtPg.dll" get Manufacturer,Name,Version  /format:list    >> %REPORT_LOGFILE% 2>&1
+		wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="%LMS_ALMBTPLUGIN_FOLDER%\\AlmBtPg.dll" get Manufacturer,Name,Version  /format:list
+		type %REPORT_WMIC_LOGFILE% >> %REPORT_LOGFILE% 2>&1
+		IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=2 delims== eol=@" %%i in ('type %REPORT_WMIC_LOGFILE% ^|find /I "Version"') do set "BTALMPLUGINVersion=%%i"
+		echo     Installed BT ALM Plugin Version: !BTALMPLUGINVersion!
+		echo --- Installed BT ALM Plugin Version: !BTALMPLUGINVersion!                                                       >> %REPORT_LOGFILE% 2>&1
+		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
 		reg query HKCR\CLSID /s /f "{F9D9C9A4-7729-4EC8-82E8-67898FCCF2DF}"                                                  >> %REPORT_LOGFILE% 2>&1
 		if errorlevel 1 (
-			echo --- BT ALM plugin is STILL not registered!                                                                  >> %REPORT_LOGFILE% 2>&1
+			echo --- BT ALM plugin is not registered!                                                                        >> %REPORT_LOGFILE% 2>&1
+			regsvr32 /s "%LMS_ALMBTPLUGIN_FOLDER%\AlmBtPg.dll"                                                               >> %REPORT_LOGFILE% 2>&1
+			echo --- Registration for "%LMS_ALMBTPLUGIN_FOLDER%\AlmBtPg.dll" done ...                                        >> %REPORT_LOGFILE% 2>&1
+			reg query HKCR\CLSID /s /f "{F9D9C9A4-7729-4EC8-82E8-67898FCCF2DF}"                                              >> %REPORT_LOGFILE% 2>&1
+			if errorlevel 1 (
+				echo --- BT ALM plugin is STILL not registered!                                                              >> %REPORT_LOGFILE% 2>&1
+			) else (
+				echo --- BT ALM plugin is NOW correct registered!                                                            >> %REPORT_LOGFILE% 2>&1
+			)
+			echo --- Search in registry for "AlmBtPg.dll" entries ...                                                        >> %REPORT_LOGFILE% 2>&1
+			reg query HKLM\SOFTWARE\Classes /s /f AlmBtPg.dll                                                                >> %REPORT_LOGFILE% 2>&1
 		) else (
-			echo --- BT ALM plugin is NOW correct registered!                                                                >> %REPORT_LOGFILE% 2>&1
+			echo --- BT ALM plugin is correct registered!                                                                    >> %REPORT_LOGFILE% 2>&1
 		)
-		echo --- Search in registry for "AlmBtPg.dll" entries ...                                                            >> %REPORT_LOGFILE% 2>&1
-		reg query HKLM\SOFTWARE\Classes /s /f AlmBtPg.dll                                                                    >> %REPORT_LOGFILE% 2>&1
-	) else (
-		echo --- BT ALM plugin is correct registered!                                                                        >> %REPORT_LOGFILE% 2>&1
 	)
-)
-IF EXIST "%LMS_ALMBTPLUGIN_FOLDER%\\AlmBtPg.xml" (
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-	echo "%LMS_ALMBTPLUGIN_FOLDER%\\AlmBtPg.xml":                                                                            >> %REPORT_LOGFILE% 2>&1
-	type "%LMS_ALMBTPLUGIN_FOLDER%\\AlmBtPg.xml"                                                                             >> %REPORT_LOGFILE% 2>&1
-)
-IF EXIST "%LMS_ALMBTPLUGIN_FOLDER_X86%\\AlmBtPg.dll" (
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-	echo wmic datafile where Name="%LMS_ALMBTPLUGIN_FOLDER_X86%\\AlmBtPg.dll" get Manufacturer,Name,Version  /format:list    >> %REPORT_LOGFILE% 2>&1
-	wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="%LMS_ALMBTPLUGIN_FOLDER_X86%\\AlmBtPg.dll" get Manufacturer,Name,Version  /format:list
-	type %REPORT_WMIC_LOGFILE% >> %REPORT_LOGFILE% 2>&1
-	IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=2 delims== eol=@" %%i in ('type %REPORT_WMIC_LOGFILE% ^|find /I "Version"') do set "BTALMPLUGINVersion=%%i"
-	echo     Installed BT ALM Plugin Version: !BTALMPLUGINVersion!
-	echo --- Installed BT ALM Plugin Version: !BTALMPLUGINVersion!                                                           >> %REPORT_LOGFILE% 2>&1
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-	reg query HKCR\CLSID /s /f "{F9D9C9A4-7729-4EC8-82E8-67898FCCF2DF}"                                                      >> %REPORT_LOGFILE% 2>&1
-	if errorlevel 1 (
-		echo --- BT ALM plugin is not registered!                                                                            >> %REPORT_LOGFILE% 2>&1
-		regsvr32 /s "%LMS_ALMBTPLUGIN_FOLDER_X86%\AlmBtPg.dll"                                                               >> %REPORT_LOGFILE% 2>&1
-		echo --- Registration for "%LMS_ALMBTPLUGIN_FOLDER_X86%\AlmBtPg.dll" done ...                                        >> %REPORT_LOGFILE% 2>&1
+	IF EXIST "%LMS_ALMBTPLUGIN_FOLDER%\\AlmBtPg.xml" (
+		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
+		echo "%LMS_ALMBTPLUGIN_FOLDER%\\AlmBtPg.xml":                                                                        >> %REPORT_LOGFILE% 2>&1
+		type "%LMS_ALMBTPLUGIN_FOLDER%\\AlmBtPg.xml"                                                                         >> %REPORT_LOGFILE% 2>&1
+	)
+	IF EXIST "%LMS_ALMBTPLUGIN_FOLDER_X86%\\AlmBtPg.dll" (
+		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+		echo wmic datafile where Name="%LMS_ALMBTPLUGIN_FOLDER_X86%\\AlmBtPg.dll" get Manufacturer,Name,Version  /format:list    >> %REPORT_LOGFILE% 2>&1
+		wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="%LMS_ALMBTPLUGIN_FOLDER_X86%\\AlmBtPg.dll" get Manufacturer,Name,Version  /format:list
+		type %REPORT_WMIC_LOGFILE% >> %REPORT_LOGFILE% 2>&1
+		IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=2 delims== eol=@" %%i in ('type %REPORT_WMIC_LOGFILE% ^|find /I "Version"') do set "BTALMPLUGINVersion=%%i"
+		echo     Installed BT ALM Plugin Version: !BTALMPLUGINVersion!
+		echo --- Installed BT ALM Plugin Version: !BTALMPLUGINVersion!                                                       >> %REPORT_LOGFILE% 2>&1
+		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
 		reg query HKCR\CLSID /s /f "{F9D9C9A4-7729-4EC8-82E8-67898FCCF2DF}"                                                  >> %REPORT_LOGFILE% 2>&1
 		if errorlevel 1 (
-			echo --- BT ALM plugin is STILL not registered!                                                                  >> %REPORT_LOGFILE% 2>&1
+			echo --- BT ALM plugin is not registered!                                                                        >> %REPORT_LOGFILE% 2>&1
+			regsvr32 /s "%LMS_ALMBTPLUGIN_FOLDER_X86%\AlmBtPg.dll"                                                           >> %REPORT_LOGFILE% 2>&1
+			echo --- Registration for "%LMS_ALMBTPLUGIN_FOLDER_X86%\AlmBtPg.dll" done ...                                    >> %REPORT_LOGFILE% 2>&1
+			reg query HKCR\CLSID /s /f "{F9D9C9A4-7729-4EC8-82E8-67898FCCF2DF}"                                              >> %REPORT_LOGFILE% 2>&1
+			if errorlevel 1 (
+				echo --- BT ALM plugin is STILL not registered!                                                              >> %REPORT_LOGFILE% 2>&1
+			) else (
+				echo --- BT ALM plugin is NOW correct registered!                                                            >> %REPORT_LOGFILE% 2>&1
+			)
+			echo --- Search in registry for "AlmBtPg.dll" entries ...                                                        >> %REPORT_LOGFILE% 2>&1
+			reg query HKLM\SOFTWARE\Classes /s /f AlmBtPg.dll                                                                >> %REPORT_LOGFILE% 2>&1
 		) else (
-			echo --- BT ALM plugin is NOW correct registered!                                                                >> %REPORT_LOGFILE% 2>&1
+			echo --- BT ALM plugin is correct registered!                                                                    >> %REPORT_LOGFILE% 2>&1
 		)
-		echo --- Search in registry for "AlmBtPg.dll" entries ...                                                            >> %REPORT_LOGFILE% 2>&1
-		reg query HKLM\SOFTWARE\Classes /s /f AlmBtPg.dll                                                                    >> %REPORT_LOGFILE% 2>&1
-	) else (
-		echo --- BT ALM plugin is correct registered!                                                                        >> %REPORT_LOGFILE% 2>&1
 	)
-)
-IF EXIST "%LMS_ALMBTPLUGIN_FOLDER_X86%\\AlmBtPg.xml" (
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-	echo "%LMS_ALMBTPLUGIN_FOLDER_X86%\\AlmBtPg.xml":                                                                        >> %REPORT_LOGFILE% 2>&1
-	type "%LMS_ALMBTPLUGIN_FOLDER_X86%\\AlmBtPg.xml"                                                                         >> %REPORT_LOGFILE% 2>&1
-)
-echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-IF EXIST "%ProgramFiles%\Siemens\LMS\bin" (
-    echo LMS - Get signature status for *.exe [%ProgramFiles%\Siemens\LMS\bin]                                               >> %REPORT_LOGFILE% 2>&1
-	powershell -command "Get-AuthenticodeSignature -FilePath '%ProgramFiles%\Siemens\LMS\bin\*.exe'"                         >> %REPORT_LOGFILE% 2>&1
-    echo LMS - Get signature status for *.dll [%ProgramFiles%\Siemens\LMS\bin]                                               >> %REPORT_LOGFILE% 2>&1
-	powershell -command "Get-AuthenticodeSignature -FilePath '%ProgramFiles%\Siemens\LMS\bin\*.dll'"                         >> %REPORT_LOGFILE% 2>&1
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-    echo Check signature with: !SIGCHECK_TOOL! !SIGCHECK_OPTIONS! ...                                                        >> %REPORT_LOGFILE% 2>&1
-	!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "%ProgramFiles%\Siemens\LMS\bin\LmuTool.exe"                                          >> %REPORT_LOGFILE% 2>&1
-	!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "%ProgramFiles%\Siemens\LMS\bin\LicEnf.dll"                                           >> %REPORT_LOGFILE% 2>&1
-	!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "%ProgramFiles%\Siemens\LMS\bin\Siemens.Gms.ApplicationFramework.exe"                 >> %REPORT_LOGFILE% 2>&1
+	IF EXIST "%LMS_ALMBTPLUGIN_FOLDER_X86%\\AlmBtPg.xml" (
+		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
+		echo "%LMS_ALMBTPLUGIN_FOLDER_X86%\\AlmBtPg.xml":                                                                    >> %REPORT_LOGFILE% 2>&1
+		type "%LMS_ALMBTPLUGIN_FOLDER_X86%\\AlmBtPg.xml"                                                                     >> %REPORT_LOGFILE% 2>&1
+	)
 ) else (
-    echo     No LMS binary folder [%ProgramFiles%\Siemens\LMS\bin] found.                                                    >> %REPORT_LOGFILE% 2>&1
+	if defined SHOW_COLORED_OUTPUT (
+		echo [1;33m    SKIPPED BT ALM plugin section. The script didn't execute the BT ALM plugin commands. [1;37m
+	) else (
+		echo     SKIPPED BT ALM plugin section. The script didn't execute the BT ALM plugin commands.
+	)
+	echo SKIPPED BT ALM plugin section. The script didn't execute the BT ALM plugin commands.                                >> %REPORT_LOGFILE% 2>&1
 )
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-IF EXIST "%ProgramFiles(x86)%\Siemens\LMS\bin" (
-    echo LMS - Get signature status for 32-bit *.exe                                                                         >> %REPORT_LOGFILE% 2>&1
-	powershell -command "Get-AuthenticodeSignature -FilePath '%ProgramFiles(x86)%\Siemens\LMS\bin\*.exe'"                    >> %REPORT_LOGFILE% 2>&1
-    echo LMS - Get signature status for 32-bit *.dll                                                                         >> %REPORT_LOGFILE% 2>&1
-	powershell -command "Get-AuthenticodeSignature -FilePath '%ProgramFiles(x86)%\Siemens\LMS\bin\*.dll'"                    >> %REPORT_LOGFILE% 2>&1
+echo ==============================================================================                                      >> %REPORT_LOGFILE% 2>&1
+if not defined LMS_SKIPSIGCHECK (
+	IF EXIST "%ProgramFiles%\Siemens\LMS\bin" (
+		echo LMS - Get signature status for *.exe [%ProgramFiles%\Siemens\LMS\bin]                                           >> %REPORT_LOGFILE% 2>&1
+		powershell -command "Get-AuthenticodeSignature -FilePath '%ProgramFiles%\Siemens\LMS\bin\*.exe'"                     >> %REPORT_LOGFILE% 2>&1
+		echo LMS - Get signature status for *.dll [%ProgramFiles%\Siemens\LMS\bin]                                           >> %REPORT_LOGFILE% 2>&1
+		powershell -command "Get-AuthenticodeSignature -FilePath '%ProgramFiles%\Siemens\LMS\bin\*.dll'"                     >> %REPORT_LOGFILE% 2>&1
+		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
+		echo Check signature with: !SIGCHECK_TOOL! !SIGCHECK_OPTIONS! ...                                                    >> %REPORT_LOGFILE% 2>&1
+		!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "%ProgramFiles%\Siemens\LMS\bin\LmuTool.exe"                                      >> %REPORT_LOGFILE% 2>&1
+		!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "%ProgramFiles%\Siemens\LMS\bin\LicEnf.dll"                                       >> %REPORT_LOGFILE% 2>&1
+		!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "%ProgramFiles%\Siemens\LMS\bin\Siemens.Gms.ApplicationFramework.exe"             >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     No LMS binary folder [%ProgramFiles%\Siemens\LMS\bin] found.                                                >> %REPORT_LOGFILE% 2>&1
+	)
 	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-    echo Check signature with: !SIGCHECK_TOOL! !SIGCHECK_OPTIONS! ...                                                        >> %REPORT_LOGFILE% 2>&1
-	!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "%ProgramFiles(x86)%\Siemens\LMS\bin\LmuTool.exe"                                     >> %REPORT_LOGFILE% 2>&1
-	!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "%ProgramFiles(x86)%\Siemens\LMS\bin\LicEnf.dll"                                      >> %REPORT_LOGFILE% 2>&1
-	!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "%ProgramFiles(x86)%\Siemens\LMS\bin\Siemens.Gms.ApplicationFramework.exe"            >> %REPORT_LOGFILE% 2>&1
+	IF EXIST "%ProgramFiles(x86)%\Siemens\LMS\bin" (
+		echo LMS - Get signature status for 32-bit *.exe                                                                     >> %REPORT_LOGFILE% 2>&1
+		powershell -command "Get-AuthenticodeSignature -FilePath '%ProgramFiles(x86)%\Siemens\LMS\bin\*.exe'"                >> %REPORT_LOGFILE% 2>&1
+		echo LMS - Get signature status for 32-bit *.dll                                                                     >> %REPORT_LOGFILE% 2>&1
+		powershell -command "Get-AuthenticodeSignature -FilePath '%ProgramFiles(x86)%\Siemens\LMS\bin\*.dll'"                >> %REPORT_LOGFILE% 2>&1
+		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
+		echo Check signature with: !SIGCHECK_TOOL! !SIGCHECK_OPTIONS! ...                                                    >> %REPORT_LOGFILE% 2>&1
+		!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "%ProgramFiles(x86)%\Siemens\LMS\bin\LmuTool.exe"                                 >> %REPORT_LOGFILE% 2>&1
+		!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "%ProgramFiles(x86)%\Siemens\LMS\bin\LicEnf.dll"                                  >> %REPORT_LOGFILE% 2>&1
+		!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "%ProgramFiles(x86)%\Siemens\LMS\bin\Siemens.Gms.ApplicationFramework.exe"        >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     No LMS binary 32-bit folder found.                                                                          >> %REPORT_LOGFILE% 2>&1
+	)
+	echo Start at !DATE! !TIME! ....                                                                                         >> %REPORT_LOGFILE% 2>&1
 ) else (
-    echo     No LMS binary 32-bit folder found.                                                                              >> %REPORT_LOGFILE% 2>&1
+	if defined SHOW_COLORED_OUTPUT (
+		echo [1;33m    SKIPPED signature check section. The script didn't execute the signature check commands. [1;37m
+	) else (
+		echo     SKIPPED signature check section. The script didn't execute the signature check commands.
+	)
+	echo SKIPPED signature check section. The script didn't execute the signature check commands.                            >> %REPORT_LOGFILE% 2>&1
 )
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 :flexera_fnp_information
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo =   F L E X E R A  (F N P)   I N F O R M A T I O N                           =                                          >> %REPORT_LOGFILE% 2>&1
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo ... retrieve Flexera (FNP) Information ...
-IF EXIST "C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService64.exe" (
-	echo wmic datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService64.exe" get Manufacturer,Name,Version  /format:list       >> %REPORT_LOGFILE% 2>&1
-	wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService64.exe" get Manufacturer,Name,Version  /format:list
-	type %REPORT_WMIC_LOGFILE% >> %REPORT_LOGFILE% 2>&1
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-)
-IF EXIST "C:\\Program Files (x86)\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" (
-	echo wmic datafile where Name="C:\\Program Files (x86)\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list   >> %REPORT_LOGFILE% 2>&1
-	wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="C:\\Program Files (x86)\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list
-	type %REPORT_WMIC_LOGFILE% >> %REPORT_LOGFILE% 2>&1
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-)
-IF EXIST "C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" (
-	echo wmic datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list       >> %REPORT_LOGFILE% 2>&1
-	wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list
-	type %REPORT_WMIC_LOGFILE% >> %REPORT_LOGFILE% 2>&1
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-)
-IF EXIST "%ProgramFiles(x86)%\Siemens\LMS\server" (
-	echo Content of folder: "%ProgramFiles(x86)%\Siemens\LMS\server"                                                         >> %REPORT_LOGFILE% 2>&1
-	dir /S /A /X /4 /W "%ProgramFiles(x86)%\Siemens\LMS\server"                                                              >> %REPORT_LOGFILE% 2>&1
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-)
-IF EXIST "%ProgramFiles%\Siemens\LMS\server" (
-	echo Content of folder: "%ProgramFiles%\Siemens\LMS\server"                                                              >> %REPORT_LOGFILE% 2>&1
-	dir /S /A /X /4 /W "%ProgramFiles%\Siemens\LMS\server"                                                                   >> %REPORT_LOGFILE% 2>&1
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-)
-echo servercomptranutil.exe -version                                                                                         >> %REPORT_LOGFILE% 2>&1
-if defined LMS_SERVERCOMTRANUTIL (
-	if "%FNPVersion%" == "11.14.0.0" (
-		echo     servercomptranutil.exe -version is not available for FNP=%FNPVersion%, cannot perform operation.            >> %REPORT_LOGFILE% 2>&1
-	) else (
-		"%LMS_SERVERCOMTRANUTIL%" -version                                                                                   >> %REPORT_LOGFILE% 2>&1
-	)
-) else (
-    echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
-)
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo tsactdiags_SIEMBT_svr.exe --version                                                                                     >> %REPORT_LOGFILE% 2>&1
-if defined LMS_TSACTDIAGSSVR (
-	"%LMS_TSACTDIAGSSVR%" --version                                                                                          >> %REPORT_LOGFILE% 2>&1
-) else (
-    echo     tsactdiags_SIEMBT_svr.exe doesn't exist, cannot perform operation.                                              >> %REPORT_LOGFILE% 2>&1
-)
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo lmver.exe -fnls                                                                                                         >> %REPORT_LOGFILE% 2>&1
-if defined LMS_LMVER (
-	"%LMS_LMVER%" -fnls                                                                                                      >> %REPORT_LOGFILE% 2>&1
-) else (
-    echo     lmver.exe doesn't exist, cannot perform operation.                                                              >> %REPORT_LOGFILE% 2>&1
-)
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo lmutil.exe lmpath -status                                                                                               >> %REPORT_LOGFILE% 2>&1
-if defined LMS_LMUTIL (
-	"%LMS_LMUTIL%" lmpath -status                                                                                            >> %REPORT_LOGFILE% 2>&1
-) else (
-    echo     lmutil.exe doesn't exist, cannot perform operation.                                                             >> %REPORT_LOGFILE% 2>&1
-)
-echo -------------------------------------------------------                                                                                                    >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                                                                >> %REPORT_LOGFILE% 2>&1
-echo Create offline activation request file [using servercomptranutil.exe -n "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml" -activate fake_id] ...       >> %REPORT_LOGFILE% 2>&1
-echo     Create offline activation request file ...
 
 rem create powershell script to replace "><" with ">`r`n<"
 set lms_ps_search="><"
@@ -3038,472 +3067,512 @@ set lms_ps_textFileOut=%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml
 SET lms_ps_script2=%CHECKLMS_REPORT_LOG_PATH%\tmpStrRplc2.ps1
 ECHO (Get-Content "%lms_ps_textFileIn%").replace(%lms_ps_search%, %lms_ps_replace%) ^| Set-Content "%lms_ps_textFileOut%">"%lms_ps_script2%"
 
-if defined LMS_SERVERCOMTRANUTIL (
-	"%LMS_SERVERCOMTRANUTIL%" -n "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml" ref=CheckLMS_CreateOffActRequestFile -activate fake_id                   >> %REPORT_LOGFILE% 2>&1
+echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+echo ... retrieve Flexera (FNP) Information ...
+if not defined LMS_SKIPFNP (
+	IF EXIST "C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService64.exe" (
+		echo wmic datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService64.exe" get Manufacturer,Name,Version  /format:list       >> %REPORT_LOGFILE% 2>&1
+		wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService64.exe" get Manufacturer,Name,Version  /format:list
+		type %REPORT_WMIC_LOGFILE% >> %REPORT_LOGFILE% 2>&1
+		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+	)
+	IF EXIST "C:\\Program Files (x86)\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" (
+		echo wmic datafile where Name="C:\\Program Files (x86)\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list   >> %REPORT_LOGFILE% 2>&1
+		wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="C:\\Program Files (x86)\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list
+		type %REPORT_WMIC_LOGFILE% >> %REPORT_LOGFILE% 2>&1
+		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+	)
+	IF EXIST "C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" (
+		echo wmic datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list       >> %REPORT_LOGFILE% 2>&1
+		wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list
+		type %REPORT_WMIC_LOGFILE% >> %REPORT_LOGFILE% 2>&1
+		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+	)
+	IF EXIST "%ProgramFiles(x86)%\Siemens\LMS\server" (
+		echo Content of folder: "%ProgramFiles(x86)%\Siemens\LMS\server"                                                         >> %REPORT_LOGFILE% 2>&1
+		dir /S /A /X /4 /W "%ProgramFiles(x86)%\Siemens\LMS\server"                                                              >> %REPORT_LOGFILE% 2>&1
+		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+	)
+	IF EXIST "%ProgramFiles%\Siemens\LMS\server" (
+		echo Content of folder: "%ProgramFiles%\Siemens\LMS\server"                                                              >> %REPORT_LOGFILE% 2>&1
+		dir /S /A /X /4 /W "%ProgramFiles%\Siemens\LMS\server"                                                                   >> %REPORT_LOGFILE% 2>&1
+		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+	)
+	echo servercomptranutil.exe -version                                                                                         >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_SERVERCOMTRANUTIL (
+		if "%FNPVersion%" == "11.14.0.0" (
+			echo     servercomptranutil.exe -version is not available for FNP=%FNPVersion%, cannot perform operation.            >> %REPORT_LOGFILE% 2>&1
+		) else (
+			"%LMS_SERVERCOMTRANUTIL%" -version                                                                                   >> %REPORT_LOGFILE% 2>&1
+		)
+	) else (
+		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
+	)
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo tsactdiags_SIEMBT_svr.exe --version                                                                                     >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_TSACTDIAGSSVR (
+		"%LMS_TSACTDIAGSSVR%" --version                                                                                          >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     tsactdiags_SIEMBT_svr.exe doesn't exist, cannot perform operation.                                              >> %REPORT_LOGFILE% 2>&1
+	)
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo lmver.exe -fnls                                                                                                         >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_LMVER (
+		"%LMS_LMVER%" -fnls                                                                                                      >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     lmver.exe doesn't exist, cannot perform operation.                                                              >> %REPORT_LOGFILE% 2>&1
+	)
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo lmutil.exe lmpath -status                                                                                               >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_LMUTIL (
+		"%LMS_LMUTIL%" lmpath -status                                                                                            >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     lmutil.exe doesn't exist, cannot perform operation.                                                             >> %REPORT_LOGFILE% 2>&1
+	)
+	echo -------------------------------------------------------                                                                                                    >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                                                                >> %REPORT_LOGFILE% 2>&1
+	echo Create offline activation request file [using servercomptranutil.exe -n "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml" -activate fake_id] ...       >> %REPORT_LOGFILE% 2>&1
+	echo     Create offline activation request file ...
 
-	Powershell -ExecutionPolicy Bypass -Command "& '%lms_ps_script1%'"
-	Powershell -ExecutionPolicy Bypass -Command "& '%lms_ps_script2%'"
-	
-	rem read machine identifiers from offline request file
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml ^|find /I "<PublisherId>"') do set "LMS_TS_PUBLISHER=%%i"
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml ^|find /I "<ClientVersion>"') do set "LMS_TS_CLIENT_VERSION=%%i"
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml ^|find /I "<Revision>"') do set "LMS_TS_REVISION=%%i"
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml ^|find /I "<MachineIdentifier>"') do set "LMS_TS_MACHINE_IDENTIFIER=%%i"
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml ^|find /I "<TrustedStorageSerialNumber>"') do set "LMS_TS_SERIAL_NUMBER=%%i"
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml ^|find /I "<SequenceNumber>"') do set "LMS_TS_SEQ_NUM=%%i"
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml ^|find /I "<Status>"') do set "LMS_TS_STATUS=%%i"	
-	echo     PublisherId: !LMS_TS_PUBLISHER!  /  TS ClientVersion: !LMS_TS_CLIENT_VERSION!                                   >> %REPORT_LOGFILE% 2>&1
-	echo     MachineIdentifier: !LMS_TS_MACHINE_IDENTIFIER!  /  TrustedStorageSerialNumber: !LMS_TS_SERIAL_NUMBER!           >> %REPORT_LOGFILE% 2>&1
-	echo     TS Status: !LMS_TS_STATUS!  /  TS SequenceNumber: !LMS_TS_SEQ_NUM!  /  TS Revision: !LMS_TS_REVISION!           >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_SERVERCOMTRANUTIL (
+		"%LMS_SERVERCOMTRANUTIL%" -n "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml" ref=CheckLMS_CreateOffActRequestFile -activate fake_id                   >> %REPORT_LOGFILE% 2>&1
 
-	rem retreieve UMN values from offline request file
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml ^|find /I "<Type>1"') do if "%%i" NEQ "/Value" set "UMN1_TS=%%i"
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml ^|find /I "<Type>2"') do if "%%i" NEQ "/Value" set "UMN2_TS=%%i"
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml ^|find /I "<Type>3"') do if "%%i" NEQ "/Value" set "UMN3_TS=%%i"
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml ^|find /I "<Type>4"') do if "%%i" NEQ "/Value" set "UMN4_TS=%%i"
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml ^|find /I "<Type>5"') do if "%%i" NEQ "/Value" set "UMN5_TS=%%i"
-	echo     UMN1=!UMN1_TS! / UMN2=!UMN2_TS! / UMN3=!UMN3_TS! / UMN4=!UMN4_TS! / UMN5=!UMN5_TS!                              >> %REPORT_LOGFILE% 2>&1
-	echo     UMN1=!UMN1_TS! / UMN2=!UMN2_TS! / UMN3=!UMN3_TS! / UMN4=!UMN4_TS! / UMN5=!UMN5_TS! at !DATE! / !TIME! / retrieved from offline request file >> %REPORT_LOG_PATH%\UMN.txt 2>&1
+		Powershell -ExecutionPolicy Bypass -Command "& '%lms_ps_script1%'"
+		Powershell -ExecutionPolicy Bypass -Command "& '%lms_ps_script2%'"
+		
+		rem read machine identifiers from offline request file
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml ^|find /I "<PublisherId>"') do set "LMS_TS_PUBLISHER=%%i"
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml ^|find /I "<ClientVersion>"') do set "LMS_TS_CLIENT_VERSION=%%i"
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml ^|find /I "<Revision>"') do set "LMS_TS_REVISION=%%i"
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml ^|find /I "<MachineIdentifier>"') do set "LMS_TS_MACHINE_IDENTIFIER=%%i"
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml ^|find /I "<TrustedStorageSerialNumber>"') do set "LMS_TS_SERIAL_NUMBER=%%i"
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml ^|find /I "<SequenceNumber>"') do set "LMS_TS_SEQ_NUM=%%i"
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file_mod.xml ^|find /I "<Status>"') do set "LMS_TS_STATUS=%%i"	
+		echo     PublisherId: !LMS_TS_PUBLISHER!  /  TS ClientVersion: !LMS_TS_CLIENT_VERSION!                                   >> %REPORT_LOGFILE% 2>&1
+		echo     MachineIdentifier: !LMS_TS_MACHINE_IDENTIFIER!  /  TrustedStorageSerialNumber: !LMS_TS_SERIAL_NUMBER!           >> %REPORT_LOGFILE% 2>&1
+		echo     TS Status: !LMS_TS_STATUS!  /  TS SequenceNumber: !LMS_TS_SEQ_NUM!  /  TS Revision: !LMS_TS_REVISION!           >> %REPORT_LOGFILE% 2>&1
 
-	rem retrieve section break info
-	findstr /m /c:"StorageBreakInfo" "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml"                           >> %REPORT_LOGFILE% 2>&1
-	if !ERRORLEVEL!==0 (
-		echo     'StorageBreakInfo' section was found in %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml ...     >> %REPORT_LOGFILE% 2>&1
-		Set LMS_START_LOG=0
-		FOR /F "eol=@ delims=@" %%i IN (%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml) DO ( 
-			ECHO "%%i" | FINDSTR /C:"<StorageBreakInfo>" 1>nul 
-			if !ERRORLEVEL!==0 (
-				echo     Start of 'StorageBreakInfo' section found ...                                               >> %REPORT_LOGFILE% 2>&1
-				Set LMS_START_LOG=1
-			)
-			if !LMS_START_LOG!==1 (
-				echo     %%i                                                                                         >> %REPORT_LOGFILE% 2>&1
-				
-				rem check for end of 'StorageBreakInfo' section
-				ECHO "%%i" | FINDSTR /C:"</StorageBreakInfo>" 1>nul 
+		rem retreieve UMN values from offline request file
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml ^|find /I "<Type>1"') do if "%%i" NEQ "/Value" set "UMN1_TS=%%i"
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml ^|find /I "<Type>2"') do if "%%i" NEQ "/Value" set "UMN2_TS=%%i"
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml ^|find /I "<Type>3"') do if "%%i" NEQ "/Value" set "UMN3_TS=%%i"
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml ^|find /I "<Type>4"') do if "%%i" NEQ "/Value" set "UMN4_TS=%%i"
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml ^|find /I "<Type>5"') do if "%%i" NEQ "/Value" set "UMN5_TS=%%i"
+		echo     UMN1=!UMN1_TS! / UMN2=!UMN2_TS! / UMN3=!UMN3_TS! / UMN4=!UMN4_TS! / UMN5=!UMN5_TS!                              >> %REPORT_LOGFILE% 2>&1
+		echo     UMN1=!UMN1_TS! / UMN2=!UMN2_TS! / UMN3=!UMN3_TS! / UMN4=!UMN4_TS! / UMN5=!UMN5_TS! at !DATE! / !TIME! / retrieved from offline request file >> %REPORT_LOG_PATH%\UMN.txt 2>&1
+
+		rem retrieve section break info
+		findstr /m /c:"StorageBreakInfo" "%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml"                           >> %REPORT_LOGFILE% 2>&1
+		if !ERRORLEVEL!==0 (
+			echo     'StorageBreakInfo' section was found in %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml ...     >> %REPORT_LOGFILE% 2>&1
+			Set LMS_START_LOG=0
+			FOR /F "eol=@ delims=@" %%i IN (%CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml) DO ( 
+				ECHO "%%i" | FINDSTR /C:"<StorageBreakInfo>" 1>nul 
 				if !ERRORLEVEL!==0 (
-					echo     End of 'StorageBreakInfo' section found ...                                             >> %REPORT_LOGFILE% 2>&1
-					Set LMS_START_LOG=0
+					echo     Start of 'StorageBreakInfo' section found ...                                               >> %REPORT_LOGFILE% 2>&1
+					Set LMS_START_LOG=1
+				)
+				if !LMS_START_LOG!==1 (
+					echo     %%i                                                                                         >> %REPORT_LOGFILE% 2>&1
+					
+					rem check for end of 'StorageBreakInfo' section
+					ECHO "%%i" | FINDSTR /C:"</StorageBreakInfo>" 1>nul 
+					if !ERRORLEVEL!==0 (
+						echo     End of 'StorageBreakInfo' section found ...                                             >> %REPORT_LOGFILE% 2>&1
+						Set LMS_START_LOG=0
+					)
+				)
+			)
+		) else (
+			echo     NO 'StorageBreakInfo' section was found in %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml ...  >> %REPORT_LOGFILE% 2>&1
+		)
+
+	) else (
+		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
+	)
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	set HealthCheckOk=Unknown
+	echo perform TS health check [using servercomptranutil.exe -healthCheck] ...                                                 >> %REPORT_LOGFILE% 2>&1
+	echo     perform TS health check [using servercomptranutil.exe -healthCheck] ...
+	if defined LMS_SERVERCOMTRANUTIL (
+		if "%FNPVersion%" == "11.14.0.0" (
+			echo     servercomptranutil.exe -healthCheck is not available for FNP=%FNPVersion%, cannot perform operation.        >> %REPORT_LOGFILE% 2>&1
+		) else (
+			"%LMS_SERVERCOMTRANUTIL%" -healthCheck > %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_healthCheck.txt 2>&1   
+			type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_healthCheck.txt                                                   >> %REPORT_LOGFILE% 2>&1
+			
+			findstr /m /c:"FAIL" "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_healthCheck.txt"                                 >> %REPORT_LOGFILE% 2>&1
+			if !ERRORLEVEL!==0 (
+				set HealthCheckOk=No
+				if defined SHOW_COLORED_OUTPUT (
+					echo [1;31m    ATTENTION: HealthCheck FAILED. [1;37m
+				) else (
+					echo     ATTENTION: HealthCheck FAILED.
+				)
+				echo ATTENTION: HealthCheck FAILED.                                                                              >> %REPORT_LOGFILE% 2>&1
+			) else (
+				set HealthCheckOk=Yes
+				echo     HealthCheck PASSED.
+			)
+		)
+	) else (
+		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
+	)
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo retrieve license information [using servercomptranutil.exe -unique, is equal to: servercomptranutil.exe -umn] ...       >> %REPORT_LOGFILE% 2>&1
+	echo     retrieve license information [using servercomptranutil.exe -unique, is equal to: servercomptranutil.exe -umn] ...
+	if defined LMS_SERVERCOMTRANUTIL (
+		if "%FNPVersion%" == "11.14.0.0" (
+			echo     servercomptranutil.exe -unique is not available for FNP=%FNPVersion%, cannot perform operation.         >> %REPORT_LOGFILE% 2>&1
+		) else (
+			"%LMS_SERVERCOMTRANUTIL%" -unique > %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt  2>&1
+			type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt                                                    >> %REPORT_LOGFILE% 2>&1
+			IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt ^|find /I "UMN1"') do set "UMN1_A=%%B"   
+			IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt ^|find /I "UMN2"') do set "UMN2_A=%%B"   
+			IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt ^|find /I "UMN3"') do set "UMN3_A=%%B"   
+			IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt ^|find /I "UMN4"') do set "UMN4_A=%%B"   
+			IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt ^|find /I "UMN5"') do set "UMN5_A=%%B"   
+			rem Evaluate number of UMN used for TS binding
+			set /a UMN_COUNT_A = 0
+			if defined UMN1_A SET /A UMN_COUNT_A += 1
+			if defined UMN2_A SET /A UMN_COUNT_A += 1
+			if defined UMN3_A SET /A UMN_COUNT_A += 1
+			if defined UMN4_A SET /A UMN_COUNT_A += 1
+			if defined UMN5_A SET /A UMN_COUNT_A += 1
+			echo     Number of UMN used to bind TS: !UMN_COUNT_A!
+			echo     Number of UMN used to bind TS: !UMN_COUNT_A!                                                                                    >> %REPORT_LOGFILE% 2>&1
+			echo     UMN1=!UMN1_A! / UMN2=!UMN2_A! / UMN3=!UMN3_A! / UMN4=!UMN4_A! / UMN5=!UMN5_A!                                                   >> %REPORT_LOGFILE% 2>&1
+			echo     UMN1=!UMN1_A! / UMN2=!UMN2_A! / UMN3=!UMN3_A! / UMN4=!UMN4_A! / UMN5=!UMN5_A! at !DATE! / !TIME! / using servercomptranutil.exe >> %REPORT_LOG_PATH%\UMN.txt 2>&1
+			if !UMN_COUNT_A! leq 1 (
+				if defined SHOW_COLORED_OUTPUT (
+					echo [1;31m    ATTENTION: Only ONE UMN is used to bind TS. [1;37m
+				) else (
+					echo     ATTENTION: Only ONE UMN is used to bind TS.
 				)
 			)
 		)
 	) else (
-		echo     NO 'StorageBreakInfo' section was found in %CHECKLMS_REPORT_LOG_PATH%\fake_id_request_file.xml ...  >> %REPORT_LOGFILE% 2>&1
+		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
 	)
-
-) else (
-    echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
-)
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-set HealthCheckOk=Unknown
-echo perform TS health check [using servercomptranutil.exe -healthCheck] ...                                                 >> %REPORT_LOGFILE% 2>&1
-echo     perform TS health check [using servercomptranutil.exe -healthCheck] ...
-if defined LMS_SERVERCOMTRANUTIL (
-	if "%FNPVersion%" == "11.14.0.0" (
-		echo     servercomptranutil.exe -healthCheck is not available for FNP=%FNPVersion%, cannot perform operation.        >> %REPORT_LOGFILE% 2>&1
-	) else (
-		"%LMS_SERVERCOMTRANUTIL%" -healthCheck > %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_healthCheck.txt 2>&1   
-		type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_healthCheck.txt                                                   >> %REPORT_LOGFILE% 2>&1
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo retrieve license information [using appactutil.exe -unique] ...                                                         >> %REPORT_LOGFILE% 2>&1
+	echo     retrieve license information [using appactutil.exe -unique] ...
+	if defined LMS_APPACTUTIL (
+		"%LMS_APPACTUTIL%" -unique > %CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt  2>&1
+		type %CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt                                                                    >> %REPORT_LOGFILE% 2>&1
 		
-		findstr /m /c:"FAIL" "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_healthCheck.txt"                                 >> %REPORT_LOGFILE% 2>&1
-		if !ERRORLEVEL!==0 (
-			set HealthCheckOk=No
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    ATTENTION: HealthCheck FAILED. [1;37m
-			) else (
-				echo     ATTENTION: HealthCheck FAILED.
-			)
-			echo ATTENTION: HealthCheck FAILED.                                                                              >> %REPORT_LOGFILE% 2>&1
-		) else (
-			set HealthCheckOk=Yes
-			echo     HealthCheck PASSED.
-		)
-	)
-) else (
-    echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
-)
-echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo retrieve license information [using servercomptranutil.exe -unique, is equal to: servercomptranutil.exe -umn] ...       >> %REPORT_LOGFILE% 2>&1
-echo     retrieve license information [using servercomptranutil.exe -unique, is equal to: servercomptranutil.exe -umn] ...
-if defined LMS_SERVERCOMTRANUTIL (
-	if "%FNPVersion%" == "11.14.0.0" (
-		echo     servercomptranutil.exe -unique is not available for FNP=%FNPVersion%, cannot perform operation.         >> %REPORT_LOGFILE% 2>&1
-	) else (
-		"%LMS_SERVERCOMTRANUTIL%" -unique > %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt  2>&1
-		type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt                                                    >> %REPORT_LOGFILE% 2>&1
-		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt ^|find /I "UMN1"') do set "UMN1_A=%%B"   
-		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt ^|find /I "UMN2"') do set "UMN2_A=%%B"   
-		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt ^|find /I "UMN3"') do set "UMN3_A=%%B"   
-		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt ^|find /I "UMN4"') do set "UMN4_A=%%B"   
-		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_unique.txt ^|find /I "UMN5"') do set "UMN5_A=%%B"   
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt ^|find /I "one"')   do if "%%A" NEQ "ERROR" set "UMN1_B=%%B"   
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt ^|find /I "two"')   do if "%%A" NEQ "ERROR" set "UMN2_B=%%B"   
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt ^|find /I "three"') do if "%%A" NEQ "ERROR" set "UMN3_B=%%B"   
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt ^|find /I "four"')  do if "%%A" NEQ "ERROR" set "UMN4_B=%%B"   
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt ^|find /I "five"')  do if "%%A" NEQ "ERROR" set "UMN5_B=%%B"   
 		rem Evaluate number of UMN used for TS binding
-		set /a UMN_COUNT_A = 0
-		if defined UMN1_A SET /A UMN_COUNT_A += 1
-		if defined UMN2_A SET /A UMN_COUNT_A += 1
-		if defined UMN3_A SET /A UMN_COUNT_A += 1
-		if defined UMN4_A SET /A UMN_COUNT_A += 1
-		if defined UMN5_A SET /A UMN_COUNT_A += 1
-		echo     Number of UMN used to bind TS: !UMN_COUNT_A!
-		echo     Number of UMN used to bind TS: !UMN_COUNT_A!                                                                                    >> %REPORT_LOGFILE% 2>&1
-		echo     UMN1=!UMN1_A! / UMN2=!UMN2_A! / UMN3=!UMN3_A! / UMN4=!UMN4_A! / UMN5=!UMN5_A!                                                   >> %REPORT_LOGFILE% 2>&1
-		echo     UMN1=!UMN1_A! / UMN2=!UMN2_A! / UMN3=!UMN3_A! / UMN4=!UMN4_A! / UMN5=!UMN5_A! at !DATE! / !TIME! / using servercomptranutil.exe >> %REPORT_LOG_PATH%\UMN.txt 2>&1
-		if !UMN_COUNT_A! leq 1 (
+		set /a UMN_COUNT_B = 0
+		if defined UMN1_B SET /A UMN_COUNT_B += 1
+		if defined UMN2_B SET /A UMN_COUNT_B += 1
+		if defined UMN3_B SET /A UMN_COUNT_B += 1
+		if defined UMN4_B SET /A UMN_COUNT_B += 1
+		if defined UMN5_B SET /A UMN_COUNT_B += 1
+		echo     Number of UMN used to bind TS: !UMN_COUNT_B!
+		echo     Number of UMN used to bind TS: !UMN_COUNT_B!                                                                            >> %REPORT_LOGFILE% 2>&1
+		echo     UMN1=!UMN1_B! / UMN2=!UMN2_B! / UMN3=!UMN3_B! / UMN4=!UMN4_B! / UMN5=!UMN5_B!                                           >> %REPORT_LOGFILE% 2>&1
+		echo     UMN1=!UMN1_B! / UMN2=!UMN2_B! / UMN3=!UMN3_B! / UMN4=!UMN4_B! / UMN5=!UMN5_B! at !DATE! / !TIME! / using appactutil.exe >> %REPORT_LOG_PATH%\UMN.txt 2>&1
+		if !UMN_COUNT_B! leq 1 (
 			if defined SHOW_COLORED_OUTPUT (
 				echo [1;31m    ATTENTION: Only ONE UMN is used to bind TS. [1;37m
 			) else (
 				echo     ATTENTION: Only ONE UMN is used to bind TS.
 			)
 		)
+		
+	) else (
+		echo     appactutil.exe doesn't exist, cannot perform operation.                                                         >> %REPORT_LOGFILE% 2>&1
 	)
-) else (
-    echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
-)
-echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo retrieve license information [using appactutil.exe -unique] ...                                                         >> %REPORT_LOGFILE% 2>&1
-echo     retrieve license information [using appactutil.exe -unique] ...
-if defined LMS_APPACTUTIL (
-	"%LMS_APPACTUTIL%" -unique > %CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt  2>&1
-	type %CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt                                                                    >> %REPORT_LOGFILE% 2>&1
-	
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt ^|find /I "one"')   do if "%%A" NEQ "ERROR" set "UMN1_B=%%B"   
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt ^|find /I "two"')   do if "%%A" NEQ "ERROR" set "UMN2_B=%%B"   
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt ^|find /I "three"') do if "%%A" NEQ "ERROR" set "UMN3_B=%%B"   
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt ^|find /I "four"')  do if "%%A" NEQ "ERROR" set "UMN4_B=%%B"   
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\appactutil_unique.txt ^|find /I "five"')  do if "%%A" NEQ "ERROR" set "UMN5_B=%%B"   
-	rem Evaluate number of UMN used for TS binding
-	set /a UMN_COUNT_B = 0
-	if defined UMN1_B SET /A UMN_COUNT_B += 1
-	if defined UMN2_B SET /A UMN_COUNT_B += 1
-	if defined UMN3_B SET /A UMN_COUNT_B += 1
-	if defined UMN4_B SET /A UMN_COUNT_B += 1
-	if defined UMN5_B SET /A UMN_COUNT_B += 1
-	echo     Number of UMN used to bind TS: !UMN_COUNT_B!
-	echo     Number of UMN used to bind TS: !UMN_COUNT_B!                                                                            >> %REPORT_LOGFILE% 2>&1
-	echo     UMN1=!UMN1_B! / UMN2=!UMN2_B! / UMN3=!UMN3_B! / UMN4=!UMN4_B! / UMN5=!UMN5_B!                                           >> %REPORT_LOGFILE% 2>&1
-	echo     UMN1=!UMN1_B! / UMN2=!UMN2_B! / UMN3=!UMN3_B! / UMN4=!UMN4_B! / UMN5=!UMN5_B! at !DATE! / !TIME! / using appactutil.exe >> %REPORT_LOG_PATH%\UMN.txt 2>&1
-	if !UMN_COUNT_B! leq 1 (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: Only ONE UMN is used to bind TS. [1;37m
-		) else (
-			echo     ATTENTION: Only ONE UMN is used to bind TS.
-		)
-	)
-	
-) else (
-    echo     appactutil.exe doesn't exist, cannot perform operation.                                                         >> %REPORT_LOGFILE% 2>&1
-)
 
-rem compare the UMNs read with the two commands
-set UMN_CHECK_STATUS=Unknown
-if defined UMN_COUNT_A (
-	set UMN_CHECK_STATUS=Ok
-	if /I !UMN_COUNT_A! NEQ !UMN_COUNT_B! (
-		set UMN_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: UMN count differs between servercomptranutil = !UMN_COUNT_A! and appactutil = !UMN_COUNT_B! [1;37m
+	rem compare the UMNs read with the two commands
+	set UMN_CHECK_STATUS=Unknown
+	if defined UMN_COUNT_A (
+		set UMN_CHECK_STATUS=Ok
+		if /I !UMN_COUNT_A! NEQ !UMN_COUNT_B! (
+			set UMN_CHECK_STATUS=Failed
+			if defined SHOW_COLORED_OUTPUT (
+				echo [1;31m    ATTENTION: UMN count differs between servercomptranutil = !UMN_COUNT_A! and appactutil = !UMN_COUNT_B! [1;37m
+			) else (
+				echo     ATTENTION: UMN count differs between servercomptranutil = !UMN_COUNT_A! and appactutil = !UMN_COUNT_B!
+			)
+			echo     ATTENTION: UMN count differs between servercomptranutil = !UMN_COUNT_A! and appactutil = !UMN_COUNT_B! >> %REPORT_LOGFILE% 2>&1
 		) else (
-			echo     ATTENTION: UMN count differs between servercomptranutil = !UMN_COUNT_A! and appactutil = !UMN_COUNT_B!
+			set /a UMN_COUNT = !UMN_COUNT_A!
 		)
-		echo     ATTENTION: UMN count differs between servercomptranutil = !UMN_COUNT_A! and appactutil = !UMN_COUNT_B! >> %REPORT_LOGFILE% 2>&1
-	) else (
-		set /a UMN_COUNT = !UMN_COUNT_A!
-	)
-	if /I !UMN1_A! NEQ !UMN1_B! (
-		set UMN_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: UMN1 differs between servercomptranutil = !UMN1_A! and appactutil = !UMN1_B! [1;37m
+		if /I !UMN1_A! NEQ !UMN1_B! (
+			set UMN_CHECK_STATUS=Failed
+			if defined SHOW_COLORED_OUTPUT (
+				echo [1;31m    ATTENTION: UMN1 differs between servercomptranutil = !UMN1_A! and appactutil = !UMN1_B! [1;37m
+			) else (
+				echo     ATTENTION: UMN1 differs between servercomptranutil = !UMN1_A! and appactutil = !UMN1_B!
+			)
+			echo     ATTENTION: UMN1 differs between servercomptranutil = !UMN1_A! and appactutil = !UMN1_B! >> %REPORT_LOGFILE% 2>&1
 		) else (
-			echo     ATTENTION: UMN1 differs between servercomptranutil = !UMN1_A! and appactutil = !UMN1_B!
+			set UMN1=!UMN1_A!
 		)
-		echo     ATTENTION: UMN1 differs between servercomptranutil = !UMN1_A! and appactutil = !UMN1_B! >> %REPORT_LOGFILE% 2>&1
-	) else (
-		set UMN1=!UMN1_A!
-	)
-	if /I !UMN2_A! NEQ !UMN2_B! (
-		set UMN_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: UMN2 differs between servercomptranutil = !UMN2_A! and appactutil = !UMN2_B! [1;37m
+		if /I !UMN2_A! NEQ !UMN2_B! (
+			set UMN_CHECK_STATUS=Failed
+			if defined SHOW_COLORED_OUTPUT (
+				echo [1;31m    ATTENTION: UMN2 differs between servercomptranutil = !UMN2_A! and appactutil = !UMN2_B! [1;37m
+			) else (
+				echo     ATTENTION: UMN2 differs between servercomptranutil = !UMN2_A! and appactutil = !UMN2_B!
+			)
+			echo     ATTENTION: UMN2 differs between servercomptranutil = !UMN2_A! and appactutil = !UMN2_B! >> %REPORT_LOGFILE% 2>&1
 		) else (
-			echo     ATTENTION: UMN2 differs between servercomptranutil = !UMN2_A! and appactutil = !UMN2_B!
+			set UMN2=!UMN2_A!
 		)
-		echo     ATTENTION: UMN2 differs between servercomptranutil = !UMN2_A! and appactutil = !UMN2_B! >> %REPORT_LOGFILE% 2>&1
-	) else (
-		set UMN2=!UMN2_A!
-	)
-	if /I !UMN3_A! NEQ !UMN3_B! (
-		set UMN_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: UMN3 differs between servercomptranutil = !UMN3_A! and appactutil = !UMN3_B! [1;37m
+		if /I !UMN3_A! NEQ !UMN3_B! (
+			set UMN_CHECK_STATUS=Failed
+			if defined SHOW_COLORED_OUTPUT (
+				echo [1;31m    ATTENTION: UMN3 differs between servercomptranutil = !UMN3_A! and appactutil = !UMN3_B! [1;37m
+			) else (
+				echo     ATTENTION: UMN3 differs between servercomptranutil = !UMN3_A! and appactutil = !UMN3_B!
+			)
+			echo     ATTENTION: UMN3 differs between servercomptranutil = !UMN3_A! and appactutil = !UMN3_B! >> %REPORT_LOGFILE% 2>&1
 		) else (
-			echo     ATTENTION: UMN3 differs between servercomptranutil = !UMN3_A! and appactutil = !UMN3_B!
+			set UMN3=!UMN3_A!
 		)
-		echo     ATTENTION: UMN3 differs between servercomptranutil = !UMN3_A! and appactutil = !UMN3_B! >> %REPORT_LOGFILE% 2>&1
-	) else (
-		set UMN3=!UMN3_A!
-	)
-	if /I !UMN4_A! NEQ !UMN4_B! (
-		set UMN_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: UMN4 differs between servercomptranutil = !UMN4_A! and appactutil = !UMN4_B! [1;37m
+		if /I !UMN4_A! NEQ !UMN4_B! (
+			set UMN_CHECK_STATUS=Failed
+			if defined SHOW_COLORED_OUTPUT (
+				echo [1;31m    ATTENTION: UMN4 differs between servercomptranutil = !UMN4_A! and appactutil = !UMN4_B! [1;37m
+			) else (
+				echo     ATTENTION: UMN4 differs between servercomptranutil = !UMN4_A! and appactutil = !UMN4_B!
+			)
+			echo     ATTENTION: UMN4 differs between servercomptranutil = !UMN4_A! and appactutil = !UMN4_B! >> %REPORT_LOGFILE% 2>&1
 		) else (
-			echo     ATTENTION: UMN4 differs between servercomptranutil = !UMN4_A! and appactutil = !UMN4_B!
+			set UMN4=!UMN4_A!
 		)
-		echo     ATTENTION: UMN4 differs between servercomptranutil = !UMN4_A! and appactutil = !UMN4_B! >> %REPORT_LOGFILE% 2>&1
-	) else (
-		set UMN4=!UMN4_A!
-	)
-	if /I !UMN5_A! NEQ !UMN5_B! (
-		set UMN_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: UMN5 differs between servercomptranutil = !UMN5_A! and appactutil = !UMN5_B! [1;37m
+		if /I !UMN5_A! NEQ !UMN5_B! (
+			set UMN_CHECK_STATUS=Failed
+			if defined SHOW_COLORED_OUTPUT (
+				echo [1;31m    ATTENTION: UMN5 differs between servercomptranutil = !UMN5_A! and appactutil = !UMN5_B! [1;37m
+			) else (
+				echo     ATTENTION: UMN5 differs between servercomptranutil = !UMN5_A! and appactutil = !UMN5_B!
+			)
+			echo     ATTENTION: UMN5 differs between servercomptranutil = !UMN5_A! and appactutil = !UMN5_B! >> %REPORT_LOGFILE% 2>&1
 		) else (
-			echo     ATTENTION: UMN5 differs between servercomptranutil = !UMN5_A! and appactutil = !UMN5_B!
+			set UMN5=!UMN5_A!
 		)
-		echo     ATTENTION: UMN5 differs between servercomptranutil = !UMN5_A! and appactutil = !UMN5_B! >> %REPORT_LOGFILE% 2>&1
 	) else (
-		set UMN5=!UMN5_A!
+		set UMN_CHECK_STATUS=n/a
+		if defined UMN_COUNT_B (
+			rem only the command appactutil executed, use those results
+			set /a UMN_COUNT = !UMN_COUNT_B!
+			set UMN1=!UMN1_B!
+			set UMN2=!UMN2_B!
+			set UMN3=!UMN3_B!
+			set UMN4=!UMN4_B!
+			set UMN5=!UMN5_B!
+		)
 	)
-) else (
-	set UMN_CHECK_STATUS=n/a
-	if defined UMN_COUNT_B (
-		rem only the command appactutil executed, use those results
-		set /a UMN_COUNT = !UMN_COUNT_B!
-		set UMN1=!UMN1_B!
-		set UMN2=!UMN2_B!
-		set UMN3=!UMN3_B!
-		set UMN4=!UMN4_B!
-		set UMN5=!UMN5_B!
-	)
-)
 
-echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo retrieve virtual information [using servercomptranutil.exe -virtual] ...                                                >> %REPORT_LOGFILE% 2>&1
-echo     retrieve virtual information [using servercomptranutil.exe -virtual] ...
-if defined LMS_SERVERCOMTRANUTIL (
-	if "%FNPVersion%" == "11.14.0.0" (
-		echo     servercomptranutil.exe -virtual is not available for FNP=%FNPVersion%, cannot perform operation.        >> %REPORT_LOGFILE% 2>&1
-	) else (
-		"%LMS_SERVERCOMTRANUTIL%" -virtual > %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt  2>&1
-		type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt                                                   >> %REPORT_LOGFILE% 2>&1
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo retrieve virtual information [using servercomptranutil.exe -virtual] ...                                                >> %REPORT_LOGFILE% 2>&1
+	echo     retrieve virtual information [using servercomptranutil.exe -virtual] ...
+	if defined LMS_SERVERCOMTRANUTIL (
+		if "%FNPVersion%" == "11.14.0.0" (
+			echo     servercomptranutil.exe -virtual is not available for FNP=%FNPVersion%, cannot perform operation.        >> %REPORT_LOGFILE% 2>&1
+		) else (
+			"%LMS_SERVERCOMTRANUTIL%" -virtual > %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt  2>&1
+			type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt                                                   >> %REPORT_LOGFILE% 2>&1
 
-		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt" (
-			for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt ^|find /I "physical"') do set "VM_DETECTED=NO"   
-			if not defined VM_DETECTED (
-				for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt ^|find /I "virtual"')  do set "VM_DETECTED=YES"   
-				for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt ^|find /I "FAMILY"')   do set "VM_FAMILY=%%B"   
-				for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt ^|find /I "NAME"')     do set "VM_NAME=%%B"   
-				for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt ^|find /I "UUID"')     do set "VM_UUID=%%B"   
-				for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt ^|find /I "GENID"')    do set "VM_GENID=%%B"   
-				rem Handle "  GENID    Not available on this platform"
-				if "!VM_GENID!" == "Not" (
-					set VM_GENID=
+			IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt" (
+				for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt ^|find /I "physical"') do set "VM_DETECTED=NO"   
+				if not defined VM_DETECTED (
+					for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt ^|find /I "virtual"')  do set "VM_DETECTED=YES"   
+					for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt ^|find /I "FAMILY"')   do set "VM_FAMILY=%%B"   
+					for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt ^|find /I "NAME"')     do set "VM_NAME=%%B"   
+					for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt ^|find /I "UUID"')     do set "VM_UUID=%%B"   
+					for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_virtual.txt ^|find /I "GENID"')    do set "VM_GENID=%%B"   
+					rem Handle "  GENID    Not available on this platform"
+					if "!VM_GENID!" == "Not" (
+						set VM_GENID=
+					)
 				)
 			)
 		)
-	)
-) else (
-    echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
-)
-REM echo     VM_DETECTED=%VM_DETECTED% / VM_FAMILY=%VM_FAMILY% / VM_NAME=%VM_NAME% / VM_UUID=%VM_UUID% / VM_GENID=%VM_GENID%
-echo VM_DETECTED=%VM_DETECTED% / VM_FAMILY=%VM_FAMILY% / VM_NAME=%VM_NAME% / VM_UUID=%VM_UUID% / VM_GENID=%VM_GENID%         >> %REPORT_LOGFILE% 2>&1
-if "%VM_FAMILY%" == "UNKNOWNVM" (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;31m    ATTENTION: Unknown VM family detected. [1;37m
 	) else (
-		echo     ATTENTION: Unknown VM family detected.
+		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
 	)
-	echo ATTENTION: Unknown VM family detected.                                                                              >> %REPORT_LOGFILE% 2>&1
-)
-if "%VM_NAME%" == "UNKNOWNVM" (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;31m    ATTENTION: Unknown VM name detected. [1;37m
+	REM echo     VM_DETECTED=%VM_DETECTED% / VM_FAMILY=%VM_FAMILY% / VM_NAME=%VM_NAME% / VM_UUID=%VM_UUID% / VM_GENID=%VM_GENID%
+	echo VM_DETECTED=%VM_DETECTED% / VM_FAMILY=%VM_FAMILY% / VM_NAME=%VM_NAME% / VM_UUID=%VM_UUID% / VM_GENID=%VM_GENID%         >> %REPORT_LOGFILE% 2>&1
+	if "%VM_FAMILY%" == "UNKNOWNVM" (
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: Unknown VM family detected. [1;37m
+		) else (
+			echo     ATTENTION: Unknown VM family detected.
+		)
+		echo ATTENTION: Unknown VM family detected.                                                                              >> %REPORT_LOGFILE% 2>&1
+	)
+	if "%VM_NAME%" == "UNKNOWNVM" (
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: Unknown VM name detected. [1;37m
+		) else (
+			echo     ATTENTION: Unknown VM name detected.
+		)
+		echo ATTENTION: Unknown VM name detected.                                                                                >> %REPORT_LOGFILE% 2>&1
+	)
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo retrieve virtual information [using appactutil.exe -virtual -long] ...                                                  >> %REPORT_LOGFILE% 2>&1
+	echo     retrieve virtual information [using appactutil.exe -virtual -long] ...
+	if defined LMS_APPACTUTIL (
+		"%LMS_APPACTUTIL%" --virtual -long                                                                                       >> %REPORT_LOGFILE% 2>&1
 	) else (
-		echo     ATTENTION: Unknown VM name detected.
+		echo     appactutil.exe doesn't exist, cannot perform operation.                                                         >> %REPORT_LOGFILE% 2>&1
 	)
-	echo ATTENTION: Unknown VM name detected.                                                                                >> %REPORT_LOGFILE% 2>&1
-)
-echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo retrieve virtual information [using appactutil.exe -virtual -long] ...                                                  >> %REPORT_LOGFILE% 2>&1
-echo     retrieve virtual information [using appactutil.exe -virtual -long] ...
-if defined LMS_APPACTUTIL (
-	"%LMS_APPACTUTIL%" --virtual -long                                                                                       >> %REPORT_LOGFILE% 2>&1
-) else (
-    echo     appactutil.exe doesn't exist, cannot perform operation.                                                         >> %REPORT_LOGFILE% 2>&1
-)
-echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo serveractutil.exe -virtual                                                                                              >> %REPORT_LOGFILE% 2>&1
-if defined LMS_SERVERACTUTIL (
-	"%LMS_SERVERACTUTIL%" -virtual                                                                                           >> %REPORT_LOGFILE% 2>&1
-) else (
-    echo     serveractutil.exe doesn't exist, cannot perform operation.                                                      >> %REPORT_LOGFILE% 2>&1
-)
-echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo lmdiag.exe -c "!LMS_PROGRAMDATA!\Server Certificates\" -n                                                               >> %REPORT_LOGFILE% 2>&1
-if defined LMS_LMDIAG (
-	"%LMS_LMDIAG%" -c "!LMS_PROGRAMDATA!\Server Certificates\" -n                                                            >> %REPORT_LOGFILE% 2>&1
-) else (
-    echo     lmdiag.exe doesn't exist, cannot perform operation.                                                             >> %REPORT_LOGFILE% 2>&1
-)
-echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo lmstat.exe -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -A                                         >> %REPORT_LOGFILE% 2>&1
-if defined LMS_LMSTAT (
-    "%LMS_LMSTAT%" -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -A                                      >> %REPORT_LOGFILE% 2>&1
-) else (
-    echo     lmstat.exe doesn't exist, cannot perform operation.                                                             >> %REPORT_LOGFILE% 2>&1
-)
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo lmstat.exe -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -a                                         >> %REPORT_LOGFILE% 2>&1
-if defined LMS_LMSTAT (
-    "%LMS_LMSTAT%" -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -a                                      >> %REPORT_LOGFILE% 2>&1
-) else (
-    echo     lmstat.exe doesn't exist, cannot perform operation.                                                             >> %REPORT_LOGFILE% 2>&1
-)
-echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo retrieve virtual information [using lmvminfo.exe -long] ...                                                             >> %REPORT_LOGFILE% 2>&1
-echo     retrieve virtual information [using lmvminfo.exe -long] ...
-if defined LMS_LMVMINFO (
-    "%LMS_LMVMINFO%" -long  > %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt  2>&1
-	type %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt                                                                        >> %REPORT_LOGFILE% 2>&1
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt" (
-		for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt ^|find /I "Physical"') do set "VM_DETECTED_2=NO"   
-		if not defined VM_DETECTED_2 (
-			for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt ^|find /I "Virtual"')  do set "VM_DETECTED_2=YES"   
-			for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt ^|find /I "FAMILY"')   do set "VM_FAMILY_2=%%B"   
-			for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt ^|find /I "NAME"')     do set "VM_NAME_2=%%B"   
-			for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt ^|find /I "UUID"')     do set "VM_UUID_2=%%B"   
-			for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt ^|find /I "GENID"')    do set "VM_GENID_2=%%B"   
-			rem Handle "GENID: ERROR - Unavailable."
-			if "!VM_GENID_2!" == "ERROR" (
-				set VM_GENID_2=
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo serveractutil.exe -virtual                                                                                              >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_SERVERACTUTIL (
+		"%LMS_SERVERACTUTIL%" -virtual                                                                                           >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     serveractutil.exe doesn't exist, cannot perform operation.                                                      >> %REPORT_LOGFILE% 2>&1
+	)
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo lmdiag.exe -c "!LMS_PROGRAMDATA!\Server Certificates\" -n                                                               >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_LMDIAG (
+		"%LMS_LMDIAG%" -c "!LMS_PROGRAMDATA!\Server Certificates\" -n                                                            >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     lmdiag.exe doesn't exist, cannot perform operation.                                                             >> %REPORT_LOGFILE% 2>&1
+	)
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo lmstat.exe -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -A                                         >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_LMSTAT (
+		"%LMS_LMSTAT%" -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -A                                      >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     lmstat.exe doesn't exist, cannot perform operation.                                                             >> %REPORT_LOGFILE% 2>&1
+	)
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo lmstat.exe -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -a                                         >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_LMSTAT (
+		"%LMS_LMSTAT%" -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -a                                      >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     lmstat.exe doesn't exist, cannot perform operation.                                                             >> %REPORT_LOGFILE% 2>&1
+	)
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo retrieve virtual information [using lmvminfo.exe -long] ...                                                             >> %REPORT_LOGFILE% 2>&1
+	echo     retrieve virtual information [using lmvminfo.exe -long] ...
+	if defined LMS_LMVMINFO (
+		"%LMS_LMVMINFO%" -long  > %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt  2>&1
+		type %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt                                                                        >> %REPORT_LOGFILE% 2>&1
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt" (
+			for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt ^|find /I "Physical"') do set "VM_DETECTED_2=NO"   
+			if not defined VM_DETECTED_2 (
+				for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt ^|find /I "Virtual"')  do set "VM_DETECTED_2=YES"   
+				for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt ^|find /I "FAMILY"')   do set "VM_FAMILY_2=%%B"   
+				for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt ^|find /I "NAME"')     do set "VM_NAME_2=%%B"   
+				for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt ^|find /I "UUID"')     do set "VM_UUID_2=%%B"   
+				for /f "tokens=1,2 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\lmvminfo_long.txt ^|find /I "GENID"')    do set "VM_GENID_2=%%B"   
+				rem Handle "GENID: ERROR - Unavailable."
+				if "!VM_GENID_2!" == "ERROR" (
+					set VM_GENID_2=
+				)
 			)
 		)
-	)
-) else (
-    echo     lmvminfo.exe doesn't exist, cannot perform operation.                                                           >> %REPORT_LOGFILE% 2>&1
-)
-REM echo     VM_DETECTED_2=%VM_DETECTED_2% / VM_FAMILY_2=%VM_FAMILY_2% / VM_NAME_2=%VM_NAME_2% / VM_UUID_2=%VM_UUID_2% / VM_GENID_2=%VM_GENID_2%
-echo VM_DETECTED_2=%VM_DETECTED_2% / VM_FAMILY_2=%VM_FAMILY_2% / VM_NAME_2=%VM_NAME_2% / VM_UUID_2=%VM_UUID_2% / VM_GENID_2=%VM_GENID_2% >> %REPORT_LOGFILE% 2>&1
-if "%VM_FAMILY_2%" == "UNKNOWNVM" (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;31m    ATTENTION: Unknown VM family detected. [1;37m
 	) else (
-		echo     ATTENTION: Unknown VM family detected.
+		echo     lmvminfo.exe doesn't exist, cannot perform operation.                                                           >> %REPORT_LOGFILE% 2>&1
 	)
-	echo ATTENTION: Unknown VM family detected.                                                                              >> %REPORT_LOGFILE% 2>&1
-)
-if "%VM_NAME_2%" == "UNKNOWNVM" (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;31m    ATTENTION: Unknown VM name detected. [1;37m
-	) else (
-		echo     ATTENTION: Unknown VM name detected.
-	)
-	echo ATTENTION: Unknown VM name detected.                                                                                >> %REPORT_LOGFILE% 2>&1
-)
-REM Compare output of two VM detections with servercomptranutil and lmvminfo
-if defined VM_DETECTED if defined VM_DETECTED_2 (
-	set VM_DETECTION_CHECK_STATUS=Ok
-	if /I "!VM_FAMILY!" NEQ "!VM_FAMILY_2!" (
-		set VM_DETECTION_CHECK_STATUS=Failed
+	REM echo     VM_DETECTED_2=%VM_DETECTED_2% / VM_FAMILY_2=%VM_FAMILY_2% / VM_NAME_2=%VM_NAME_2% / VM_UUID_2=%VM_UUID_2% / VM_GENID_2=%VM_GENID_2%
+	echo VM_DETECTED_2=%VM_DETECTED_2% / VM_FAMILY_2=%VM_FAMILY_2% / VM_NAME_2=%VM_NAME_2% / VM_UUID_2=%VM_UUID_2% / VM_GENID_2=%VM_GENID_2% >> %REPORT_LOGFILE% 2>&1
+	if "%VM_FAMILY_2%" == "UNKNOWNVM" (
 		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: VM family detection differs between servercomptranutil = !VM_FAMILY! and lmvminfo = !VM_FAMILY_2! [1;37m
+			echo [1;31m    ATTENTION: Unknown VM family detected. [1;37m
 		) else (
-			echo     ATTENTION: VM family differs detection between servercomptranutil = !VM_FAMILY! and lmvminfo = !VM_FAMILY_2!
+			echo     ATTENTION: Unknown VM family detected.
 		)
-		echo     ATTENTION: VM family detection differs between servercomptranutil = !VM_FAMILY! and lmvminfo = !VM_FAMILY_2!     >> %REPORT_LOGFILE% 2>&1
+		echo ATTENTION: Unknown VM family detected.                                                                              >> %REPORT_LOGFILE% 2>&1
 	)
-	if /I "!VM_NAME!" NEQ "!VM_NAME_2!" (
-		set VM_DETECTION_CHECK_STATUS=Failed
+	if "%VM_NAME_2%" == "UNKNOWNVM" (
 		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: VM name detection differs between servercomptranutil = !VM_NAME! and lmvminfo = !VM_NAME_2! [1;37m
+			echo [1;31m    ATTENTION: Unknown VM name detected. [1;37m
 		) else (
-			echo     ATTENTION: VM name differs detection between servercomptranutil = !VM_NAME! and lmvminfo = !VM_NAME_2!
+			echo     ATTENTION: Unknown VM name detected.
 		)
-		echo     ATTENTION: VM name detection differs between servercomptranutil = !VM_NAME! and lmvminfo = !VM_NAME_2!      >> %REPORT_LOGFILE% 2>&1
+		echo ATTENTION: Unknown VM name detected.                                                                                >> %REPORT_LOGFILE% 2>&1
 	)
-	if /I "!VM_UUID!" NEQ "!VM_UUID_2!" (
-		set VM_DETECTION_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: VM UUID detection differs between servercomptranutil = !VM_UUID! and lmvminfo = !VM_UUID_2! [1;37m
-		) else (
-			echo     ATTENTION: VM UUID differs detection between servercomptranutil = !VM_UUID! and lmvminfo = !VM_UUID_2!
-		)
-		echo     ATTENTION: VM UUID detection differs between servercomptranutil = !VM_UUID! and lmvminfo = !VM_UUID_2!      >> %REPORT_LOGFILE% 2>&1
-	)
-	if /I "!VM_GENID!" NEQ "!VM_GENID_2!" (
-		set VM_DETECTION_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: VM GENID detection differs between servercomptranutil = !VM_GENID! and lmvminfo = !VM_GENID_2! [1;37m
-		) else (
-			echo     ATTENTION: VM GENID differs detection between servercomptranutil = !VM_GENID! and lmvminfo = !VM_GENID_2!
-		)
-		echo     ATTENTION: VM GENID detection differs between servercomptranutil = !VM_GENID! and lmvminfo = !VM_GENID_2!   >> %REPORT_LOGFILE% 2>&1
-	)
-)
-if not defined VM_DETECTED (
-	REM For backward compatibility; in case virtual environment could not be determined so far; use lmvminfo output 
-	if defined VM_DETECTED_2 (
-		set VM_DETECTED=!VM_DETECTED_2!
-		set VM_FAMILY=!VM_FAMILY_2!
-		set VM_NAME=!VM_NAME_2!
-		set VM_UUID=!VM_UUID_2!
-		set VM_GENID=!VM_GENID_2!
-	)
-)
-echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo lmtpminfo.exe -long                                                                                                     >> %REPORT_LOGFILE% 2>&1
-if defined LMS_LMTPMINFO (
-    "%LMS_LMTPMINFO%" -long                                                                                                  >> %REPORT_LOGFILE% 2>&1
-) else (
-    echo     lmtpminfo.exe doesn't exist, cannot perform operation.                                                          >> %REPORT_LOGFILE% 2>&1
-)
-echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo tsreset_svr.exe -logreport verbose                                                                                      >> %REPORT_LOGFILE% 2>&1
-if defined LMS_TSRESETSVR (
-	if "%FNPVersion%" == "11.14.0.0" (
-		echo     tsreset_svr.exe -logreport verbose is not available for FNP=%FNPVersion%, cannot perform operation.         >> %REPORT_LOGFILE% 2>&1
-	) else (
-		del %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_8098d100_event_extract.log >nul 2>&1
-		rem logs to C:\ProgramData\FLEXnet\SIEMBT_8098d100_event.log
-		"%LMS_TSRESETSVR%" -logreport verbose                                                                                >> %REPORT_LOGFILE% 2>&1
-		rem read in last line the process id
-		For /F "UseBackQ tokens=1,2,4,6,7 Delims=[]" %%A In ("%programdata%\FLEXnet\SIEMBT_8098d100_event.log") Do ( 
-			Set messagedatetime=%%A  
-			Set processid=%%B
-			Set threadid=%%C
-			Set fnpversion=%%D
-			set message=%%E
-		)
-		rem read last line(s) which have been added with previous command
-		For /F "UseBackQ tokens=1,2,4,6,7 Delims=[]" %%A In ("%programdata%\FLEXnet\SIEMBT_8098d100_event.log") Do if "%%B" EQU "!processid!" if "%%C" EQU "!threadid!" ( 
-			echo Message: %%A [%%B] [%%C] [%%D] %%E  >> %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_8098d100_event_extract.log
-		)
-		type %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_8098d100_event_extract.log                                                    >> %REPORT_LOGFILE% 2>&1
-		findstr /m /c:"orphans" "%CHECKLMS_REPORT_LOG_PATH%\SIEMBT_8098d100_event_extract.log"                               >> %REPORT_LOGFILE% 2>&1
-		if !ERRORLEVEL!==0 (
+	REM Compare output of two VM detections with servercomptranutil and lmvminfo
+	if defined VM_DETECTED if defined VM_DETECTED_2 (
+		set VM_DETECTION_CHECK_STATUS=Ok
+		if /I "!VM_FAMILY!" NEQ "!VM_FAMILY_2!" (
+			set VM_DETECTION_CHECK_STATUS=Failed
 			if defined SHOW_COLORED_OUTPUT (
-				echo [1;33m    WARNING: One or more orphan anchors have been found! [tsreset_svr.exe] [1;37m
+				echo [1;31m    ATTENTION: VM family detection differs between servercomptranutil = !VM_FAMILY! and lmvminfo = !VM_FAMILY_2! [1;37m
 			) else (
-				echo     WARNING: One or more orphan anchors have been found! [tsreset_svr.exe]
+				echo     ATTENTION: VM family differs detection between servercomptranutil = !VM_FAMILY! and lmvminfo = !VM_FAMILY_2!
 			)
-			echo     WARNING: One or more orphan anchors have been found! [tsreset_svr.exe]                                  >> %REPORT_LOGFILE% 2>&1
-			echo     Remove orphan anchors with tsreset_svr.exe -anchors orphan                                              >> %REPORT_LOGFILE% 2>&1
-			"%LMS_TSRESETSVR%" -anchors orphan                                                                               >> %REPORT_LOGFILE% 2>&1
-
-			del %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_8098d100_event_extract_retry.log >nul 2>&1
+			echo     ATTENTION: VM family detection differs between servercomptranutil = !VM_FAMILY! and lmvminfo = !VM_FAMILY_2!     >> %REPORT_LOGFILE% 2>&1
+		)
+		if /I "!VM_NAME!" NEQ "!VM_NAME_2!" (
+			set VM_DETECTION_CHECK_STATUS=Failed
+			if defined SHOW_COLORED_OUTPUT (
+				echo [1;31m    ATTENTION: VM name detection differs between servercomptranutil = !VM_NAME! and lmvminfo = !VM_NAME_2! [1;37m
+			) else (
+				echo     ATTENTION: VM name differs detection between servercomptranutil = !VM_NAME! and lmvminfo = !VM_NAME_2!
+			)
+			echo     ATTENTION: VM name detection differs between servercomptranutil = !VM_NAME! and lmvminfo = !VM_NAME_2!      >> %REPORT_LOGFILE% 2>&1
+		)
+		if /I "!VM_UUID!" NEQ "!VM_UUID_2!" (
+			set VM_DETECTION_CHECK_STATUS=Failed
+			if defined SHOW_COLORED_OUTPUT (
+				echo [1;31m    ATTENTION: VM UUID detection differs between servercomptranutil = !VM_UUID! and lmvminfo = !VM_UUID_2! [1;37m
+			) else (
+				echo     ATTENTION: VM UUID differs detection between servercomptranutil = !VM_UUID! and lmvminfo = !VM_UUID_2!
+			)
+			echo     ATTENTION: VM UUID detection differs between servercomptranutil = !VM_UUID! and lmvminfo = !VM_UUID_2!      >> %REPORT_LOGFILE% 2>&1
+		)
+		if /I "!VM_GENID!" NEQ "!VM_GENID_2!" (
+			set VM_DETECTION_CHECK_STATUS=Failed
+			if defined SHOW_COLORED_OUTPUT (
+				echo [1;31m    ATTENTION: VM GENID detection differs between servercomptranutil = !VM_GENID! and lmvminfo = !VM_GENID_2! [1;37m
+			) else (
+				echo     ATTENTION: VM GENID differs detection between servercomptranutil = !VM_GENID! and lmvminfo = !VM_GENID_2!
+			)
+			echo     ATTENTION: VM GENID detection differs between servercomptranutil = !VM_GENID! and lmvminfo = !VM_GENID_2!   >> %REPORT_LOGFILE% 2>&1
+		)
+	)
+	if not defined VM_DETECTED (
+		REM For backward compatibility; in case virtual environment could not be determined so far; use lmvminfo output 
+		if defined VM_DETECTED_2 (
+			set VM_DETECTED=!VM_DETECTED_2!
+			set VM_FAMILY=!VM_FAMILY_2!
+			set VM_NAME=!VM_NAME_2!
+			set VM_UUID=!VM_UUID_2!
+			set VM_GENID=!VM_GENID_2!
+		)
+	)
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo lmtpminfo.exe -long                                                                                                     >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_LMTPMINFO (
+		"%LMS_LMTPMINFO%" -long                                                                                                  >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     lmtpminfo.exe doesn't exist, cannot perform operation.                                                          >> %REPORT_LOGFILE% 2>&1
+	)
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo tsreset_svr.exe -logreport verbose                                                                                      >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_TSRESETSVR (
+		if "%FNPVersion%" == "11.14.0.0" (
+			echo     tsreset_svr.exe -logreport verbose is not available for FNP=%FNPVersion%, cannot perform operation.         >> %REPORT_LOGFILE% 2>&1
+		) else (
+			del %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_8098d100_event_extract.log >nul 2>&1
 			rem logs to C:\ProgramData\FLEXnet\SIEMBT_8098d100_event.log
-			"%LMS_TSRESETSVR%" -logreport verbose                                                                            >> %REPORT_LOGFILE% 2>&1
+			"%LMS_TSRESETSVR%" -logreport verbose                                                                                >> %REPORT_LOGFILE% 2>&1
 			rem read in last line the process id
 			For /F "UseBackQ tokens=1,2,4,6,7 Delims=[]" %%A In ("%programdata%\FLEXnet\SIEMBT_8098d100_event.log") Do ( 
 				Set messagedatetime=%%A  
@@ -3512,61 +3581,61 @@ if defined LMS_TSRESETSVR (
 				Set fnpversion=%%D
 				set message=%%E
 			)
-			rem read last line(s) which have been added with previous command
+			rem read last lines which have been added with previous command
 			For /F "UseBackQ tokens=1,2,4,6,7 Delims=[]" %%A In ("%programdata%\FLEXnet\SIEMBT_8098d100_event.log") Do if "%%B" EQU "!processid!" if "%%C" EQU "!threadid!" ( 
-				echo Message: %%A [%%B] [%%C] [%%D] %%E  >> %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_8098d100_event_extract_retry.log
+				echo Message: %%A [%%B] [%%C] [%%D] %%E  >> %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_8098d100_event_extract.log
 			)
-			type %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_8098d100_event_extract_retry.log                                          >> %REPORT_LOGFILE% 2>&1
-			findstr /m /c:"orphans" "%CHECKLMS_REPORT_LOG_PATH%\SIEMBT_8098d100_event_extract_retry.log"                     >> %REPORT_LOGFILE% 2>&1
+			type %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_8098d100_event_extract.log                                                    >> %REPORT_LOGFILE% 2>&1
+			findstr /m /c:"orphans" "%CHECKLMS_REPORT_LOG_PATH%\SIEMBT_8098d100_event_extract.log"                               >> %REPORT_LOGFILE% 2>&1
 			if !ERRORLEVEL!==0 (
 				if defined SHOW_COLORED_OUTPUT (
-					echo [1;33m    WARNING: Still one or more orphan anchors have been found! [tsreset_svr.exe] [1;37m
+					echo [1;33m    WARNING: One or more orphan anchors have been found! [tsreset_svr.exe] [1;37m
 				) else (
-					echo     WARNING: Still one or more orphan anchors have been found! [tsreset_svr.exe]
+					echo     WARNING: One or more orphan anchors have been found! [tsreset_svr.exe]
 				)
-				echo     WARNING: Still one or more orphan anchors have been found! [tsreset_svr.exe]                        >> %REPORT_LOGFILE% 2>&1
-			)
-		)
-	)
-) else (
-    echo     tsreset_svr.exe doesn't exist, cannot perform operation.                                                        >> %REPORT_LOGFILE% 2>&1
-)
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo tsreset_app.exe -logreport verbose                                                                                      >> %REPORT_LOGFILE% 2>&1
-if defined LMS_TSRESETAPP (
-	if "%FNPVersion%" == "11.14.0.0" (
-		echo     tsreset_app.exe -logreport verbose is not available for FNP=%FNPVersion%, cannot perform operation.         >> %REPORT_LOGFILE% 2>&1
-	) else (
-		del %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_0098d100_event_extract.log >nul 2>&1
-		rem logs to C:\ProgramData\FLEXnet\SIEMBT_0098d100_event.log
-		"%LMS_TSRESETAPP%" -logreport verbose                                                                                >> %REPORT_LOGFILE% 2>&1
-		rem read in last line the process id
-		For /F "UseBackQ tokens=1,2,4,6,7 Delims=[]" %%A In ("%programdata%\FLEXnet\SIEMBT_0098d100_event.log") Do ( 
-			Set messagedatetime=%%A  
-			Set processid=%%B
-			Set threadid=%%C
-			Set fnpversion=%%D
-			set message=%%E
-		)
-		rem read last line(s) which have been added with previous command
-		For /F "UseBackQ tokens=1,2,4,6,7 Delims=[]" %%A In ("%programdata%\FLEXnet\SIEMBT_0098d100_event.log") Do if "%%B" EQU "!processid!" if "%%C" EQU "!threadid!" ( 
-			echo Message: %%A [%%B] [%%C] [%%D] %%E  >> %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_0098d100_event_extract.log
-		)
-		type %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_0098d100_event_extract.log                                                    >> %REPORT_LOGFILE% 2>&1
-		findstr /m /c:"orphans" "%CHECKLMS_REPORT_LOG_PATH%\SIEMBT_0098d100_event_extract.log"                               >> %REPORT_LOGFILE% 2>&1
-		if !ERRORLEVEL!==0 (
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;33m    WARNING: One or more orphan anchors have been found! [tsreset_app.exe] [1;37m
-			) else (
-				echo     WARNING: One or more orphan anchors have been found! [tsreset_app.exe]
-			)
-			echo     WARNING: One or more orphan anchors have been found! [tsreset_app.exe]                                  >> %REPORT_LOGFILE% 2>&1
-			echo     Remove orphan anchors with tsreset_app.exe -anchors orphan                                              >> %REPORT_LOGFILE% 2>&1
-			"%LMS_TSRESETAPP%" -anchors orphan                                                                               >> %REPORT_LOGFILE% 2>&1
+				echo     WARNING: One or more orphan anchors have been found! [tsreset_svr.exe]                                  >> %REPORT_LOGFILE% 2>&1
+				echo     Remove orphan anchors with tsreset_svr.exe -anchors orphan                                              >> %REPORT_LOGFILE% 2>&1
+				"%LMS_TSRESETSVR%" -anchors orphan                                                                               >> %REPORT_LOGFILE% 2>&1
 
-			del %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_0098d100_event_extract_retry.log >nul 2>&1
+				del %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_8098d100_event_extract_retry.log >nul 2>&1
+				rem logs to C:\ProgramData\FLEXnet\SIEMBT_8098d100_event.log
+				"%LMS_TSRESETSVR%" -logreport verbose                                                                            >> %REPORT_LOGFILE% 2>&1
+				rem read in last line the process id
+				For /F "UseBackQ tokens=1,2,4,6,7 Delims=[]" %%A In ("%programdata%\FLEXnet\SIEMBT_8098d100_event.log") Do ( 
+					Set messagedatetime=%%A  
+					Set processid=%%B
+					Set threadid=%%C
+					Set fnpversion=%%D
+					set message=%%E
+				)
+				rem read last lines which have been added with previous command
+				For /F "UseBackQ tokens=1,2,4,6,7 Delims=[]" %%A In ("%programdata%\FLEXnet\SIEMBT_8098d100_event.log") Do if "%%B" EQU "!processid!" if "%%C" EQU "!threadid!" ( 
+					echo Message: %%A [%%B] [%%C] [%%D] %%E  >> %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_8098d100_event_extract_retry.log
+				)
+				type %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_8098d100_event_extract_retry.log                                          >> %REPORT_LOGFILE% 2>&1
+				findstr /m /c:"orphans" "%CHECKLMS_REPORT_LOG_PATH%\SIEMBT_8098d100_event_extract_retry.log"                     >> %REPORT_LOGFILE% 2>&1
+				if !ERRORLEVEL!==0 (
+					if defined SHOW_COLORED_OUTPUT (
+						echo [1;33m    WARNING: Still one or more orphan anchors have been found! [tsreset_svr.exe] [1;37m
+					) else (
+						echo     WARNING: Still one or more orphan anchors have been found! [tsreset_svr.exe]
+					)
+					echo     WARNING: Still one or more orphan anchors have been found! [tsreset_svr.exe]                        >> %REPORT_LOGFILE% 2>&1
+				)
+			)
+		)
+	) else (
+		echo     tsreset_svr.exe doesn't exist, cannot perform operation.                                                        >> %REPORT_LOGFILE% 2>&1
+	)
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo tsreset_app.exe -logreport verbose                                                                                      >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_TSRESETAPP (
+		if "%FNPVersion%" == "11.14.0.0" (
+			echo     tsreset_app.exe -logreport verbose is not available for FNP=%FNPVersion%, cannot perform operation.         >> %REPORT_LOGFILE% 2>&1
+		) else (
+			del %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_0098d100_event_extract.log >nul 2>&1
 			rem logs to C:\ProgramData\FLEXnet\SIEMBT_0098d100_event.log
-			"%LMS_TSRESETAPP%" -logreport verbose                                                                            >> %REPORT_LOGFILE% 2>&1
+			"%LMS_TSRESETAPP%" -logreport verbose                                                                                >> %REPORT_LOGFILE% 2>&1
 			rem read in last line the process id
 			For /F "UseBackQ tokens=1,2,4,6,7 Delims=[]" %%A In ("%programdata%\FLEXnet\SIEMBT_0098d100_event.log") Do ( 
 				Set messagedatetime=%%A  
@@ -3575,464 +3644,499 @@ if defined LMS_TSRESETAPP (
 				Set fnpversion=%%D
 				set message=%%E
 			)
-			rem read last line(s) which have been added with previous command
+			rem read last lines which have been added with previous command
 			For /F "UseBackQ tokens=1,2,4,6,7 Delims=[]" %%A In ("%programdata%\FLEXnet\SIEMBT_0098d100_event.log") Do if "%%B" EQU "!processid!" if "%%C" EQU "!threadid!" ( 
-				echo Message: %%A [%%B] [%%C] [%%D] %%E  >> %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_0098d100_event_extract_retry.log
+				echo Message: %%A [%%B] [%%C] [%%D] %%E  >> %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_0098d100_event_extract.log
 			)
-			type %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_0098d100_event_extract_retry.log                                          >> %REPORT_LOGFILE% 2>&1
-			findstr /m /c:"orphans" "%CHECKLMS_REPORT_LOG_PATH%\SIEMBT_0098d100_event_extract_retry.log"                     >> %REPORT_LOGFILE% 2>&1
+			type %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_0098d100_event_extract.log                                                    >> %REPORT_LOGFILE% 2>&1
+			findstr /m /c:"orphans" "%CHECKLMS_REPORT_LOG_PATH%\SIEMBT_0098d100_event_extract.log"                               >> %REPORT_LOGFILE% 2>&1
 			if !ERRORLEVEL!==0 (
 				if defined SHOW_COLORED_OUTPUT (
-					echo [1;33m    WARNING: Still one or more orphan anchors have been found! [tsreset_app.exe] [1;37m
+					echo [1;33m    WARNING: One or more orphan anchors have been found! [tsreset_app.exe] [1;37m
 				) else (
-					echo     WARNING: Still one or more orphan anchors have been found! [tsreset_app.exe]
+					echo     WARNING: One or more orphan anchors have been found! [tsreset_app.exe]
 				)
-				echo     WARNING: Still one or more orphan anchors have been found! [tsreset_app.exe]                        >> %REPORT_LOGFILE% 2>&1
-			)
-		)
-	)
-) else (
-    echo     tsreset_app.exe doesn't exist, cannot perform operation.                                                        >> %REPORT_LOGFILE% 2>&1
-)
-echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo ... collect host id's ...
-echo Collect host id's:                                                                                                      >> %REPORT_LOGFILE% 2>&1
-if defined LMS_LMHOSTID (
-	echo ======== Host ID:                                                                                                   >> %REPORT_LOGFILE% 2>&1
-	"%LMS_LMHOSTID%"                                                                                                         >> %REPORT_LOGFILE% 2>&1
-	echo ======== PHYSICAL Host ID:                                                                                          >> %REPORT_LOGFILE% 2>&1
-	echo --- lmhostid: -user                                                                                                 >> %REPORT_LOGFILE% 2>&1
-	"%LMS_LMHOSTID%" -user                                                                                                   >> %REPORT_LOGFILE% 2>&1
-	echo --- lmhostid: -ether                                                                                                >> %REPORT_LOGFILE% 2>&1
-	"%LMS_LMHOSTID%" -ether                                                                                                  >> %REPORT_LOGFILE% 2>&1
-	echo --- lmhostid: -internet v4                                                                                          >> %REPORT_LOGFILE% 2>&1
-	"%LMS_LMHOSTID%" -internet v4                                                                                            >> %REPORT_LOGFILE% 2>&1
-	echo --- lmhostid: -internet v6                                                                                          >> %REPORT_LOGFILE% 2>&1
-	"%LMS_LMHOSTID%" -internet v6                                                                                            >> %REPORT_LOGFILE% 2>&1
-	echo --- lmhostid: -utf8                                                                                                 >> %REPORT_LOGFILE% 2>&1
-	"%LMS_LMHOSTID%" -utf8                                                                                                   >> %REPORT_LOGFILE% 2>&1
-	echo --- lmhostid: -vsn                                                                                                  >> %REPORT_LOGFILE% 2>&1
-	"%LMS_LMHOSTID%" -vsn                                                                                                    >> %REPORT_LOGFILE% 2>&1
-	echo --- lmhostid: -display                                                                                              >> %REPORT_LOGFILE% 2>&1
-	"%LMS_LMHOSTID%" -display                                                                                                >> %REPORT_LOGFILE% 2>&1
-	echo --- lmhostid: -hostname                                                                                             >> %REPORT_LOGFILE% 2>&1
-	"%LMS_LMHOSTID%" -hostname                                                                                               >> %REPORT_LOGFILE% 2>&1
-	echo --- lmhostid: -hostdomain                                                                                           >> %REPORT_LOGFILE% 2>&1
-	"%LMS_LMHOSTID%" -hostdomain                                                                                             >> %REPORT_LOGFILE% 2>&1
-	echo --- lmhostid: -tpm_id1                                                                                              >> %REPORT_LOGFILE% 2>&1
-	"%LMS_LMHOSTID%" -tpm_id1                                                                                                >> %REPORT_LOGFILE% 2>&1
-	echo --- lmhostid: -flexid                                                                                               >> %REPORT_LOGFILE% 2>&1
-	"%LMS_LMHOSTID%" -flexid                                                                                                 >> %REPORT_LOGFILE% 2>&1
-	echo ======== VIRTUAL Host ID:                                                                                           >> %REPORT_LOGFILE% 2>&1
-	echo --- lmhostid: -ptype VM -uuid                                                                                       >> %REPORT_LOGFILE% 2>&1
-	"%LMS_LMHOSTID%" -ptype VM -uuid                                                                                         >> %REPORT_LOGFILE% 2>&1
-	echo --- lmhostid: -ptype VM -genid                                                                                      >> %REPORT_LOGFILE% 2>&1
-	"%LMS_LMHOSTID%" -ptype VM -genid                                                                                        >> %REPORT_LOGFILE% 2>&1
-	echo ======== AMAZON Host ID:                                                                                            >> %REPORT_LOGFILE% 2>&1
-	echo --- lmhostid: -ptype AMZN -eip                                                                                      >> %REPORT_LOGFILE% 2>&1
-	"%LMS_LMHOSTID%" -ptype AMZN -eip                                                                                        >> %REPORT_LOGFILE% 2>&1
-	echo --- lmhostid: -ptype AMZN -ami                                                                                      >> %REPORT_LOGFILE% 2>&1
-	"%LMS_LMHOSTID%" -ptype AMZN -ami                                                                                        >> %REPORT_LOGFILE% 2>&1
-	echo --- lmhostid: -ptype AMZN -iid                                                                                      >> %REPORT_LOGFILE% 2>&1
-	"%LMS_LMHOSTID%" -ptype AMZN -iid                                                                                        >> %REPORT_LOGFILE% 2>&1
-) else (
-    echo     lmhostid.exe doesn't exist, cannot perform operation.                                                           >> %REPORT_LOGFILE% 2>&1
-)
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo ... read host id's [using ecmcommonutil.exe] ...
-IF EXIST "%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" (
-	echo Read host id: device [using ecmcommonutil.exe -l -f -d device]:                                                     >> %REPORT_LOGFILE% 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d device                                                                  >> %REPORT_LOGFILE% 2>&1
-	echo Read host id: net [using ecmcommonutil.exe -l -f -d net]:                                                           >> %REPORT_LOGFILE% 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d net                                                                     >> %REPORT_LOGFILE% 2>&1
-	echo Read host id: smbios [using ecmcommonutil.exe -l -f -d smbios]:                                                     >> %REPORT_LOGFILE% 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d smbios                                                                  >> %REPORT_LOGFILE% 2>&1
-	echo Read host id: vm [using ecmcommonutil.exe -l -f -d vm]:                                                             >> %REPORT_LOGFILE% 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d vm                                                                      >> %REPORT_LOGFILE% 2>&1
-) else (
-    echo     ecmcommonutil.exe doesn't exist, cannot perform operation.                                                      >> %REPORT_LOGFILE% 2>&1
-)
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo ... read host id's [using ecmcommonutil_1.19.exe] ...
-IF EXIST "%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" (
-	echo Read host id: device [using ecmcommonutil_1.19.exe -l -f -d device]:                                                >> %REPORT_LOGFILE% 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d device                                                             >> %REPORT_LOGFILE% 2>&1
-	echo Read host id: net [using ecmcommonutil_1.19.exe -l -f -d net]:                                                      >> %REPORT_LOGFILE% 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d net                                                                >> %REPORT_LOGFILE% 2>&1
-	echo Read host id: smbios [using ecmcommonutil_1.19.exe -l -f -d smbios]:                                                >> %REPORT_LOGFILE% 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d smbios                                                             >> %REPORT_LOGFILE% 2>&1
-	echo Read host id: vm [using ecmcommonutil_1.19.exe -l -f -d vm]:                                                        >> %REPORT_LOGFILE% 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d vm                                                                 >> %REPORT_LOGFILE% 2>&1
-) else (
-    echo     ecmcommonutil_1.19.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
-)
-echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo ... list available offline request files ...
-echo List available offline request files:                                                                                   >> %REPORT_LOGFILE% 2>&1
-echo Content of folder: "!LMS_PROGRAMDATA!\Requests"                                                             >> %REPORT_LOGFILE% 2>&1
-dir /S /A /X /4 /W "!LMS_PROGRAMDATA!\Requests"                                                                  >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-del %CHECKLMS_REPORT_LOG_PATH%\license_all_requests.txt >nul 2>&1
-FOR %%i IN ("!LMS_PROGRAMDATA!\Requests\*") DO (
-    rem echo %%i:                                                                                                                >> %REPORT_LOGFILE% 2>&1
-    rem Type "%%i"                                                                                                               >> %REPORT_LOGFILE% 2>&1
-    rem echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-    Type "%%i"                                                     >> %CHECKLMS_REPORT_LOG_PATH%\license_all_requests.txt 2>&1
-    echo -------------------------------------------------------   >> %CHECKLMS_REPORT_LOG_PATH%\license_all_requests.txt 2>&1
-)
-echo More details, see '%CHECKLMS_REPORT_LOG_PATH%\license_all_requests.txt'                                                 >> %REPORT_LOGFILE% 2>&1
-echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo ... analyze installed/available local certificates ...
-echo Installed/available local certificates:                                                                                 >> %REPORT_LOGFILE% 2>&1
-echo Content of folder: "!LMS_PROGRAMDATA!\Certificates"                                                         >> %REPORT_LOGFILE% 2>&1
-dir /S /A /X /4 /W "!LMS_PROGRAMDATA!\Certificates"                                                              >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-del %CHECKLMS_REPORT_LOG_PATH%\license_all_certificates.txt >nul 2>&1
-FOR %%i IN ("!LMS_PROGRAMDATA!\Certificates\*") DO (    
-    echo %%i:                                                                                                                >> %REPORT_LOGFILE% 2>&1
-    Type "%%i"                                                                                                               >> %REPORT_LOGFILE% 2>&1
-    echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-    Type "%%i"                                                     >> %CHECKLMS_REPORT_LOG_PATH%\license_all_certificates.txt 2>&1
-    echo -------------------------------------------------------   >> %CHECKLMS_REPORT_LOG_PATH%\license_all_certificates.txt 2>&1
-)
-set certfeature=
-IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\license_all_certificates.txt" for /f "tokens=2 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\license_all_certificates.txt ^|find /I "INCREMENT"') do set "certfeature=%%i"   
-if defined LMS_LMUTOOL (
-	if defined certfeature (
-		echo Check certificate feature: %certfeature%, with LmuTool.exe /CHECK:%certfeature%                                 >> %REPORT_LOGFILE% 2>&1
-		"!LMS_LMUTOOL!" /CHECK:%certfeature%                                                                                 >> %REPORT_LOGFILE% 2>&1
-		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1 
-		echo Check certificate feature: %certfeature%, with LmuTool.exe /FC:%certfeature%                                    >> %REPORT_LOGFILE% 2>&1
-		"!LMS_LMUTOOL!" /FC:%certfeature%                                                                                    >> %REPORT_LOGFILE% 2>&1
-	) else (
-		echo Check certificate feature: not possible, no feature found in certificates to test.                              >> %REPORT_LOGFILE% 2>&1
-	)
-) else (
-	echo     LmuTool is not available with LMS %LMS_VERSION%, cannot perform operation.                                      >> %REPORT_LOGFILE% 2>&1 
-)
-echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo ... analyze installed/available server certificates ...
-echo Installed/available server certificates:                                                                                >> %REPORT_LOGFILE% 2>&1
-echo Content of folder: "!LMS_PROGRAMDATA!\Server Certificates"                                                  >> %REPORT_LOGFILE% 2>&1
-dir /S /A /X /4 /W "!LMS_PROGRAMDATA!\Server Certificates"                                                       >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-del %CHECKLMS_REPORT_LOG_PATH%\license_all_servercertificates.txt >nul 2>&1
-FOR %%i IN ("!LMS_PROGRAMDATA!\Server Certificates\*") DO (
-    echo %%i:                                                                                                                >> %REPORT_LOGFILE% 2>&1
-    Type "%%i"                                                                                                               >> %REPORT_LOGFILE% 2>&1
-    echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-    Type "%%i">> %CHECKLMS_REPORT_LOG_PATH%\license_all_servercertificates.txt 2>&1
-    echo -------------------------------------------------------   >> %CHECKLMS_REPORT_LOG_PATH%\license_all_servercertificates.txt 2>&1
-)
-set servercertfeature=
-IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\license_all_servercertificates.txt" for /f "tokens=2 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\license_all_servercertificates.txt ^|find /I "INCREMENT"') do if not "%%i" == "Dummy_valid_feature" set "servercertfeature=%%i"
-if defined LMS_LMUTOOL (
-	if defined servercertfeature (
-		echo Check server certificate feature: %servercertfeature%, with LmuTool.exe /CHECK:%servercertfeature%              >> %REPORT_LOGFILE% 2>&1
-		"!LMS_LMUTOOL!" /CHECK:%servercertfeature%                                                                           >> %REPORT_LOGFILE% 2>&1
-		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1 
-		echo Check server certificate feature: %servercertfeature%, with LmuTool.exe /FC:%servercertfeature%                 >> %REPORT_LOGFILE% 2>&1
-		"!LMS_LMUTOOL!" /FC:%servercertfeature%                                                                              >> %REPORT_LOGFILE% 2>&1
-	) else (
-		echo Check server certificate feature: not possible, no feature found in server certificates to test.                >> %REPORT_LOGFILE% 2>&1
-	)
-) else (
-	echo     LmuTool is not available with LMS %LMS_VERSION%, cannot perform operation.                                      >> %REPORT_LOGFILE% 2>&1 
-)
-echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo Content of folder: "%ALLUSERSPROFILE%\FLEXnet" (Trusted Store Folder)                                                   >> %REPORT_LOGFILE% 2>&1
-rem dir "%ALLUSERSPROFILE%\FLEXnet"                                                                                              >> %REPORT_LOGFILE% 2>&1
-rem dir /AH "%ALLUSERSPROFILE%\FLEXnet"                                                                                          >> %REPORT_LOGFILE% 2>&1
-dir /S /A /X /4 /W "%ALLUSERSPROFILE%\FLEXnet"                                                                               >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1 
-echo ... search trusted store file(s) ...
-echo Search trusted store file(s):                                                                                           >> %REPORT_LOGFILE% 2>&1
-if exist "%ALLUSERSPROFILE%\FLEXnet\" (
-	del %CHECKLMS_REPORT_LOG_PATH%\tfsFilesFound.txt >nul 2>&1
-	cd %ALLUSERSPROFILE%\FLEXnet\
-	FOR /r %ALLUSERSPROFILE%\FLEXnet\ %%X IN (*tsf.data) DO echo %%~dpnxX >> %CHECKLMS_REPORT_LOG_PATH%\tfsFilesFound.txt
-	Type %CHECKLMS_REPORT_LOG_PATH%\tfsFilesFound.txt                                                                        >> %REPORT_LOGFILE% 2>&1
-) else (
-	echo     No files found, the directory '%ALLUSERSPROFILE%\FLEXnet\' doesn't exist.                                       >> %REPORT_LOGFILE% 2>&1
-)
-echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo ... decrypt Flexera logfiles ... 
-echo Decrypt Flexera logfiles:                                                                                             >> %REPORT_LOGFILE% 2>&1
-if defined LMS_TSACTDIAGSSVR (
-	echo Call "%LMS_TSACTDIAGSSVR% --output %REPORT_LOG_PATH%\FlexeraDecryptedEventlog.log" to decrypt ....                  >> %REPORT_LOGFILE% 2>&1
-	"%LMS_TSACTDIAGSSVR%" --output %REPORT_LOG_PATH%\FlexeraDecryptedEventlog.log
-	
-	rem Analyze the decrypted flexera logfile
-	echo     Analyze the decrypted flexera logfile ...
-	for /f "tokens=1,2,3,4,5,7,9,11,12,13,14,15,16,17,18,19,20,21,22,23,24 eol=@ delims=[], " %%A in ('type %REPORT_LOG_PATH%\FlexeraDecryptedEventlog.log') do (
-		set TS_LOG_MSG="%%B %%A - %%J %%K %%L %%M %%N %%O %%P %%Q %%R %%S %%T %%U (Version=%%E / Build=%%F)"
+				echo     WARNING: One or more orphan anchors have been found! [tsreset_app.exe]                                  >> %REPORT_LOGFILE% 2>&1
+				echo     Remove orphan anchors with tsreset_app.exe -anchors orphan                                              >> %REPORT_LOGFILE% 2>&1
+				"%LMS_TSRESETAPP%" -anchors orphan                                                                               >> %REPORT_LOGFILE% 2>&1
 
-		rem [Time] [Date] [Process Id] [Thread Id] [Version] build [Build Number] EventCode: [EventCode] Message: [....]
-		rem [1]    [2]    [3]          [4]         [5]             [7]                       [9]                  [11,...]
-		rem [A]    [B]    [C]          [D]         [E]             [F]                       [G]                  [H,...]
-		rem echo [2]=%%B / [1]=%%A / [3]=%%C / [4]=%%D / [5]=%%E / [7]=%%F / [9]=%%G / [11]=%%H
-		rem Determine start & end date/time of logfile content
-		if not defined TS_LOG_START_DATE (
-			set TS_LOG_START_DATE="%%B %%A"
-		)
-		set TS_LOG_END_DATE="%%B %%A"
-		rem Check for "Transient break" [Event: 40000012]
-		rem [Time] [Date] [Process Id] [Thread Id] [Version] build [Build Number] EventCode: [EventCode] Message: [Transient] [break.] [Timezone] [Validators] [TrustedId] [1=] [2=] [3=] [4=] [5=] [6=] [7=] [17=] [...]
-		rem [1]    [2]    [3]          [4]         [5]             [7]                       [9]                  [11]        [12]     [13]       [14]         [15]        [16] [17] [18] [19] [20] [21] [22] [23]  [24...]
-		rem [A]    [B]    [C]          [D]         [E]             [F]                       [G]                  [H]         [I]      [J]        [K]          [L]         [M]  [N]  [O]  [P]  [Q]  [R]  [S]  [T]   [U]
-
-		if "%%G" EQU "40000012" (
-			if not defined TS_LOG_TRANS_BRK_FOUND (
-				set TS_LOG_TRANS_BRK_FOUND="%%B %%A - Transient break found - %%J %%K %%L %%M %%N %%O %%P %%Q %%R %%S %%T %%U (Version=%%E / Build=%%F)"
-				set TS_LOG_TRANS_BRK_FOUND_START_DATE="%%B %%A"
-			)
-			set TS_LOG_TRANS_BRK_FOUND_END_DATE="%%B %%A"
-			
-			rem check validator: The numbers for the validator are either "1" [Validator=1] for anchoring or "2" [Validator=2] for binding.
-			if "%%K" EQU "Validator=1" (
-				if not defined TS_LOG_TRANS_BRK_VAL1_FOUND (
-					set TS_LOG_TRANS_BRK_VAL1_FOUND="%%B %%A - Transient break found in Anchoring - %%J %%K %%L %%M %%N %%O %%P %%Q %%R %%S %%T %%U (Version=%%E / Build=%%F)"
-					set TS_LOG_TRANS_BRK_VAL1_FOUND_START_DATE="%%B %%A"
+				del %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_0098d100_event_extract_retry.log >nul 2>&1
+				rem logs to C:\ProgramData\FLEXnet\SIEMBT_0098d100_event.log
+				"%LMS_TSRESETAPP%" -logreport verbose                                                                            >> %REPORT_LOGFILE% 2>&1
+				rem read in last line the process id
+				For /F "UseBackQ tokens=1,2,4,6,7 Delims=[]" %%A In ("%programdata%\FLEXnet\SIEMBT_0098d100_event.log") Do ( 
+					Set messagedatetime=%%A  
+					Set processid=%%B
+					Set threadid=%%C
+					Set fnpversion=%%D
+					set message=%%E
 				)
-				set TS_LOG_TRANS_BRK_VAL1_FOUND_END_DATE="%%B %%A"
-				
-				echo !TS_LOG_MSG!|find " 1=1" >nul
-				if not errorlevel 1 (set TS_LOG_TRANS_BRK_TRACKZERO_FOUND=changed)
-				echo !TS_LOG_MSG!|find " 1=2" >nul
-				if not errorlevel 1 (set TS_LOG_TRANS_BRK_TRACKZERO_FOUND=IsNotAvailable)
-				echo !TS_LOG_MSG!|find " 2=1" >nul
-				if not errorlevel 1 (set TS_LOG_TRANS_BRK_REGISTRY_FOUND=changed)
-				echo !TS_LOG_MSG!|find " 2=2" >nul
-				if not errorlevel 1 (set TS_LOG_TRANS_BRK_REGISTRY_FOUND=IsNotAvailable)
-				
-			)
-			if "%%K" EQU "Validator=2" (
-				if not defined TS_LOG_TRANS_BRK_VAL2_FOUND (
-					set TS_LOG_TRANS_BRK_VAL2_FOUND="%%B %%A - Transient break found in Binding - %%J %%K %%L %%M %%N %%O %%P %%Q %%R %%S %%T %%U (Version=%%E / Build=%%F)"
-					set TS_LOG_TRANS_BRK_VAL2_FOUND_START_DATE="%%B %%A"
+				rem read last lines which have been added with previous command
+				For /F "UseBackQ tokens=1,2,4,6,7 Delims=[]" %%A In ("%programdata%\FLEXnet\SIEMBT_0098d100_event.log") Do if "%%B" EQU "!processid!" if "%%C" EQU "!threadid!" ( 
+					echo Message: %%A [%%B] [%%C] [%%D] %%E  >> %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_0098d100_event_extract_retry.log
 				)
-				set TS_LOG_TRANS_BRK_VAL2_FOUND_END_DATE="%%B %%A"
-				
-				echo !TS_LOG_MSG!|find " 1=1" >nul
-				if not errorlevel 1 set TS_LOG_TRANS_BRK_SYSTEM_FOUND=changed
-				echo !TS_LOG_MSG!|find " 1=2" >nul
-				if not errorlevel 1 set TS_LOG_TRANS_BRK_SYSTEM_FOUND=IsNotAvailable
-				echo !TS_LOG_MSG!|find " 2=1" >nul
-				if not errorlevel 1 (set TS_LOG_TRANS_BRK_HARDDISK_FOUND=changed)
-				echo !TS_LOG_MSG!|find " 2=2" >nul
-				if not errorlevel 1 (set TS_LOG_TRANS_BRK_HARDDISK_FOUND=IsNotAvailable)
-				echo !TS_LOG_MSG!|find " 3=1" >nul
-				if not errorlevel 1 (set TS_LOG_TRANS_BRK_DISPLAY_FOUND=changed)
-				echo !TS_LOG_MSG!|find " 3=2" >nul
-				if not errorlevel 1 (set TS_LOG_TRANS_BRK_DISPLAY_FOUND=IsNotAvailable)
-				echo !TS_LOG_MSG!|find " 4=1" >nul
-				if not errorlevel 1 (set TS_LOG_TRANS_BRK_BIOS_FOUND=changed)
-				echo !TS_LOG_MSG!|find " 4=2" >nul
-				if not errorlevel 1 (set TS_LOG_TRANS_BRK_BIOS_FOUND=IsNotAvailable)
-				echo !TS_LOG_MSG!|find " 5=1" >nul
-				if not errorlevel 1 (set TS_LOG_TRANS_BRK_CPU_FOUND=changed)
-				echo !TS_LOG_MSG!|find " 5=2" >nul
-				if not errorlevel 1 (set TS_LOG_TRANS_BRK_CPU_FOUND=IsNotAvailable)
-				echo !TS_LOG_MSG!|find " 6=1" >nul
-				if not errorlevel 1 (set TS_LOG_TRANS_BRK_MEMORY_FOUND=changed)
-				echo !TS_LOG_MSG!|find " 6=2" >nul
-				if not errorlevel 1 (set TS_LOG_TRANS_BRK_MEMORY_FOUND=IsNotAvailable)
-				echo !TS_LOG_MSG!|find " 7=1" >nul
-				if not errorlevel 1 (set TS_LOG_TRANS_BRK_ETHERNET_FOUND=changed)
-				echo !TS_LOG_MSG!|find " 7=2" >nul
-				if not errorlevel 1 (set TS_LOG_TRANS_BRK_ETHERNET_FOUND=IsNotAvailable)
-				echo !TS_LOG_MSG!|find " 13=1" >nul
-				if not errorlevel 1 (set TS_LOG_TRANS_BRK_PUBLSIHER_FOUND=changed)
-				echo !TS_LOG_MSG!|find " 13=2" >nul
-				if not errorlevel 1 (set TS_LOG_TRANS_BRK_PUBLSIHER_FOUND=IsNotAvailable)
-				echo !TS_LOG_MSG!|find " 14=1" >nul
-				if not errorlevel 1 (set TS_LOG_TRANS_BRK_VMID_FOUND=changed)
-				echo !TS_LOG_MSG!|find " 14=2" >nul
-				if not errorlevel 1 (set TS_LOG_TRANS_BRK_VMID_FOUND=IsNotAvailable)
-				echo !TS_LOG_MSG!|find " 16=1" >nul
-				if not errorlevel 1 (set TS_LOG_TRANS_BRK_GENID_FOUND=changed)
-				echo !TS_LOG_MSG!|find " 16=2" >nul
-				if not errorlevel 1 (set TS_LOG_TRANS_BRK_GENID_FOUND=IsNotAvailable)
-				echo !TS_LOG_MSG!|find " 17=1" >nul
-				if not errorlevel 1 (set TS_LOG_TRANS_BRK_TPMID_FOUND=changed)
-				echo !TS_LOG_MSG!|find " 17=2" >nul
-				if not errorlevel 1 (set TS_LOG_TRANS_BRK_TPMID_FOUND=IsNotAvailable)
-				
-			)
-			
-		)
-		rem Check for "Bad Anchor" [Event: 20000020]
-		rem [Time] [Date] [Process Id] [Thread Id] [Version] build [Build Number] EventCode: [EventCode] Message: [Anchor] [x-xxxx] is bad [...]
-		rem [1]    [2]    [3]          [4]         [5]             [7]                       [9]                  [11]     [12]            [13...]
-		rem [A]    [B]    [C]          [D]         [E]             [F]                       [G]                  [H]      [I]             [J]
-		rem
-		rem Example:
-		rem    19:23:36 11-08-2020  [P:7300],[T:7304],[V:11.17.0.0 build 264148] 	EventCode: 10000009, Message: Anchor 2-0x8098d101Not on system
-		rem    19:23:36 11-08-2020  [P:7300],[T:7304],[V:11.17.0.0 build 264148] 	EventCode: 20000020, Message: Anchor 2-0x8098d101 is bad
-		rem    19:23:36 11-08-2020  [P:7300],[T:7304],[V:11.17.0.0 build 264148] 	EventCode: 1000000f, Message: Anchor 2-0x8098d101 repaired (bad)
-		if "%%G" EQU "20000020" (
-			if not defined TS_LOG_BAD_ANCH_FOUND (
-				set TS_LOG_BAD_ANCH_FOUND=1
-				set TS_LOG_BAD_ANCH_FOUND_MESSAGE="'Bad Anchor' [Event: 20000020] found - %%B %%A - Bad anchor found - %%I %%J %%K %%L %%M %%N %%O %%P %%Q %%R %%S %%T %%U (Version=%%E / Build=%%F)"
-				echo ATTENTION:  !TS_LOG_BAD_ANCH_FOUND_MESSAGE!                                                                       >> %REPORT_LOGFILE% 2>&1
-				set TS_LOG_BAD_ANCH_FOUND_START_DATE="%%B %%A"
-			)
-		)
-		if "%%G" EQU "1000000f" (
-			if defined TS_LOG_BAD_ANCH_FOUND (
-				set TS_LOG_BAD_ANCH_FOUND=
-				set TS_LOG_BAD_ANCH_REP_FOUND_MESSAGE="'Bad Anchor Repair' [Event: 1000000f] found - %%B %%A - Bad anchor repair found - %%I %%J %%K %%L %%M %%N %%O %%P %%Q %%R %%S %%T %%U (Version=%%E / Build=%%F)"
-				echo             !TS_LOG_BAD_ANCH_REP_FOUND_MESSAGE!                                                                   >> %REPORT_LOGFILE% 2>&1
-				set TS_LOG_BAD_ANCH_FOUND_END_DATE="%%B %%A"
-				rem create summary message
-				set TS_LOG_BAD_ANCH_FOUND_MESSAGE="%%B %%A - Bad anchor REPAIRED - was bad from !TS_LOG_BAD_ANCH_FOUND_START_DATE! till !TS_LOG_BAD_ANCH_FOUND_END_DATE! (Version=%%E / Build=%%F)"
-				echo             ---- !TS_LOG_BAD_ANCH_FOUND_MESSAGE!                                                                  >> %REPORT_LOGFILE% 2>&1
-			)
-		)
-		
-		rem Check for "Anchor not available" [Event: 1000000d]
-		rem [Time] [Date] [Process Id] [Thread Id] [Version] build [Build Number] EventCode: [EventCode] Message: [xxxxx] n not available [...]
-		rem [1]    [2]    [3]          [4]         [5]             [7]                       [9]                  [11]    [12]      [13...]
-		rem [A]    [B]    [C]          [D]         [E]             [F]                       [G]                  [H]     [I]       [J]
-		if "%%G" EQU "1000000d" (
-			if not defined TS_LOG_ANCH_NOT_FOUND (
-				set TS_LOG_ANCH_NOT_FOUND="%%B %%A - Anchor not available - %%H %%I %%J %%K %%L %%M %%N %%O %%P %%Q %%R %%S %%T %%U (Version=%%E / Build=%%F)"
-				set TS_LOG_ANCH_NOT_FOUND_START_DATE="%%B %%A"
-			)
-			set TS_LOG_ANCH_NOT_FOUND_END_DATE="%%B %%A"
-		)
-	)	
-
-	echo FlexeraDecryptedEventlog.log contains data from start date: !TS_LOG_START_DATE! till end date: !TS_LOG_END_DATE!              >> %REPORT_LOGFILE% 2>&1
-	echo %REPORT_LOG_PATH%\FlexeraDecryptedEventlog.log: only last %LOG_FILE_LINES% lines                                              >> %REPORT_LOGFILE% 2>&1 
-    powershell -command "& {Get-Content '%REPORT_LOG_PATH%\FlexeraDecryptedEventlog.log' | Select-Object -last %LOG_FILE_LINES%}"      >> %REPORT_LOGFILE% 2>&1
-) else (
-    echo     tsactdiags_SIEMBT_svr.exe doesn't exist, cannot perform operation to create decrypted logfile!                            >> %REPORT_LOGFILE% 2>&1
-)
-
-echo     Check for break information within logfiles ...
-if defined TS_LOG_TRANS_BRK_FOUND (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;31m    ATTENTION: "Transient break" [Event: 40000012] found - !TS_LOG_TRANS_BRK_FOUND! [1;37m
-	) else (
-		echo     ATTENTION: "Transient break" [Event: 40000012] found - !TS_LOG_TRANS_BRK_FOUND!
-	)
-	echo ATTENTION: "Transient break" [Event: 40000012] found - !TS_LOG_TRANS_BRK_FOUND!                                               >> %REPORT_LOGFILE% 2>&1
-)
-if defined TS_LOG_TRANS_BRK_VAL1_FOUND (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;31m    ATTENTION: "Transient break in Anchoring" [Event: 40000012] found - !TS_LOG_TRANS_BRK_VAL1_FOUND! [1;37m
-	) else (
-		echo     ATTENTION: "Transient break in Anchoring" [Event: 40000012] found - !TS_LOG_TRANS_BRK_VAL1_FOUND!
-	)
-	echo ATTENTION: "Transient break in Anchoring" [Event: 40000012] found - !TS_LOG_TRANS_BRK_VAL1_FOUND!                             >> %REPORT_LOGFILE% 2>&1
-)
-if defined TS_LOG_TRANS_BRK_VAL2_FOUND (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;31m    ATTENTION: "Transient break in Binding" [Event: 40000012] found - !TS_LOG_TRANS_BRK_VAL2_FOUND! [1;37m
-	) else (
-		echo     ATTENTION: "Transient break in Binding" [Event: 40000012] found - !TS_LOG_TRANS_BRK_VAL2_FOUND!
-	)
-	echo ATTENTION: "Transient break in Binding" [Event: 40000012] found - !TS_LOG_TRANS_BRK_VAL2_FOUND!                               >> %REPORT_LOGFILE% 2>&1
-)
-if defined TS_LOG_BAD_ANCH_FOUND (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;31m    ATTENTION: !TS_LOG_BAD_ANCH_FOUND_MESSAGE! [1;37m
-	) else (
-		echo     ATTENTION: !TS_LOG_BAD_ANCH_FOUND_MESSAGE!
-	)
-	echo ATTENTION: !TS_LOG_BAD_ANCH_FOUND_MESSAGE!                                                                                    >> %REPORT_LOGFILE% 2>&1
-)
-if defined TS_LOG_ANCH_NOT_FOUND (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;31m    ATTENTION: "Anchor not available" [Event: 1000000d] found - !TS_LOG_ANCH_NOT_FOUND! [1;37m
-	) else (
-		echo     ATTENTION: "Anchor not available" [Event: 1000000d] found - !TS_LOG_ANCH_NOT_FOUND!
-	)
-	echo ATTENTION: "Anchor not available" [Event: 1000000d] found - !TS_LOG_ANCH_NOT_FOUND!                                           >> %REPORT_LOGFILE% 2>&1
-)
-
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1 
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo ... search Flexera logfiles ...
-echo Search Flexera logfiles:                                                                                                >> %REPORT_LOGFILE% 2>&1
-if exist "%ALLUSERSPROFILE%\FLEXnet\" (
-	del %CHECKLMS_REPORT_LOG_PATH%\FlexeraLogFilesFound.txt >nul 2>&1
-	cd %ALLUSERSPROFILE%\FLEXnet\
-	FOR /r %ALLUSERSPROFILE%\FLEXnet\ %%X IN (*.log) DO echo %%~dpnxX >> %CHECKLMS_REPORT_LOG_PATH%\FlexeraLogFilesFound.txt
-	Type %CHECKLMS_REPORT_LOG_PATH%\FlexeraLogFilesFound.txt                                                                 >> %REPORT_LOGFILE% 2>&1
-	FOR %%X IN (%ALLUSERSPROFILE%\FLEXnet\*.log) DO ( 
-		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1 
-		echo %%X                                                                                                             >> %REPORT_LOGFILE% 2>&1 
-		powershell -command "& {Get-Content '%%X' | Select-Object -last %LOG_FILE_LINES%}"                                   >> %REPORT_LOGFILE% 2>&1 
-		copy %%X %CHECKLMS_REPORT_LOG_PATH%\                                                                                 >> %REPORT_LOGFILE% 2>&1
-	)
-) else (
-	echo     No files found, the directory '%ALLUSERSPROFILE%\FLEXnet\' doesn't exist.                                       >> %REPORT_LOGFILE% 2>&1
-)
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-IF EXIST "!REPORT_LOG_PATH!\SIEMBT.log" (
-	FOR /F "usebackq" %%A IN ('!REPORT_LOG_PATH!\SIEMBT.log') DO set SIEMBTLOG_FILESIZE=%%~zA
-	echo     Filesize of SIEMBT.log is !SIEMBTLOG_FILESIZE! bytes !                                                          >> %REPORT_LOGFILE% 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                         >> %REPORT_LOGFILE% 2>&1
-	if /I !SIEMBTLOG_FILESIZE! GEQ !LOG_FILESIZE_LIMIT! (
-		echo     ATTENTION: Filesize of SIEMBT.log with !SIEMBTLOG_FILESIZE! bytes, is exceeding critical limit of !LOG_FILESIZE_LIMIT! bytes!
-
-		echo     ATTENTION: Filesize of SIEMBT.log with !SIEMBTLOG_FILESIZE! bytes, is exceeding critical limit of !LOG_FILESIZE_LIMIT! bytes!   >> %REPORT_LOGFILE% 2>&1
-		echo     Because filesize of SIEMBT.log with !SIEMBTLOG_FILESIZE! bytes exceeds critical limit it is not further processed!              >> %REPORT_LOGFILE% 2>&1
-	) else (
-		rem Extract important identifiers from SIEMBT.log
-		for /f "tokens=3* eol=@ delims= " %%A in ('type %REPORT_LOG_PATH%\SIEMBT.log ^|find /I "Host used in license file"') do for /f "tokens=5* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HOSTNAME=%%B
-		for /f "tokens=3* eol=@ delims= " %%A in ('type %REPORT_LOG_PATH%\SIEMBT.log ^|find /I "Running on Hypervisor"') do for /f "tokens=3* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HYPERVISOR=%%B
-		for /f "tokens=3* eol=@ delims= " %%A in ('type %REPORT_LOG_PATH%\SIEMBT.log ^|find /I "HostID of the License Server"') do for /f "tokens=5* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HOSTIDS=%%B
-
-		echo -- extract ERROR messages from SIEMBT.log [start] --                                                            >> %REPORT_LOGFILE% 2>&1
-		Type "!REPORT_LOG_PATH!\SIEMBT.log" | findstr "ERROR:"                                                               >> %REPORT_LOGFILE% 2>&1
-		echo -- extract ERROR messages from SIEMBT.log [end] --                                                              >> %REPORT_LOGFILE% 2>&1
-
-		rem Extract "Host Info"
-		Set LMS_START_LOG=0
-		del "%CHECKLMS_REPORT_LOG_PATH%\SIEMBT_HostInfo.txt" >nul 2>&1
-		FOR /F "eol=@ delims=" %%i IN ('type !REPORT_LOG_PATH!\SIEMBT.log') DO ( 
-			ECHO "%%i" | FINDSTR /C:"=== Host Info ===" 1>nul 
-			if !ERRORLEVEL!==0 (
-				echo Start of 'Host Info' section found ... > %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_HostInfo.txt 2>&1
-				Set LMS_START_LOG=1
-			)
-			if !LMS_START_LOG!==1 (
-				echo %%i                                    >> %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_HostInfo.txt 2>&1
-				
-				rem check for end of 'Host Info' block
-				ECHO "%%i" | FINDSTR /C:"===============================================" 1>nul 
+				type %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_0098d100_event_extract_retry.log                                          >> %REPORT_LOGFILE% 2>&1
+				findstr /m /c:"orphans" "%CHECKLMS_REPORT_LOG_PATH%\SIEMBT_0098d100_event_extract_retry.log"                     >> %REPORT_LOGFILE% 2>&1
 				if !ERRORLEVEL!==0 (
-					echo End of 'Host Info' section found ...   >> %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_HostInfo.txt 2>&1
-					Set LMS_START_LOG=0
+					if defined SHOW_COLORED_OUTPUT (
+						echo [1;33m    WARNING: Still one or more orphan anchors have been found! [tsreset_app.exe] [1;37m
+					) else (
+						echo     WARNING: Still one or more orphan anchors have been found! [tsreset_app.exe]
+					)
+					echo     WARNING: Still one or more orphan anchors have been found! [tsreset_app.exe]                        >> %REPORT_LOGFILE% 2>&1
 				)
 			)
 		)
-		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\SIEMBT_HostInfo.txt" (
-			type "%CHECKLMS_REPORT_LOG_PATH%\SIEMBT_HostInfo.txt"                                                            >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     tsreset_app.exe doesn't exist, cannot perform operation.                                                        >> %REPORT_LOGFILE% 2>&1
+	)
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo ... collect host id's ...
+	echo Collect host id's:                                                                                                      >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_LMHOSTID (
+		echo ======== Host ID:                                                                                                   >> %REPORT_LOGFILE% 2>&1
+		"%LMS_LMHOSTID%"                                                                                                         >> %REPORT_LOGFILE% 2>&1
+		echo ======== PHYSICAL Host ID:                                                                                          >> %REPORT_LOGFILE% 2>&1
+		echo --- lmhostid: -user                                                                                                 >> %REPORT_LOGFILE% 2>&1
+		"%LMS_LMHOSTID%" -user                                                                                                   >> %REPORT_LOGFILE% 2>&1
+		echo --- lmhostid: -ether                                                                                                >> %REPORT_LOGFILE% 2>&1
+		"%LMS_LMHOSTID%" -ether                                                                                                  >> %REPORT_LOGFILE% 2>&1
+		echo --- lmhostid: -internet v4                                                                                          >> %REPORT_LOGFILE% 2>&1
+		"%LMS_LMHOSTID%" -internet v4                                                                                            >> %REPORT_LOGFILE% 2>&1
+		echo --- lmhostid: -internet v6                                                                                          >> %REPORT_LOGFILE% 2>&1
+		"%LMS_LMHOSTID%" -internet v6                                                                                            >> %REPORT_LOGFILE% 2>&1
+		echo --- lmhostid: -utf8                                                                                                 >> %REPORT_LOGFILE% 2>&1
+		"%LMS_LMHOSTID%" -utf8                                                                                                   >> %REPORT_LOGFILE% 2>&1
+		echo --- lmhostid: -vsn                                                                                                  >> %REPORT_LOGFILE% 2>&1
+		"%LMS_LMHOSTID%" -vsn                                                                                                    >> %REPORT_LOGFILE% 2>&1
+		echo --- lmhostid: -display                                                                                              >> %REPORT_LOGFILE% 2>&1
+		"%LMS_LMHOSTID%" -display                                                                                                >> %REPORT_LOGFILE% 2>&1
+		echo --- lmhostid: -hostname                                                                                             >> %REPORT_LOGFILE% 2>&1
+		"%LMS_LMHOSTID%" -hostname                                                                                               >> %REPORT_LOGFILE% 2>&1
+		echo --- lmhostid: -hostdomain                                                                                           >> %REPORT_LOGFILE% 2>&1
+		"%LMS_LMHOSTID%" -hostdomain                                                                                             >> %REPORT_LOGFILE% 2>&1
+		echo --- lmhostid: -tpm_id1                                                                                              >> %REPORT_LOGFILE% 2>&1
+		"%LMS_LMHOSTID%" -tpm_id1                                                                                                >> %REPORT_LOGFILE% 2>&1
+		echo --- lmhostid: -flexid                                                                                               >> %REPORT_LOGFILE% 2>&1
+		"%LMS_LMHOSTID%" -flexid                                                                                                 >> %REPORT_LOGFILE% 2>&1
+		echo ======== VIRTUAL Host ID:                                                                                           >> %REPORT_LOGFILE% 2>&1
+		echo --- lmhostid: -ptype VM -uuid                                                                                       >> %REPORT_LOGFILE% 2>&1
+		"%LMS_LMHOSTID%" -ptype VM -uuid                                                                                         >> %REPORT_LOGFILE% 2>&1
+		echo --- lmhostid: -ptype VM -genid                                                                                      >> %REPORT_LOGFILE% 2>&1
+		"%LMS_LMHOSTID%" -ptype VM -genid                                                                                        >> %REPORT_LOGFILE% 2>&1
+		echo ======== AMAZON Host ID:                                                                                            >> %REPORT_LOGFILE% 2>&1
+		echo --- lmhostid: -ptype AMZN -eip                                                                                      >> %REPORT_LOGFILE% 2>&1
+		"%LMS_LMHOSTID%" -ptype AMZN -eip                                                                                        >> %REPORT_LOGFILE% 2>&1
+		echo --- lmhostid: -ptype AMZN -ami                                                                                      >> %REPORT_LOGFILE% 2>&1
+		"%LMS_LMHOSTID%" -ptype AMZN -ami                                                                                        >> %REPORT_LOGFILE% 2>&1
+		echo --- lmhostid: -ptype AMZN -iid                                                                                      >> %REPORT_LOGFILE% 2>&1
+		"%LMS_LMHOSTID%" -ptype AMZN -iid                                                                                        >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     lmhostid.exe doesn't exist, cannot perform operation.                                                           >> %REPORT_LOGFILE% 2>&1
+	)
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo ... read host id's [using ecmcommonutil.exe] ...
+	IF EXIST "%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" (
+		echo Read host id: device [using ecmcommonutil.exe -l -f -d device]:                                                     >> %REPORT_LOGFILE% 2>&1
+		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d device                                                                  >> %REPORT_LOGFILE% 2>&1
+		echo Read host id: net [using ecmcommonutil.exe -l -f -d net]:                                                           >> %REPORT_LOGFILE% 2>&1
+		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d net                                                                     >> %REPORT_LOGFILE% 2>&1
+		echo Read host id: smbios [using ecmcommonutil.exe -l -f -d smbios]:                                                     >> %REPORT_LOGFILE% 2>&1
+		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d smbios                                                                  >> %REPORT_LOGFILE% 2>&1
+		echo Read host id: vm [using ecmcommonutil.exe -l -f -d vm]:                                                             >> %REPORT_LOGFILE% 2>&1
+		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d vm                                                                      >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     ecmcommonutil.exe doesn't exist, cannot perform operation.                                                      >> %REPORT_LOGFILE% 2>&1
+	)
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo ... read host id's [using ecmcommonutil_1.19.exe] ...
+	IF EXIST "%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" (
+		echo Read host id: device [using ecmcommonutil_1.19.exe -l -f -d device]:                                                >> %REPORT_LOGFILE% 2>&1
+		"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d device                                                             >> %REPORT_LOGFILE% 2>&1
+		echo Read host id: net [using ecmcommonutil_1.19.exe -l -f -d net]:                                                      >> %REPORT_LOGFILE% 2>&1
+		"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d net                                                                >> %REPORT_LOGFILE% 2>&1
+		echo Read host id: smbios [using ecmcommonutil_1.19.exe -l -f -d smbios]:                                                >> %REPORT_LOGFILE% 2>&1
+		"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d smbios                                                             >> %REPORT_LOGFILE% 2>&1
+		echo Read host id: vm [using ecmcommonutil_1.19.exe -l -f -d vm]:                                                        >> %REPORT_LOGFILE% 2>&1
+		"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d vm                                                                 >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     ecmcommonutil_1.19.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
+	)
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo ... list available offline request files ...
+	echo List available offline request files:                                                                                   >> %REPORT_LOGFILE% 2>&1
+	echo Content of folder: "!LMS_PROGRAMDATA!\Requests"                                                             >> %REPORT_LOGFILE% 2>&1
+	dir /S /A /X /4 /W "!LMS_PROGRAMDATA!\Requests"                                                                  >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	del %CHECKLMS_REPORT_LOG_PATH%\license_all_requests.txt >nul 2>&1
+	FOR %%i IN ("!LMS_PROGRAMDATA!\Requests\*") DO (
+		rem echo %%i:                                                                                                                >> %REPORT_LOGFILE% 2>&1
+		rem Type "%%i"                                                                                                               >> %REPORT_LOGFILE% 2>&1
+		rem echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+		Type "%%i"                                                     >> %CHECKLMS_REPORT_LOG_PATH%\license_all_requests.txt 2>&1
+		echo -------------------------------------------------------   >> %CHECKLMS_REPORT_LOG_PATH%\license_all_requests.txt 2>&1
+	)
+	echo More details, see '%CHECKLMS_REPORT_LOG_PATH%\license_all_requests.txt'                                                 >> %REPORT_LOGFILE% 2>&1
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo ... analyze installed/available local certificates ...
+	echo Installed/available local certificates:                                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo Content of folder: "!LMS_PROGRAMDATA!\Certificates"                                                         >> %REPORT_LOGFILE% 2>&1
+	dir /S /A /X /4 /W "!LMS_PROGRAMDATA!\Certificates"                                                              >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	del %CHECKLMS_REPORT_LOG_PATH%\license_all_certificates.txt >nul 2>&1
+	FOR %%i IN ("!LMS_PROGRAMDATA!\Certificates\*") DO (    
+		echo %%i:                                                                                                                >> %REPORT_LOGFILE% 2>&1
+		Type "%%i"                                                                                                               >> %REPORT_LOGFILE% 2>&1
+		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+		Type "%%i"                                                     >> %CHECKLMS_REPORT_LOG_PATH%\license_all_certificates.txt 2>&1
+		echo -------------------------------------------------------   >> %CHECKLMS_REPORT_LOG_PATH%\license_all_certificates.txt 2>&1
+	)
+	set certfeature=
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\license_all_certificates.txt" for /f "tokens=2 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\license_all_certificates.txt ^|find /I "INCREMENT"') do set "certfeature=%%i"   
+	if defined LMS_LMUTOOL (
+		if defined certfeature (
+			echo Check certificate feature: %certfeature%, with LmuTool.exe /CHECK:%certfeature%                                 >> %REPORT_LOGFILE% 2>&1
+			"!LMS_LMUTOOL!" /CHECK:%certfeature%                                                                                 >> %REPORT_LOGFILE% 2>&1
+			echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1 
+			echo Check certificate feature: %certfeature%, with LmuTool.exe /FC:%certfeature%                                    >> %REPORT_LOGFILE% 2>&1
+			"!LMS_LMUTOOL!" /FC:%certfeature%                                                                                    >> %REPORT_LOGFILE% 2>&1
 		) else (
-			echo     ATTENTION: No 'Host Info' found in '!REPORT_LOG_PATH!\SIEMBT.log'!                                      >> %REPORT_LOGFILE% 2>&1
+			echo Check certificate feature: not possible, no feature found in certificates to test.                              >> %REPORT_LOGFILE% 2>&1
 		)
+	) else (
+		echo     LmuTool is not available with LMS %LMS_VERSION%, cannot perform operation.                                      >> %REPORT_LOGFILE% 2>&1 
+	)
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo ... analyze installed/available server certificates ...
+	echo Installed/available server certificates:                                                                                >> %REPORT_LOGFILE% 2>&1
+	echo Content of folder: "!LMS_PROGRAMDATA!\Server Certificates"                                                  >> %REPORT_LOGFILE% 2>&1
+	dir /S /A /X /4 /W "!LMS_PROGRAMDATA!\Server Certificates"                                                       >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	del %CHECKLMS_REPORT_LOG_PATH%\license_all_servercertificates.txt >nul 2>&1
+	FOR %%i IN ("!LMS_PROGRAMDATA!\Server Certificates\*") DO (
+		echo %%i:                                                                                                                >> %REPORT_LOGFILE% 2>&1
+		Type "%%i"                                                                                                               >> %REPORT_LOGFILE% 2>&1
+		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+		Type "%%i">> %CHECKLMS_REPORT_LOG_PATH%\license_all_servercertificates.txt 2>&1
+		echo -------------------------------------------------------   >> %CHECKLMS_REPORT_LOG_PATH%\license_all_servercertificates.txt 2>&1
+	)
+	set servercertfeature=
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\license_all_servercertificates.txt" for /f "tokens=2 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\license_all_servercertificates.txt ^|find /I "INCREMENT"') do if not "%%i" == "Dummy_valid_feature" set "servercertfeature=%%i"
+	if defined LMS_LMUTOOL (
+		if defined servercertfeature (
+			echo Check server certificate feature: %servercertfeature%, with LmuTool.exe /CHECK:%servercertfeature%              >> %REPORT_LOGFILE% 2>&1
+			"!LMS_LMUTOOL!" /CHECK:%servercertfeature%                                                                           >> %REPORT_LOGFILE% 2>&1
+			echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1 
+			echo Check server certificate feature: %servercertfeature%, with LmuTool.exe /FC:%servercertfeature%                 >> %REPORT_LOGFILE% 2>&1
+			"!LMS_LMUTOOL!" /FC:%servercertfeature%                                                                              >> %REPORT_LOGFILE% 2>&1
+		) else (
+			echo Check server certificate feature: not possible, no feature found in server certificates to test.                >> %REPORT_LOGFILE% 2>&1
+		)
+	) else (
+		echo     LmuTool is not available with LMS %LMS_VERSION%, cannot perform operation.                                      >> %REPORT_LOGFILE% 2>&1 
+	)
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo Content of folder: "%ALLUSERSPROFILE%\FLEXnet" [Trusted Store Folder]                                                   >> %REPORT_LOGFILE% 2>&1
+	rem dir "%ALLUSERSPROFILE%\FLEXnet"                                                                                              >> %REPORT_LOGFILE% 2>&1
+	rem dir /AH "%ALLUSERSPROFILE%\FLEXnet"                                                                                          >> %REPORT_LOGFILE% 2>&1
+	dir /S /A /X /4 /W "%ALLUSERSPROFILE%\FLEXnet"                                                                               >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1 
+	echo ... search trusted store files ...
+	echo Search trusted store files:                                                                                             >> %REPORT_LOGFILE% 2>&1
+	if exist "%ALLUSERSPROFILE%\FLEXnet\" (
+		del %CHECKLMS_REPORT_LOG_PATH%\tfsFilesFound.txt >nul 2>&1
+		cd %ALLUSERSPROFILE%\FLEXnet\
+		FOR /r %ALLUSERSPROFILE%\FLEXnet\ %%X IN (*tsf.data) DO echo %%~dpnxX >> %CHECKLMS_REPORT_LOG_PATH%\tfsFilesFound.txt
+		Type %CHECKLMS_REPORT_LOG_PATH%\tfsFilesFound.txt                                                                        >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     No files found, the directory '%ALLUSERSPROFILE%\FLEXnet\' doesn't exist.                                       >> %REPORT_LOGFILE% 2>&1
+	)
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo ... decrypt Flexera logfiles ... 
+	echo Decrypt Flexera logfiles:                                                                                             >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_TSACTDIAGSSVR (
+		echo Call "%LMS_TSACTDIAGSSVR% --output %REPORT_LOG_PATH%\FlexeraDecryptedEventlog.log" to decrypt ....                  >> %REPORT_LOGFILE% 2>&1
+		"%LMS_TSACTDIAGSSVR%" --output %REPORT_LOG_PATH%\FlexeraDecryptedEventlog.log
+		
+		rem Analyze the decrypted flexera logfile
+		echo     Analyze the decrypted flexera logfile ...
+		for /f "tokens=1,2,3,4,5,7,9,11,12,13,14,15,16,17,18,19,20,21,22,23,24 eol=@ delims=[], " %%A in ('type %REPORT_LOG_PATH%\FlexeraDecryptedEventlog.log') do (
+			set TS_LOG_MSG="%%B %%A - %%J %%K %%L %%M %%N %%O %%P %%Q %%R %%S %%T %%U (Version=%%E / Build=%%F)"
 
-		rem SIEMBT.log
-		echo Start at !DATE! !TIME! ....                                                                                     >> %REPORT_LOGFILE% 2>&1
-		echo LOG FILE: SIEMBT.log [last %LOG_FILE_LINES% lines]                                                              >> %REPORT_LOGFILE% 2>&1
-		powershell -command "& {Get-Content '!REPORT_LOG_PATH!\SIEMBT.log' | Select-Object -last %LOG_FILE_LINES%}"          >> %REPORT_LOGFILE% 2>&1
+			rem [Time] [Date] [Process Id] [Thread Id] [Version] build [Build Number] EventCode: [EventCode] Message: [....]
+			rem [1]    [2]    [3]          [4]         [5]             [7]                       [9]                  [11,...]
+			rem [A]    [B]    [C]          [D]         [E]             [F]                       [G]                  [H,...]
+			rem echo [2]=%%B / [1]=%%A / [3]=%%C / [4]=%%D / [5]=%%E / [7]=%%F / [9]=%%G / [11]=%%H
+			rem Determine start & end date/time of logfile content
+			if not defined TS_LOG_START_DATE (
+				set TS_LOG_START_DATE="%%B %%A"
+			)
+			set TS_LOG_END_DATE="%%B %%A"
+			rem Check for "Transient break" [Event: 40000012]
+			rem [Time] [Date] [Process Id] [Thread Id] [Version] build [Build Number] EventCode: [EventCode] Message: [Transient] [break.] [Timezone] [Validators] [TrustedId] [1=] [2=] [3=] [4=] [5=] [6=] [7=] [17=] [...]
+			rem [1]    [2]    [3]          [4]         [5]             [7]                       [9]                  [11]        [12]     [13]       [14]         [15]        [16] [17] [18] [19] [20] [21] [22] [23]  [24...]
+			rem [A]    [B]    [C]          [D]         [E]             [F]                       [G]                  [H]         [I]      [J]        [K]          [L]         [M]  [N]  [O]  [P]  [Q]  [R]  [S]  [T]   [U]
+
+			if "%%G" EQU "40000012" (
+				if not defined TS_LOG_TRANS_BRK_FOUND (
+					set TS_LOG_TRANS_BRK_FOUND="%%B %%A - Transient break found - %%J %%K %%L %%M %%N %%O %%P %%Q %%R %%S %%T %%U (Version=%%E / Build=%%F)"
+					set TS_LOG_TRANS_BRK_FOUND_START_DATE="%%B %%A"
+				)
+				set TS_LOG_TRANS_BRK_FOUND_END_DATE="%%B %%A"
+				
+				rem check validator: The numbers for the validator are either "1" [Validator=1] for anchoring or "2" [Validator=2] for binding.
+				if "%%K" EQU "Validator=1" (
+					if not defined TS_LOG_TRANS_BRK_VAL1_FOUND (
+						set TS_LOG_TRANS_BRK_VAL1_FOUND="%%B %%A - Transient break found in Anchoring - %%J %%K %%L %%M %%N %%O %%P %%Q %%R %%S %%T %%U (Version=%%E / Build=%%F)"
+						set TS_LOG_TRANS_BRK_VAL1_FOUND_START_DATE="%%B %%A"
+					)
+					set TS_LOG_TRANS_BRK_VAL1_FOUND_END_DATE="%%B %%A"
+					
+					echo !TS_LOG_MSG!|find " 1=1" >nul
+					if not errorlevel 1 (set TS_LOG_TRANS_BRK_TRACKZERO_FOUND=changed)
+					echo !TS_LOG_MSG!|find " 1=2" >nul
+					if not errorlevel 1 (set TS_LOG_TRANS_BRK_TRACKZERO_FOUND=IsNotAvailable)
+					echo !TS_LOG_MSG!|find " 2=1" >nul
+					if not errorlevel 1 (set TS_LOG_TRANS_BRK_REGISTRY_FOUND=changed)
+					echo !TS_LOG_MSG!|find " 2=2" >nul
+					if not errorlevel 1 (set TS_LOG_TRANS_BRK_REGISTRY_FOUND=IsNotAvailable)
+					
+				)
+				if "%%K" EQU "Validator=2" (
+					if not defined TS_LOG_TRANS_BRK_VAL2_FOUND (
+						set TS_LOG_TRANS_BRK_VAL2_FOUND="%%B %%A - Transient break found in Binding - %%J %%K %%L %%M %%N %%O %%P %%Q %%R %%S %%T %%U (Version=%%E / Build=%%F)"
+						set TS_LOG_TRANS_BRK_VAL2_FOUND_START_DATE="%%B %%A"
+					)
+					set TS_LOG_TRANS_BRK_VAL2_FOUND_END_DATE="%%B %%A"
+					
+					echo !TS_LOG_MSG!|find " 1=1" >nul
+					if not errorlevel 1 set TS_LOG_TRANS_BRK_SYSTEM_FOUND=changed
+					echo !TS_LOG_MSG!|find " 1=2" >nul
+					if not errorlevel 1 set TS_LOG_TRANS_BRK_SYSTEM_FOUND=IsNotAvailable
+					echo !TS_LOG_MSG!|find " 2=1" >nul
+					if not errorlevel 1 (set TS_LOG_TRANS_BRK_HARDDISK_FOUND=changed)
+					echo !TS_LOG_MSG!|find " 2=2" >nul
+					if not errorlevel 1 (set TS_LOG_TRANS_BRK_HARDDISK_FOUND=IsNotAvailable)
+					echo !TS_LOG_MSG!|find " 3=1" >nul
+					if not errorlevel 1 (set TS_LOG_TRANS_BRK_DISPLAY_FOUND=changed)
+					echo !TS_LOG_MSG!|find " 3=2" >nul
+					if not errorlevel 1 (set TS_LOG_TRANS_BRK_DISPLAY_FOUND=IsNotAvailable)
+					echo !TS_LOG_MSG!|find " 4=1" >nul
+					if not errorlevel 1 (set TS_LOG_TRANS_BRK_BIOS_FOUND=changed)
+					echo !TS_LOG_MSG!|find " 4=2" >nul
+					if not errorlevel 1 (set TS_LOG_TRANS_BRK_BIOS_FOUND=IsNotAvailable)
+					echo !TS_LOG_MSG!|find " 5=1" >nul
+					if not errorlevel 1 (set TS_LOG_TRANS_BRK_CPU_FOUND=changed)
+					echo !TS_LOG_MSG!|find " 5=2" >nul
+					if not errorlevel 1 (set TS_LOG_TRANS_BRK_CPU_FOUND=IsNotAvailable)
+					echo !TS_LOG_MSG!|find " 6=1" >nul
+					if not errorlevel 1 (set TS_LOG_TRANS_BRK_MEMORY_FOUND=changed)
+					echo !TS_LOG_MSG!|find " 6=2" >nul
+					if not errorlevel 1 (set TS_LOG_TRANS_BRK_MEMORY_FOUND=IsNotAvailable)
+					echo !TS_LOG_MSG!|find " 7=1" >nul
+					if not errorlevel 1 (set TS_LOG_TRANS_BRK_ETHERNET_FOUND=changed)
+					echo !TS_LOG_MSG!|find " 7=2" >nul
+					if not errorlevel 1 (set TS_LOG_TRANS_BRK_ETHERNET_FOUND=IsNotAvailable)
+					echo !TS_LOG_MSG!|find " 13=1" >nul
+					if not errorlevel 1 (set TS_LOG_TRANS_BRK_PUBLSIHER_FOUND=changed)
+					echo !TS_LOG_MSG!|find " 13=2" >nul
+					if not errorlevel 1 (set TS_LOG_TRANS_BRK_PUBLSIHER_FOUND=IsNotAvailable)
+					echo !TS_LOG_MSG!|find " 14=1" >nul
+					if not errorlevel 1 (set TS_LOG_TRANS_BRK_VMID_FOUND=changed)
+					echo !TS_LOG_MSG!|find " 14=2" >nul
+					if not errorlevel 1 (set TS_LOG_TRANS_BRK_VMID_FOUND=IsNotAvailable)
+					echo !TS_LOG_MSG!|find " 16=1" >nul
+					if not errorlevel 1 (set TS_LOG_TRANS_BRK_GENID_FOUND=changed)
+					echo !TS_LOG_MSG!|find " 16=2" >nul
+					if not errorlevel 1 (set TS_LOG_TRANS_BRK_GENID_FOUND=IsNotAvailable)
+					echo !TS_LOG_MSG!|find " 17=1" >nul
+					if not errorlevel 1 (set TS_LOG_TRANS_BRK_TPMID_FOUND=changed)
+					echo !TS_LOG_MSG!|find " 17=2" >nul
+					if not errorlevel 1 (set TS_LOG_TRANS_BRK_TPMID_FOUND=IsNotAvailable)
+					
+				)
+				
+			)
+			rem Check for "Bad Anchor" [Event: 20000020]
+			rem [Time] [Date] [Process Id] [Thread Id] [Version] build [Build Number] EventCode: [EventCode] Message: [Anchor] [x-xxxx] is bad [...]
+			rem [1]    [2]    [3]          [4]         [5]             [7]                       [9]                  [11]     [12]            [13...]
+			rem [A]    [B]    [C]          [D]         [E]             [F]                       [G]                  [H]      [I]             [J]
+			rem
+			rem Example:
+			rem    19:23:36 11-08-2020  [P:7300],[T:7304],[V:11.17.0.0 build 264148] 	EventCode: 10000009, Message: Anchor 2-0x8098d101Not on system
+			rem    19:23:36 11-08-2020  [P:7300],[T:7304],[V:11.17.0.0 build 264148] 	EventCode: 20000020, Message: Anchor 2-0x8098d101 is bad
+			rem    19:23:36 11-08-2020  [P:7300],[T:7304],[V:11.17.0.0 build 264148] 	EventCode: 1000000f, Message: Anchor 2-0x8098d101 repaired (bad)
+			if "%%G" EQU "20000020" (
+				if not defined TS_LOG_BAD_ANCH_FOUND (
+					set TS_LOG_BAD_ANCH_FOUND=1
+					set TS_LOG_BAD_ANCH_FOUND_MESSAGE="'Bad Anchor' [Event: 20000020] found - %%B %%A - Bad anchor found - %%I %%J %%K %%L %%M %%N %%O %%P %%Q %%R %%S %%T %%U (Version=%%E / Build=%%F)"
+					echo ATTENTION:  !TS_LOG_BAD_ANCH_FOUND_MESSAGE!                                                                       >> %REPORT_LOGFILE% 2>&1
+					set TS_LOG_BAD_ANCH_FOUND_START_DATE="%%B %%A"
+				)
+			)
+			if "%%G" EQU "1000000f" (
+				if defined TS_LOG_BAD_ANCH_FOUND (
+					set TS_LOG_BAD_ANCH_FOUND=
+					set TS_LOG_BAD_ANCH_REP_FOUND_MESSAGE="'Bad Anchor Repair' [Event: 1000000f] found - %%B %%A - Bad anchor repair found - %%I %%J %%K %%L %%M %%N %%O %%P %%Q %%R %%S %%T %%U (Version=%%E / Build=%%F)"
+					echo             !TS_LOG_BAD_ANCH_REP_FOUND_MESSAGE!                                                                   >> %REPORT_LOGFILE% 2>&1
+					set TS_LOG_BAD_ANCH_FOUND_END_DATE="%%B %%A"
+					rem create summary message
+					set TS_LOG_BAD_ANCH_FOUND_MESSAGE="%%B %%A - Bad anchor REPAIRED - was bad from !TS_LOG_BAD_ANCH_FOUND_START_DATE! till !TS_LOG_BAD_ANCH_FOUND_END_DATE! (Version=%%E / Build=%%F)"
+					echo             ---- !TS_LOG_BAD_ANCH_FOUND_MESSAGE!                                                                  >> %REPORT_LOGFILE% 2>&1
+				)
+			)
+			
+			rem Check for "Anchor not available" [Event: 1000000d]
+			rem [Time] [Date] [Process Id] [Thread Id] [Version] build [Build Number] EventCode: [EventCode] Message: [xxxxx] n not available [...]
+			rem [1]    [2]    [3]          [4]         [5]             [7]                       [9]                  [11]    [12]      [13...]
+			rem [A]    [B]    [C]          [D]         [E]             [F]                       [G]                  [H]     [I]       [J]
+			if "%%G" EQU "1000000d" (
+				if not defined TS_LOG_ANCH_NOT_FOUND (
+					set TS_LOG_ANCH_NOT_FOUND="%%B %%A - Anchor not available - %%H %%I %%J %%K %%L %%M %%N %%O %%P %%Q %%R %%S %%T %%U (Version=%%E / Build=%%F)"
+					set TS_LOG_ANCH_NOT_FOUND_START_DATE="%%B %%A"
+				)
+				set TS_LOG_ANCH_NOT_FOUND_END_DATE="%%B %%A"
+			)
+		)	
+
+		echo FlexeraDecryptedEventlog.log contains data from start date: !TS_LOG_START_DATE! till end date: !TS_LOG_END_DATE!              >> %REPORT_LOGFILE% 2>&1
+		echo %REPORT_LOG_PATH%\FlexeraDecryptedEventlog.log: only last %LOG_FILE_LINES% lines                                              >> %REPORT_LOGFILE% 2>&1 
+		powershell -command "& {Get-Content '%REPORT_LOG_PATH%\FlexeraDecryptedEventlog.log' | Select-Object -last %LOG_FILE_LINES%}"      >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     tsactdiags_SIEMBT_svr.exe doesn't exist, cannot perform operation to create decrypted logfile!                            >> %REPORT_LOGFILE% 2>&1
 	)
 
+	echo     Check for break information within logfiles ...
+	if defined TS_LOG_TRANS_BRK_FOUND (
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: "Transient break" [Event: 40000012] found - !TS_LOG_TRANS_BRK_FOUND! [1;37m
+		) else (
+			echo     ATTENTION: "Transient break" [Event: 40000012] found - !TS_LOG_TRANS_BRK_FOUND!
+		)
+		echo ATTENTION: "Transient break" [Event: 40000012] found - !TS_LOG_TRANS_BRK_FOUND!                                               >> %REPORT_LOGFILE% 2>&1
+	)
+	if defined TS_LOG_TRANS_BRK_VAL1_FOUND (
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: "Transient break in Anchoring" [Event: 40000012] found - !TS_LOG_TRANS_BRK_VAL1_FOUND! [1;37m
+		) else (
+			echo     ATTENTION: "Transient break in Anchoring" [Event: 40000012] found - !TS_LOG_TRANS_BRK_VAL1_FOUND!
+		)
+		echo ATTENTION: "Transient break in Anchoring" [Event: 40000012] found - !TS_LOG_TRANS_BRK_VAL1_FOUND!                             >> %REPORT_LOGFILE% 2>&1
+	)
+	if defined TS_LOG_TRANS_BRK_VAL2_FOUND (
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: "Transient break in Binding" [Event: 40000012] found - !TS_LOG_TRANS_BRK_VAL2_FOUND! [1;37m
+		) else (
+			echo     ATTENTION: "Transient break in Binding" [Event: 40000012] found - !TS_LOG_TRANS_BRK_VAL2_FOUND!
+		)
+		echo ATTENTION: "Transient break in Binding" [Event: 40000012] found - !TS_LOG_TRANS_BRK_VAL2_FOUND!                               >> %REPORT_LOGFILE% 2>&1
+	)
+	if defined TS_LOG_BAD_ANCH_FOUND (
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: !TS_LOG_BAD_ANCH_FOUND_MESSAGE! [1;37m
+		) else (
+			echo     ATTENTION: !TS_LOG_BAD_ANCH_FOUND_MESSAGE!
+		)
+		echo ATTENTION: !TS_LOG_BAD_ANCH_FOUND_MESSAGE!                                                                                    >> %REPORT_LOGFILE% 2>&1
+	)
+	if defined TS_LOG_ANCH_NOT_FOUND (
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: "Anchor not available" [Event: 1000000d] found - !TS_LOG_ANCH_NOT_FOUND! [1;37m
+		) else (
+			echo     ATTENTION: "Anchor not available" [Event: 1000000d] found - !TS_LOG_ANCH_NOT_FOUND!
+		)
+		echo ATTENTION: "Anchor not available" [Event: 1000000d] found - !TS_LOG_ANCH_NOT_FOUND!                                           >> %REPORT_LOGFILE% 2>&1
+	)
+
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1 
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo ... search Flexera logfiles ...
+	echo Search Flexera logfiles:                                                                                                >> %REPORT_LOGFILE% 2>&1
+	if exist "%ALLUSERSPROFILE%\FLEXnet\" (
+		del %CHECKLMS_REPORT_LOG_PATH%\FlexeraLogFilesFound.txt >nul 2>&1
+		cd %ALLUSERSPROFILE%\FLEXnet\
+		FOR /r %ALLUSERSPROFILE%\FLEXnet\ %%X IN (*.log) DO echo %%~dpnxX >> %CHECKLMS_REPORT_LOG_PATH%\FlexeraLogFilesFound.txt
+		Type %CHECKLMS_REPORT_LOG_PATH%\FlexeraLogFilesFound.txt                                                                 >> %REPORT_LOGFILE% 2>&1
+		FOR %%X IN (%ALLUSERSPROFILE%\FLEXnet\*.log) DO ( 
+			echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1 
+			echo %%X                                                                                                             >> %REPORT_LOGFILE% 2>&1 
+			powershell -command "& {Get-Content '%%X' | Select-Object -last %LOG_FILE_LINES%}"                                   >> %REPORT_LOGFILE% 2>&1 
+			copy %%X %CHECKLMS_REPORT_LOG_PATH%\                                                                                 >> %REPORT_LOGFILE% 2>&1
+		)
+	) else (
+		echo     No files found, the directory '%ALLUSERSPROFILE%\FLEXnet\' doesn't exist.                                       >> %REPORT_LOGFILE% 2>&1
+	)
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	IF EXIST "!REPORT_LOG_PATH!\SIEMBT.log" (
+		FOR /F "usebackq" %%A IN ('!REPORT_LOG_PATH!\SIEMBT.log') DO set SIEMBTLOG_FILESIZE=%%~zA
+		echo     Filesize of SIEMBT.log is !SIEMBTLOG_FILESIZE! bytes !                                                          >> %REPORT_LOGFILE% 2>&1
+		echo Start at !DATE! !TIME! ....                                                                                         >> %REPORT_LOGFILE% 2>&1
+		if /I !SIEMBTLOG_FILESIZE! GEQ !LOG_FILESIZE_LIMIT! (
+			echo     ATTENTION: Filesize of SIEMBT.log with !SIEMBTLOG_FILESIZE! bytes, is exceeding critical limit of !LOG_FILESIZE_LIMIT! bytes!
+
+			echo     ATTENTION: Filesize of SIEMBT.log with !SIEMBTLOG_FILESIZE! bytes, is exceeding critical limit of !LOG_FILESIZE_LIMIT! bytes!   >> %REPORT_LOGFILE% 2>&1
+			echo     Because filesize of SIEMBT.log with !SIEMBTLOG_FILESIZE! bytes exceeds critical limit it is not further processed!              >> %REPORT_LOGFILE% 2>&1
+		) else (
+			rem Extract important identifiers from SIEMBT.log
+			for /f "tokens=3* eol=@ delims= " %%A in ('type %REPORT_LOG_PATH%\SIEMBT.log ^|find /I "Host used in license file"') do for /f "tokens=5* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HOSTNAME=%%B
+			for /f "tokens=3* eol=@ delims= " %%A in ('type %REPORT_LOG_PATH%\SIEMBT.log ^|find /I "Running on Hypervisor"') do for /f "tokens=3* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HYPERVISOR=%%B
+			for /f "tokens=3* eol=@ delims= " %%A in ('type %REPORT_LOG_PATH%\SIEMBT.log ^|find /I "HostID of the License Server"') do for /f "tokens=5* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HOSTIDS=%%B
+
+			echo -- extract ERROR messages from SIEMBT.log [start] --                                                            >> %REPORT_LOGFILE% 2>&1
+			Type "!REPORT_LOG_PATH!\SIEMBT.log" | findstr "ERROR:"                                                               >> %REPORT_LOGFILE% 2>&1
+			echo -- extract ERROR messages from SIEMBT.log [end] --                                                              >> %REPORT_LOGFILE% 2>&1
+
+			rem Extract "Host Info"
+			Set LMS_START_LOG=0
+			del "%CHECKLMS_REPORT_LOG_PATH%\SIEMBT_HostInfo.txt" >nul 2>&1
+			FOR /F "eol=@ delims=" %%i IN ('type !REPORT_LOG_PATH!\SIEMBT.log') DO ( 
+				ECHO "%%i" | FINDSTR /C:"=== Host Info ===" 1>nul 
+				if !ERRORLEVEL!==0 (
+					echo Start of 'Host Info' section found ... > %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_HostInfo.txt 2>&1
+					Set LMS_START_LOG=1
+				)
+				if !LMS_START_LOG!==1 (
+					echo %%i                                    >> %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_HostInfo.txt 2>&1
+					
+					rem check for end of 'Host Info' block
+					ECHO "%%i" | FINDSTR /C:"===============================================" 1>nul 
+					if !ERRORLEVEL!==0 (
+						echo End of 'Host Info' section found ...   >> %CHECKLMS_REPORT_LOG_PATH%\SIEMBT_HostInfo.txt 2>&1
+						Set LMS_START_LOG=0
+					)
+				)
+			)
+			IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\SIEMBT_HostInfo.txt" (
+				type "%CHECKLMS_REPORT_LOG_PATH%\SIEMBT_HostInfo.txt"                                                            >> %REPORT_LOGFILE% 2>&1
+			) else (
+				echo     ATTENTION: No 'Host Info' found in '!REPORT_LOG_PATH!\SIEMBT.log'!                                      >> %REPORT_LOGFILE% 2>&1
+			)
+
+			rem SIEMBT.log
+			echo Start at !DATE! !TIME! ....                                                                                     >> %REPORT_LOGFILE% 2>&1
+			echo LOG FILE: SIEMBT.log [last %LOG_FILE_LINES% lines]                                                              >> %REPORT_LOGFILE% 2>&1
+			powershell -command "& {Get-Content '!REPORT_LOG_PATH!\SIEMBT.log' | Select-Object -last %LOG_FILE_LINES%}"          >> %REPORT_LOGFILE% 2>&1
+		)
+
+	) else (
+		echo     !REPORT_LOG_PATH!\SIEMBT.log not found.                                                                         >> %REPORT_LOGFILE% 2>&1
+	)
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 ) else (
-    echo     !REPORT_LOG_PATH!\SIEMBT.log not found.                                                                         >> %REPORT_LOGFILE% 2>&1
+	if defined SHOW_COLORED_OUTPUT (
+		echo [1;33m    SKIPPED FNP section. The script didn't execute the FNP commands. [1;37m
+	) else (
+		echo     SKIPPED FNP section. The script didn't execute the FNP commands.
+	)
+	echo SKIPPED FNP section. The script didn't execute the FNP commands.                                                        >> %REPORT_LOGFILE% 2>&1
 )
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo =   L I C E N S E   S E R V E R                                              =                                          >> %REPORT_LOGFILE% 2>&1
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
@@ -4475,8 +4579,8 @@ echo =   L M S   C O N F I G U R A T I O N   F I L E S                          
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo ... analyze configuration files ...
-echo Get LmuTool Configuration: (read with LmuTool)                                                                          >> %REPORT_LOGFILE% 2>&1
-echo     Get LmuTool Configuration: (read with LmuTool)
+echo Get LmuTool Configuration: [read with LmuTool]                                                                          >> %REPORT_LOGFILE% 2>&1
+echo     Get LmuTool Configuration: [read with LmuTool]
 if defined LMS_LMUTOOL (
 	"!LMS_LMUTOOL!" /??                                                                                                      >> %REPORT_LOGFILE% 2>&1
 ) else (
@@ -4620,9 +4724,9 @@ IF EXIST "%CHECKLMS_SSU_PATH%\SSUSetupLogFilesFound.txt" (
 		Type "%%i"                                                                                                           >> %REPORT_LOGFILE% 2>&1 
 		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1 
 	)
-    echo     !LOG_FILE_COUNT! SSU setup logfile [MSI*.log] found on %TEMP%.                                                  >> %REPORT_LOGFILE% 2>&1
+	echo     !LOG_FILE_COUNT! SSU setup logfile [MSI*.log] found on %TEMP%.                                                  >> %REPORT_LOGFILE% 2>&1
 ) else (
-    echo     No SSU setup logfile [MSI*.log] found on %TEMP%.                                                                >> %REPORT_LOGFILE% 2>&1
+	echo     No SSU setup logfile [MSI*.log] found on %TEMP%.                                                                >> %REPORT_LOGFILE% 2>&1
 )
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 echo ... check SSU registry permission ...
@@ -4694,47 +4798,47 @@ if !ERRORLEVEL!==0 (
 )
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 echo **** Siemens Software Updater (SSU) ****                                                                                >> %REPORT_LOGFILE% 2>&1
-echo ... read products registered for updates (via SSU) ...
-echo Products Registered for Updates (via SSU)                                                                               >> %REPORT_LOGFILE% 2>&1
+echo ... read products registered for updates [via SSU] ...
+echo Products Registered for Updates [via SSU]                                                                               >> %REPORT_LOGFILE% 2>&1
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 IF EXIST "%ALLUSERSPROFILE%\Siemens\SSU\SiemensSoftwareUpdater.ini" (
-    echo SSU Configuration file found, see %ALLUSERSPROFILE%\Siemens\SSU\SiemensSoftwareUpdater.ini                          >> %REPORT_LOGFILE% 2>&1
+	echo SSU Configuration file found, see %ALLUSERSPROFILE%\Siemens\SSU\SiemensSoftwareUpdater.ini                          >> %REPORT_LOGFILE% 2>&1
 	Type "%ALLUSERSPROFILE%\Siemens\SSU\SiemensSoftwareUpdater.ini"                                                          >> %REPORT_LOGFILE% 2>&1
-    echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
+	echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
 ) else (
-    echo     No SSU Configuration file [%ALLUSERSPROFILE%\Siemens\SSU\SiemensSoftwareUpdater.ini] found.                     >> %REPORT_LOGFILE% 2>&1
+	echo     No SSU Configuration file [%ALLUSERSPROFILE%\Siemens\SSU\SiemensSoftwareUpdater.ini] found.                     >> %REPORT_LOGFILE% 2>&1
 )
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 echo Content of folder: %ALLUSERSPROFILE%\Siemens\SSU\Database                                                               >> %REPORT_LOGFILE% 2>&1
 dir /S /A /X /4 /W "%ALLUSERSPROFILE%\Siemens\SSU\Database"                                                                  >> %REPORT_LOGFILE% 2>&1
 FOR %%i IN ("%ALLUSERSPROFILE%\Siemens\SSU\Database\*.ini") DO (
-    echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-    echo %%i:                                                                                                                >> %REPORT_LOGFILE% 2>&1
-    Type %%i                                                                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+	echo %%i:                                                                                                                >> %REPORT_LOGFILE% 2>&1
+	Type %%i                                                                                                                 >> %REPORT_LOGFILE% 2>&1
 )
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 echo Content of folder: %TEMP%\SSU                                                                                           >> %REPORT_LOGFILE% 2>&1
 dir /S /A /X /4 /W "%TEMP%\SSU"                                                                                              >> %REPORT_LOGFILE% 2>&1
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo Check SSU Test Mode (for multi-platform clients)                                                                        >> %REPORT_LOGFILE% 2>&1
+echo Check SSU Test Mode [for multi-platform clients]                                                                        >> %REPORT_LOGFILE% 2>&1
 IF EXIST "c:\TestUpdate.pin" (
-    echo SSU Test file found, see c:\TestUpdate.pin                                                                          >> %REPORT_LOGFILE% 2>&1
+	echo SSU Test file found, see c:\TestUpdate.pin                                                                          >> %REPORT_LOGFILE% 2>&1
 	Type "c:\TestUpdate.pin"                                                                                                 >> %REPORT_LOGFILE% 2>&1
-    echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
+	echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
 ) else (
-    echo     No SSU Test file [c:\TestUpdate.pin] found.                                                                     >> %REPORT_LOGFILE% 2>&1
+	echo     No SSU Test file [c:\TestUpdate.pin] found.                                                                     >> %REPORT_LOGFILE% 2>&1
 )
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 IF EXIST "%ProgramFiles%\Siemens\SSU\bin" (
-    echo SSU - Get signature status for *.exe [%ProgramFiles%\Siemens\SSU\bin]                                               >> %REPORT_LOGFILE% 2>&1
+	echo SSU - Get signature status for *.exe [%ProgramFiles%\Siemens\SSU\bin]                                               >> %REPORT_LOGFILE% 2>&1
 	powershell -command "Get-AuthenticodeSignature -FilePath '%ProgramFiles%\Siemens\SSU\bin\*.exe'"                         >> %REPORT_LOGFILE% 2>&1
-    echo SSU - Get signature status for *.dll [%ProgramFiles%\Siemens\SSU\bin]                                               >> %REPORT_LOGFILE% 2>&1
+	echo SSU - Get signature status for *.dll [%ProgramFiles%\Siemens\SSU\bin]                                               >> %REPORT_LOGFILE% 2>&1
 	powershell -command "Get-AuthenticodeSignature -FilePath '%ProgramFiles%\Siemens\SSU\bin\*.dll'"                         >> %REPORT_LOGFILE% 2>&1
 	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-    echo Check signature with: !SIGCHECK_TOOL! !SIGCHECK_OPTIONS! ...                                                        >> %REPORT_LOGFILE% 2>&1
+	echo Check signature with: !SIGCHECK_TOOL! !SIGCHECK_OPTIONS! ...                                                        >> %REPORT_LOGFILE% 2>&1
 	!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "%ProgramFiles%\Siemens\SSU\bin\SSUManager.exe"                                       >> %REPORT_LOGFILE% 2>&1
 ) else (
-    echo     No SSU binary folder [%ProgramFiles%\Siemens\SSU\bin] found.                                                    >> %REPORT_LOGFILE% 2>&1
+	echo     No SSU binary folder [%ProgramFiles%\Siemens\SSU\bin] found.                                                    >> %REPORT_LOGFILE% 2>&1
 )
 IF EXIST "%ProgramFiles%\Siemens\SSU\bin" (
 	IF EXIST "%ProgramFiles%\Siemens\SSU\bin\debug.log" (
@@ -4784,9 +4888,9 @@ IF EXIST "%ProgramFiles%\Siemens\SSU\bin" (
 )
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo **** FNC Windows Client (FNC) ****                                                                                      >> %REPORT_LOGFILE% 2>&1
-echo ... read products registered for updates (via FNC) ...
-echo Products Registered for Updates (via FNC)                                                                               >> %REPORT_LOGFILE% 2>&1
+echo **** FNC Windows Client [FNC] ****                                                                                      >> %REPORT_LOGFILE% 2>&1
+echo ... read products registered for updates [via FNC] ...
+echo Products Registered for Updates [via FNC]                                                                               >> %REPORT_LOGFILE% 2>&1
 IF EXIST "%ALLUSERSPROFILE%\FLEXnet\Connect\Database\" (
 	echo Content of folder: %ALLUSERSPROFILE%\FLEXnet\Connect\Database                                                       >> %REPORT_LOGFILE% 2>&1
 	dir /S /A /X /4 /W "%ALLUSERSPROFILE%\FLEXnet\Connect\Database"                                                          >> %REPORT_LOGFILE% 2>&1
@@ -4802,7 +4906,7 @@ IF EXIST "%ALLUSERSPROFILE%\FLEXnet\Connect\Database\" (
 		echo     No User FNC Database found [%ALLUSERSPROFILE%\FLEXnet\Connect\Database\update.ini].                         >> %REPORT_LOGFILE% 2>&1
 	)
 ) else (
-    echo     No User FNC Database found [%ALLUSERSPROFILE%\FLEXnet\Connect\Database\].                                       >> %REPORT_LOGFILE% 2>&1
+	echo     No User FNC Database found [%ALLUSERSPROFILE%\FLEXnet\Connect\Database\].                                       >> %REPORT_LOGFILE% 2>&1
 )
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 IF EXIST "%APPDATA%\FLEXnet\Connect\Database\" (
@@ -4814,16 +4918,16 @@ IF EXIST "%APPDATA%\FLEXnet\Connect\Database\" (
 		Type %%i                                                                                                             >> %REPORT_LOGFILE% 2>&1
 	)
 ) else (
-    echo     No Application FNC Database found [%APPDATA%\FLEXnet\Connect\Database\].                                        >> %REPORT_LOGFILE% 2>&1
+	echo     No Application FNC Database found [%APPDATA%\FLEXnet\Connect\Database\].                                        >> %REPORT_LOGFILE% 2>&1
 )
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo Check FNC Test Mode (for windows-based FNC agents)                                                                      >> %REPORT_LOGFILE% 2>&1
+echo Check FNC Test Mode [for windows-based FNC agents]                                                                      >> %REPORT_LOGFILE% 2>&1
 IF EXIST "c:\FCTest.ini" (
-    echo FNC Test file found, see c:\FCTest.ini                                                                              >> %REPORT_LOGFILE% 2>&1
+	echo FNC Test file found, see c:\FCTest.ini                                                                              >> %REPORT_LOGFILE% 2>&1
 	Type "c:\FCTest.ini"                                                                                                     >> %REPORT_LOGFILE% 2>&1
-    echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
+	echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
 ) else (
-    echo     No FNC Test file [FCTest.ini] found.                                                                            >> %REPORT_LOGFILE% 2>&1
+	echo     No FNC Test file [FCTest.ini] found.                                                                            >> %REPORT_LOGFILE% 2>&1
 )
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 :lms_log_files
