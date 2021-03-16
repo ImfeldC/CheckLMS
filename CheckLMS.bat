@@ -108,6 +108,11 @@ rem     02-Mar-2021:
 rem        - support FNP 11.18.0.0 (or newer) used in LMS 2.6 (or newer), create donwload path with general rule (doesn't require update of script for future FNP versions)
 rem     10-Mar-2021:
 rem        - set field test version to LMS 2.6.828
+rem     15-Mar-2021:
+rem        - add: wmic path win32_computersystemproduct get uuid [similar to 'wmic csproduct get *']                (see https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/identify_ec2_instances.html)
+rem        - add: powershell -c "Get-WmiObject -query 'select uuid from Win32_ComputerSystemProduct' | Select UUID" (see https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/identify_ec2_instances.html)
+rem        - add: powershell -c (gcim Win32_ComputerSystem).HypervisorPresent                                       (see https://devblogs.microsoft.com/scripting/use-powershell-to-detect-if-hypervisor-is-present/)
+rem        - added new section "V I R T U A L   E N V I R O N M E N T", to collect information about hypervisior, when running in a virtual machine.
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -130,8 +135,8 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 10-Mar-2021"
-set LMS_SCRIPT_BUILD=20210310
+set LMS_SCRIPT_VERSION="CheckLMS Script 15-Mar-2021"
+set LMS_SCRIPT_BUILD=20210315
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -740,6 +745,12 @@ if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
 	EVENTCREATE.exe /T INFORMATION /L Siemens /so CheckLMS /ID 301 /D "%LMS_BALLOON_TIP_TEXT%"  >nul 2>&1
 )
 
+rem Determine if script is running on a virtual machine (means within a hypervisor)
+rem see https://devblogs.microsoft.com/scripting/use-powershell-to-detect-if-hypervisor-is-present/
+rem see https://stackoverflow.com/questions/21706204/how-to-put-a-single-powershell-output-string-into-a-cmd-variable
+for /f "delims=" %%a in ('powershell -c "(gcim Win32_ComputerSystem).HypervisorPresent"') do set "LMS_IS_VM=%%a"
+rem echo LMS_IS_VM=!LMS_IS_VM!
+
 echo Report Start at !LMS_REPORT_START! ....                                                                                 >> %REPORT_LOGFILE% 2>&1
 echo ============================================================================================================================================================ >> %REPORT_LOGFILE% 2>&1
 echo =                                                                                                                       >> %REPORT_LOGFILE% 2>&1
@@ -769,6 +780,7 @@ if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
 ) else (
 	echo =  Script started with: normal priviledge                                                                           >> %REPORT_LOGFILE% 2>&1
 )
+echo =  Hypervisor Present  : !LMS_IS_VM!                                                                                    >> %REPORT_LOGFILE% 2>&1
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 if defined LMS_SET_INFO (
 	echo Info: [!LMS_REPORT_START!] !LMS_SET_INFO! ....                                                                      >> %REPORT_LOGFILE% 2>&1
@@ -1711,6 +1723,10 @@ echo -------------------------------------------------------                    
 echo WMIC Report [using PowerShell: Get-WmiObject -class Win32_BIOS]:                                                        >> %REPORT_LOGFILE% 2>&1
 powershell -c Get-WmiObject -class Win32_BIOS                                                                                >> %REPORT_LOGFILE% 2>&1
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+rem see https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/identify_ec2_instances.html
+echo WMIC Report [using PowerShell: Get-WmiObject -query 'select uuid from Win32_ComputerSystemProduct']:                    >> %REPORT_LOGFILE% 2>&1
+powershell -c "Get-WmiObject -query 'select uuid from Win32_ComputerSystemProduct' | Select UUID"                            >> %REPORT_LOGFILE% 2>&1
+echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 rem see https://www.lisenet.com/2014/get-windows-system-information-via-wmi-command-line-wmic/
 echo WMIC Report                                                                                                             >> %REPORT_LOGFILE% 2>&1
@@ -1760,6 +1776,12 @@ echo     wmic path win32_physicalmedia get SerialNumber
 wmic /output:%REPORT_WMIC_LOGFILE% path win32_physicalmedia get SerialNumber                                                 >> %REPORT_LOGFILE% 2>&1
 type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
 wmic /output:%CHECKLMS_REPORT_LOG_PATH%\wmicpathwin32_fullList.txt path win32_physicalmedia get /format:list                 >> %REPORT_LOGFILE% 2>&1     
+echo ---------------- wmic path win32_computersystemproduct get uuid                                                         >> %REPORT_LOGFILE% 2>&1
+rem see https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/identify_ec2_instances.html
+echo     wmic path win32_computersystemproduct get uuid
+wmic /output:%REPORT_WMIC_LOGFILE% path win32_computersystemproduct get uuid                                                 >> %REPORT_LOGFILE% 2>&1
+type %REPORT_WMIC_LOGFILE%                                                                                                   >> %REPORT_LOGFILE% 2>&1
+wmic /output:%CHECKLMS_REPORT_LOG_PATH%\wmicpathwin32_computersystemproduct_fullList.txt path win32_computersystemproduct get /format:list               >> %REPORT_LOGFILE% 2>&1     
 echo ---------------- wmic path msft_disk get Model,BusType,SerialNumber,AdapterSerialNumber                                 >> %REPORT_LOGFILE% 2>&1
 echo     wmic path msft_disk get Model,BusType,SerialNumber,AdapterSerialNumber
 wmic /output:%REPORT_WMIC_LOGFILE% /namespace:\\root\microsoft\windows\storage path msft_disk get Model,BusType,SerialNumber,AdapterSerialNumber         >> %REPORT_LOGFILE% 2>&1
@@ -2289,6 +2311,36 @@ echo Retrieve registry permissison for !LMS_MAIN_REGISTRY_KEY! [with "Get-Acl HK
 Powershell -command "Get-Acl HKLM:\SOFTWARE\Siemens\LMS | Format-List"                                                       >> %REPORT_LOGFILE% 2>&1
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+echo =   V I R T U A L   E N V I R O N M E N T                                    =                                          >> %REPORT_LOGFILE% 2>&1
+echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+echo ... get information of virtual environment ...
+echo Get information of virtual environment ...                                                                             >> %REPORT_LOGFILE% 2>&1
+if /I "!LMS_IS_VM!"=="true" (
+	echo     Running on a virtual machine.
+	echo Running on a virtual machine. LMS_IS_VM=!LMS_IS_VM!                                                                 >> %REPORT_LOGFILE% 2>&1
+) else if /I "!LMS_IS_VM!"=="false" (
+	echo     NOT running on a virtual machine.
+	echo NOT running on a virtual machine. LMS_IS_VM=!LMS_IS_VM!                                                             >> %REPORT_LOGFILE% 2>&1
+) else (
+	echo     Not clear if running on a virtual machine or not. LMS_IS_VM=!LMS_IS_VM!
+	echo Not clear if running on a virtual machine or not. LMS_IS_VM=!LMS_IS_VM!                                             >> %REPORT_LOGFILE% 2>&1
+)
+if /I "!LMS_IS_VM!"=="true" (
+	rem call further commands only, when running on a virtual machine, wthin a hypervisor.
+	
+	rem get AWS instance identify document (see https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/instance-identity-documents.html )
+	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+	powershell -Command "(New-Object Net.WebClient).DownloadFile('http://169.254.169.254/latest/dynamic/instance-identity/document', '!CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt')"  >!CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document_result.txt 2>&1
+	if exist "!CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt" (
+		echo AWS instance identity document retrieved:                                                                       >> %REPORT_LOGFILE% 2>&1
+		type "!CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt"                                                 >> %REPORT_LOGFILE% 2>&1
+		echo .                                                                                                               >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo AWS instance identity document not found!                                                                       >> %REPORT_LOGFILE% 2>&1
+	)
+)
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo =   L M S   S C H E D U L E D   T A S K S                                    =                                          >> %REPORT_LOGFILE% 2>&1
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
@@ -5779,6 +5831,7 @@ echo     Date: !DATE! / Time: !TIME!                                            
 echo     LMS System Id: %LMS_SYSTEMID%                                                                                   >> %REPORT_LOGFILE% 2>&1
 echo     Machine GUID : %OS_MACHINEGUID%                                                                                 >> %REPORT_LOGFILE% 2>&1
 echo     Check Script Version: %LMS_SCRIPT_VERSION% (%LMS_SCRIPT_BUILD%)                                                 >> %REPORT_LOGFILE% 2>&1
+echo     Hypervisor Present  : !LMS_IS_VM!                                                                               >> %REPORT_LOGFILE% 2>&1
 echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
 echo     PublisherId: !LMS_TS_PUBLISHER!  /  TS ClientVersion: !LMS_TS_CLIENT_VERSION!                                   >> %REPORT_LOGFILE% 2>&1
 echo     MachineIdentifier: !LMS_TS_MACHINE_IDENTIFIER!  /  TrustedStorageSerialNumber: !LMS_TS_SERIAL_NUMBER!           >> %REPORT_LOGFILE% 2>&1
