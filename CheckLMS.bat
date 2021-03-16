@@ -119,8 +119,9 @@ rem        - add VMID.txt to track changes in virtual ids, like VMGENID, etc.
 rem        - reduce output in general logfile for unzip operations (keep them in own files, do not add them to general logfile)
 rem        - remove log entry "Run CheckLMS.bat 64-Bit" and "Run CheckLMS.bat 32-Bit"
 rem     17-Mar-2021:
-rem        - add option /checkid (incl. LMS_SKIPDOWNLOAD, LMS_SKIPTSBACKUP, LMS_SKIPBTALMPLUGIN, LMS_SKIPSIGCHECK, LMS_SKIPWMIC, LMS_SKIPFIREWALL, LMS_SKIPSCHEDTASK, LMS_SKIPWER, LMS_SKIPSSU, LMS_SKIPFNP, LMS_SKIPLMS)
+rem        - add option /checkid (incl. LMS_SKIPDOWNLOAD, LMS_SKIPTSBACKUP, LMS_SKIPBTALMPLUGIN, LMS_SKIPSIGCHECK, LMS_SKIPWMIC, LMS_SKIPFIREWALL, LMS_SKIPSCHEDTASK, LMS_SKIPWER, LMS_SKIPFNP)
 rem        - content of "%WinDir%\System32\Drivers\Etc" is only copied, no longer addded to general logfile.
+rem        - add further: LMS_SKIPSSU
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -4677,259 +4678,268 @@ echo =   S O F T W A R E   U P D A T E   I N F O R M A T I O N                  
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo UserID=8:%SSU_SYSTEMID%                                                                                                 >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo ... get content of SSU log-file folder ...
-echo Content of folder: %ALLUSERSPROFILE%\Siemens\SSU\Logs                                                                   >> %REPORT_LOGFILE% 2>&1
-dir /S /A /X /4 /W "%ALLUSERSPROFILE%\Siemens\SSU\Logs"                                                                      >> %REPORT_LOGFILE% 2>&1
-IF EXIST "%ALLUSERSPROFILE%\Siemens\SSU\Logs\SSUSetup.log" (
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-	echo SSU - setup log-file found in %ALLUSERSPROFILE%\Siemens\SSU\Logs\SSUSetup.log                                       >> %REPORT_LOGFILE% 2>&1
-	Type "%ALLUSERSPROFILE%\Siemens\SSU\Logs\SSUSetup.log"                                                                   >> %REPORT_LOGFILE% 2>&1
+if not defined LMS_SKIPSSU (
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo ... get content of SSU log-file folder ...
+	echo Content of folder: %ALLUSERSPROFILE%\Siemens\SSU\Logs                                                                   >> %REPORT_LOGFILE% 2>&1
+	dir /S /A /X /4 /W "%ALLUSERSPROFILE%\Siemens\SSU\Logs"                                                                      >> %REPORT_LOGFILE% 2>&1
+	IF EXIST "%ALLUSERSPROFILE%\Siemens\SSU\Logs\SSUSetup.log" (
+		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+		echo SSU - setup log-file found in %ALLUSERSPROFILE%\Siemens\SSU\Logs\SSUSetup.log                                       >> %REPORT_LOGFILE% 2>&1
+		Type "%ALLUSERSPROFILE%\Siemens\SSU\Logs\SSUSetup.log"                                                                   >> %REPORT_LOGFILE% 2>&1
 
-	copy "%ALLUSERSPROFILE%\Siemens\SSU\Logs\SSUSetup.log" "%CHECKLMS_SSU_PATH%\SSUSetup.log"                                                      >> %REPORT_LOGFILE% 2>&1
-	echo --- File automatically copied from %ALLUSERSPROFILE%\Siemens\SSU\Logs\SSUSetup.log to %CHECKLMS_SSU_PATH%\SSUSetup.log ---                >> %CHECKLMS_SSU_PATH%\SSUSetup.log 2>&1
-	powershell -Command "get-childitem '%ALLUSERSPROFILE%\Siemens\SSU\Logs\SSUSetup.log' | select Name,CreationTime,LastAccessTime,LastWriteTime"  >> %REPORT_LOGFILE% 2>&1
-)
-
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-rem NOTE: The logfiles on %TEMP% [e.g. C:\Users\imfeldc\AppData\Local\Temp] are periodically deleted by opertaing system
-echo ... search MSI and SSU setup logfiles [MSI*.log]  [on %TEMP%] ...
-del %CHECKLMS_SSU_PATH%\MSISetupLogFilesFound.txt >nul 2>&1
-del %CHECKLMS_SSU_PATH%\SSUSetupLogFilesFound.txt >nul 2>&1
-cd %TEMP%
-FOR /r %TEMP% %%X IN (MSI*.log) DO (
-	set SSU_SETUP_LOGFILE_FOUND=
-	echo %%~dpnxX >> %CHECKLMS_SSU_PATH%\MSISetupLogFilesFound.txt
-	for /f "tokens=1 delims= eol=@" %%i in ('type %%~dpnxX ^|find /I "******* Product:"') do echo %%i >> %CHECKLMS_SSU_PATH%\MSISetupLogFilesFound.txt
-	for /f "tokens=1 delims= eol=@" %%i in ('type %%~dpnxX ^|find /I "SSU_Setupx64.msi"') do set SSU_SETUP_LOGFILE_FOUND=1
-	if defined SSU_SETUP_LOGFILE_FOUND (
-		echo %%~dpnxX >> %CHECKLMS_SSU_PATH%\SSUSetupLogFilesFound.txt
+		copy "%ALLUSERSPROFILE%\Siemens\SSU\Logs\SSUSetup.log" "%CHECKLMS_SSU_PATH%\SSUSetup.log"                                                      >> %REPORT_LOGFILE% 2>&1
+		echo --- File automatically copied from %ALLUSERSPROFILE%\Siemens\SSU\Logs\SSUSetup.log to %CHECKLMS_SSU_PATH%\SSUSetup.log ---                >> %CHECKLMS_SSU_PATH%\SSUSetup.log 2>&1
+		powershell -Command "get-childitem '%ALLUSERSPROFILE%\Siemens\SSU\Logs\SSUSetup.log' | select Name,CreationTime,LastAccessTime,LastWriteTime"  >> %REPORT_LOGFILE% 2>&1
 	)
-)
-IF EXIST "%CHECKLMS_SSU_PATH%\MSISetupLogFilesFound.txt" (
-	echo MSI setup logfiles [MSI*.log] [on %TEMP%]:                                                                          >> %REPORT_LOGFILE% 2>&1
-	Type !CHECKLMS_SSU_PATH!\MSISetupLogFilesFound.txt                                                                       >> %REPORT_LOGFILE% 2>&1
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1 
-)
-IF EXIST "%CHECKLMS_SSU_PATH%\SSUSetupLogFilesFound.txt" (
-	echo SSU setup logfiles [MSI*.log] [on %TEMP%]:                                                                          >> %REPORT_LOGFILE% 2>&1
-	Type !CHECKLMS_SSU_PATH!\SSUSetupLogFilesFound.txt                                                                       >> %REPORT_LOGFILE% 2>&1
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1 
-	set LOG_FILE_COUNT=0
-	FOR /F "eol=@ delims=@" %%i IN (!CHECKLMS_SSU_PATH!\SSUSetupLogFilesFound.txt) DO ( 
-		set /A LOG_FILE_COUNT += 1
-		echo %%i copy to !CHECKLMS_SSU_PATH!\%%~nxi                                                                          >> %REPORT_LOGFILE% 2>&1   
-		copy /Y "%%i" !CHECKLMS_SSU_PATH!\%%~nxi                                                                             >> %REPORT_LOGFILE% 2>&1
-		rem powershell -command "& {Get-Content '%%i' | Select-Object -last %LOG_FILE_LINES%}"                                   >> %REPORT_LOGFILE% 2>&1 
-		Type "%%i"                                                                                                           >> %REPORT_LOGFILE% 2>&1 
-		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1 
-	)
-	echo     !LOG_FILE_COUNT! SSU setup logfile [MSI*.log] found on %TEMP%.                                                  >> %REPORT_LOGFILE% 2>&1
-) else (
-	echo     No SSU setup logfile [MSI*.log] found on %TEMP%.                                                                >> %REPORT_LOGFILE% 2>&1
-)
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo ... check SSU registry permission ...
-echo Retrieve registry permissison for !SSU_MAIN_REGISTRY_KEY! [with "Get-Acl HKLM:\SOFTWARE\Siemens\SSU | Format-List"]     >> %REPORT_LOGFILE% 2>&1
-Powershell -command "Get-Acl HKLM:\SOFTWARE\Siemens\SSU | Format-List"                                                       >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\Siemens\SSU' | Format-List" > %CHECKLMS_SSU_PATH%\ssu_hklm_registry.txt 2>&1
-echo Content of registry key: "HKLM:\SOFTWARE\Siemens\SSU" ...                                                               >> %REPORT_LOGFILE% 2>&1
-type %CHECKLMS_SSU_PATH%\ssu_hklm_registry.txt                                                                               >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-Powershell -command "Get-ItemProperty 'HKCU:\SOFTWARE\Siemens\SSU' | Format-List" > %CHECKLMS_SSU_PATH%\ssu_hkcu_registry.txt 2>&1
-echo Content of registry key: "HKCU:\SOFTWARE\Siemens\SSU" ...                                                               >> %REPORT_LOGFILE% 2>&1
-type %CHECKLMS_SSU_PATH%\ssu_hkcu_registry.txt                                                                               >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo ... test connection to OSD server ...
-echo Test connection to OSD server                                                                                           >> %REPORT_LOGFILE% 2>&1 
-rem Connection Test to OSD server
-powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.automation.siemens.com/swdl/servertest/', '%TEMP%\OSD_servertest.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_swdl.txt 2>&1
-if !ERRORLEVEL!==0 (
-	rem Connection Test: PASSED
-	echo     Connection Test PASSED, can access https://www.automation.siemens.com/swdl/servertest/
-	echo Connection Test PASSED, can access https://www.automation.siemens.com/swdl/servertest/                              >> %REPORT_LOGFILE% 2>&1                
-	set OSDServerConnectionTestStatus=Passed
-	rem type %TEMP%\OSD_servertest.txt
-	rem echo .
-) else if !ERRORLEVEL!==1 (
-	rem Connection Test: FAILED
-	echo     Connection Test FAILED, cannot access https://www.automation.siemens.com/swdl/servertest/
-	echo Connection Test FAILED, cannot access https://www.automation.siemens.com/swdl/servertest/                           >> %REPORT_LOGFILE% 2>&1            
-	type !CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_swdl.txt                                                             >> %REPORT_LOGFILE% 2>&1
-	set OSDServerConnectionTestStatus=Failed
-)
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1 
-echo ... test connection to OSD software udpate server ...
-echo Test connection to OSD software udpate server                                                                           >> %REPORT_LOGFILE% 2>&1                                                                                            
-rem Connection Test to OSD software udpate server
-powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.automation.siemens.com/softwareupdater/servertest.aspx', '%TEMP%\OSD_softwareudpateservertest.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_softwareupdate.txt 2>&1
-if !ERRORLEVEL!==0 (
-	rem Connection Test: PASSED
-	echo     Connection Test PASSED, can access https://www.automation.siemens.com/softwareupdater/servertest.aspx
-	echo Connection Test PASSED, can access https://www.automation.siemens.com/softwareupdater/servertest.aspx               >> %REPORT_LOGFILE% 2>&1                           
-	set OSDSoftwareUpdateServerConnectionTestStatus=Passed
-	rem type %TEMP%\OSD_softwareudpateservertest.txt
-	rem echo .
-) else if !ERRORLEVEL!==1 (
-	rem Connection Test: FAILED
-	echo     Connection Test FAILED, cannot access https://www.automation.siemens.com/softwareupdater/servertest.aspx
-	echo Connection Test FAILED, cannot access https://www.automation.siemens.com/softwareupdater/servertest.aspx            >> %REPORT_LOGFILE% 2>&1                       
-	type !CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_softwareupdate.txt                                                   >> %REPORT_LOGFILE% 2>&1
-	set OSDSoftwareUpdateServerConnectionTestStatus=Failed
-)
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo ... test connection to FNC cloud ...
-echo Test connection to FNC cloud                                                                                            >> %REPORT_LOGFILE% 2>&1
-rem Connection Test to FNC Cloud
-powershell -Command "(New-Object Net.WebClient).DownloadFile('http://updates.installshield.com/ClientInterfaces.asp', '%TEMP%\ClientInterfaces.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_fnccloud.txt 2>&1
-if !ERRORLEVEL!==0 (
-	rem Connection Test: PASSED
-	echo     Connection Test PASSED, can access http://updates.installshield.com/ClientInterfaces.asp
-	echo Connection Test PASSED, can access http://updates.installshield.com/ClientInterfaces.asp                            >> %REPORT_LOGFILE% 2>&1
-	set FNCCloudConnectionTestStatus=Passed
-	rem type %TEMP%\ClientInterfaces.txt
-) else if !ERRORLEVEL!==1 (
-	rem Connection Test: FAILED
-	echo     Connection Test FAILED, cannot access http://updates.installshield.com/ClientInterfaces.asp
-	echo Connection Test FAILED, cannot access http://updates.installshield.com/ClientInterfaces.asp                         >> %REPORT_LOGFILE% 2>&1
-	type !CHECKLMS_REPORT_LOG_PATH!\connection_test_fnccloud.txt                                                             >> %REPORT_LOGFILE% 2>&1
-	set FNCCloudConnectionTestStatus=Failed
-)
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo **** Siemens Software Updater (SSU) ****                                                                                >> %REPORT_LOGFILE% 2>&1
-echo ... read products registered for updates [via SSU] ...
-echo Products Registered for Updates [via SSU]                                                                               >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-IF EXIST "%ALLUSERSPROFILE%\Siemens\SSU\SiemensSoftwareUpdater.ini" (
-	echo SSU Configuration file found, see %ALLUSERSPROFILE%\Siemens\SSU\SiemensSoftwareUpdater.ini                          >> %REPORT_LOGFILE% 2>&1
-	Type "%ALLUSERSPROFILE%\Siemens\SSU\SiemensSoftwareUpdater.ini"                                                          >> %REPORT_LOGFILE% 2>&1
-	echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
-) else (
-	echo     No SSU Configuration file [%ALLUSERSPROFILE%\Siemens\SSU\SiemensSoftwareUpdater.ini] found.                     >> %REPORT_LOGFILE% 2>&1
-)
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo Content of folder: %ALLUSERSPROFILE%\Siemens\SSU\Database                                                               >> %REPORT_LOGFILE% 2>&1
-dir /S /A /X /4 /W "%ALLUSERSPROFILE%\Siemens\SSU\Database"                                                                  >> %REPORT_LOGFILE% 2>&1
-FOR %%i IN ("%ALLUSERSPROFILE%\Siemens\SSU\Database\*.ini") DO (
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-	echo %%i:                                                                                                                >> %REPORT_LOGFILE% 2>&1
-	Type %%i                                                                                                                 >> %REPORT_LOGFILE% 2>&1
-)
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo Content of folder: %TEMP%\SSU                                                                                           >> %REPORT_LOGFILE% 2>&1
-dir /S /A /X /4 /W "%TEMP%\SSU"                                                                                              >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo Check SSU Test Mode [for multi-platform clients]                                                                        >> %REPORT_LOGFILE% 2>&1
-IF EXIST "c:\TestUpdate.pin" (
-	echo SSU Test file found, see c:\TestUpdate.pin                                                                          >> %REPORT_LOGFILE% 2>&1
-	Type "c:\TestUpdate.pin"                                                                                                 >> %REPORT_LOGFILE% 2>&1
-	echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
-) else (
-	echo     No SSU Test file [c:\TestUpdate.pin] found.                                                                     >> %REPORT_LOGFILE% 2>&1
-)
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-IF EXIST "%ProgramFiles%\Siemens\SSU\bin" (
-	echo SSU - Get signature status for *.exe [%ProgramFiles%\Siemens\SSU\bin]                                               >> %REPORT_LOGFILE% 2>&1
-	powershell -command "Get-AuthenticodeSignature -FilePath '%ProgramFiles%\Siemens\SSU\bin\*.exe'"                         >> %REPORT_LOGFILE% 2>&1
-	echo SSU - Get signature status for *.dll [%ProgramFiles%\Siemens\SSU\bin]                                               >> %REPORT_LOGFILE% 2>&1
-	powershell -command "Get-AuthenticodeSignature -FilePath '%ProgramFiles%\Siemens\SSU\bin\*.dll'"                         >> %REPORT_LOGFILE% 2>&1
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-	echo Check signature with: !SIGCHECK_TOOL! !SIGCHECK_OPTIONS! ...                                                        >> %REPORT_LOGFILE% 2>&1
-	!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "%ProgramFiles%\Siemens\SSU\bin\SSUManager.exe"                                       >> %REPORT_LOGFILE% 2>&1
-) else (
-	echo     No SSU binary folder [%ProgramFiles%\Siemens\SSU\bin] found.                                                    >> %REPORT_LOGFILE% 2>&1
-)
-IF EXIST "%ProgramFiles%\Siemens\SSU\bin" (
-	IF EXIST "%ProgramFiles%\Siemens\SSU\bin\debug.log" (
-		echo -------------------------------------------------------                                                                            >> %REPORT_LOGFILE% 2>&1
-		echo SSU - CRASH FILE debug.log found in '%ProgramFiles%\Siemens\SSU\bin\'                                                              >> %REPORT_LOGFILE% 2>&1
-		rem Type "%ProgramFiles%\Siemens\SSU\bin\debug.log"                                                                                     >> %REPORT_LOGFILE% 2>&1
-		echo LOG FILE: debug.log [last %LOG_FILE_LINES% lines]                                                                                  >> %REPORT_LOGFILE% 2>&1
-		powershell -command "& {Get-Content '%ProgramFiles%\Siemens\SSU\bin\debug.log' | Select-Object -last %LOG_FILE_LINES%}"                 >> %REPORT_LOGFILE% 2>&1
 
-		copy "%ProgramFiles%\Siemens\SSU\bin\debug.log" %CHECKLMS_SSU_PATH%\ssu_debug.log                                                       >> %REPORT_LOGFILE% 2>&1
-		echo --- File automatically copied from %ProgramFiles%\Siemens\SSU\bin\debug.log to %CHECKLMS_SSU_PATH%\ssu_debug.log ---               >> %CHECKLMS_SSU_PATH%\ssu_debug.log 2>&1
-		powershell -Command "get-childitem '%ProgramFiles%\Siemens\SSU\bin\debug.log' | select Name,CreationTime,LastAccessTime,LastWriteTime"  >> %REPORT_LOGFILE% 2>&1
-
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: SSU - CRASH FILE debug.log found! [1;37m
-		) else (
-			echo     ATTENTION: SSU - CRASH FILE debug.log found!
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	rem NOTE: The logfiles on %TEMP% [e.g. C:\Users\imfeldc\AppData\Local\Temp] are periodically deleted by opertaing system
+	echo ... search MSI and SSU setup logfiles [MSI*.log]  [on %TEMP%] ...
+	del %CHECKLMS_SSU_PATH%\MSISetupLogFilesFound.txt >nul 2>&1
+	del %CHECKLMS_SSU_PATH%\SSUSetupLogFilesFound.txt >nul 2>&1
+	cd %TEMP%
+	FOR /r %TEMP% %%X IN (MSI*.log) DO (
+		set SSU_SETUP_LOGFILE_FOUND=
+		echo %%~dpnxX >> %CHECKLMS_SSU_PATH%\MSISetupLogFilesFound.txt
+		for /f "tokens=1 delims= eol=@" %%i in ('type %%~dpnxX ^|find /I "******* Product:"') do echo %%i >> %CHECKLMS_SSU_PATH%\MSISetupLogFilesFound.txt
+		for /f "tokens=1 delims= eol=@" %%i in ('type %%~dpnxX ^|find /I "SSU_Setupx64.msi"') do set SSU_SETUP_LOGFILE_FOUND=1
+		if defined SSU_SETUP_LOGFILE_FOUND (
+			echo %%~dpnxX >> %CHECKLMS_SSU_PATH%\SSUSetupLogFilesFound.txt
 		)
-		echo ATTENTION: SSU - CRASH FILE debug.log found!                                                                    >> %REPORT_LOGFILE% 2>&1
 	)
-	IF EXIST "%ProgramFiles%\Siemens\SSU\bin\SSUManager.exe" (
-		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
-		echo SSU - Start SSU Manager ....                                                                                    >> %REPORT_LOGFILE% 2>&1
-		start "Start SSU Manager" "%ProgramFiles%\Siemens\SSU\bin\SSUManager.exe"
+	IF EXIST "%CHECKLMS_SSU_PATH%\MSISetupLogFilesFound.txt" (
+		echo MSI setup logfiles [MSI*.log] [on %TEMP%]:                                                                          >> %REPORT_LOGFILE% 2>&1
+		Type !CHECKLMS_SSU_PATH!\MSISetupLogFilesFound.txt                                                                       >> %REPORT_LOGFILE% 2>&1
+		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1 
 	)
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-	set LMS_SSU_CONSISTENCY_CHECK=0
-	IF NOT EXIST "%ProgramFiles%\Siemens\SSU\bin\icudtl.dat" (
-		echo SSU - File "icudtl.dat" is missing in %ProgramFiles%\Siemens\SSU\bin\                                           >> %REPORT_LOGFILE% 2>&1
-		set /A LMS_SSU_CONSISTENCY_CHECK += 1
-	)
-	IF NOT EXIST "%ProgramFiles%\Siemens\SSU\bin\v8_context_snapshot.bin" (
-		echo SSU - File "v8_context_snapshot.bin" is missing in %ProgramFiles%\Siemens\SSU\bin\                              >> %REPORT_LOGFILE% 2>&1
-		set /A LMS_SSU_CONSISTENCY_CHECK += 1
-	)
-	if /I !LMS_SSU_CONSISTENCY_CHECK! NEQ 0 (
-		echo SSU - Installation is NOT consistent, !LMS_SSU_CONSISTENCY_CHECK! file[s] missing!                              >> %REPORT_LOGFILE% 2>&1
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: SSU - Installation is NOT consistent, !LMS_SSU_CONSISTENCY_CHECK! file[s] missing! [1;37m
-		) else (
-			echo     ATTENTION: SSU - Installation is NOT consistent, !LMS_SSU_CONSISTENCY_CHECK! file[s] missing!
+	IF EXIST "%CHECKLMS_SSU_PATH%\SSUSetupLogFilesFound.txt" (
+		echo SSU setup logfiles [MSI*.log] [on %TEMP%]:                                                                          >> %REPORT_LOGFILE% 2>&1
+		Type !CHECKLMS_SSU_PATH!\SSUSetupLogFilesFound.txt                                                                       >> %REPORT_LOGFILE% 2>&1
+		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1 
+		set LOG_FILE_COUNT=0
+		FOR /F "eol=@ delims=@" %%i IN (!CHECKLMS_SSU_PATH!\SSUSetupLogFilesFound.txt) DO ( 
+			set /A LOG_FILE_COUNT += 1
+			echo %%i copy to !CHECKLMS_SSU_PATH!\%%~nxi                                                                          >> %REPORT_LOGFILE% 2>&1   
+			copy /Y "%%i" !CHECKLMS_SSU_PATH!\%%~nxi                                                                             >> %REPORT_LOGFILE% 2>&1
+			rem powershell -command "& {Get-Content '%%i' | Select-Object -last %LOG_FILE_LINES%}"                                   >> %REPORT_LOGFILE% 2>&1 
+			Type "%%i"                                                                                                           >> %REPORT_LOGFILE% 2>&1 
+			echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1 
 		)
-		echo ATTENTION: SSU - Installation is NOT consistent, !LMS_SSU_CONSISTENCY_CHECK! file[s] missing!                   >> %REPORT_LOGFILE% 2>&1
+		echo     !LOG_FILE_COUNT! SSU setup logfile [MSI*.log] found on %TEMP%.                                                  >> %REPORT_LOGFILE% 2>&1
 	) else (
-		echo SSU - Installation is consistent, NO file missing in %ProgramFiles%\Siemens\SSU\bin\                            >> %REPORT_LOGFILE% 2>&1
+		echo     No SSU setup logfile [MSI*.log] found on %TEMP%.                                                                >> %REPORT_LOGFILE% 2>&1
 	)
-)
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo **** FNC Windows Client [FNC] ****                                                                                      >> %REPORT_LOGFILE% 2>&1
-echo ... read products registered for updates [via FNC] ...
-echo Products Registered for Updates [via FNC]                                                                               >> %REPORT_LOGFILE% 2>&1
-IF EXIST "%ALLUSERSPROFILE%\FLEXnet\Connect\Database\" (
-	echo Content of folder: %ALLUSERSPROFILE%\FLEXnet\Connect\Database                                                       >> %REPORT_LOGFILE% 2>&1
-	dir /S /A /X /4 /W "%ALLUSERSPROFILE%\FLEXnet\Connect\Database"                                                          >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo ... check SSU registry permission ...
+	echo Retrieve registry permissison for !SSU_MAIN_REGISTRY_KEY! [with "Get-Acl HKLM:\SOFTWARE\Siemens\SSU | Format-List"]     >> %REPORT_LOGFILE% 2>&1
+	Powershell -command "Get-Acl HKLM:\SOFTWARE\Siemens\SSU | Format-List"                                                       >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\Siemens\SSU' | Format-List" > %CHECKLMS_SSU_PATH%\ssu_hklm_registry.txt 2>&1
+	echo Content of registry key: "HKLM:\SOFTWARE\Siemens\SSU" ...                                                               >> %REPORT_LOGFILE% 2>&1
+	type %CHECKLMS_SSU_PATH%\ssu_hklm_registry.txt                                                                               >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	Powershell -command "Get-ItemProperty 'HKCU:\SOFTWARE\Siemens\SSU' | Format-List" > %CHECKLMS_SSU_PATH%\ssu_hkcu_registry.txt 2>&1
+	echo Content of registry key: "HKCU:\SOFTWARE\Siemens\SSU" ...                                                               >> %REPORT_LOGFILE% 2>&1
+	type %CHECKLMS_SSU_PATH%\ssu_hkcu_registry.txt                                                                               >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo ... test connection to OSD server ...
+	echo Test connection to OSD server                                                                                           >> %REPORT_LOGFILE% 2>&1 
+	rem Connection Test to OSD server
+	powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.automation.siemens.com/swdl/servertest/', '%TEMP%\OSD_servertest.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_swdl.txt 2>&1
+	if !ERRORLEVEL!==0 (
+		rem Connection Test: PASSED
+		echo     Connection Test PASSED, can access https://www.automation.siemens.com/swdl/servertest/
+		echo Connection Test PASSED, can access https://www.automation.siemens.com/swdl/servertest/                              >> %REPORT_LOGFILE% 2>&1                
+		set OSDServerConnectionTestStatus=Passed
+		rem type %TEMP%\OSD_servertest.txt
+		rem echo .
+	) else if !ERRORLEVEL!==1 (
+		rem Connection Test: FAILED
+		echo     Connection Test FAILED, cannot access https://www.automation.siemens.com/swdl/servertest/
+		echo Connection Test FAILED, cannot access https://www.automation.siemens.com/swdl/servertest/                           >> %REPORT_LOGFILE% 2>&1            
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_swdl.txt                                                             >> %REPORT_LOGFILE% 2>&1
+		set OSDServerConnectionTestStatus=Failed
+	)
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1 
+	echo ... test connection to OSD software udpate server ...
+	echo Test connection to OSD software udpate server                                                                           >> %REPORT_LOGFILE% 2>&1                                                                                            
+	rem Connection Test to OSD software udpate server
+	powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.automation.siemens.com/softwareupdater/servertest.aspx', '%TEMP%\OSD_softwareudpateservertest.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_softwareupdate.txt 2>&1
+	if !ERRORLEVEL!==0 (
+		rem Connection Test: PASSED
+		echo     Connection Test PASSED, can access https://www.automation.siemens.com/softwareupdater/servertest.aspx
+		echo Connection Test PASSED, can access https://www.automation.siemens.com/softwareupdater/servertest.aspx               >> %REPORT_LOGFILE% 2>&1                           
+		set OSDSoftwareUpdateServerConnectionTestStatus=Passed
+		rem type %TEMP%\OSD_softwareudpateservertest.txt
+		rem echo .
+	) else if !ERRORLEVEL!==1 (
+		rem Connection Test: FAILED
+		echo     Connection Test FAILED, cannot access https://www.automation.siemens.com/softwareupdater/servertest.aspx
+		echo Connection Test FAILED, cannot access https://www.automation.siemens.com/softwareupdater/servertest.aspx            >> %REPORT_LOGFILE% 2>&1                       
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_softwareupdate.txt                                                   >> %REPORT_LOGFILE% 2>&1
+		set OSDSoftwareUpdateServerConnectionTestStatus=Failed
+	)
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo ... test connection to FNC cloud ...
+	echo Test connection to FNC cloud                                                                                            >> %REPORT_LOGFILE% 2>&1
+	rem Connection Test to FNC Cloud
+	powershell -Command "(New-Object Net.WebClient).DownloadFile('http://updates.installshield.com/ClientInterfaces.asp', '%TEMP%\ClientInterfaces.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_fnccloud.txt 2>&1
+	if !ERRORLEVEL!==0 (
+		rem Connection Test: PASSED
+		echo     Connection Test PASSED, can access http://updates.installshield.com/ClientInterfaces.asp
+		echo Connection Test PASSED, can access http://updates.installshield.com/ClientInterfaces.asp                            >> %REPORT_LOGFILE% 2>&1
+		set FNCCloudConnectionTestStatus=Passed
+		rem type %TEMP%\ClientInterfaces.txt
+	) else if !ERRORLEVEL!==1 (
+		rem Connection Test: FAILED
+		echo     Connection Test FAILED, cannot access http://updates.installshield.com/ClientInterfaces.asp
+		echo Connection Test FAILED, cannot access http://updates.installshield.com/ClientInterfaces.asp                         >> %REPORT_LOGFILE% 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_fnccloud.txt                                                             >> %REPORT_LOGFILE% 2>&1
+		set FNCCloudConnectionTestStatus=Failed
+	)
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo **** Siemens Software Updater [SSU] ****                                                                                >> %REPORT_LOGFILE% 2>&1
+	echo ... read products registered for updates [via SSU] ...
+	echo Products Registered for Updates [via SSU]                                                                               >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	IF EXIST "%ALLUSERSPROFILE%\Siemens\SSU\SiemensSoftwareUpdater.ini" (
+		echo SSU Configuration file found, see %ALLUSERSPROFILE%\Siemens\SSU\SiemensSoftwareUpdater.ini                          >> %REPORT_LOGFILE% 2>&1
+		Type "%ALLUSERSPROFILE%\Siemens\SSU\SiemensSoftwareUpdater.ini"                                                          >> %REPORT_LOGFILE% 2>&1
+		echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     No SSU Configuration file [%ALLUSERSPROFILE%\Siemens\SSU\SiemensSoftwareUpdater.ini] found.                     >> %REPORT_LOGFILE% 2>&1
+	)
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo Content of folder: %ALLUSERSPROFILE%\Siemens\SSU\Database                                                               >> %REPORT_LOGFILE% 2>&1
+	dir /S /A /X /4 /W "%ALLUSERSPROFILE%\Siemens\SSU\Database"                                                                  >> %REPORT_LOGFILE% 2>&1
+	FOR %%i IN ("%ALLUSERSPROFILE%\Siemens\SSU\Database\*.ini") DO (
+		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+		echo %%i:                                                                                                                >> %REPORT_LOGFILE% 2>&1
+		Type %%i                                                                                                                 >> %REPORT_LOGFILE% 2>&1
+	)
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo Content of folder: %TEMP%\SSU                                                                                           >> %REPORT_LOGFILE% 2>&1
+	dir /S /A /X /4 /W "%TEMP%\SSU"                                                                                              >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo Check SSU Test Mode [for multi-platform clients]                                                                        >> %REPORT_LOGFILE% 2>&1
+	IF EXIST "c:\TestUpdate.pin" (
+		echo SSU Test file found, see c:\TestUpdate.pin                                                                          >> %REPORT_LOGFILE% 2>&1
+		Type "c:\TestUpdate.pin"                                                                                                 >> %REPORT_LOGFILE% 2>&1
+		echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     No SSU Test file [c:\TestUpdate.pin] found.                                                                     >> %REPORT_LOGFILE% 2>&1
+	)
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	IF EXIST "%ProgramFiles%\Siemens\SSU\bin" (
+		echo SSU - Get signature status for *.exe [%ProgramFiles%\Siemens\SSU\bin]                                               >> %REPORT_LOGFILE% 2>&1
+		powershell -command "Get-AuthenticodeSignature -FilePath '%ProgramFiles%\Siemens\SSU\bin\*.exe'"                         >> %REPORT_LOGFILE% 2>&1
+		echo SSU - Get signature status for *.dll [%ProgramFiles%\Siemens\SSU\bin]                                               >> %REPORT_LOGFILE% 2>&1
+		powershell -command "Get-AuthenticodeSignature -FilePath '%ProgramFiles%\Siemens\SSU\bin\*.dll'"                         >> %REPORT_LOGFILE% 2>&1
+		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+		echo Check signature with: !SIGCHECK_TOOL! !SIGCHECK_OPTIONS! ...                                                        >> %REPORT_LOGFILE% 2>&1
+		!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "%ProgramFiles%\Siemens\SSU\bin\SSUManager.exe"                                       >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     No SSU binary folder [%ProgramFiles%\Siemens\SSU\bin] found.                                                    >> %REPORT_LOGFILE% 2>&1
+	)
+	IF EXIST "%ProgramFiles%\Siemens\SSU\bin" (
+		IF EXIST "%ProgramFiles%\Siemens\SSU\bin\debug.log" (
+			echo -------------------------------------------------------                                                                            >> %REPORT_LOGFILE% 2>&1
+			echo SSU - CRASH FILE debug.log found in '%ProgramFiles%\Siemens\SSU\bin\'                                                              >> %REPORT_LOGFILE% 2>&1
+			rem Type "%ProgramFiles%\Siemens\SSU\bin\debug.log"                                                                                     >> %REPORT_LOGFILE% 2>&1
+			echo LOG FILE: debug.log [last %LOG_FILE_LINES% lines]                                                                                  >> %REPORT_LOGFILE% 2>&1
+			powershell -command "& {Get-Content '%ProgramFiles%\Siemens\SSU\bin\debug.log' | Select-Object -last %LOG_FILE_LINES%}"                 >> %REPORT_LOGFILE% 2>&1
 
-	IF EXIST "%ALLUSERSPROFILE%\FLEXnet\Connect\Database\update.ini" (
-		Type "%APPDATA%\FLEXnet\Connect\Database\update.ini" | findstr "UserID="                                             >> %REPORT_LOGFILE% 2>&1
-		FOR %%i IN ("%ALLUSERSPROFILE%\FLEXnet\Connect\Database\*.ini") DO (
-			echo -------------------------------------------------------                                                     >> %REPORT_LOGFILE% 2>&1
-			echo %%i:                                                                                                        >> %REPORT_LOGFILE% 2>&1
-			Type %%i                                                                                                         >> %REPORT_LOGFILE% 2>&1
+			copy "%ProgramFiles%\Siemens\SSU\bin\debug.log" %CHECKLMS_SSU_PATH%\ssu_debug.log                                                       >> %REPORT_LOGFILE% 2>&1
+			echo --- File automatically copied from %ProgramFiles%\Siemens\SSU\bin\debug.log to %CHECKLMS_SSU_PATH%\ssu_debug.log ---               >> %CHECKLMS_SSU_PATH%\ssu_debug.log 2>&1
+			powershell -Command "get-childitem '%ProgramFiles%\Siemens\SSU\bin\debug.log' | select Name,CreationTime,LastAccessTime,LastWriteTime"  >> %REPORT_LOGFILE% 2>&1
+
+			if defined SHOW_COLORED_OUTPUT (
+				echo [1;31m    ATTENTION: SSU - CRASH FILE debug.log found! [1;37m
+			) else (
+				echo     ATTENTION: SSU - CRASH FILE debug.log found!
+			)
+			echo ATTENTION: SSU - CRASH FILE debug.log found!                                                                    >> %REPORT_LOGFILE% 2>&1
+		)
+		IF EXIST "%ProgramFiles%\Siemens\SSU\bin\SSUManager.exe" (
+			echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
+			echo SSU - Start SSU Manager ....                                                                                    >> %REPORT_LOGFILE% 2>&1
+			start "Start SSU Manager" "%ProgramFiles%\Siemens\SSU\bin\SSUManager.exe"
+		)
+		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+		set LMS_SSU_CONSISTENCY_CHECK=0
+		IF NOT EXIST "%ProgramFiles%\Siemens\SSU\bin\icudtl.dat" (
+			echo SSU - File "icudtl.dat" is missing in %ProgramFiles%\Siemens\SSU\bin\                                           >> %REPORT_LOGFILE% 2>&1
+			set /A LMS_SSU_CONSISTENCY_CHECK += 1
+		)
+		IF NOT EXIST "%ProgramFiles%\Siemens\SSU\bin\v8_context_snapshot.bin" (
+			echo SSU - File "v8_context_snapshot.bin" is missing in %ProgramFiles%\Siemens\SSU\bin\                              >> %REPORT_LOGFILE% 2>&1
+			set /A LMS_SSU_CONSISTENCY_CHECK += 1
+		)
+		if /I !LMS_SSU_CONSISTENCY_CHECK! NEQ 0 (
+			echo SSU - Installation is NOT consistent, !LMS_SSU_CONSISTENCY_CHECK! file[s] missing!                              >> %REPORT_LOGFILE% 2>&1
+			if defined SHOW_COLORED_OUTPUT (
+				echo [1;31m    ATTENTION: SSU - Installation is NOT consistent, !LMS_SSU_CONSISTENCY_CHECK! file[s] missing! [1;37m
+			) else (
+				echo     ATTENTION: SSU - Installation is NOT consistent, !LMS_SSU_CONSISTENCY_CHECK! file[s] missing!
+			)
+			echo ATTENTION: SSU - Installation is NOT consistent, !LMS_SSU_CONSISTENCY_CHECK! file[s] missing!                   >> %REPORT_LOGFILE% 2>&1
+		) else (
+			echo SSU - Installation is consistent, NO file missing in %ProgramFiles%\Siemens\SSU\bin\                            >> %REPORT_LOGFILE% 2>&1
+		)
+	)
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo **** FNC Windows Client [FNC] ****                                                                                      >> %REPORT_LOGFILE% 2>&1
+	echo ... read products registered for updates [via FNC] ...
+	echo Products Registered for Updates [via FNC]                                                                               >> %REPORT_LOGFILE% 2>&1
+	IF EXIST "%ALLUSERSPROFILE%\FLEXnet\Connect\Database\" (
+		echo Content of folder: %ALLUSERSPROFILE%\FLEXnet\Connect\Database                                                       >> %REPORT_LOGFILE% 2>&1
+		dir /S /A /X /4 /W "%ALLUSERSPROFILE%\FLEXnet\Connect\Database"                                                          >> %REPORT_LOGFILE% 2>&1
+
+		IF EXIST "%ALLUSERSPROFILE%\FLEXnet\Connect\Database\update.ini" (
+			Type "%APPDATA%\FLEXnet\Connect\Database\update.ini" | findstr "UserID="                                             >> %REPORT_LOGFILE% 2>&1
+			FOR %%i IN ("%ALLUSERSPROFILE%\FLEXnet\Connect\Database\*.ini") DO (
+				echo -------------------------------------------------------                                                     >> %REPORT_LOGFILE% 2>&1
+				echo %%i:                                                                                                        >> %REPORT_LOGFILE% 2>&1
+				Type %%i                                                                                                         >> %REPORT_LOGFILE% 2>&1
+			)
+		) else (
+			echo     No User FNC Database found [%ALLUSERSPROFILE%\FLEXnet\Connect\Database\update.ini].                         >> %REPORT_LOGFILE% 2>&1
 		)
 	) else (
-		echo     No User FNC Database found [%ALLUSERSPROFILE%\FLEXnet\Connect\Database\update.ini].                         >> %REPORT_LOGFILE% 2>&1
+		echo     No User FNC Database found [%ALLUSERSPROFILE%\FLEXnet\Connect\Database\].                                       >> %REPORT_LOGFILE% 2>&1
 	)
-) else (
-	echo     No User FNC Database found [%ALLUSERSPROFILE%\FLEXnet\Connect\Database\].                                       >> %REPORT_LOGFILE% 2>&1
-)
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-IF EXIST "%APPDATA%\FLEXnet\Connect\Database\" (
-	echo Content of folder: %APPDATA%\FLEXnet\Connect\Database\                                                              >> %REPORT_LOGFILE% 2>&1
-	dir /S /A /X /4 /W "%APPDATA%\FLEXnet\Connect\Database\"                                                                 >> %REPORT_LOGFILE% 2>&1
-	FOR %%i IN ("%APPDATA%\FLEXnet\Connect\Database\*.ini") DO (
-		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
-		echo %%i:                                                                                                            >> %REPORT_LOGFILE% 2>&1
-		Type %%i                                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	IF EXIST "%APPDATA%\FLEXnet\Connect\Database\" (
+		echo Content of folder: %APPDATA%\FLEXnet\Connect\Database\                                                              >> %REPORT_LOGFILE% 2>&1
+		dir /S /A /X /4 /W "%APPDATA%\FLEXnet\Connect\Database\"                                                                 >> %REPORT_LOGFILE% 2>&1
+		FOR %%i IN ("%APPDATA%\FLEXnet\Connect\Database\*.ini") DO (
+			echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
+			echo %%i:                                                                                                            >> %REPORT_LOGFILE% 2>&1
+			Type %%i                                                                                                             >> %REPORT_LOGFILE% 2>&1
+		)
+	) else (
+		echo     No Application FNC Database found [%APPDATA%\FLEXnet\Connect\Database\].                                        >> %REPORT_LOGFILE% 2>&1
 	)
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo Check FNC Test Mode [for windows-based FNC agents]                                                                      >> %REPORT_LOGFILE% 2>&1
+	IF EXIST "c:\FCTest.ini" (
+		echo FNC Test file found, see c:\FCTest.ini                                                                              >> %REPORT_LOGFILE% 2>&1
+		Type "c:\FCTest.ini"                                                                                                     >> %REPORT_LOGFILE% 2>&1
+		echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     No FNC Test file [FCTest.ini] found.                                                                            >> %REPORT_LOGFILE% 2>&1
+	)
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 ) else (
-	echo     No Application FNC Database found [%APPDATA%\FLEXnet\Connect\Database\].                                        >> %REPORT_LOGFILE% 2>&1
+	if defined SHOW_COLORED_OUTPUT (
+		echo [1;33m    SKIPPED SSU section. The script didn't execute the SSU commands. [1;37m
+	) else (
+		echo     SKIPPED SSU section. The script didn't execute the SSU commands.
+	)
+	echo SKIPPED SSU section. The script didn't execute the SSU commands.                                                        >> %REPORT_LOGFILE% 2>&1
 )
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo Check FNC Test Mode [for windows-based FNC agents]                                                                      >> %REPORT_LOGFILE% 2>&1
-IF EXIST "c:\FCTest.ini" (
-	echo FNC Test file found, see c:\FCTest.ini                                                                              >> %REPORT_LOGFILE% 2>&1
-	Type "c:\FCTest.ini"                                                                                                     >> %REPORT_LOGFILE% 2>&1
-	echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
-) else (
-	echo     No FNC Test file [FCTest.ini] found.                                                                            >> %REPORT_LOGFILE% 2>&1
-)
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 :lms_log_files
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo =   L M S   L O G   F I L E S                                                =                                          >> %REPORT_LOGFILE% 2>&1
