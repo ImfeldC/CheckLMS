@@ -121,7 +121,7 @@ rem        - remove log entry "Run CheckLMS.bat 64-Bit" and "Run CheckLMS.bat 32
 rem     17-Mar-2021:
 rem        - add option /checkid (incl. LMS_SKIPDOWNLOAD, LMS_SKIPTSBACKUP, LMS_SKIPBTALMPLUGIN, LMS_SKIPSIGCHECK, LMS_SKIPWMIC, LMS_SKIPFIREWALL, LMS_SKIPSCHEDTASK, LMS_SKIPWER, LMS_SKIPFNP)
 rem        - content of "%WinDir%\System32\Drivers\Etc" is only copied, no longer addded to general logfile.
-rem        - add further: LMS_SKIPSSU, LMS_SKIPLMS
+rem        - add further: LMS_SKIPSSU, LMS_SKIPLMS, LMS_SKIPSETUP, LMS_SKIPWINEVENT
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -385,6 +385,8 @@ FOR %%A IN (%*) DO (
 			set LMS_SKIPSSU=1
 			set LMS_SKIPFNP=1
 			set LMS_SKIPLMS=1
+			set LMS_SKIPSETUP=1
+			set LMS_SKIPWINEVENT=1
 		)
 		if "!var!"=="setfirewall" (
 			set LMS_SET_FIREWALL=1
@@ -4963,142 +4965,152 @@ echo ===========================================================================
 set LMS_SETUP_LOGFILE_NAME=LMSSetup
 echo ... search LMS setup logfiles [!LMS_SETUP_LOGFILE_NAME!.log] [on c:\ only] ...
 echo Search LMS setup logfiles [!LMS_SETUP_LOGFILE_NAME!.log] [on c:\ only]:                                                 >> %REPORT_LOGFILE% 2>&1
-del !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt >nul 2>&1
-FOR /r C:\ %%X IN (*.log) DO if "%%~nxX"=="!LMS_SETUP_LOGFILE_NAME!.log" echo %%~dpnxX >> !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt
-IF EXIST "!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt" (
-	Type !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt                                                   >> %REPORT_LOGFILE% 2>&1
-	set LOG_FILE_COUNT=0
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1 
-	FOR /F "eol=@ delims=@" %%i IN (!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt) DO ( 
-		set /A LOG_FILE_COUNT += 1
-		echo %%i copy to !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                             >> %REPORT_LOGFILE% 2>&1   
-		copy /Y "%%i" !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                                >> %REPORT_LOGFILE% 2>&1
-		powershell -command "& {Get-Content '%%i' | Select-Object -last %LOG_FILE_LINES%}"                                   >> %REPORT_LOGFILE% 2>&1 
-		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1 
-	)
-) else (
-    echo     No LMS setup logfile [!LMS_SETUP_LOGFILE_NAME!.log] found.                                                      >> %REPORT_LOGFILE% 2>&1
-)
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-set LMS_SETUP_LOGFILE_NAME=LMSSetupIS
-echo ... search LMS setup logfiles [!LMS_SETUP_LOGFILE_NAME!.log] [on c:\ only] ...
-echo Search LMS setup logfiles [!LMS_SETUP_LOGFILE_NAME!.log] [on c:\ only]:                                               >> %REPORT_LOGFILE% 2>&1
-del !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt >nul 2>&1
-FOR /r C:\ %%X IN (*.log) DO if "%%~nxX"=="!LMS_SETUP_LOGFILE_NAME!.log" echo %%~dpnxX >> !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt
-IF EXIST "!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt" (
-	Type !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt                                                   >> %REPORT_LOGFILE% 2>&1
-	set LOG_FILE_COUNT=0
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1 
-	FOR /F "eol=@ delims=@" %%i IN (!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt) DO ( 
-		set /A LOG_FILE_COUNT += 1
-		echo %%i copy to !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                             >> %REPORT_LOGFILE% 2>&1   
-		copy /Y "%%i" !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                                >> %REPORT_LOGFILE% 2>&1
-		powershell -command "& {Get-Content '%%i' | Select-Object -last %LOG_FILE_LINES%}"                                   >> %REPORT_LOGFILE% 2>&1 
-		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1 
-	)
-) else (
-    echo     No LMS setup logfile [!LMS_SETUP_LOGFILE_NAME!.log] found.                                                      >> %REPORT_LOGFILE% 2>&1
-)
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-set LMS_SETUP_LOGFILE_NAME=LMSSetupMSI
-echo ... search LMS setup logfiles [!LMS_SETUP_LOGFILE_NAME!.log] [on c:\ only] ...
-echo Search LMS setup logfiles [!LMS_SETUP_LOGFILE_NAME!.log] [on c:\ only]:                                                 >> %REPORT_LOGFILE% 2>&1
-del !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt >nul 2>&1
-FOR /r C:\ %%X IN (*.log) DO if "%%~nxX"=="!LMS_SETUP_LOGFILE_NAME!.log" echo %%~dpnxX >> !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt
-IF EXIST "!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt" (
-	Type !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt                                                   >> %REPORT_LOGFILE% 2>&1
-	set LOG_FILE_COUNT=0
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1 
-	FOR /F "eol=@ delims=@" %%i IN (!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt) DO ( 
-		set /A LOG_FILE_COUNT += 1
-		echo %%i copy to !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                             >> %REPORT_LOGFILE% 2>&1   
-		copy /Y "%%i" !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                                >> %REPORT_LOGFILE% 2>&1
-		powershell -command "& {Get-Content '%%i' | Select-Object -last %LOG_FILE_LINES%}"                                   >> %REPORT_LOGFILE% 2>&1 
-		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1 
-	)
-) else (
-    echo     No LMS setup logfile [!LMS_SETUP_LOGFILE_NAME!.log] found.                                                      >> %REPORT_LOGFILE% 2>&1
-)
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-rem NOTE: the ccmcache (incl. ManagedPC folder) has an overall size of xx GB. If this size is full, oldest downloaded packages will be erased automatically
-echo ... search LMS setup logfiles [*LicenseManagementSystem*.log]  [on C:\Windows\Logs\ManagedPC\Applications] ...
-echo Search LMS setup logfiles [*LicenseManagementSystem*.log] [on C:\Windows\Logs\ManagedPC\Applications]:                  >> %REPORT_LOGFILE% 2>&1
-del %CHECKLMS_SETUP_LOG_PATH%\LicenseManagementSystemSetupLogFilesFound.txt >nul 2>&1
-FOR /r C:\Windows\Logs\ManagedPC\Applications\ %%X IN (*LicenseManagementSystem*.log) DO echo %%~dpnxX >> %CHECKLMS_SETUP_LOG_PATH%\LicenseManagementSystemSetupLogFilesFound.txt
-IF EXIST "%CHECKLMS_SETUP_LOG_PATH%\LicenseManagementSystemSetupLogFilesFound.txt" (
-	Type %CHECKLMS_SETUP_LOG_PATH%\LicenseManagementSystemSetupLogFilesFound.txt                                             >> %REPORT_LOGFILE% 2>&1
-	FOR /r C:\Windows\Logs\ManagedPC\Applications\ %%X IN (*LicenseManagementSystem*.log) DO (
-	  set myline=%%~dpX
-	  for /f "delims=" %%y in ("!myline:\=.!") do set folder=%%~xy
-	  echo %%~dpX* copy to %CHECKLMS_SETUP_LOG_PATH%\ManagedPC\!folder:~1!\ ...                                              >> %REPORT_LOGFILE% 2>&1
-	  xcopy %%~dpX*  %CHECKLMS_SETUP_LOG_PATH%\ManagedPC\!folder:~1!\ /E /Y /H /I                                            >> %REPORT_LOGFILE% 2>&1
-	)
-) else (
-    echo     No LMS setup logfile [*LicenseManagementSystem*.log] found.                                                     >> %REPORT_LOGFILE% 2>&1
-)
-echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo ... search further setup logfiles ...
-echo Search further setup logfiles:                                                                                          >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-IF EXIST "%temp%\setup_LMS_IS_x64.log" (
-    echo %temp%\setup_LMS_IS_x64.log found.                                                                                  >> %REPORT_LOGFILE% 2>&1
-    copy %temp%\setup_LMS_IS_x64.log %CHECKLMS_SETUP_LOG_PATH%\                                                              >> %REPORT_LOGFILE% 2>&1
-    echo --- File automatically copied from %temp%\setup_LMS_IS_x64.log to %CHECKLMS_SETUP_LOG_PATH%\ ---  >> %CHECKLMS_SETUP_LOG_PATH%\setup_LMS_IS_x64.log 2>&1
-) else (
-    echo     %temp%\setup_LMS_IS_x64.log not found.                                                                          >> %REPORT_LOGFILE% 2>&1
-)
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-IF EXIST "%temp%\setup_LMS_x64.log" (
-    echo %temp%\setup_LMS_x64.log found.                                                                                     >> %REPORT_LOGFILE% 2>&1
-    copy %temp%\setup_LMS_x64.log %CHECKLMS_SETUP_LOG_PATH%\                                                                 >> %REPORT_LOGFILE% 2>&1
-    echo --- File automatically copied from %temp%\setup_LMS_x64.log to %CHECKLMS_SETUP_LOG_PATH%\ ---  >> %CHECKLMS_SETUP_LOG_PATH%\setup_LMS_x64.log 2>&1
-) else (
-    echo     %temp%\setup_LMS_x64.log not found.                                                                             >> %REPORT_LOGFILE% 2>&1
-)
-echo -------------------------------------------------------                                                                                                                        >> %REPORT_LOGFILE% 2>&1
-IF EXIST "%ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\" (
-	IF EXIST "%ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log" (
-		echo %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log found.                                                                   >> %REPORT_LOGFILE% 2>&1
-		copy %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log %CHECKLMS_SETUP_LOG_PATH%\                                               >> %REPORT_LOGFILE% 2>&1
-		echo --- File automatically copied from %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log to %CHECKLMS_SETUP_LOG_PATH%\ ---  >> %CHECKLMS_SETUP_LOG_PATH%\LMSSetupIS.log 2>&1
+if not defined LMS_SKIPSETUP (
+	del !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt >nul 2>&1
+	FOR /r C:\ %%X IN (*.log) DO if "%%~nxX"=="!LMS_SETUP_LOGFILE_NAME!.log" echo %%~dpnxX >> !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt
+	IF EXIST "!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt" (
+		Type !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt                                                   >> %REPORT_LOGFILE% 2>&1
+		set LOG_FILE_COUNT=0
+		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1 
+		FOR /F "eol=@ delims=@" %%i IN (!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt) DO ( 
+			set /A LOG_FILE_COUNT += 1
+			echo %%i copy to !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                             >> %REPORT_LOGFILE% 2>&1   
+			copy /Y "%%i" !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                                >> %REPORT_LOGFILE% 2>&1
+			powershell -command "& {Get-Content '%%i' | Select-Object -last %LOG_FILE_LINES%}"                                   >> %REPORT_LOGFILE% 2>&1 
+			echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1 
+		)
 	) else (
-		echo     %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log not found.                                                           >> %REPORT_LOGFILE% 2>&1
+		echo     No LMS setup logfile [!LMS_SETUP_LOGFILE_NAME!.log] found.                                                      >> %REPORT_LOGFILE% 2>&1
 	)
-	echo -------------------------------------------------------                                                                                                                    >> %REPORT_LOGFILE% 2>&1
-	IF EXIST "%ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log" (
-		echo %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log found.                                                                  >> %REPORT_LOGFILE% 2>&1
-		copy %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log %CHECKLMS_SETUP_LOG_PATH%\                                              >> %REPORT_LOGFILE% 2>&1
-		echo --- File automatically copied from %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log to %CHECKLMS_SETUP_LOG_PATH%\ ---  >> %CHECKLMS_SETUP_LOG_PATH%\LMSSetupMSI.log 2>&1
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	set LMS_SETUP_LOGFILE_NAME=LMSSetupIS
+	echo ... search LMS setup logfiles [!LMS_SETUP_LOGFILE_NAME!.log] [on c:\ only] ...
+	echo Search LMS setup logfiles [!LMS_SETUP_LOGFILE_NAME!.log] [on c:\ only]:                                               >> %REPORT_LOGFILE% 2>&1
+	del !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt >nul 2>&1
+	FOR /r C:\ %%X IN (*.log) DO if "%%~nxX"=="!LMS_SETUP_LOGFILE_NAME!.log" echo %%~dpnxX >> !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt
+	IF EXIST "!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt" (
+		Type !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt                                                   >> %REPORT_LOGFILE% 2>&1
+		set LOG_FILE_COUNT=0
+		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1 
+		FOR /F "eol=@ delims=@" %%i IN (!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt) DO ( 
+			set /A LOG_FILE_COUNT += 1
+			echo %%i copy to !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                             >> %REPORT_LOGFILE% 2>&1   
+			copy /Y "%%i" !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                                >> %REPORT_LOGFILE% 2>&1
+			powershell -command "& {Get-Content '%%i' | Select-Object -last %LOG_FILE_LINES%}"                                   >> %REPORT_LOGFILE% 2>&1 
+			echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1 
+		)
 	) else (
-		echo      %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log not found.                                                         >> %REPORT_LOGFILE% 2>&1
+		echo     No LMS setup logfile [!LMS_SETUP_LOGFILE_NAME!.log] found.                                                      >> %REPORT_LOGFILE% 2>&1
+	)
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	set LMS_SETUP_LOGFILE_NAME=LMSSetupMSI
+	echo ... search LMS setup logfiles [!LMS_SETUP_LOGFILE_NAME!.log] [on c:\ only] ...
+	echo Search LMS setup logfiles [!LMS_SETUP_LOGFILE_NAME!.log] [on c:\ only]:                                                 >> %REPORT_LOGFILE% 2>&1
+	del !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt >nul 2>&1
+	FOR /r C:\ %%X IN (*.log) DO if "%%~nxX"=="!LMS_SETUP_LOGFILE_NAME!.log" echo %%~dpnxX >> !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt
+	IF EXIST "!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt" (
+		Type !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt                                                   >> %REPORT_LOGFILE% 2>&1
+		set LOG_FILE_COUNT=0
+		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1 
+		FOR /F "eol=@ delims=@" %%i IN (!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt) DO ( 
+			set /A LOG_FILE_COUNT += 1
+			echo %%i copy to !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                             >> %REPORT_LOGFILE% 2>&1   
+			copy /Y "%%i" !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                                >> %REPORT_LOGFILE% 2>&1
+			powershell -command "& {Get-Content '%%i' | Select-Object -last %LOG_FILE_LINES%}"                                   >> %REPORT_LOGFILE% 2>&1 
+			echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1 
+		)
+	) else (
+		echo     No LMS setup logfile [!LMS_SETUP_LOGFILE_NAME!.log] found.                                                      >> %REPORT_LOGFILE% 2>&1
+	)
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	rem NOTE: the ccmcache (incl. ManagedPC folder) has an overall size of xx GB. If this size is full, oldest downloaded packages will be erased automatically
+	echo ... search LMS setup logfiles [*LicenseManagementSystem*.log]  [on C:\Windows\Logs\ManagedPC\Applications] ...
+	echo Search LMS setup logfiles [*LicenseManagementSystem*.log] [on C:\Windows\Logs\ManagedPC\Applications]:                  >> %REPORT_LOGFILE% 2>&1
+	del %CHECKLMS_SETUP_LOG_PATH%\LicenseManagementSystemSetupLogFilesFound.txt >nul 2>&1
+	FOR /r C:\Windows\Logs\ManagedPC\Applications\ %%X IN (*LicenseManagementSystem*.log) DO echo %%~dpnxX >> %CHECKLMS_SETUP_LOG_PATH%\LicenseManagementSystemSetupLogFilesFound.txt
+	IF EXIST "%CHECKLMS_SETUP_LOG_PATH%\LicenseManagementSystemSetupLogFilesFound.txt" (
+		Type %CHECKLMS_SETUP_LOG_PATH%\LicenseManagementSystemSetupLogFilesFound.txt                                             >> %REPORT_LOGFILE% 2>&1
+		FOR /r C:\Windows\Logs\ManagedPC\Applications\ %%X IN (*LicenseManagementSystem*.log) DO (
+		  set myline=%%~dpX
+		  for /f "delims=" %%y in ("!myline:\=.!") do set folder=%%~xy
+		  echo %%~dpX* copy to %CHECKLMS_SETUP_LOG_PATH%\ManagedPC\!folder:~1!\ ...                                              >> %REPORT_LOGFILE% 2>&1
+		  xcopy %%~dpX*  %CHECKLMS_SETUP_LOG_PATH%\ManagedPC\!folder:~1!\ /E /Y /H /I                                            >> %REPORT_LOGFILE% 2>&1
+		)
+	) else (
+		echo     No LMS setup logfile [*LicenseManagementSystem*.log] found.                                                     >> %REPORT_LOGFILE% 2>&1
+	)
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo ... search further setup logfiles ...
+	echo Search further setup logfiles:                                                                                          >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	IF EXIST "%temp%\setup_LMS_IS_x64.log" (
+		echo %temp%\setup_LMS_IS_x64.log found.                                                                                  >> %REPORT_LOGFILE% 2>&1
+		copy %temp%\setup_LMS_IS_x64.log %CHECKLMS_SETUP_LOG_PATH%\                                                              >> %REPORT_LOGFILE% 2>&1
+		echo --- File automatically copied from %temp%\setup_LMS_IS_x64.log to %CHECKLMS_SETUP_LOG_PATH%\ ---  >> %CHECKLMS_SETUP_LOG_PATH%\setup_LMS_IS_x64.log 2>&1
+	) else (
+		echo     %temp%\setup_LMS_IS_x64.log not found.                                                                          >> %REPORT_LOGFILE% 2>&1
+	)
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	IF EXIST "%temp%\setup_LMS_x64.log" (
+		echo %temp%\setup_LMS_x64.log found.                                                                                     >> %REPORT_LOGFILE% 2>&1
+		copy %temp%\setup_LMS_x64.log %CHECKLMS_SETUP_LOG_PATH%\                                                                 >> %REPORT_LOGFILE% 2>&1
+		echo --- File automatically copied from %temp%\setup_LMS_x64.log to %CHECKLMS_SETUP_LOG_PATH%\ ---  >> %CHECKLMS_SETUP_LOG_PATH%\setup_LMS_x64.log 2>&1
+	) else (
+		echo     %temp%\setup_LMS_x64.log not found.                                                                             >> %REPORT_LOGFILE% 2>&1
+	)
+	echo -------------------------------------------------------                                                                                                                        >> %REPORT_LOGFILE% 2>&1
+	IF EXIST "%ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\" (
+		IF EXIST "%ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log" (
+			echo %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log found.                                                                   >> %REPORT_LOGFILE% 2>&1
+			copy %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log %CHECKLMS_SETUP_LOG_PATH%\                                               >> %REPORT_LOGFILE% 2>&1
+			echo --- File automatically copied from %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log to %CHECKLMS_SETUP_LOG_PATH%\ ---  >> %CHECKLMS_SETUP_LOG_PATH%\LMSSetupIS.log 2>&1
+		) else (
+			echo     %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log not found.                                                           >> %REPORT_LOGFILE% 2>&1
+		)
+		echo -------------------------------------------------------                                                                                                                    >> %REPORT_LOGFILE% 2>&1
+		IF EXIST "%ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log" (
+			echo %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log found.                                                                  >> %REPORT_LOGFILE% 2>&1
+			copy %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log %CHECKLMS_SETUP_LOG_PATH%\                                              >> %REPORT_LOGFILE% 2>&1
+			echo --- File automatically copied from %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log to %CHECKLMS_SETUP_LOG_PATH%\ ---  >> %CHECKLMS_SETUP_LOG_PATH%\LMSSetupMSI.log 2>&1
+		) else (
+			echo      %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log not found.                                                         >> %REPORT_LOGFILE% 2>&1
+		)
+	) else (
+		rem echo     No GMS installation! Folder %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\ not found.
+		echo No GMS installation! Folder %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\ not found.                                                     >> %REPORT_LOGFILE% 2>&1
+	)	
+	echo -------------------------------------------------------                                                                                                                        >> %REPORT_LOGFILE% 2>&1
+	IF EXIST "%ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log" (
+		echo %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log found.                                                                                                  >> %REPORT_LOGFILE% 2>&1
+		copy %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log %CHECKLMS_SETUP_LOG_PATH%\                                                                              >> %REPORT_LOGFILE% 2>&1
+		echo --- File automatically copied from %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log to %CHECKLMS_SETUP_LOG_PATH%\ ---   >> %CHECKLMS_SETUP_LOG_PATH%\LMSSetupIS.log 2>&1
+	) else (
+		echo     %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log not found.                                                                                          >> %REPORT_LOGFILE% 2>&1
+	)
+	echo -------------------------------------------------------                                                                                                                        >> %REPORT_LOGFILE% 2>&1
+	IF EXIST "%ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log" (
+		echo %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log found.                                                                                                 >> %REPORT_LOGFILE% 2>&1
+		copy %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log %CHECKLMS_SETUP_LOG_PATH%\                                                                             >> %REPORT_LOGFILE% 2>&1
+		echo --- File automatically copied from %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log to %CHECKLMS_SETUP_LOG_PATH%\ ---  >> %CHECKLMS_SETUP_LOG_PATH%\LMSSetupMSI.log 2>&1
+	) else (
+		echo     %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log not found.                                                                                         >> %REPORT_LOGFILE% 2>&1
+	)
+	echo -------------------------------------------------------                                                                                                                        >> %REPORT_LOGFILE% 2>&1
+	IF EXIST "%ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\Reports" (
+		echo Content of folder: "%ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\Reports"                                                                                           >> %REPORT_LOGFILE% 2>&1
+		dir /S /A /X /4 /W "%ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\Reports"                                                                                                >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\Reports not found.                                                                                                 >> %REPORT_LOGFILE% 2>&1
 	)
 ) else (
-	rem echo     No GMS installation! Folder %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\ not found.
-	echo No GMS installation! Folder %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\ not found.                                                     >> %REPORT_LOGFILE% 2>&1
-)	
-echo -------------------------------------------------------                                                                                                                        >> %REPORT_LOGFILE% 2>&1
-IF EXIST "%ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log" (
-    echo %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log found.                                                                                                  >> %REPORT_LOGFILE% 2>&1
-    copy %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log %CHECKLMS_SETUP_LOG_PATH%\                                                                              >> %REPORT_LOGFILE% 2>&1
-    echo --- File automatically copied from %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log to %CHECKLMS_SETUP_LOG_PATH%\ ---   >> %CHECKLMS_SETUP_LOG_PATH%\LMSSetupIS.log 2>&1
-) else (
-    echo     %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log not found.                                                                                          >> %REPORT_LOGFILE% 2>&1
-)
-echo -------------------------------------------------------                                                                                                                        >> %REPORT_LOGFILE% 2>&1
-IF EXIST "%ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log" (
-    echo %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log found.                                                                                                 >> %REPORT_LOGFILE% 2>&1
-    copy %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log %CHECKLMS_SETUP_LOG_PATH%\                                                                             >> %REPORT_LOGFILE% 2>&1
-    echo --- File automatically copied from %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log to %CHECKLMS_SETUP_LOG_PATH%\ ---  >> %CHECKLMS_SETUP_LOG_PATH%\LMSSetupMSI.log 2>&1
-) else (
-    echo     %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log not found.                                                                                         >> %REPORT_LOGFILE% 2>&1
-)
-echo -------------------------------------------------------                                                                                                                        >> %REPORT_LOGFILE% 2>&1
-IF EXIST "%ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\Reports" (
-	echo Content of folder: "%ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\Reports"                                                                                           >> %REPORT_LOGFILE% 2>&1
-    dir /S /A /X /4 /W "%ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\Reports"                                                                                                >> %REPORT_LOGFILE% 2>&1
-) else (
-    echo     %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\Reports not found.                                                                                                 >> %REPORT_LOGFILE% 2>&1
+	rem LMS_SKIPSETUP
+	if defined SHOW_COLORED_OUTPUT (
+		echo [1;33m    SKIPPED LMS Setup Files section. The script didn't execute the LMS Setup Files commands. [1;37m
+	) else (
+		echo     SKIPPED LMS Setup Files section. The script didn't execute the LMS Setup Files commands.
+	)
+	echo SKIPPED LMS Setup Files section. The script didn't execute the LMS Setup Files commands.                                                                                       >> %REPORT_LOGFILE% 2>&1
 )
 echo ==============================================================================                                                                                                 >> %REPORT_LOGFILE% 2>&1
 echo ... read LMS logfiles [last %LOG_FILE_LINES% lines] ...
@@ -5291,102 +5303,112 @@ echo ===========================================================================
 echo =   W I N D O W S   E V E N T   L O G                                        =                                                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo ==============================================================================                                                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo Start at !DATE! !TIME! ....                                                                                                                                                                                >> %REPORT_LOGFILE% 2>&1
-echo ... read-out windows event log (first %LOG_EVENTLOG_EVENTS% lines] ...
-echo     Windows Event Log: Application ('License Management Utility')
-echo Windows Event Log: Application ('License Management Utility')                                                                                                                                              >> %REPORT_LOGFILE% 2>&1
-echo     see %CHECKLMS_REPORT_LOG_PATH%\eventlog_lms.txt                                                                                                                                                        >> %REPORT_LOGFILE% 2>&1
-WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='License Management Utility']]]" > %CHECKLMS_REPORT_LOG_PATH%\eventlog_lms.txt 2>&1
-powershell -command "& {Get-Content '%CHECKLMS_REPORT_LOG_PATH%\eventlog_lms.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                     >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
-echo     Windows Event Log: Application Errors
-echo Windows Event Log: Application Errors                                                                                                                                                                      >> %REPORT_LOGFILE% 2>&1
-echo     see %CHECKLMS_REPORT_LOG_PATH%\eventlog_app_errors.txt                                                                                                                                                 >> %REPORT_LOGFILE% 2>&1
-WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[(Level=1  or Level=2)]]" > %CHECKLMS_REPORT_LOG_PATH%\eventlog_app_errors.txt 2>&1
-powershell -command "& {Get-Content '%CHECKLMS_REPORT_LOG_PATH%\eventlog_app_errors.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                              >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
-echo     Windows Event Log: System Errors
-echo Windows Event Log: System Errors                                                                                                                                                                           >> %REPORT_LOGFILE% 2>&1
-echo     see %CHECKLMS_REPORT_LOG_PATH%\eventlog_sys_errors.txt                                                                                                                                                 >> %REPORT_LOGFILE% 2>&1
-WEVTUtil query-events System /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[(Level=1  or Level=2)]]" > %CHECKLMS_REPORT_LOG_PATH%\eventlog_sys_errors.txt 2>&1
-powershell -command "& {Get-Content '%CHECKLMS_REPORT_LOG_PATH%\eventlog_sys_errors.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                              >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
-echo     Windows Event Log: Application ('Siemens Software Updater')
-echo Windows Event Log: Application ('Siemens Software Updater')                                                                                                                                                >> %REPORT_LOGFILE% 2>&1
-echo     see %CHECKLMS_SSU_PATH%\eventlog_app_ssu.txt                                                                                                                                                           >> %REPORT_LOGFILE% 2>&1
-WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Siemens Software Updater']]]" > %CHECKLMS_SSU_PATH%\eventlog_app_ssu.txt 2>&1
-powershell -command "& {Get-Content '%CHECKLMS_SSU_PATH%\eventlog_app_ssu.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                        >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
-echo     Windows Event Log: Siemens ('SiemensSoftwareUpdater')
-echo Windows Event Log: Siemens ('SiemensSoftwareUpdater')                                                                                                                                                      >> %REPORT_LOGFILE% 2>&1
-echo     see %CHECKLMS_SSU_PATH%\eventlog_ssu.txt                                                                                                                                                               >> %REPORT_LOGFILE% 2>&1
-WEVTUtil query-events Siemens /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='SiemensSoftwareUpdater']]]" > %CHECKLMS_SSU_PATH%\eventlog_ssu.txt 2>&1
-powershell -command "& {Get-Content '%CHECKLMS_SSU_PATH%\eventlog_ssu.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                            >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
-echo     Windows Event Log: Microsoft-Windows-Bits-Client/Operational ('Microsoft-Windows-Bits-Client')
-echo Windows Event Log: Microsoft-Windows-Bits-Client/Operational ('Microsoft-Windows-Bits-Client')                                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo     see %CHECKLMS_SSU_PATH%\eventlog_bitsclient.txt                                                                                                                                                        >> %REPORT_LOGFILE% 2>&1
-WEVTUtil query-events Microsoft-Windows-Bits-Client/Operational /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Microsoft-Windows-Bits-Client']]]" > %CHECKLMS_SSU_PATH%\eventlog_bitsclient.txt 2>&1
-powershell -command "& {Get-Content '%CHECKLMS_SSU_PATH%\eventlog_bitsclient.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                     >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
-echo     Windows Event Log: Microsoft-Windows-NetworkProfile/Operational ('Microsoft-Windows-NetworkProfile')
-echo Windows Event Log: Microsoft-Windows-NetworkProfile/Operational ('Microsoft-Windows-NetworkProfile')                                                                                                       >> %REPORT_LOGFILE% 2>&1
-echo     see %CHECKLMS_SSU_PATH%\eventlog_networkprofile.txt                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
-WEVTUtil query-events Microsoft-Windows-NetworkProfile/Operational /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Microsoft-Windows-NetworkProfile']]]" > %CHECKLMS_SSU_PATH%\eventlog_networkprofile.txt 2>&1
-powershell -command "& {Get-Content '%CHECKLMS_SSU_PATH%\eventlog_networkprofile.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                 >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
-echo     Windows Event Log: Application ('Automation License Manager API')
-echo Windows Event Log: Application ('Automation License Manager API')                                                                                                                                          >> %REPORT_LOGFILE% 2>&1
-echo     see %CHECKLMS_ALM_PATH%\eventlog_app_alm_api.txt                                                                                                                                                       >> %REPORT_LOGFILE% 2>&1
-WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Automation License Manager API']]]" > %CHECKLMS_ALM_PATH%\eventlog_app_alm_api.txt 2>&1
-powershell -command "& {Get-Content '%CHECKLMS_ALM_PATH%\eventlog_app_alm_api.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                    >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
-echo     Windows Event Log: Application ('Automation License Manager Service')
-echo Windows Event Log: Application ('Automation License Manager Service')                                                                                                                                      >> %REPORT_LOGFILE% 2>&1
-echo     see %CHECKLMS_ALM_PATH%\eventlog_app_alm_service.txt                                                                                                                                                   >> %REPORT_LOGFILE% 2>&1
-WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Automation License Manager Service']]]" > %CHECKLMS_ALM_PATH%\eventlog_app_alm_service.txt 2>&1
-powershell -command "& {Get-Content '%CHECKLMS_ALM_PATH%\eventlog_app_alm_service.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
-echo     Windows Event Log: System ('Service Control Manager')
-echo Windows Event Log: System ('Service Control Manager')                                                                                                                                                      >> %REPORT_LOGFILE% 2>&1
-echo     see %CHECKLMS_REPORT_LOG_PATH%\eventlog_sys_scm.txt                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
-WEVTUtil query-events System /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Service Control Manager']]]" > %CHECKLMS_REPORT_LOG_PATH%\eventlog_sys_scm.txt 2>&1
-powershell -command "& {Get-Content '%CHECKLMS_REPORT_LOG_PATH%\eventlog_sys_scm.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                 >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
-echo     Windows Event Log: System ('hasplms')
-echo Windows Event Log: System ('hasplms')                                                                                                                                                                      >> %REPORT_LOGFILE% 2>&1
-echo     see %CHECKLMS_REPORT_LOG_PATH%\eventlog_sys_hasplms.txt                                                                                                                                                >> %REPORT_LOGFILE% 2>&1
-WEVTUtil query-events System /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='hasplms']]]" > %CHECKLMS_REPORT_LOG_PATH%\eventlog_sys_hasplms.txt 2>&1
-powershell -command "& {Get-Content '%CHECKLMS_REPORT_LOG_PATH%\eventlog_sys_hasplms.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                             >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
-echo     Windows Event Log: Application ('MsiInstaller')
-echo Windows Event Log: Application ('MsiInstaller')                                                                                                                                                            >> %REPORT_LOGFILE% 2>&1
-echo     see %CHECKLMS_REPORT_LOG_PATH%\eventlog_app_MsiInstaller.txt                                                                                                                                           >> %REPORT_LOGFILE% 2>&1
-WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='MsiInstaller']]]" > %CHECKLMS_REPORT_LOG_PATH%\eventlog_app_MsiInstaller.txt 2>&1
-powershell -command "& {Get-Content '%CHECKLMS_REPORT_LOG_PATH%\eventlog_app_MsiInstaller.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                        >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
-echo ... at !DATE! !TIME! ....                                                                                                                                                                                  >> %REPORT_LOGFILE% 2>&1
-echo ... read-out full windows event log (first %LOG_EVENTLOG_FULL_EVENTS% lines] ...
-echo     Windows Event Log: Application
-echo Windows Event Log: Application                                                                                                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo     see %CHECKLMS_REPORT_LOG_PATH%\eventlog_app_full.txt                                                                                                                                                   >> %REPORT_LOGFILE% 2>&1
-WEVTUtil query-events Application /count:%LOG_EVENTLOG_FULL_EVENTS% /rd:true /format:text > %CHECKLMS_REPORT_LOG_PATH%\eventlog_app_full.txt 2>&1
-echo     Windows Event Log: System
-echo Windows Event Log: System                                                                                                                                                                                  >> %REPORT_LOGFILE% 2>&1
-echo     see %CHECKLMS_REPORT_LOG_PATH%\eventlog_sys_full.txt                                                                                                                                                   >> %REPORT_LOGFILE% 2>&1
-WEVTUtil query-events System /count:%LOG_EVENTLOG_FULL_EVENTS% /rd:true /format:text > %CHECKLMS_REPORT_LOG_PATH%\eventlog_sys_full.txt 2>&1
-echo Start at !DATE! !TIME! ....                                                                                                                                                                                >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
-rem copied from UCMS-LogcollectorDWP.ini
-echo Several event viewer exports made [based on UCMS-LogcollectorDWP.ini] ...                                                                                                                                  >> %REPORT_LOGFILE% 2>&1
-wevtutil epl System         "%CHECKLMS_REPORT_LOG_PATH%\UCMS\%COMPUTERNAME%_System.evtx"      /ow:true /q:"*[System[TimeCreated[timediff(@SystemTime) <= 1296000000]]]"                                         >> %REPORT_LOGFILE% 2>&1
-wevtutil epl Application    "%CHECKLMS_REPORT_LOG_PATH%\UCMS\%COMPUTERNAME%_Application.evtx" /ow:true /q:"*[System[TimeCreated[timediff(@SystemTime) <= 1296000000]]]"                                         >> %REPORT_LOGFILE% 2>&1
-wevtutil epl Microsoft-Windows-NetworkProfile/Operational       "%CHECKLMS_REPORT_LOG_PATH%\UCMS\%COMPUTERNAME%_NetworkProfile.evtx" /ow:true                                                                   >> %REPORT_LOGFILE% 2>&1
-wevtutil epl Microsoft-Windows-NTLM/Operational                 "%CHECKLMS_REPORT_LOG_PATH%\UCMS\%COMPUTERNAME%_NTLM.evtx" /ow:true                                                                             >> %REPORT_LOGFILE% 2>&1
-wevtutil epl Microsoft-Windows-WindowsUpdateClient/Operational  "%CHECKLMS_REPORT_LOG_PATH%\UCMS\%COMPUTERNAME%_WindowsUpdateClient.evtx" /ow:true                                                              >> %REPORT_LOGFILE% 2>&1
-wevtutil epl Microsoft-Windows-Wired-AutoConfig/Operational     "%CHECKLMS_REPORT_LOG_PATH%\UCMS\%COMPUTERNAME%_Wired-AutoConfig.evtx" /ow:true                                                                 >> %REPORT_LOGFILE% 2>&1
-wevtutil epl Microsoft-Windows-WLAN-AutoConfig/Operational      "%CHECKLMS_REPORT_LOG_PATH%\UCMS\%COMPUTERNAME%_WLAN-AutoConfig.evtx" /ow:true                                                                  >> %REPORT_LOGFILE% 2>&1
-wevtutil epl "Microsoft-Windows-Folder Redirection/Operational" "%CHECKLMS_REPORT_LOG_PATH%\UCMS\%COMPUTERNAME%_FolderRedirection.evtx" /ow:true                                                                >> %REPORT_LOGFILE% 2>&1
-echo     see folder '%CHECKLMS_REPORT_LOG_PATH%\UCMS\' for more details.                                                                                                                                        >> %REPORT_LOGFILE% 2>&1
+echo ... read-out windows event log [first %LOG_EVENTLOG_EVENTS% lines] ...
+if not defined LMS_SKIPWINEVENT (
+	echo     Windows Event Log: Application ['License Management Utility']
+	echo Windows Event Log: Application ['License Management Utility']                                                                                                                                              >> %REPORT_LOGFILE% 2>&1
+	echo     see %CHECKLMS_REPORT_LOG_PATH%\eventlog_lms.txt                                                                                                                                                        >> %REPORT_LOGFILE% 2>&1
+	WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='License Management Utility']]]" > %CHECKLMS_REPORT_LOG_PATH%\eventlog_lms.txt 2>&1
+	powershell -command "& {Get-Content '%CHECKLMS_REPORT_LOG_PATH%\eventlog_lms.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                     >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
+	echo     Windows Event Log: Application Errors
+	echo Windows Event Log: Application Errors                                                                                                                                                                      >> %REPORT_LOGFILE% 2>&1
+	echo     see %CHECKLMS_REPORT_LOG_PATH%\eventlog_app_errors.txt                                                                                                                                                 >> %REPORT_LOGFILE% 2>&1
+	WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[(Level=1  or Level=2)]]" > %CHECKLMS_REPORT_LOG_PATH%\eventlog_app_errors.txt 2>&1
+	powershell -command "& {Get-Content '%CHECKLMS_REPORT_LOG_PATH%\eventlog_app_errors.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                              >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
+	echo     Windows Event Log: System Errors
+	echo Windows Event Log: System Errors                                                                                                                                                                           >> %REPORT_LOGFILE% 2>&1
+	echo     see %CHECKLMS_REPORT_LOG_PATH%\eventlog_sys_errors.txt                                                                                                                                                 >> %REPORT_LOGFILE% 2>&1
+	WEVTUtil query-events System /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[(Level=1  or Level=2)]]" > %CHECKLMS_REPORT_LOG_PATH%\eventlog_sys_errors.txt 2>&1
+	powershell -command "& {Get-Content '%CHECKLMS_REPORT_LOG_PATH%\eventlog_sys_errors.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                              >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
+	echo     Windows Event Log: Application ['Siemens Software Updater']
+	echo Windows Event Log: Application ['Siemens Software Updater']                                                                                                                                                >> %REPORT_LOGFILE% 2>&1
+	echo     see %CHECKLMS_SSU_PATH%\eventlog_app_ssu.txt                                                                                                                                                           >> %REPORT_LOGFILE% 2>&1
+	WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Siemens Software Updater']]]" > %CHECKLMS_SSU_PATH%\eventlog_app_ssu.txt 2>&1
+	powershell -command "& {Get-Content '%CHECKLMS_SSU_PATH%\eventlog_app_ssu.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                        >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
+	echo     Windows Event Log: Siemens ['SiemensSoftwareUpdater']
+	echo Windows Event Log: Siemens ['SiemensSoftwareUpdater']                                                                                                                                                      >> %REPORT_LOGFILE% 2>&1
+	echo     see %CHECKLMS_SSU_PATH%\eventlog_ssu.txt                                                                                                                                                               >> %REPORT_LOGFILE% 2>&1
+	WEVTUtil query-events Siemens /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='SiemensSoftwareUpdater']]]" > %CHECKLMS_SSU_PATH%\eventlog_ssu.txt 2>&1
+	powershell -command "& {Get-Content '%CHECKLMS_SSU_PATH%\eventlog_ssu.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                            >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
+	echo     Windows Event Log: Microsoft-Windows-Bits-Client/Operational ['Microsoft-Windows-Bits-Client']
+	echo Windows Event Log: Microsoft-Windows-Bits-Client/Operational ['Microsoft-Windows-Bits-Client']                                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo     see %CHECKLMS_SSU_PATH%\eventlog_bitsclient.txt                                                                                                                                                        >> %REPORT_LOGFILE% 2>&1
+	WEVTUtil query-events Microsoft-Windows-Bits-Client/Operational /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Microsoft-Windows-Bits-Client']]]" > %CHECKLMS_SSU_PATH%\eventlog_bitsclient.txt 2>&1
+	powershell -command "& {Get-Content '%CHECKLMS_SSU_PATH%\eventlog_bitsclient.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                     >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
+	echo     Windows Event Log: Microsoft-Windows-NetworkProfile/Operational ['Microsoft-Windows-NetworkProfile']
+	echo Windows Event Log: Microsoft-Windows-NetworkProfile/Operational ['Microsoft-Windows-NetworkProfile']                                                                                                       >> %REPORT_LOGFILE% 2>&1
+	echo     see %CHECKLMS_SSU_PATH%\eventlog_networkprofile.txt                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
+	WEVTUtil query-events Microsoft-Windows-NetworkProfile/Operational /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Microsoft-Windows-NetworkProfile']]]" > %CHECKLMS_SSU_PATH%\eventlog_networkprofile.txt 2>&1
+	powershell -command "& {Get-Content '%CHECKLMS_SSU_PATH%\eventlog_networkprofile.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
+	echo     Windows Event Log: Application ['Automation License Manager API']
+	echo Windows Event Log: Application ['Automation License Manager API']                                                                                                                                          >> %REPORT_LOGFILE% 2>&1
+	echo     see %CHECKLMS_ALM_PATH%\eventlog_app_alm_api.txt                                                                                                                                                       >> %REPORT_LOGFILE% 2>&1
+	WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Automation License Manager API']]]" > %CHECKLMS_ALM_PATH%\eventlog_app_alm_api.txt 2>&1
+	powershell -command "& {Get-Content '%CHECKLMS_ALM_PATH%\eventlog_app_alm_api.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                    >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
+	echo     Windows Event Log: Application ['Automation License Manager Service']
+	echo Windows Event Log: Application ['Automation License Manager Service']                                                                                                                                      >> %REPORT_LOGFILE% 2>&1
+	echo     see %CHECKLMS_ALM_PATH%\eventlog_app_alm_service.txt                                                                                                                                                   >> %REPORT_LOGFILE% 2>&1
+	WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Automation License Manager Service']]]" > %CHECKLMS_ALM_PATH%\eventlog_app_alm_service.txt 2>&1
+	powershell -command "& {Get-Content '%CHECKLMS_ALM_PATH%\eventlog_app_alm_service.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
+	echo     Windows Event Log: System ['Service Control Manager']
+	echo Windows Event Log: System ['Service Control Manager']                                                                                                                                                      >> %REPORT_LOGFILE% 2>&1
+	echo     see %CHECKLMS_REPORT_LOG_PATH%\eventlog_sys_scm.txt                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
+	WEVTUtil query-events System /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Service Control Manager']]]" > %CHECKLMS_REPORT_LOG_PATH%\eventlog_sys_scm.txt 2>&1
+	powershell -command "& {Get-Content '%CHECKLMS_REPORT_LOG_PATH%\eventlog_sys_scm.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
+	echo     Windows Event Log: System ['hasplms']
+	echo Windows Event Log: System ['hasplms']                                                                                                                                                                      >> %REPORT_LOGFILE% 2>&1
+	echo     see %CHECKLMS_REPORT_LOG_PATH%\eventlog_sys_hasplms.txt                                                                                                                                                >> %REPORT_LOGFILE% 2>&1
+	WEVTUtil query-events System /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='hasplms']]]" > %CHECKLMS_REPORT_LOG_PATH%\eventlog_sys_hasplms.txt 2>&1
+	powershell -command "& {Get-Content '%CHECKLMS_REPORT_LOG_PATH%\eventlog_sys_hasplms.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
+	echo     Windows Event Log: Application ['MsiInstaller']
+	echo Windows Event Log: Application ['MsiInstaller']                                                                                                                                                            >> %REPORT_LOGFILE% 2>&1
+	echo     see %CHECKLMS_REPORT_LOG_PATH%\eventlog_app_MsiInstaller.txt                                                                                                                                           >> %REPORT_LOGFILE% 2>&1
+	WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='MsiInstaller']]]" > %CHECKLMS_REPORT_LOG_PATH%\eventlog_app_MsiInstaller.txt 2>&1
+	powershell -command "& {Get-Content '%CHECKLMS_REPORT_LOG_PATH%\eventlog_app_MsiInstaller.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                        >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
+	echo ... at !DATE! !TIME! ....                                                                                                                                                                                  >> %REPORT_LOGFILE% 2>&1
+	echo ... read-out full windows event log [first %LOG_EVENTLOG_FULL_EVENTS% lines] ...
+	echo     Windows Event Log: Application
+	echo Windows Event Log: Application                                                                                                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo     see %CHECKLMS_REPORT_LOG_PATH%\eventlog_app_full.txt                                                                                                                                                   >> %REPORT_LOGFILE% 2>&1
+	WEVTUtil query-events Application /count:%LOG_EVENTLOG_FULL_EVENTS% /rd:true /format:text > %CHECKLMS_REPORT_LOG_PATH%\eventlog_app_full.txt 2>&1
+	echo     Windows Event Log: System
+	echo Windows Event Log: System                                                                                                                                                                                  >> %REPORT_LOGFILE% 2>&1
+	echo     see %CHECKLMS_REPORT_LOG_PATH%\eventlog_sys_full.txt                                                                                                                                                   >> %REPORT_LOGFILE% 2>&1
+	WEVTUtil query-events System /count:%LOG_EVENTLOG_FULL_EVENTS% /rd:true /format:text > %CHECKLMS_REPORT_LOG_PATH%\eventlog_sys_full.txt 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                                                                                                                >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
+	rem copied from UCMS-LogcollectorDWP.ini
+	echo Several event viewer exports made [based on UCMS-LogcollectorDWP.ini] ...                                                                                                                                  >> %REPORT_LOGFILE% 2>&1
+	wevtutil epl System         "%CHECKLMS_REPORT_LOG_PATH%\UCMS\%COMPUTERNAME%_System.evtx"      /ow:true /q:"*[System[TimeCreated[timediff(@SystemTime) <= 1296000000]]]"                                         >> %REPORT_LOGFILE% 2>&1
+	wevtutil epl Application    "%CHECKLMS_REPORT_LOG_PATH%\UCMS\%COMPUTERNAME%_Application.evtx" /ow:true /q:"*[System[TimeCreated[timediff(@SystemTime) <= 1296000000]]]"                                         >> %REPORT_LOGFILE% 2>&1
+	wevtutil epl Microsoft-Windows-NetworkProfile/Operational       "%CHECKLMS_REPORT_LOG_PATH%\UCMS\%COMPUTERNAME%_NetworkProfile.evtx" /ow:true                                                                   >> %REPORT_LOGFILE% 2>&1
+	wevtutil epl Microsoft-Windows-NTLM/Operational                 "%CHECKLMS_REPORT_LOG_PATH%\UCMS\%COMPUTERNAME%_NTLM.evtx" /ow:true                                                                             >> %REPORT_LOGFILE% 2>&1
+	wevtutil epl Microsoft-Windows-WindowsUpdateClient/Operational  "%CHECKLMS_REPORT_LOG_PATH%\UCMS\%COMPUTERNAME%_WindowsUpdateClient.evtx" /ow:true                                                              >> %REPORT_LOGFILE% 2>&1
+	wevtutil epl Microsoft-Windows-Wired-AutoConfig/Operational     "%CHECKLMS_REPORT_LOG_PATH%\UCMS\%COMPUTERNAME%_Wired-AutoConfig.evtx" /ow:true                                                                 >> %REPORT_LOGFILE% 2>&1
+	wevtutil epl Microsoft-Windows-WLAN-AutoConfig/Operational      "%CHECKLMS_REPORT_LOG_PATH%\UCMS\%COMPUTERNAME%_WLAN-AutoConfig.evtx" /ow:true                                                                  >> %REPORT_LOGFILE% 2>&1
+	wevtutil epl "Microsoft-Windows-Folder Redirection/Operational" "%CHECKLMS_REPORT_LOG_PATH%\UCMS\%COMPUTERNAME%_FolderRedirection.evtx" /ow:true                                                                >> %REPORT_LOGFILE% 2>&1
+	echo     see folder '%CHECKLMS_REPORT_LOG_PATH%\UCMS\' for more details.                                                                                                                                        >> %REPORT_LOGFILE% 2>&1
+) else (
+	rem LMS_SKIPWINEVENT
+	if defined SHOW_COLORED_OUTPUT (
+		echo [1;33m    SKIPPED Windows Events section. The script didn't execute the Windows Events commands. [1;37m
+	) else (
+		echo     SKIPPED Windows Events section. The script didn't execute the Windows Events commands.
+	)
+	echo SKIPPED Windows Events section. The script didn't execute the Windows Events commands.                                                                                                                     >> %REPORT_LOGFILE% 2>&1
+)
 echo ==============================================================================                                                       >> %REPORT_LOGFILE% 2>&1
 echo =   L M S   N O T I F I C A T I O N   R E P O R T                            =                                                       >> %REPORT_LOGFILE% 2>&1
 echo ==============================================================================                                                       >> %REPORT_LOGFILE% 2>&1
