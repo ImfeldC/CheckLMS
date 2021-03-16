@@ -113,6 +113,11 @@ rem        - add: wmic path win32_computersystemproduct get uuid [similar to 'wm
 rem        - add: powershell -c "Get-WmiObject -query 'select uuid from Win32_ComputerSystemProduct' | Select UUID" (see https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/identify_ec2_instances.html)
 rem        - add: powershell -c (gcim Win32_ComputerSystem).HypervisorPresent                                       (see https://devblogs.microsoft.com/scripting/use-powershell-to-detect-if-hypervisor-is-present/)
 rem        - added new section "V I R T U A L   E N V I R O N M E N T", to collect information about hypervisior, when running in a virtual machine.
+rem        - retrieve "Instance identity documents" for AWS (see https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/instance-identity-documents.html)
+rem     16-Mar-2021:
+rem        - add VMID.txt to track changes in virtual ids, like VMGENID, etc.
+rem        - reduce output in general logfile for unzip operations (keep them in own files, do not add them to general logfile)
+rem        - remove log entry "Run CheckLMS.bat 64-Bit" and "Run CheckLMS.bat 32-Bit"
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -135,8 +140,8 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 15-Mar-2021"
-set LMS_SCRIPT_BUILD=20210315
+set LMS_SCRIPT_VERSION="CheckLMS Script 16-Mar-2021"
+set LMS_SCRIPT_BUILD=20210316
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -776,9 +781,9 @@ IF "%~1"=="" (
 	echo =  Command Line Options: %*                                                                                         >> %REPORT_LOGFILE% 2>&1
 )
 if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
-	echo =  Script started with: Administrator priviledge                                                                    >> %REPORT_LOGFILE% 2>&1
+	echo =  Script started with : Administrator priviledge                                                                    >> %REPORT_LOGFILE% 2>&1
 ) else (
-	echo =  Script started with: normal priviledge                                                                           >> %REPORT_LOGFILE% 2>&1
+	echo =  Script started with : normal priviledge                                                                           >> %REPORT_LOGFILE% 2>&1
 )
 echo =  Hypervisor Present  : !LMS_IS_VM!                                                                                    >> %REPORT_LOGFILE% 2>&1
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
@@ -956,7 +961,7 @@ if "%ConnectionTestStatus%" == "Passed" (
 				IF EXIST "%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip" (
 					echo     Extract FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip
 					echo Extract FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip                                       >> %REPORT_LOGFILE% 2>&1
-					"!UNZIP_TOOL!" x -y -spe -o"%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%\" "%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip" >> %REPORT_LOGFILE% 2>&1
+					"!UNZIP_TOOL!" x -y -spe -o"%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%\" "%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip" > %CHECKLMS_REPORT_LOG_PATH%\unzip_fnp_library_zip.txt 2>&1
 				)
 			) else (
 				echo     Don't download FNP Siemens Library [ZIP], because they exist already.
@@ -977,7 +982,7 @@ if "%ConnectionTestStatus%" == "Passed" (
 				IF EXIST "%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe" (
 					echo     Extract FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe
 					echo Extract FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe                                       >> %REPORT_LOGFILE% 2>&1
-					%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe -y -o"%DOWNLOAD_LMS_PATH%\"                                             >> %REPORT_LOGFILE% 2>&1
+					%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe -y -o"%DOWNLOAD_LMS_PATH%\"                                             > %CHECKLMS_REPORT_LOG_PATH%\unzip_fnp_library_exe.txt 2>&1
 				)
 			) else (
 				echo     Don't download FNP Siemens Library [EXE], because they exist already.
@@ -1168,7 +1173,7 @@ if "%ConnectionTestStatus%" == "Passed" (
 				echo Unzip download archive '!file!' into '!LMS_PROGRAMDATA!' ...                                                     >> %REPORT_LOGFILE% 2>&1
 				if defined UNZIP_TOOL (
 					echo Unzip download archive [LMSDownloadArchive_*.zip] with unzip tool '!UNZIP_TOOL!'.                            >> %REPORT_LOGFILE% 2>&1
-					"!UNZIP_TOOL!" x -y -spe -o"!LMS_PROGRAMDATA!" "!file!"                                                           >> %REPORT_LOGFILE% 2>&1
+					"!UNZIP_TOOL!" x -y -spe -o"!LMS_PROGRAMDATA!" "!file!"                                                           > %CHECKLMS_REPORT_LOG_PATH%\unzip_download_archive.txt
 				) else (
 					echo Can't unzip download archive [LMSDownloadArchive_*.zip], because no unzip tool is available.                 >> %REPORT_LOGFILE% 2>&1
 				)
@@ -1187,21 +1192,21 @@ if defined LMS_SERVERTOOL_DW (
 		echo     Extract FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip
 		echo Extract FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip                                             >> %REPORT_LOGFILE% 2>&1
 		if defined UNZIP_TOOL (
-			"!UNZIP_TOOL!" x -y -spe -o"%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%\" "%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip"   >> %REPORT_LOGFILE% 2>&1
+			"!UNZIP_TOOL!" x -y -spe -o"%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%\" "%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip"   > %CHECKLMS_REPORT_LOG_PATH%\unzip_fnp_library_using_zip_tool.txt
 		) else (
 			echo Can't unzip FNP Siemens Library [%LMS_SERVERTOOL_DW%.zip], because no unzip tool is available.                   >> %REPORT_LOGFILE% 2>&1
 		)
-		powershell -Command "Expand-Archive -Path %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip -DestinationPath %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%\ -Verbose -Force"   >> %REPORT_LOGFILE% 2>&1
+		powershell -Command "Expand-Archive -Path %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip -DestinationPath %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%\ -Verbose -Force"   > %CHECKLMS_REPORT_LOG_PATH%\unzip_fnp_library_using_powershell.txt
 	)
 )
 rem Unzip AccessChk tool
 IF EXIST "%DOWNLOAD_LMS_PATH%\AccessChk.zip" (
 	if defined UNZIP_TOOL (
-		"!UNZIP_TOOL!" x -o!DOWNLOAD_LMS_PATH!\AccessChk -y %DOWNLOAD_LMS_PATH%\AccessChk.zip                                     >> %REPORT_LOGFILE% 2>&1
+		"!UNZIP_TOOL!" x -o!DOWNLOAD_LMS_PATH!\AccessChk -y %DOWNLOAD_LMS_PATH%\AccessChk.zip                                     > %CHECKLMS_REPORT_LOG_PATH%\unzip_accessChk.txt
 	) else (
 		echo Can't unzip AccessChk tool [AccessChk.zip], because no unzip tool is available.                                      >> %REPORT_LOGFILE% 2>&1
 	)
-	powershell -Command "Expand-Archive -Path %DOWNLOAD_LMS_PATH%\AccessChk.zip -DestinationPath !DOWNLOAD_LMS_PATH!\AccessChk -Verbose -Force"   >> %REPORT_LOGFILE% 2>&1
+	powershell -Command "Expand-Archive -Path %DOWNLOAD_LMS_PATH%\AccessChk.zip -DestinationPath !DOWNLOAD_LMS_PATH!\AccessChk -Verbose -Force"   > %CHECKLMS_REPORT_LOG_PATH%\unzip_accesschk_using_powershell.txt
 ) else (
 	echo     Don't unzip AccessChk tool [AccessChk.zip], because zip archive doesn't exists.
 	echo Don't unzip AccessChk tool [AccessChk.zip], because zip archive doesn't exists.                                          >> %REPORT_LOGFILE% 2>&1
@@ -1209,11 +1214,11 @@ IF EXIST "%DOWNLOAD_LMS_PATH%\AccessChk.zip" (
 rem Unzip SigCheck tool
 IF EXIST "%DOWNLOAD_LMS_PATH%\Sigcheck.zip" (
 	if defined UNZIP_TOOL (
-		"!UNZIP_TOOL!" x -o!DOWNLOAD_LMS_PATH!\SigCheck -y %DOWNLOAD_LMS_PATH%\Sigcheck.zip                                       >> %REPORT_LOGFILE% 2>&1
+		"!UNZIP_TOOL!" x -o!DOWNLOAD_LMS_PATH!\SigCheck -y %DOWNLOAD_LMS_PATH%\Sigcheck.zip                                       > %CHECKLMS_REPORT_LOG_PATH%\unzip_sigcheck.txt
 	) else (
 		echo Can't unzip SigCheck tool [Sigcheck.zip], because no unzip tool is available.                                        >> %REPORT_LOGFILE% 2>&1
 	)
-	powershell -Command "Expand-Archive -Path %DOWNLOAD_LMS_PATH%\Sigcheck.zip -DestinationPath !DOWNLOAD_LMS_PATH!\SigCheck -Verbose -Force"   >> %REPORT_LOGFILE% 2>&1
+	powershell -Command "Expand-Archive -Path %DOWNLOAD_LMS_PATH%\Sigcheck.zip -DestinationPath !DOWNLOAD_LMS_PATH!\SigCheck -Verbose -Force"   > %CHECKLMS_REPORT_LOG_PATH%\unzip_sigcheck_using_powershell.txt
 ) else (
 	echo     Don't unzip SigCheck tool [Sigcheck.zip], because zip archive doesn't exists.
 	echo Don't unzip SigCheck tool [Sigcheck.zip], because zip archive doesn't exists.                                            >> %REPORT_LOGFILE% 2>&1
@@ -1221,11 +1226,11 @@ IF EXIST "%DOWNLOAD_LMS_PATH%\Sigcheck.zip" (
 rem Unzip USBDeview tool
 IF EXIST "%DOWNLOAD_LMS_PATH%\usbdeview-x64.zip" (
 	if defined UNZIP_TOOL (
-		"!UNZIP_TOOL!" x -o!DOWNLOAD_LMS_PATH!\usbdeview -y %DOWNLOAD_LMS_PATH%\usbdeview-x64.zip                                 >> %REPORT_LOGFILE% 2>&1
+		"!UNZIP_TOOL!" x -o!DOWNLOAD_LMS_PATH!\usbdeview -y %DOWNLOAD_LMS_PATH%\usbdeview-x64.zip                                 > %CHECKLMS_REPORT_LOG_PATH%\unzip_usbdeview.txt
 	) else (
 		echo Can't unzip USBDeview tool [usbdeview-x64.zip], because no unzip tool is available.                                  >> %REPORT_LOGFILE% 2>&1
 	)
-	powershell -Command "Expand-Archive -Path %DOWNLOAD_LMS_PATH%\usbdeview-x64.zip -DestinationPath !DOWNLOAD_LMS_PATH!\usbdeview -Verbose -Force"   >> %REPORT_LOGFILE% 2>&1
+	powershell -Command "Expand-Archive -Path %DOWNLOAD_LMS_PATH%\usbdeview-x64.zip -DestinationPath !DOWNLOAD_LMS_PATH!\usbdeview -Verbose -Force"   > %CHECKLMS_REPORT_LOG_PATH%\unzip_usbdeview_using_powershell.txt
 ) else (
 	echo     Don't unzip USBDeview tool [usbdeview-x64.zip], because zip archive doesn't exists.
 	echo Don't unzip USBDeview tool [usbdeview-x64.zip], because zip archive doesn't exists.                                      >> %REPORT_LOGFILE% 2>&1
@@ -2071,7 +2076,7 @@ rem copied from UCMS-LogcollectorDWP.ini
 rem See also https://support.microsoft.com/en-us/kb/3036646
 echo ... retrieve Windows Update Log ...
 echo Retrieve Windows Update Log (using 'powershell -command "Get-WindowsUpdateLog"'):                                       >> %REPORT_LOGFILE% 2>&1
-powershell -command "Get-WindowsUpdateLog"     >> %CHECKLMS_REPORT_LOG_PATH%\Get-WindowsUpdateLog.log 2>&1
+powershell -command "Get-WindowsUpdateLog"     > %CHECKLMS_REPORT_LOG_PATH%\Get-WindowsUpdateLog.log 2>&1
 if exist "%desktop%\WindowsUpdate.log" (
 	rem echo ---------------- %desktop%\WindowsUpdate.log:                                                                                                       >> %REPORT_LOGFILE% 2>&1
 	rem type "%desktop%\WindowsUpdate.log"                                                                                                                       >> %REPORT_LOGFILE% 2>&1
@@ -4478,30 +4483,30 @@ if defined LMS_LMUTOOL (
 	echo     LmuTool is not available with LMS %LMS_VERSION%, cannot perform operation.                                      >> %REPORT_LOGFILE% 2>&1 
 )
 echo .                                                                                                                       >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-if /I %LMS_BUILD_VERSION% GEQ 681 (
-	echo Write Log Message: LmuTool /LOG:"Run CheckLMS.bat 64-Bit"                                                           >> %REPORT_LOGFILE% 2>&1
-	if exist "%ProgramFiles%\Siemens\LMS\bin\LmuTool.exe" (
-		"%ProgramFiles%\Siemens\LMS\bin\LmuTool.exe" /LOG:"Run CheckLMS.bat 64-Bit"                                          >> %REPORT_LOGFILE% 2>&1
-	) else (
-		echo     LmuTool [64-Bit] is not available with LMS %LMS_VERSION%, cannot perform operation.                         >> %REPORT_LOGFILE% 2>&1 
-	)
-) else (
-	echo Write Log Message: Not supported in this LMS version %LMS_VERSION% - LmuTool /LOG:"Run CheckLMS.bat 64-Bit"         >> %REPORT_LOGFILE% 2>&1
-)	
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-if /I %LMS_BUILD_VERSION% GEQ 681 (
-	echo Write Log Message: LmuTool /LOG:"Run CheckLMS.bat 32-Bit"                                                           >> %REPORT_LOGFILE% 2>&1
-	if exist "%ProgramFiles%\Siemens\LMS\bin\LmuTool.exe" (
-		"%ProgramFiles(x86)%\Siemens\LMS\bin\LmuTool.exe" /LOG:"Run CheckLMS.bat 32-Bit"                                     >> %REPORT_LOGFILE% 2>&1
-	) else (
-		echo     LmuTool [32-Bit] is not available with LMS %LMS_VERSION%, cannot perform operation.                         >> %REPORT_LOGFILE% 2>&1 
-	)
-) else (
-	echo Write Log Message: Not supported in this LMS version %LMS_VERSION% - LmuTool /LOG:"Run CheckLMS.bat 32-Bit"         >> %REPORT_LOGFILE% 2>&1
-)	
+rem echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+rem echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+rem if /I %LMS_BUILD_VERSION% GEQ 681 (
+rem 	echo Write Log Message: LmuTool /LOG:"Run CheckLMS.bat 64-Bit"                                                           >> %REPORT_LOGFILE% 2>&1
+rem 	if exist "%ProgramFiles%\Siemens\LMS\bin\LmuTool.exe" (
+rem 		"%ProgramFiles%\Siemens\LMS\bin\LmuTool.exe" /LOG:"Run CheckLMS.bat 64-Bit"                                          >> %REPORT_LOGFILE% 2>&1
+rem 	) else (
+rem 		echo     LmuTool [64-Bit] is not available with LMS %LMS_VERSION%, cannot perform operation.                         >> %REPORT_LOGFILE% 2>&1 
+rem 	)
+rem ) else (
+rem 	echo Write Log Message: Not supported in this LMS version %LMS_VERSION% - LmuTool /LOG:"Run CheckLMS.bat 64-Bit"         >> %REPORT_LOGFILE% 2>&1
+rem )	
+rem echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+rem echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+rem if /I %LMS_BUILD_VERSION% GEQ 681 (
+rem 	echo Write Log Message: LmuTool /LOG:"Run CheckLMS.bat 32-Bit"                                                           >> %REPORT_LOGFILE% 2>&1
+rem 	if exist "%ProgramFiles%\Siemens\LMS\bin\LmuTool.exe" (
+rem 		"%ProgramFiles(x86)%\Siemens\LMS\bin\LmuTool.exe" /LOG:"Run CheckLMS.bat 32-Bit"                                     >> %REPORT_LOGFILE% 2>&1
+rem 	) else (
+rem 		echo     LmuTool [32-Bit] is not available with LMS %LMS_VERSION%, cannot perform operation.                         >> %REPORT_LOGFILE% 2>&1 
+rem 	)
+rem ) else (
+rem 	echo Write Log Message: Not supported in this LMS version %LMS_VERSION% - LmuTool /LOG:"Run CheckLMS.bat 32-Bit"         >> %REPORT_LOGFILE% 2>&1
+rem )	
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo Configuration File: CSID CONFIG                                                                                         >> %REPORT_LOGFILE% 2>&1
@@ -5884,9 +5889,11 @@ if defined VM_DETECTED (
 		if "!VM_DETECTED!" == "YES" (
 			echo Virtual machine detected!                                                                               >> %REPORT_LOGFILE% 2>&1
 			echo     VM_FAMILY=%VM_FAMILY% / VM_NAME=%VM_NAME% / VM_UUID=%VM_UUID% / VM_GENID=%VM_GENID%                 >> %REPORT_LOGFILE% 2>&1
+			echo     VM_DETECTED=!VM_DETECTED! / VM_FAMILY=%VM_FAMILY% / VM_NAME=%VM_NAME% / VM_UUID=%VM_UUID% / VM_GENID=%VM_GENID%  at !DATE! / !TIME!  >> %REPORT_LOG_PATH%\VMID.txt 2>&1
 		) else (
 			echo Detection of physical or virtual machine failed. Not able to determine.                                 >> %REPORT_LOGFILE% 2>&1
 			echo     ATTENTION: VM detection failed. VM_DETECTED=!VM_DETECTED!                                           >> %REPORT_LOGFILE% 2>&1
+			echo     VM_DETECTED=!VM_DETECTED! / VM_FAMILY=%VM_FAMILY% / VM_NAME=%VM_NAME% / VM_UUID=%VM_UUID% / VM_GENID=%VM_GENID%  at !DATE! / !TIME!  >> %REPORT_LOG_PATH%\VMID.txt 2>&1
 		)
 		if "%VM_FAMILY%" == "UNKNOWNVM" (
 			echo     ATTENTION: Unknown VM family detected.                                                              >> %REPORT_LOGFILE% 2>&1
