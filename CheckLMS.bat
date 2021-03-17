@@ -123,7 +123,7 @@ rem        - add option /checkid (incl. LMS_SKIPDOWNLOAD, LMS_SKIPTSBACKUP, LMS_
 rem        - content of "%WinDir%\System32\Drivers\Etc" is only copied, no longer addded to general logfile.
 rem        - add further: LMS_SKIPSSU, LMS_SKIPLMS, LMS_SKIPSETUP, LMS_SKIPWINEVENT
 rem        - move VMGENID.exe and GetVMGenerationIdentifier.exe into new section for virtual environments
-rem        - add further: LMS_SKIPLICSERV
+rem        - add further: LMS_SKIPLICSERV, LMS_SKIPLOCLICSERV, LMS_SKIPREMLICSERV
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -390,6 +390,8 @@ FOR %%A IN (%*) DO (
 			set LMS_SKIPSETUP=1
 			set LMS_SKIPWINEVENT=1
 			set LMS_SKIPLICSERV=1
+			set LMS_SKIPLOCLICSERV=1
+			set LMS_SKIPREMLICSERV=1
 		)
 		if "!var!"=="setfirewall" (
 			set LMS_SET_FIREWALL=1
@@ -4322,286 +4324,306 @@ if not defined LMS_SKIPLICSERV (
 	) else (
 		echo     SKIPPED license server section. The script didn't execute the license server commands.
 	)
-	echo SKIPPED license server section. The script didn't execute the license server commands.                                                                                                                     >> %REPORT_LOGFILE% 2>&1
+	echo SKIPPED license server section. The script didn't execute the license server commands.                                  >> %REPORT_LOGFILE% 2>&1
 )
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo =   L O C A L   L I C E N S E   S E R V E R                                  =                                          >> %REPORT_LOGFILE% 2>&1
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo ... analyze local license server on %LMS_LIC_SERVER% ...
-if defined SHOW_COLORED_OUTPUT (
-	echo [1;33m    NOTE: In case default configuration has been changed, adapt setting %LMS_LIC_SERVER% for license server to be used. [1;37m
-) else (
-	echo     NOTE: In case default configuration has been changed, adapt setting %LMS_LIC_SERVER% for license server to be used.
-)
-echo servercomptranutil.exe -serverView %LMS_LIC_SERVER%                                                                     >> %REPORT_LOGFILE% 2>&1
-echo NOTE: In case default configuration has been changed, adapt setting %LMS_LIC_SERVER% for license server to be used.     >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-if defined LMS_SERVERCOMTRANUTIL (
-	"%LMS_SERVERCOMTRANUTIL%" -serverView %LMS_LIC_SERVER% > %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverView.txt 2>&1
-	Type "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverView.txt"                                                      >> %REPORT_LOGFILE% 2>&1
-) else (
-    echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
-)
-echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo servercomptranutil.exe -serverView %LMS_LIC_SERVER% format=full                                                         >> %REPORT_LOGFILE% 2>&1
-echo NOTE: In case default configuration has been changed, adapt setting %LMS_LIC_SERVER% for license server to be used.     >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-if defined LMS_SERVERCOMTRANUTIL (
-	"%LMS_SERVERCOMTRANUTIL%" -serverView %LMS_LIC_SERVER% format=full > %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull.txt 2>&1
-	Type "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull.txt"                                                  >> %REPORT_LOGFILE% 2>&1
-) else (
-    echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
-)
-echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo appactutil.exe -serverview -commServer %LMS_LIC_SERVER% -long                                                           >> %REPORT_LOGFILE% 2>&1
-echo NOTE: In case default configuration has been changed, adapt setting %LMS_LIC_SERVER% for license server to be used.     >> %REPORT_LOGFILE% 2>&1
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-if defined LMS_APPACTUTIL (
-    "%LMS_APPACTUTIL%" -serverview -commServer %LMS_LIC_SERVER% -long > %CHECKLMS_REPORT_LOG_PATH%\appactutil_serverViewLong.txt 2>&1
-	Type "%CHECKLMS_REPORT_LOG_PATH%\appactutil_serverViewLong.txt"                                                          >> %REPORT_LOGFILE% 2>&1
-) else (
-    echo     appactutil.exe doesn't exist, cannot perform operation.                                                         >> %REPORT_LOGFILE% 2>&1
-)
-echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-rem prepare answer file for RepairAll command, in case a user input is required
-del %CHECKLMS_REPORT_LOG_PATH%\yes.txt >nul 2>&1
-for /L %%n in (1,1,500) do echo y >> %CHECKLMS_REPORT_LOG_PATH%\yes.txt
-echo ... run repair command, using servercomptranutil, appactutil and serveractutil ...
-echo run repair command, using servercomptranutil, appactutil and serveractutil ...                                          >> %REPORT_LOGFILE% 2>&1
-echo     servercomptranutil.exe -n %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair_FID_xxx.xml fr=long -repair FID_xxx  >> %REPORT_LOGFILE% 2>&1
-echo     servercomptranutil.exe -n -t %LMS_FNO_SERVER% -repair FID_xxx                                                       >> %REPORT_LOGFILE% 2>&1
-echo     appactutil.exe -repair FID_xxx -gen %CHECKLMS_REPORT_LOG_PATH%\appactutil_repair_FID_xxx.xml                        >> %REPORT_LOGFILE% 2>&1
-echo     appactutil.exe -repair FID_xxx                                                                                      >> %REPORT_LOGFILE% 2>&1
-echo     serveractutil.exe -repair FID_xxx -gen %CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair_FID_xxx.xml                  >> %REPORT_LOGFILE% 2>&1
-echo     serveractutil.exe -repair FID_xxx                                                                                   >> %REPORT_LOGFILE% 2>&1
-set NeedRepair=Unknown
-IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverView.txt" (
-	set NeedRepair=No
-	del %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair.txt >nul 2>&1
-	del %CHECKLMS_REPORT_LOG_PATH%\appactutil_repair.txt >nul 2>&1
-	del %CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair.txt >nul 2>&1
-	for /f "tokens=1,6 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverView.txt') do if "%%A" EQU "U" (
-		if "%%B" NEQ "" (
-			set NeedRepair=Yes
+if not defined LMS_SKIPLOCLICSERV (
+	if defined SHOW_COLORED_OUTPUT (
+		echo [1;33m    NOTE: In case default configuration has been changed, adapt setting %LMS_LIC_SERVER% for license server to be used. [1;37m
+	) else (
+		echo     NOTE: In case default configuration has been changed, adapt setting %LMS_LIC_SERVER% for license server to be used.
+	)
+	echo servercomptranutil.exe -serverView %LMS_LIC_SERVER%                                                                     >> %REPORT_LOGFILE% 2>&1
+	echo NOTE: In case default configuration has been changed, adapt setting %LMS_LIC_SERVER% for license server to be used.     >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_SERVERCOMTRANUTIL (
+		"%LMS_SERVERCOMTRANUTIL%" -serverView %LMS_LIC_SERVER% > %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverView.txt 2>&1
+		Type "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverView.txt"                                                      >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
+	)
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo servercomptranutil.exe -serverView %LMS_LIC_SERVER% format=full                                                         >> %REPORT_LOGFILE% 2>&1
+	echo NOTE: In case default configuration has been changed, adapt setting %LMS_LIC_SERVER% for license server to be used.     >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_SERVERCOMTRANUTIL (
+		"%LMS_SERVERCOMTRANUTIL%" -serverView %LMS_LIC_SERVER% format=full > %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull.txt 2>&1
+		Type "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull.txt"                                                  >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
+	)
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo appactutil.exe -serverview -commServer %LMS_LIC_SERVER% -long                                                           >> %REPORT_LOGFILE% 2>&1
+	echo NOTE: In case default configuration has been changed, adapt setting %LMS_LIC_SERVER% for license server to be used.     >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_APPACTUTIL (
+		"%LMS_APPACTUTIL%" -serverview -commServer %LMS_LIC_SERVER% -long > %CHECKLMS_REPORT_LOG_PATH%\appactutil_serverViewLong.txt 2>&1
+		Type "%CHECKLMS_REPORT_LOG_PATH%\appactutil_serverViewLong.txt"                                                          >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     appactutil.exe doesn't exist, cannot perform operation.                                                         >> %REPORT_LOGFILE% 2>&1
+	)
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	rem prepare answer file for RepairAll command, in case a user input is required
+	del %CHECKLMS_REPORT_LOG_PATH%\yes.txt >nul 2>&1
+	for /L %%n in (1,1,500) do echo y >> %CHECKLMS_REPORT_LOG_PATH%\yes.txt
+	echo ... run repair command, using servercomptranutil, appactutil and serveractutil ...
+	echo run repair command, using servercomptranutil, appactutil and serveractutil ...                                          >> %REPORT_LOGFILE% 2>&1
+	echo     servercomptranutil.exe -n %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair_FID_xxx.xml fr=long -repair FID_xxx  >> %REPORT_LOGFILE% 2>&1
+	echo     servercomptranutil.exe -n -t %LMS_FNO_SERVER% -repair FID_xxx                                                       >> %REPORT_LOGFILE% 2>&1
+	echo     appactutil.exe -repair FID_xxx -gen %CHECKLMS_REPORT_LOG_PATH%\appactutil_repair_FID_xxx.xml                        >> %REPORT_LOGFILE% 2>&1
+	echo     appactutil.exe -repair FID_xxx                                                                                      >> %REPORT_LOGFILE% 2>&1
+	echo     serveractutil.exe -repair FID_xxx -gen %CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair_FID_xxx.xml                  >> %REPORT_LOGFILE% 2>&1
+	echo     serveractutil.exe -repair FID_xxx                                                                                   >> %REPORT_LOGFILE% 2>&1
+	set NeedRepair=Unknown
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverView.txt" (
+		set NeedRepair=No
+		del %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair.txt >nul 2>&1
+		del %CHECKLMS_REPORT_LOG_PATH%\appactutil_repair.txt >nul 2>&1
+		del %CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair.txt >nul 2>&1
+		for /f "tokens=1,6 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverView.txt') do if "%%A" EQU "U" (
+			if "%%B" NEQ "" (
+				set NeedRepair=Yes
+				if defined SHOW_COLORED_OUTPUT (
+					echo [1;31m    Try to repair %%B [1;37m
+				) else (
+					echo     Try to repair %%B
+				)
+				echo Try to repair %%B                                                                                          >> %REPORT_LOGFILE% 2>&1
+				
+				rem servercomptranutil.exe
+				if defined LMS_SERVERCOMTRANUTIL (
+					echo Start at !DATE! !TIME! ....                                                                                                      >> %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair.txt 2>&1
+					echo -------------------------------------------------------                                                                          >> %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair.txt 2>&1
+					echo servercomptranutil.exe -n %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair_%%B.xml fr=long -repair %%B                       >> %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair.txt 2>&1
+					"%LMS_SERVERCOMTRANUTIL%" -n %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair_%%B.xml fr=long ref=CheckLMS_TryToRepair_Off -repair %%B     >> %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair.txt 2>&1
+					echo -------------------------------------------------------                                                                          >> %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair.txt 2>&1
+					echo servercomptranutil.exe -n -t %LMS_FNO_SERVER% -repair %%B                                                                        >> %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair.txt 2>&1
+					"%LMS_SERVERCOMTRANUTIL%" -n ref=CheckLMS_TryToRepair1_FNO -t %LMS_FNO_SERVER% -repair %%B  < %CHECKLMS_REPORT_LOG_PATH%\yes.txt      >> %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair.txt 2>&1
+					echo .                                                                                                                                >> %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair.txt 2>&1
+					echo -------------------------------------------------------                                                                          >> %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair.txt 2>&1
+				) else (
+					echo     servercomptranutil.exe doesn't exist, cannot perform operation for %%B.                                                      >> %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair.txt 2>&1
+				)
+				
+				rem appactutil.exe
+				if defined LMS_APPACTUTIL (
+					echo Start at !DATE! !TIME! ....                                                                                                      >> %CHECKLMS_REPORT_LOG_PATH%\appactutil_repair.txt 2>&1
+					echo -------------------------------------------------------                                                                          >> %CHECKLMS_REPORT_LOG_PATH%\appactutil_repair.txt 2>&1
+					echo appactutil.exe -repair %%B -gen %CHECKLMS_REPORT_LOG_PATH%\appactutil_repair_%%B.xml                                             >> %CHECKLMS_REPORT_LOG_PATH%\appactutil_repair.txt 2>&1
+					"%LMS_APPACTUTIL%" -repair %%B -gen %CHECKLMS_REPORT_LOG_PATH%\appactutil_repair_%%B.xml                                              >> %CHECKLMS_REPORT_LOG_PATH%\appactutil_repair.txt 2>&1
+					echo -------------------------------------------------------                                                                          >> %CHECKLMS_REPORT_LOG_PATH%\appactutil_repair.txt 2>&1
+					echo appactutil.exe -repair %%B                                                                                                       >> %CHECKLMS_REPORT_LOG_PATH%\appactutil_repair.txt 2>&1
+					"%LMS_APPACTUTIL%" -repair %%B                                                                                                        >> %CHECKLMS_REPORT_LOG_PATH%\appactutil_repair.txt 2>&1
+					echo .                                                                                                                                >> %CHECKLMS_REPORT_LOG_PATH%\appactutil_repair.txt 2>&1
+					echo -------------------------------------------------------                                                                          >> %CHECKLMS_REPORT_LOG_PATH%\appactutil_repair.txt 2>&1
+				) else (
+					echo     appactutil.exe doesn't exist, cannot perform operation for %%B.                                                              >> %CHECKLMS_REPORT_LOG_PATH%\appactutil_repair.txt 2>&1
+				)
+				
+				rem serveractutil.exe
+				if defined LMS_SERVERACTUTIL (
+					echo Start at !DATE! !TIME! ....                                                                                                      >> %CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair.txt 2>&1
+					echo -------------------------------------------------------                                                                          >> %CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair.txt 2>&1
+					echo serveractutil.exe -repair %%B -gen %CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair_%%B.xml                                       >> %CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair.txt 2>&1
+					"%LMS_SERVERACTUTIL%" -repair %%B -gen %CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair_%%B.xml                                        >> %CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair.txt 2>&1
+					echo -------------------------------------------------------                                                                          >> %CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair.txt 2>&1
+					echo serveractutil.exe -repair %%B                                                                                                    >> %CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair.txt 2>&1
+					"%LMS_SERVERACTUTIL%" -repair %%B                                                                                                     >> %CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair.txt 2>&1
+					echo .                                                                                                                                >> %CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair.txt 2>&1
+					echo -------------------------------------------------------                                                                          >> %CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair.txt 2>&1
+				) else (
+					echo     serveractutil.exe doesn't exist, cannot perform operation for %%B.                                                           >> %CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair.txt 2>&1
+				)
+			)
+		)
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair.txt" Type "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair.txt"        >> %REPORT_LOGFILE% 2>&1
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\appactutil_repair.txt" Type "%CHECKLMS_REPORT_LOG_PATH%\appactutil_repair.txt"                        >> %REPORT_LOGFILE% 2>&1
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair.txt" Type "%CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair.txt"                  >> %REPORT_LOGFILE% 2>&1
+	)
+	echo Trusted Store needs Repair: %NeedRepair%                                                                                >> %REPORT_LOGFILE% 2>&1
+	if "%NeedRepair%" == "Yes" (
+		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+		echo servercomptranutil.exe -serverView %LMS_LIC_SERVER% format=full -- AFTER REPAIR                                     >> %REPORT_LOGFILE% 2>&1
+		if defined LMS_SERVERCOMTRANUTIL (
+			"%LMS_SERVERCOMTRANUTIL%" -serverView %LMS_LIC_SERVER% format=full > %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepair.txt 2>&1
+			Type "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepair.txt"                                  >> %REPORT_LOGFILE% 2>&1
+		) else (
+			echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                             >> %REPORT_LOGFILE% 2>&1
+		)
+		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1 
+		rem Analyze output regarding broken trusted store
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepair.txt" for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepair.txt ^|find /I "**BROKEN**"') do set "TS_BROKEN_AFTER_REPAIR=%%i"
+		if defined TS_BROKEN_AFTER_REPAIR (
+			set /a TS_TF_TIME = 0
+			set /a TS_TF_HOST = 0
+			set /a TS_TF_RESTORE = 0
+			for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepair.txt ^|find /I "**BROKEN**"') do if "%%i" == "Time" SET /A TS_TF_TIME += 1
+			for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepair.txt ^|find /I "**BROKEN**"') do if "%%i" == "Host" SET /A TS_TF_HOST += 1
+			for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepair.txt ^|find /I "**BROKEN**"') do if "%%i" == "Restore" SET /A TS_TF_RESTORE += 1
+			rem echo TS Broken ... TS_TF_TIME=!TS_TF_TIME! / TS_TF_HOST=!TS_TF_HOST! / TS_TF_RESTORE=!TS_TF_RESTORE!
 			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    Try to repair %%B [1;37m
+				echo [1;31m    ATTENTION: Trusted Store is BROKEN [AFTER REPAIR]. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE! [1;37m
 			) else (
-				echo     Try to repair %%B
+				echo     ATTENTION: Trusted Store is BROKEN [AFTER REPAIR]. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE!
 			)
-			echo Try to repair %%B                                                                                          >> %REPORT_LOGFILE% 2>&1
-			
-			rem servercomptranutil.exe
-			if defined LMS_SERVERCOMTRANUTIL (
-				echo Start at !DATE! !TIME! ....                                                                                                      >> %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair.txt 2>&1
-				echo -------------------------------------------------------                                                                          >> %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair.txt 2>&1
-				echo servercomptranutil.exe -n %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair_%%B.xml fr=long -repair %%B                       >> %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair.txt 2>&1
-				"%LMS_SERVERCOMTRANUTIL%" -n %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair_%%B.xml fr=long ref=CheckLMS_TryToRepair_Off -repair %%B     >> %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair.txt 2>&1
-				echo -------------------------------------------------------                                                                          >> %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair.txt 2>&1
-				echo servercomptranutil.exe -n -t %LMS_FNO_SERVER% -repair %%B                                                                        >> %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair.txt 2>&1
-				"%LMS_SERVERCOMTRANUTIL%" -n ref=CheckLMS_TryToRepair1_FNO -t %LMS_FNO_SERVER% -repair %%B  < %CHECKLMS_REPORT_LOG_PATH%\yes.txt      >> %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair.txt 2>&1
-				echo .                                                                                                                                >> %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair.txt 2>&1
-				echo -------------------------------------------------------                                                                          >> %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair.txt 2>&1
-			) else (
-				echo     servercomptranutil.exe doesn't exist, cannot perform operation for %%B.                                                      >> %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair.txt 2>&1
-			)
-			
-			rem appactutil.exe
-			if defined LMS_APPACTUTIL (
-				echo Start at !DATE! !TIME! ....                                                                                                      >> %CHECKLMS_REPORT_LOG_PATH%\appactutil_repair.txt 2>&1
-				echo -------------------------------------------------------                                                                          >> %CHECKLMS_REPORT_LOG_PATH%\appactutil_repair.txt 2>&1
-				echo appactutil.exe -repair %%B -gen %CHECKLMS_REPORT_LOG_PATH%\appactutil_repair_%%B.xml                                             >> %CHECKLMS_REPORT_LOG_PATH%\appactutil_repair.txt 2>&1
-				"%LMS_APPACTUTIL%" -repair %%B -gen %CHECKLMS_REPORT_LOG_PATH%\appactutil_repair_%%B.xml                                              >> %CHECKLMS_REPORT_LOG_PATH%\appactutil_repair.txt 2>&1
-				echo -------------------------------------------------------                                                                          >> %CHECKLMS_REPORT_LOG_PATH%\appactutil_repair.txt 2>&1
-				echo appactutil.exe -repair %%B                                                                                                       >> %CHECKLMS_REPORT_LOG_PATH%\appactutil_repair.txt 2>&1
-				"%LMS_APPACTUTIL%" -repair %%B                                                                                                        >> %CHECKLMS_REPORT_LOG_PATH%\appactutil_repair.txt 2>&1
-				echo .                                                                                                                                >> %CHECKLMS_REPORT_LOG_PATH%\appactutil_repair.txt 2>&1
-				echo -------------------------------------------------------                                                                          >> %CHECKLMS_REPORT_LOG_PATH%\appactutil_repair.txt 2>&1
-			) else (
-				echo     appactutil.exe doesn't exist, cannot perform operation for %%B.                                                              >> %CHECKLMS_REPORT_LOG_PATH%\appactutil_repair.txt 2>&1
-			)
-			
-			rem serveractutil.exe
-			if defined LMS_SERVERACTUTIL (
-				echo Start at !DATE! !TIME! ....                                                                                                      >> %CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair.txt 2>&1
-				echo -------------------------------------------------------                                                                          >> %CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair.txt 2>&1
-				echo serveractutil.exe -repair %%B -gen %CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair_%%B.xml                                       >> %CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair.txt 2>&1
-				"%LMS_SERVERACTUTIL%" -repair %%B -gen %CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair_%%B.xml                                        >> %CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair.txt 2>&1
-				echo -------------------------------------------------------                                                                          >> %CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair.txt 2>&1
-				echo serveractutil.exe -repair %%B                                                                                                    >> %CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair.txt 2>&1
-				"%LMS_SERVERACTUTIL%" -repair %%B                                                                                                     >> %CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair.txt 2>&1
-				echo .                                                                                                                                >> %CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair.txt 2>&1
-				echo -------------------------------------------------------                                                                          >> %CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair.txt 2>&1
-			) else (
-				echo     serveractutil.exe doesn't exist, cannot perform operation for %%B.                                                           >> %CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair.txt 2>&1
-			)
-		)
-	)
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair.txt" Type "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repair.txt"        >> %REPORT_LOGFILE% 2>&1
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\appactutil_repair.txt" Type "%CHECKLMS_REPORT_LOG_PATH%\appactutil_repair.txt"                        >> %REPORT_LOGFILE% 2>&1
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair.txt" Type "%CHECKLMS_REPORT_LOG_PATH%\serveractutil_repair.txt"                  >> %REPORT_LOGFILE% 2>&1
-)
-echo Trusted Store needs Repair: %NeedRepair%                                                                                >> %REPORT_LOGFILE% 2>&1
-if "%NeedRepair%" == "Yes" (
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-	echo servercomptranutil.exe -serverView %LMS_LIC_SERVER% format=full -- AFTER REPAIR                                     >> %REPORT_LOGFILE% 2>&1
-	if defined LMS_SERVERCOMTRANUTIL (
-		"%LMS_SERVERCOMTRANUTIL%" -serverView %LMS_LIC_SERVER% format=full > %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepair.txt 2>&1
-		Type "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepair.txt"                                  >> %REPORT_LOGFILE% 2>&1
-	) else (
-		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                             >> %REPORT_LOGFILE% 2>&1
-	)
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1 
-	rem Analyze output regarding broken trusted store
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepair.txt" for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepair.txt ^|find /I "**BROKEN**"') do set "TS_BROKEN_AFTER_REPAIR=%%i"
-	if defined TS_BROKEN_AFTER_REPAIR (
-		set /a TS_TF_TIME = 0
-		set /a TS_TF_HOST = 0
-		set /a TS_TF_RESTORE = 0
-		for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepair.txt ^|find /I "**BROKEN**"') do if "%%i" == "Time" SET /A TS_TF_TIME += 1
-		for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepair.txt ^|find /I "**BROKEN**"') do if "%%i" == "Host" SET /A TS_TF_HOST += 1
-		for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepair.txt ^|find /I "**BROKEN**"') do if "%%i" == "Restore" SET /A TS_TF_RESTORE += 1
-		rem echo TS Broken ... TS_TF_TIME=!TS_TF_TIME! / TS_TF_HOST=!TS_TF_HOST! / TS_TF_RESTORE=!TS_TF_RESTORE!
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: Trusted Store is BROKEN [AFTER REPAIR]. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE! [1;37m
+			echo ATTENTION: Trusted Store is BROKEN [AFTER REPAIR]. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE!     >> %REPORT_LOGFILE% 2>&1
 		) else (
-			echo     ATTENTION: Trusted Store is BROKEN [AFTER REPAIR]. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE!
+			echo Trusted Store is NOT broken [AFTER REPAIR].                                                                                           >> %REPORT_LOGFILE% 2>&1
 		)
-		echo ATTENTION: Trusted Store is BROKEN [AFTER REPAIR]. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE!     >> %REPORT_LOGFILE% 2>&1
-	) else (
-		echo Trusted Store is NOT broken [AFTER REPAIR].                                                                                           >> %REPORT_LOGFILE% 2>&1
 	)
-)
-echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo ... run repair all command using servercomptranutil.exe -n -t xxx -repairAll ...
-echo ... run repair all command using servercomptranutil.exe -n -t %LMS_FNO_SERVER% -repairAll ...                           >> %REPORT_LOGFILE% 2>&1
-echo     servercomptranutil.exe -n -t %LMS_FNO_SERVER% -repairAll                                                            >> %REPORT_LOGFILE% 2>&1
-set NeedRepairAll=Unknown
-if defined LMS_SERVERCOMTRANUTIL (
-	del %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repairAll.txt >nul 2>&1
-	rem call RepairAll command
-	"%LMS_SERVERCOMTRANUTIL%" -n ref=CheckLMS_TryToRepair2_FNO -t %LMS_FNO_SERVER% -repairAll < %CHECKLMS_REPORT_LOG_PATH%\yes.txt >> %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repairAll.txt 2>&1
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repairAll.txt" (
-		Type "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repairAll.txt"                                                         >> %REPORT_LOGFILE% 2>&1
-		findstr /m /c:"no fulfillments need repairing" "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repairAll.txt"               >> %REPORT_LOGFILE% 2>&1
-		rem echo ERRORLEVEL=!ERRORLEVEL!                                                                                         >> %REPORT_LOGFILE% 2>&1
-		rem https://stackoverflow.com/questions/36237636/windows-batch-findstr-not-setting-errorlevel-within-a-for-loop 
-		if !ERRORLEVEL!==0 (
-			set NeedRepairAll=No
-		) else (
-		
-			rem ***************
-			rem TS needs repair
-			rem ***************
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    ATTENTION: Repair was required. [1;37m
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo ... run repair all command using servercomptranutil.exe -n -t xxx -repairAll ...
+	echo ... run repair all command using servercomptranutil.exe -n -t %LMS_FNO_SERVER% -repairAll ...                           >> %REPORT_LOGFILE% 2>&1
+	echo     servercomptranutil.exe -n -t %LMS_FNO_SERVER% -repairAll                                                            >> %REPORT_LOGFILE% 2>&1
+	set NeedRepairAll=Unknown
+	if defined LMS_SERVERCOMTRANUTIL (
+		del %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repairAll.txt >nul 2>&1
+		rem call RepairAll command
+		"%LMS_SERVERCOMTRANUTIL%" -n ref=CheckLMS_TryToRepair2_FNO -t %LMS_FNO_SERVER% -repairAll < %CHECKLMS_REPORT_LOG_PATH%\yes.txt >> %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repairAll.txt 2>&1
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repairAll.txt" (
+			Type "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repairAll.txt"                                                         >> %REPORT_LOGFILE% 2>&1
+			findstr /m /c:"no fulfillments need repairing" "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_repairAll.txt"               >> %REPORT_LOGFILE% 2>&1
+			rem echo ERRORLEVEL=!ERRORLEVEL!                                                                                         >> %REPORT_LOGFILE% 2>&1
+			rem https://stackoverflow.com/questions/36237636/windows-batch-findstr-not-setting-errorlevel-within-a-for-loop 
+			if !ERRORLEVEL!==0 (
+				set NeedRepairAll=No
 			) else (
-				echo     ATTENTION: Repair was required.
-			)
-			echo ATTENTION: Repair was required.                                                                             >> %REPORT_LOGFILE% 2>&1
-			set NeedRepairAll=Yes
 			
+				rem ***************
+				rem TS needs repair
+				rem ***************
+				if defined SHOW_COLORED_OUTPUT (
+					echo [1;31m    ATTENTION: Repair was required. [1;37m
+				) else (
+					echo     ATTENTION: Repair was required.
+				)
+				echo ATTENTION: Repair was required.                                                                             >> %REPORT_LOGFILE% 2>&1
+				set NeedRepairAll=Yes
+				
+			)
 		)
-	)
-) else (
-    echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
-)
-echo Trusted Store needs Repair: %NeedRepairAll%                                                                             >> %REPORT_LOGFILE% 2>&1
-if "%NeedRepairAll%" == "Yes" (
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-	echo servercomptranutil.exe -serverView %LMS_LIC_SERVER% format=full -- AFTER REPAIR ALL                                 >> %REPORT_LOGFILE% 2>&1
-	if defined LMS_SERVERCOMTRANUTIL (
-		"%LMS_SERVERCOMTRANUTIL%" -serverView %LMS_LIC_SERVER% format=full > %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepair.txt 2>&1
-		Type "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepair.txt"                                  >> %REPORT_LOGFILE% 2>&1
 	) else (
-		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                             >> %REPORT_LOGFILE% 2>&1
+		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
 	)
-)
-echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo ... run repair all command using LmuTool /REPALL /M:O ...
-echo ... run repair all command using LmuTool /REPALL /M:O ...                                                               >> %REPORT_LOGFILE% 2>&1
-if defined LMS_LMUTOOL (
-	if /I %LMS_BUILD_VERSION% NEQ 721 (
-		if /I %LMS_BUILD_VERSION% NEQ 610 (
-			"!LMS_LMUTOOL!" /REPALL /M:O                                                                                     >> %REPORT_LOGFILE% 2>&1
+	echo Trusted Store needs Repair: %NeedRepairAll%                                                                             >> %REPORT_LOGFILE% 2>&1
+	if "%NeedRepairAll%" == "Yes" (
+		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+		echo servercomptranutil.exe -serverView %LMS_LIC_SERVER% format=full -- AFTER REPAIR ALL                                 >> %REPORT_LOGFILE% 2>&1
+		if defined LMS_SERVERCOMTRANUTIL (
+			"%LMS_SERVERCOMTRANUTIL%" -serverView %LMS_LIC_SERVER% format=full > %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepair.txt 2>&1
+			Type "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepair.txt"                                  >> %REPORT_LOGFILE% 2>&1
 		) else (
-			echo     This operation is not supported with LMS %LMS_VERSION%, cannot perform operation.                       >> %REPORT_LOGFILE% 2>&1 
+			echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                             >> %REPORT_LOGFILE% 2>&1
+		)
+	)
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo ... run repair all command using LmuTool /REPALL /M:O ...
+	echo ... run repair all command using LmuTool /REPALL /M:O ...                                                               >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_LMUTOOL (
+		if /I %LMS_BUILD_VERSION% NEQ 721 (
+			if /I %LMS_BUILD_VERSION% NEQ 610 (
+				"!LMS_LMUTOOL!" /REPALL /M:O                                                                                     >> %REPORT_LOGFILE% 2>&1
+			) else (
+				echo     This operation is not supported with LMS %LMS_VERSION%, cannot perform operation.                       >> %REPORT_LOGFILE% 2>&1 
+			)
+		) else (
+			echo     This operation is not supported with LMS %LMS_VERSION%, cannot perform operation.                           >> %REPORT_LOGFILE% 2>&1 
 		)
 	) else (
-		echo     This operation is not supported with LMS %LMS_VERSION%, cannot perform operation.                           >> %REPORT_LOGFILE% 2>&1 
+		echo     LmuTool is not available with LMS %LMS_VERSION%, cannot perform operation.                                      >> %REPORT_LOGFILE% 2>&1 
 	)
-) else (
-	echo     LmuTool is not available with LMS %LMS_VERSION%, cannot perform operation.                                      >> %REPORT_LOGFILE% 2>&1 
-)
-if "%NeedRepairAll%" == "Yes" (
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-	echo servercomptranutil.exe -serverView %LMS_LIC_SERVER% format=full -- AFTER REPAIR ALL WITH LMUTOOL                    >> %REPORT_LOGFILE% 2>&1
+	if "%NeedRepairAll%" == "Yes" (
+		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+		echo servercomptranutil.exe -serverView %LMS_LIC_SERVER% format=full -- AFTER REPAIR ALL WITH LMUTOOL                    >> %REPORT_LOGFILE% 2>&1
+		if defined LMS_SERVERCOMTRANUTIL (
+			"%LMS_SERVERCOMTRANUTIL%" -serverView %LMS_LIC_SERVER% format=full > %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepairWithLmuTool.txt 2>&1
+			Type "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepairWithLmuTool.txt"                       >> %REPORT_LOGFILE% 2>&1
+		) else (
+			echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                             >> %REPORT_LOGFILE% 2>&1
+		)
+	)
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo ... resend all stored requests, using servercomptranutil.exe -t xxx -stored request=all ...
+	echo ... resend all stored requests, using servercomptranutil.exe -t %LMS_FNO_SERVER% -stored request=all ...                >> %REPORT_LOGFILE% 2>&1
+	echo     servercomptranutil.exe -t %LMS_FNO_SERVER% -stored request=all                                                      >> %REPORT_LOGFILE% 2>&1
 	if defined LMS_SERVERCOMTRANUTIL (
-		"%LMS_SERVERCOMTRANUTIL%" -serverView %LMS_LIC_SERVER% format=full > %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepairWithLmuTool.txt 2>&1
-		Type "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_serverViewFull_AfterRepairWithLmuTool.txt"                       >> %REPORT_LOGFILE% 2>&1
+		del %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_resend_stored_requests.txt >nul 2>&1
+		rem call RepairAll command
+		"%LMS_SERVERCOMTRANUTIL%" -t %LMS_FNO_SERVER% -stored request=all   < %CHECKLMS_REPORT_LOG_PATH%\yes.txt   >> %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_resend_stored_requests.txt 2>&1
+		IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_resend_stored_requests.txt" (
+			Type "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_resend_stored_requests.txt"                                      >> %REPORT_LOGFILE% 2>&1
+		)
+		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+		echo servercomptranutil.exe -listRequests ...                                                                            >> %REPORT_LOGFILE% 2>&1
+		"%LMS_SERVERCOMTRANUTIL%" -listRequests                                                                                  >> %REPORT_LOGFILE% 2>&1
 	) else (
-		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                             >> %REPORT_LOGFILE% 2>&1
+		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
 	)
-)
-echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo ... resend all stored requests, using servercomptranutil.exe -t xxx -stored request=all ...
-echo ... resend all stored requests, using servercomptranutil.exe -t %LMS_FNO_SERVER% -stored request=all ...                >> %REPORT_LOGFILE% 2>&1
-echo     servercomptranutil.exe -t %LMS_FNO_SERVER% -stored request=all                                                      >> %REPORT_LOGFILE% 2>&1
-if defined LMS_SERVERCOMTRANUTIL (
-	del %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_resend_stored_requests.txt >nul 2>&1
-	rem call RepairAll command
-	"%LMS_SERVERCOMTRANUTIL%" -t %LMS_FNO_SERVER% -stored request=all   < %CHECKLMS_REPORT_LOG_PATH%\yes.txt   >> %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_resend_stored_requests.txt 2>&1
-	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_resend_stored_requests.txt" (
-		Type "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_resend_stored_requests.txt"                                      >> %REPORT_LOGFILE% 2>&1
-	)
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-	echo servercomptranutil.exe -listRequests ...                                                                            >> %REPORT_LOGFILE% 2>&1
-	"%LMS_SERVERCOMTRANUTIL%" -listRequests                                                                                  >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 ) else (
-    echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
+	rem LMS_SKIPLOCLICSERV
+	if defined SHOW_COLORED_OUTPUT (
+		echo [1;33m    SKIPPED local license server section. The script didn't execute the local license server commands. [1;37m
+	) else (
+		echo     SKIPPED local license server section. The script didn't execute the local license server commands.
+	)
+	echo SKIPPED local license server section. The script didn't execute the local license server commands.                      >> %REPORT_LOGFILE% 2>&1
 )
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo =   R E M O T E   L I C E N S E   S E R V E R                                =                                          >> %REPORT_LOGFILE% 2>&1
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo ... analyze remote license server on %LMS_CFG_LICENSE_SRV_PORT%@%LMS_CFG_LICENSE_SRV_NAME% ...
-if defined LMS_CFG_LICENSE_SRV_NAME (
-	if not "%LMS_CFG_LICENSE_SRV_NAME%" == "localhost" (
-		echo Configured license server: %LMS_CFG_LICENSE_SRV_NAME% with port %LMS_CFG_LICENSE_SRV_PORT%                      >> %REPORT_LOGFILE% 2>&1
-		echo servercomptranutil.exe -serverView %LMS_CFG_LICENSE_SRV_PORT%@%LMS_CFG_LICENSE_SRV_NAME%                        >> %REPORT_LOGFILE% 2>&1
-		if defined LMS_SERVERCOMTRANUTIL (
-			"%LMS_SERVERCOMTRANUTIL%" -serverView %LMS_CFG_LICENSE_SRV_PORT%@%LMS_CFG_LICENSE_SRV_NAME%                      >> %REPORT_LOGFILE% 2>&1
-			echo ==============================================================================                              >> %REPORT_LOGFILE% 2>&1
-			echo Start at !DATE! !TIME! ....                                                                                 >> %REPORT_LOGFILE% 2>&1
-			echo servercomptranutil.exe -serverView %LMS_CFG_LICENSE_SRV_PORT%@%LMS_CFG_LICENSE_SRV_NAME% format=full        >> %REPORT_LOGFILE% 2>&1
-			"%LMS_SERVERCOMTRANUTIL%" -serverView %LMS_CFG_LICENSE_SRV_PORT%@%LMS_CFG_LICENSE_SRV_NAME% format=full          >> %REPORT_LOGFILE% 2>&1
-		) else (
-			echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                         >> %REPORT_LOGFILE% 2>&1
-		)
-		echo ==============================================================================                                  >> %REPORT_LOGFILE% 2>&1
-		echo Start at !DATE! !TIME! ....                                                                                     >> %REPORT_LOGFILE% 2>&1
+if not defined LMS_SKIPREMLICSERV (
+	if defined LMS_CFG_LICENSE_SRV_NAME (
+		if not "%LMS_CFG_LICENSE_SRV_NAME%" == "localhost" (
+			echo Configured license server: %LMS_CFG_LICENSE_SRV_NAME% with port %LMS_CFG_LICENSE_SRV_PORT%                      >> %REPORT_LOGFILE% 2>&1
+			echo servercomptranutil.exe -serverView %LMS_CFG_LICENSE_SRV_PORT%@%LMS_CFG_LICENSE_SRV_NAME%                        >> %REPORT_LOGFILE% 2>&1
+			if defined LMS_SERVERCOMTRANUTIL (
+				"%LMS_SERVERCOMTRANUTIL%" -serverView %LMS_CFG_LICENSE_SRV_PORT%@%LMS_CFG_LICENSE_SRV_NAME%                      >> %REPORT_LOGFILE% 2>&1
+				echo ==============================================================================                              >> %REPORT_LOGFILE% 2>&1
+				echo Start at !DATE! !TIME! ....                                                                                 >> %REPORT_LOGFILE% 2>&1
+				echo servercomptranutil.exe -serverView %LMS_CFG_LICENSE_SRV_PORT%@%LMS_CFG_LICENSE_SRV_NAME% format=full        >> %REPORT_LOGFILE% 2>&1
+				"%LMS_SERVERCOMTRANUTIL%" -serverView %LMS_CFG_LICENSE_SRV_PORT%@%LMS_CFG_LICENSE_SRV_NAME% format=full          >> %REPORT_LOGFILE% 2>&1
+			) else (
+				echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                         >> %REPORT_LOGFILE% 2>&1
+			)
+			echo ==============================================================================                                  >> %REPORT_LOGFILE% 2>&1
+			echo Start at !DATE! !TIME! ....                                                                                     >> %REPORT_LOGFILE% 2>&1
 
-		echo appactutil.exe -serverview -commServer %LMS_CFG_LICENSE_SRV_PORT%@%LMS_CFG_LICENSE_SRV_NAME% -long              >> %REPORT_LOGFILE% 2>&1
-		if defined LMS_APPACTUTIL (
-			"%LMS_APPACTUTIL%" -serverview -commServer %LMS_CFG_LICENSE_SRV_PORT%@%LMS_CFG_LICENSE_SRV_NAME% -long           >> %REPORT_LOGFILE% 2>&1
+			echo appactutil.exe -serverview -commServer %LMS_CFG_LICENSE_SRV_PORT%@%LMS_CFG_LICENSE_SRV_NAME% -long              >> %REPORT_LOGFILE% 2>&1
+			if defined LMS_APPACTUTIL (
+				"%LMS_APPACTUTIL%" -serverview -commServer %LMS_CFG_LICENSE_SRV_PORT%@%LMS_CFG_LICENSE_SRV_NAME% -long           >> %REPORT_LOGFILE% 2>&1
+			) else (
+				echo     appactutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
+			)
 		) else (
-			echo     appactutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
+			echo Configured license server: localhost as server configured; do not perform operations.                           >> %REPORT_LOGFILE% 2>&1
 		)
 	) else (
-		echo Configured license server: localhost as server configured; do not perform operations.                           >> %REPORT_LOGFILE% 2>&1
+		echo Configured license server: no server configured; do not perform operations.                                         >> %REPORT_LOGFILE% 2>&1
 	)
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 ) else (
-    echo Configured license server: no server configured; do not perform operations.                                         >> %REPORT_LOGFILE% 2>&1
+	rem LMS_SKIPREMLICSERV
+	if defined SHOW_COLORED_OUTPUT (
+		echo [1;33m    SKIPPED remote license server section. The script didn't execute the remote license server commands. [1;37m
+	) else (
+		echo     SKIPPED remote license server section. The script didn't execute the remote license server commands.
+	)
+	echo SKIPPED remote license server section. The script didn't execute the remote license server commands.                    >> %REPORT_LOGFILE% 2>&1
 )
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo =   L M S   C O N F I G U R A T I O N   F I L E S                            =                                          >> %REPORT_LOGFILE% 2>&1
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
