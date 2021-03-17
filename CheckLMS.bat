@@ -122,6 +122,8 @@ rem     17-Mar-2021:
 rem        - add option /checkid (incl. LMS_SKIPDOWNLOAD, LMS_SKIPTSBACKUP, LMS_SKIPBTALMPLUGIN, LMS_SKIPSIGCHECK, LMS_SKIPWMIC, LMS_SKIPFIREWALL, LMS_SKIPSCHEDTASK, LMS_SKIPWER, LMS_SKIPFNP)
 rem        - content of "%WinDir%\System32\Drivers\Etc" is only copied, no longer addded to general logfile.
 rem        - add further: LMS_SKIPSSU, LMS_SKIPLMS, LMS_SKIPSETUP, LMS_SKIPWINEVENT
+rem        - move VMGENID.exe and GetVMGenerationIdentifier.exe into new section for virtual environments
+rem        - add further: LMS_SKIPLICSERV
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -387,6 +389,7 @@ FOR %%A IN (%*) DO (
 			set LMS_SKIPLMS=1
 			set LMS_SKIPSETUP=1
 			set LMS_SKIPWINEVENT=1
+			set LMS_SKIPLICSERV=1
 		)
 		if "!var!"=="setfirewall" (
 			set LMS_SET_FIREWALL=1
@@ -2067,26 +2070,6 @@ echo ... list installed powershell commandlets (using Get-Module powershell comm
 echo List installed powershell commandlets (using Get-Module powershell command):                                            >> %REPORT_LOGFILE% 2>&1
 echo For more details, see %CHECKLMS_REPORT_LOG_PATH%\InstalledPowershellCommandlets.txt                                     >> %REPORT_LOGFILE% 2>&1
 powershell -PSConsoleFile "%ProgramFiles%\Siemens\LMS\scripts\lmu.psc1" -command "& {Get-Module -ListAvailable -All}" >> %CHECKLMS_REPORT_LOG_PATH%\InstalledPowershellCommandlets.txt 2>&1
-rem Read VM Generation Id
-IF EXIST "%DOWNLOAD_LMS_PATH%\VMGENID.EXE" (
-	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-	echo ... read VM Generation Id [using VMGENID.EXE] ...
-	echo Read VM Generation Id [using VMGENID.EXE]:                                                                          >> %REPORT_LOGFILE% 2>&1
-	"%DOWNLOAD_LMS_PATH%\VMGENID.EXE"                                                                                        >> %REPORT_LOGFILE% 2>&1
-	echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
-)
-IF EXIST "%DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe" (
-	echo -------------------------------------------------------                                                                                 >> %REPORT_LOGFILE% 2>&1
-	if exist "C:\WINDOWS\system32\MSVCR120.dll" (
-		echo ... read VM Generation Id [using GetVMGenerationIdentifier.exe] ...
-		echo Read VM Generation Id [using GetVMGenerationIdentifier.exe]:                                                                        >> %REPORT_LOGFILE% 2>&1
-		"%DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe"                                                                                      >> %REPORT_LOGFILE% 2>&1
-		echo .                                                                                                                                   >> %REPORT_LOGFILE% 2>&1
-	) else (
-		echo ... read VM Generation Id [using GetVMGenerationIdentifier.exe], skipped because 'C:\WINDOWS\system32\MSVCR120.dll' doesn't exist.
-		echo Read VM Generation Id [using GetVMGenerationIdentifier.exe], skipped because 'C:\WINDOWS\system32\MSVCR120.dll' doesn't exist.      >> %REPORT_LOGFILE% 2>&1
-	)
-)
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 echo Content of folder: "%WinDir%\System32\Drivers\Etc"                                                                      >> %REPORT_LOGFILE% 2>&1
 dir /S /A /X /4 /W "%WinDir%\System32\Drivers\Etc"                                                                           >> %REPORT_LOGFILE% 2>&1
@@ -2391,6 +2374,26 @@ if /I "!LMS_IS_VM!"=="true" (
 ) else (
 	echo     Not clear if running on a virtual machine or not. LMS_IS_VM=!LMS_IS_VM!
 	echo Not clear if running on a virtual machine or not. LMS_IS_VM=!LMS_IS_VM!                                             >> %REPORT_LOGFILE% 2>&1
+)
+rem Read VM Generation Id
+IF EXIST "%DOWNLOAD_LMS_PATH%\VMGENID.EXE" (
+	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+	echo ... read VM Generation Id [using VMGENID.EXE] ...
+	echo Read VM Generation Id [using VMGENID.EXE]:                                                                          >> %REPORT_LOGFILE% 2>&1
+	"%DOWNLOAD_LMS_PATH%\VMGENID.EXE"                                                                                        >> %REPORT_LOGFILE% 2>&1
+	echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
+)
+IF EXIST "%DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe" (
+	echo -------------------------------------------------------                                                                                 >> %REPORT_LOGFILE% 2>&1
+	if exist "C:\WINDOWS\system32\MSVCR120.dll" (
+		echo ... read VM Generation Id [using GetVMGenerationIdentifier.exe] ...
+		echo Read VM Generation Id [using GetVMGenerationIdentifier.exe]:                                                                        >> %REPORT_LOGFILE% 2>&1
+		"%DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe"                                                                                      >> %REPORT_LOGFILE% 2>&1
+		echo .                                                                                                                                   >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo ... read VM Generation Id [using GetVMGenerationIdentifier.exe], skipped because 'C:\WINDOWS\system32\MSVCR120.dll' doesn't exist.
+		echo Read VM Generation Id [using GetVMGenerationIdentifier.exe], skipped because 'C:\WINDOWS\system32\MSVCR120.dll' doesn't exist.      >> %REPORT_LOGFILE% 2>&1
+	)
 )
 if /I "!LMS_IS_VM!"=="true" (
 	rem call further commands only, when running on a virtual machine, wthin a hypervisor.
@@ -4157,160 +4160,170 @@ echo =   L I C E N S E   S E R V E R                                            
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo ... analyze license server ...
-echo servercomptranutil.exe -listRequests                                                                                    >> %REPORT_LOGFILE% 2>&1
-if defined LMS_SERVERCOMTRANUTIL (
-	"%LMS_SERVERCOMTRANUTIL%" -listRequests > %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_listRequests_simple.xml 2>&1
-	type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_listRequests_simple.xml                                               >> %REPORT_LOGFILE% 2>&1
-	echo -- extract pending requests [start] --                                                                              >> %REPORT_LOGFILE% 2>&1
-	Type "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_listRequests_simple.xml" | findstr "Pending"                         >> %REPORT_LOGFILE% 2>&1
-	echo -- extract pending requests [end] --                                                                                >> %REPORT_LOGFILE% 2>&1
-	for /f "tokens=1,2,3,4 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_listRequests_simple.xml') do if "%%B" EQU "Pending" (
-		echo     Pending request '%%A' found from %%C %%D
-		echo     Pending request '%%A' found from %%C %%D, retrieve this request information in %CHECKLMS_REPORT_LOG_PATH%\pending_req_%%A.xml    >> %REPORT_LOGFILE% 2>&1
-		"%LMS_SERVERCOMTRANUTIL%" -stored %CHECKLMS_REPORT_LOG_PATH%\pending_req_%%A.xml request=%%A                         >> %REPORT_LOGFILE% 2>&1
-	)
-) else (
-    echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
-)
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1 
-echo servercomptranutil.exe -listRequests format=long                                                                        >> %REPORT_LOGFILE% 2>&1
-if defined LMS_SERVERCOMTRANUTIL (
-	"%LMS_SERVERCOMTRANUTIL%" -listRequests format=long > %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_listRequests_long.xml 2>&1
-	type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_listRequests_long.xml                                                 >> %REPORT_LOGFILE% 2>&1
-) else (
-    echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
-)
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1 
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo servercomptranutil.exe -listRequests format=xml                                                                         >> %REPORT_LOGFILE% 2>&1
-if defined LMS_SERVERCOMTRANUTIL (
-	"%LMS_SERVERCOMTRANUTIL%" -listRequests format=xml > %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_listRequests_XML.xml 2>&1
-	echo     See %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_listRequests_XML.xml                                              >> %REPORT_LOGFILE% 2>&1
-
-	rem retrieve section break info
-	findstr /m /c:"StorageBreakInfo" "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_listRequests_XML.xml"                        >> %REPORT_LOGFILE% 2>&1
-	if !ERRORLEVEL!==0 (
-		echo     'StorageBreakInfo' section was found in %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_listRequests_XML.xml ...  >> %REPORT_LOGFILE% 2>&1
-		Set LMS_START_LOG=0
-		FOR /F "eol=@ delims=@" %%i IN (%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_listRequests_XML.xml) DO ( 
-			ECHO "%%i" | FINDSTR /C:"<StorageBreakInfo>" 1>nul 
-			if !ERRORLEVEL!==0 (
-				echo     Start of 'StorageBreakInfo' section found ...                                                       >> %REPORT_LOGFILE% 2>&1
-				Set LMS_START_LOG=1
-			)
-			if !LMS_START_LOG!==1 (
-				echo     %%i                                                                                                 >> %REPORT_LOGFILE% 2>&1
-				
-				rem check for end of 'StorageBreakInfo' section
-				ECHO "%%i" | FINDSTR /C:"</StorageBreakInfo>" 1>nul 
-				if !ERRORLEVEL!==0 (
-					echo     End of 'StorageBreakInfo' section found ...                                                     >> %REPORT_LOGFILE% 2>&1
-					Set LMS_START_LOG=0
-				)
-			)
+if not defined LMS_SKIPLICSERV (
+	echo servercomptranutil.exe -listRequests                                                                                    >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_SERVERCOMTRANUTIL (
+		"%LMS_SERVERCOMTRANUTIL%" -listRequests > %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_listRequests_simple.xml 2>&1
+		type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_listRequests_simple.xml                                               >> %REPORT_LOGFILE% 2>&1
+		echo -- extract pending requests [start] --                                                                              >> %REPORT_LOGFILE% 2>&1
+		Type "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_listRequests_simple.xml" | findstr "Pending"                         >> %REPORT_LOGFILE% 2>&1
+		echo -- extract pending requests [end] --                                                                                >> %REPORT_LOGFILE% 2>&1
+		for /f "tokens=1,2,3,4 eol=@ delims== " %%A in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_listRequests_simple.xml') do if "%%B" EQU "Pending" (
+			echo     Pending request '%%A' found from %%C %%D
+			echo     Pending request '%%A' found from %%C %%D, retrieve this request information in %CHECKLMS_REPORT_LOG_PATH%\pending_req_%%A.xml    >> %REPORT_LOGFILE% 2>&1
+			"%LMS_SERVERCOMTRANUTIL%" -stored %CHECKLMS_REPORT_LOG_PATH%\pending_req_%%A.xml request=%%A                         >> %REPORT_LOGFILE% 2>&1
 		)
 	) else (
-		echo     NO 'StorageBreakInfo' section was found in %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_listRequests_XML.xml ...  >> %REPORT_LOGFILE% 2>&1
+		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
 	)
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1 
+	echo servercomptranutil.exe -listRequests format=long                                                                        >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_SERVERCOMTRANUTIL (
+		"%LMS_SERVERCOMTRANUTIL%" -listRequests format=long > %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_listRequests_long.xml 2>&1
+		type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_listRequests_long.xml                                                 >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
+	)
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1 
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo servercomptranutil.exe -listRequests format=xml                                                                         >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_SERVERCOMTRANUTIL (
+		"%LMS_SERVERCOMTRANUTIL%" -listRequests format=xml > %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_listRequests_XML.xml 2>&1
+		echo     See %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_listRequests_XML.xml                                              >> %REPORT_LOGFILE% 2>&1
 
-) else (
-    echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
-)
-echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo servercomptranutil.exe -view                                                                                            >> %REPORT_LOGFILE% 2>&1
-if defined LMS_SERVERCOMTRANUTIL (
-	"%LMS_SERVERCOMTRANUTIL%" -view > %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_view.txt  2>&1
-	type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_view.txt                                                              >> %REPORT_LOGFILE% 2>&1
-) else (
-    echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
-)
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1 
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo servercomptranutil.exe -view format=long                                                                                >> %REPORT_LOGFILE% 2>&1
-if defined LMS_SERVERCOMTRANUTIL (
-	"%LMS_SERVERCOMTRANUTIL%" -view format=long > %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt  2>&1
-	type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt                                                          >> %REPORT_LOGFILE% 2>&1
-) else (
-    echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
-)
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1 
-rem Search for an installed feature and test them
-set tsfeature=
-IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt" for /f "tokens=2 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find /I "INCREMENT"') do set "tsfeature=%%i"
-if defined LMS_LMUTOOL (
-	if defined tsfeature (
-		echo Check trusted store feature: %tsfeature%, with LmuTool.exe /CHECK:%tsfeature%                                   >> %REPORT_LOGFILE% 2>&1
-		"!LMS_LMUTOOL!" /CHECK:%tsfeature%                                                                                   >> %REPORT_LOGFILE% 2>&1
-		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1 
-		echo Check trusted store feature: %tsfeature%, with LmuTool.exe /FC:%tsfeature%                                      >> %REPORT_LOGFILE% 2>&1
-		"!LMS_LMUTOOL!" /FC:%tsfeature%                                                                                      >> %REPORT_LOGFILE% 2>&1
+		rem retrieve section break info
+		findstr /m /c:"StorageBreakInfo" "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_listRequests_XML.xml"                        >> %REPORT_LOGFILE% 2>&1
+		if !ERRORLEVEL!==0 (
+			echo     'StorageBreakInfo' section was found in %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_listRequests_XML.xml ...  >> %REPORT_LOGFILE% 2>&1
+			Set LMS_START_LOG=0
+			FOR /F "eol=@ delims=@" %%i IN (%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_listRequests_XML.xml) DO ( 
+				ECHO "%%i" | FINDSTR /C:"<StorageBreakInfo>" 1>nul 
+				if !ERRORLEVEL!==0 (
+					echo     Start of 'StorageBreakInfo' section found ...                                                       >> %REPORT_LOGFILE% 2>&1
+					Set LMS_START_LOG=1
+				)
+				if !LMS_START_LOG!==1 (
+					echo     %%i                                                                                                 >> %REPORT_LOGFILE% 2>&1
+					
+					rem check for end of 'StorageBreakInfo' section
+					ECHO "%%i" | FINDSTR /C:"</StorageBreakInfo>" 1>nul 
+					if !ERRORLEVEL!==0 (
+						echo     End of 'StorageBreakInfo' section found ...                                                     >> %REPORT_LOGFILE% 2>&1
+						Set LMS_START_LOG=0
+					)
+				)
+			)
+		) else (
+			echo     NO 'StorageBreakInfo' section was found in %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_listRequests_XML.xml ...  >> %REPORT_LOGFILE% 2>&1
+		)
+
 	) else (
-		echo Check trusted store feature: not possible, no feature found in trusted store to test.                           >> %REPORT_LOGFILE% 2>&1
+		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
 	)
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo servercomptranutil.exe -view                                                                                            >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_SERVERCOMTRANUTIL (
+		"%LMS_SERVERCOMTRANUTIL%" -view > %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_view.txt  2>&1
+		type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_view.txt                                                              >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
+	)
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1 
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo servercomptranutil.exe -view format=long                                                                                >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_SERVERCOMTRANUTIL (
+		"%LMS_SERVERCOMTRANUTIL%" -view format=long > %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt  2>&1
+		type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt                                                          >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
+	)
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1 
+	rem Search for an installed feature and test them
+	set tsfeature=
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt" for /f "tokens=2 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find /I "INCREMENT"') do set "tsfeature=%%i"
+	if defined LMS_LMUTOOL (
+		if defined tsfeature (
+			echo Check trusted store feature: %tsfeature%, with LmuTool.exe /CHECK:%tsfeature%                                   >> %REPORT_LOGFILE% 2>&1
+			"!LMS_LMUTOOL!" /CHECK:%tsfeature%                                                                                   >> %REPORT_LOGFILE% 2>&1
+			echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1 
+			echo Check trusted store feature: %tsfeature%, with LmuTool.exe /FC:%tsfeature%                                      >> %REPORT_LOGFILE% 2>&1
+			"!LMS_LMUTOOL!" /FC:%tsfeature%                                                                                      >> %REPORT_LOGFILE% 2>&1
+		) else (
+			echo Check trusted store feature: not possible, no feature found in trusted store to test.                           >> %REPORT_LOGFILE% 2>&1
+		)
+	) else (
+		echo     LmuTool is not available with LMS %LMS_VERSION%, cannot perform operation.                                      >> %REPORT_LOGFILE% 2>&1 
+	)
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1 
+	rem Analyze output regarding broken trusted store
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt" for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find /I "**BROKEN**"') do set "TS_BROKEN=%%i"
+	if defined TS_BROKEN (
+		set /a TS_TF_TIME = 0
+		set /a TS_TF_HOST = 0
+		set /a TS_TF_RESTORE = 0
+		for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find /I "**BROKEN**"') do if "%%i" == "Time" SET /A TS_TF_TIME += 1
+		for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find /I "**BROKEN**"') do if "%%i" == "Host" SET /A TS_TF_HOST += 1
+		for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find /I "**BROKEN**"') do if "%%i" == "Restore" SET /A TS_TF_RESTORE += 1
+		rem echo TS Broken ... TS_TF_TIME=!TS_TF_TIME! / TS_TF_HOST=!TS_TF_HOST! / TS_TF_RESTORE=!TS_TF_RESTORE!
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: Trusted Store is BROKEN. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE! [1;37m
+		) else (
+			echo     ATTENTION: Trusted Store is BROKEN. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE!
+		)
+		echo ATTENTION: Trusted Store is BROKEN. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE!  >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo Trusted Store is NOT broken.                                                                                        >> %REPORT_LOGFILE% 2>&1
+	)
+	rem Analyze output regarding disabled licenses
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt" for /f "tokens=4 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find /I "Viewed"') do set "TS_TOTAL_COUNT=%%i"
+	IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt" for /f "tokens=3 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find /I "Disabled"') do set "TS_DISABLED=%%i"
+	if defined TS_DISABLED (
+		set /a TS_DISABLED_COUNT = 0
+		for /f "tokens=3 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find /I "Status"') do if "%%i" == "Disabled" SET /A TS_DISABLED_COUNT += 1
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    Disabled licenses found. Disabled=!TS_DISABLED_COUNT! of !TS_TOTAL_COUNT! [1;37m
+		) else (
+			echo     ATTENTION: Disabled licenses found. Disabled=!TS_DISABLED_COUNT! of !TS_TOTAL_COUNT!
+		)
+		echo ATTENTION: Disabled licenses found. Disabled=!TS_DISABLED_COUNT! of !TS_TOTAL_COUNT!                                >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo No disabled licenses found.                                                                                         >> %REPORT_LOGFILE% 2>&1
+	)
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo appactutil.exe -view -long                                                                                              >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_APPACTUTIL (
+		"%LMS_APPACTUTIL%" -view -long                                                                                           >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     appactutil.exe doesn't exist, cannot perform operation.                                                         >> %REPORT_LOGFILE% 2>&1
+	)
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo serveractutil.exe -view -long                                                                                           >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_SERVERACTUTIL (
+		"%LMS_SERVERACTUTIL%" -view -long                                                                                        >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     serveractutil.exe doesn't exist, cannot perform operation.                                                      >> %REPORT_LOGFILE% 2>&1
+	)
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo Display the list of installed products, with LmuTool.exe /L                                                             >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_LMUTOOL (
+		"!LMS_LMUTOOL!" /L                                                                                                       >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo     LmuTool is not available with LMS %LMS_VERSION%, cannot perform operation.                                      >> %REPORT_LOGFILE% 2>&1 
+	)
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 ) else (
-	echo     LmuTool is not available with LMS %LMS_VERSION%, cannot perform operation.                                      >> %REPORT_LOGFILE% 2>&1 
-)
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1 
-rem Analyze output regarding broken trusted store
-IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt" for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find /I "**BROKEN**"') do set "TS_BROKEN=%%i"
-if defined TS_BROKEN (
-	set /a TS_TF_TIME = 0
-	set /a TS_TF_HOST = 0
-	set /a TS_TF_RESTORE = 0
-	for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find /I "**BROKEN**"') do if "%%i" == "Time" SET /A TS_TF_TIME += 1
-	for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find /I "**BROKEN**"') do if "%%i" == "Host" SET /A TS_TF_HOST += 1
-	for /f "tokens=6 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find /I "**BROKEN**"') do if "%%i" == "Restore" SET /A TS_TF_RESTORE += 1
-	rem echo TS Broken ... TS_TF_TIME=!TS_TF_TIME! / TS_TF_HOST=!TS_TF_HOST! / TS_TF_RESTORE=!TS_TF_RESTORE!
+	rem LMS_SKIPLICSERV
 	if defined SHOW_COLORED_OUTPUT (
-		echo [1;31m    ATTENTION: Trusted Store is BROKEN. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE! [1;37m
+		echo [1;33m    SKIPPED license server section. The script didn't execute the license server commands. [1;37m
 	) else (
-		echo     ATTENTION: Trusted Store is BROKEN. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE!
+		echo     SKIPPED license server section. The script didn't execute the license server commands.
 	)
-	echo ATTENTION: Trusted Store is BROKEN. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE!  >> %REPORT_LOGFILE% 2>&1
-) else (
-	echo Trusted Store is NOT broken.                                                                                        >> %REPORT_LOGFILE% 2>&1
+	echo SKIPPED license server section. The script didn't execute the license server commands.                                                                                                                     >> %REPORT_LOGFILE% 2>&1
 )
-rem Analyze output regarding disabled licenses
-IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt" for /f "tokens=4 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find /I "Viewed"') do set "TS_TOTAL_COUNT=%%i"
-IF EXIST "%CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt" for /f "tokens=3 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find /I "Disabled"') do set "TS_DISABLED=%%i"
-if defined TS_DISABLED (
-	set /a TS_DISABLED_COUNT = 0
-	for /f "tokens=3 eol=@" %%i in ('type %CHECKLMS_REPORT_LOG_PATH%\servercomptranutil_viewlong.txt ^|find /I "Status"') do if "%%i" == "Disabled" SET /A TS_DISABLED_COUNT += 1
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;31m    Disabled licenses found. Disabled=!TS_DISABLED_COUNT! of !TS_TOTAL_COUNT! [1;37m
-	) else (
-		echo     ATTENTION: Disabled licenses found. Disabled=!TS_DISABLED_COUNT! of !TS_TOTAL_COUNT!
-	)
-	echo ATTENTION: Disabled licenses found. Disabled=!TS_DISABLED_COUNT! of !TS_TOTAL_COUNT!                                >> %REPORT_LOGFILE% 2>&1
-) else (
-	echo No disabled licenses found.                                                                                         >> %REPORT_LOGFILE% 2>&1
-)
-echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo appactutil.exe -view -long                                                                                              >> %REPORT_LOGFILE% 2>&1
-if defined LMS_APPACTUTIL (
-    "%LMS_APPACTUTIL%" -view -long                                                                                           >> %REPORT_LOGFILE% 2>&1
-) else (
-    echo     appactutil.exe doesn't exist, cannot perform operation.                                                         >> %REPORT_LOGFILE% 2>&1
-)
-echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo serveractutil.exe -view -long                                                                                           >> %REPORT_LOGFILE% 2>&1
-if defined LMS_SERVERACTUTIL (
-    "%LMS_SERVERACTUTIL%" -view -long                                                                                        >> %REPORT_LOGFILE% 2>&1
-) else (
-    echo     serveractutil.exe doesn't exist, cannot perform operation.                                                      >> %REPORT_LOGFILE% 2>&1
-)
-echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-echo Display the list of installed products, with LmuTool.exe /L                                                             >> %REPORT_LOGFILE% 2>&1
-if defined LMS_LMUTOOL (
-	"!LMS_LMUTOOL!" /L                                                                                                       >> %REPORT_LOGFILE% 2>&1
-) else (
-	echo     LmuTool is not available with LMS %LMS_VERSION%, cannot perform operation.                                      >> %REPORT_LOGFILE% 2>&1 
-)
-echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo =   L O C A L   L I C E N S E   S E R V E R                                  =                                          >> %REPORT_LOGFILE% 2>&1
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
