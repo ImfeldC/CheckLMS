@@ -130,6 +130,12 @@ rem        - add further: LMS_SKIPUNZIP, LMS_SKIPNETSETTINGS, LMS_SKIPLOGS, LMS_
 rem        - create UMN_Latest.txt which contains always the latest (most recent) values; previous values are not kept like in UMN.txt
 rem        - create VMID_Latest.txt which contains always the latest (most recent) values; previous values are not kept like in VMID.txt
 rem        - This script implementes /checkid correct; the processing and ouptut is minimized to a minimum; this allows repetative exection of the script!
+rem     18-Mar-2021:
+rem        - split output of ecmcommonutil into debug (with separate logfile) and regular ouput kept in general logfile
+rem        - add VMECMID.txt (and VMECMID_Latest.txt) which contains results of ecmcommonutil (received from Flexera)
+rem        - add AWS.txt (and AWS_Latest.txt) which contains specific AWS information
+rem        - add /setcheckidtask option, to setup periodic task to run checklms.bat with /checkid option.
+rem        - add /delcheckidtask to delete periodic checkid task, see option /setcheckidtask
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -148,13 +154,15 @@ rem              - /extend                      run extended content, increases 
 rem              - /donotstartnewerscript       don't start newer script even if available (mainly to ensure proper handling of command line options) 
 rem              - /checkdownload               perform downloads and print file versions.
 rem              - /checkid                     check machine identifiers, like UMN, VMGENID, ...
+rem              - /setcheckidtask              sets periodic task to run checklms.bat with /checkid option.
+rem              - /delcheckidtask              delete periodic checkid task, see option /setcheckidtask
 rem              - /setfirewall                 sets firewall for external access to LMS. 
 rem              - /info "Any text"             Adds this text to the output, e.g. reference to field issue /info "SR1-XXXX"
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 17-Mar-2021"
-set LMS_SCRIPT_BUILD=20210317
+set LMS_SCRIPT_VERSION="CheckLMS Script 18-Mar-2021"
+set LMS_SCRIPT_BUILD=20210318
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -405,6 +413,12 @@ FOR %%A IN (%*) DO (
 			set LMS_SKIPREMLICSERV=1
 			set LMS_SKIPPRODUCTS=1
 			set LMS_SKIPWINDOWS=1
+		)
+		if "!var!"=="setcheckidtask" (
+			set LMS_SET_CHECK_ID_TASK=1
+		)
+		if "!var!"=="delcheckidtask" (
+			set LMS_DEL_CHECK_ID_TASK=1
 		)
 		if "!var!"=="setfirewall" (
 			set LMS_SET_FIREWALL=1
@@ -785,11 +799,11 @@ if exist "%LMS_SERVERTOOL_PATH%" cd "%LMS_SERVERTOOL_PATH%"
 
 if not defined LMS_CHECK_ID (
 	set LMS_BALLOON_TIP_TITLE=CheckLMS Script
-	set LMS_BALLOON_TIP_TEXT=Start CheckLMS script [%LMS_SCRIPT_BUILD%] on %COMPUTERNAME% with LMS Version !LMS_VERSION! ...
+	set LMS_BALLOON_TIP_TEXT=Start CheckLMS script [!LMS_SCRIPT_BUILD!] on %COMPUTERNAME% with LMS Version !LMS_VERSION! ...
 	set LMS_BALLOON_TIP_ICON=Information
-	powershell -Command "[void] [System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms'); $objNotifyIcon=New-Object System.Windows.Forms.NotifyIcon; $objNotifyIcon.BalloonTipText='%LMS_BALLOON_TIP_TEXT%'; $objNotifyIcon.Icon=[system.drawing.systemicons]::%LMS_BALLOON_TIP_ICON%; $objNotifyIcon.BalloonTipTitle='%LMS_BALLOON_TIP_TITLE%'; $objNotifyIcon.BalloonTipIcon='None'; $objNotifyIcon.Visible=$True; $objNotifyIcon.ShowBalloonTip(5000);"
+	powershell -Command "[void] [System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms'); $objNotifyIcon=New-Object System.Windows.Forms.NotifyIcon; $objNotifyIcon.BalloonTipText='!LMS_BALLOON_TIP_TEXT!'; $objNotifyIcon.Icon=[system.drawing.systemicons]::!LMS_BALLOON_TIP_ICON!; $objNotifyIcon.BalloonTipTitle='!LMS_BALLOON_TIP_TITLE!'; $objNotifyIcon.BalloonTipIcon='None'; $objNotifyIcon.Visible=$True; $objNotifyIcon.ShowBalloonTip(5000);"
 	if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
-		EVENTCREATE.exe /T INFORMATION /L Siemens /so CheckLMS /ID 301 /D "%LMS_BALLOON_TIP_TEXT%"  >nul 2>&1
+		EVENTCREATE.exe /T INFORMATION /L Siemens /so CheckLMS /ID 301 /D "!LMS_BALLOON_TIP_TEXT!"  >nul 2>&1
 	)
 )
 
@@ -816,7 +830,7 @@ echo =  LMS System Id: !LMS_SYSTEMID!                                           
 echo =  SSU System Id: %SSU_SYSTEMID%                                                                                        >> %REPORT_LOGFILE% 2>&1
 echo =  Machine GUID : %OS_MACHINEGUID%                                                                                      >> %REPORT_LOGFILE% 2>&1
 echo =                                                                                                                       >> %REPORT_LOGFILE% 2>&1
-echo =  Check Script Version: %LMS_SCRIPT_VERSION% (%LMS_SCRIPT_BUILD%)                                                      >> %REPORT_LOGFILE% 2>&1
+echo =  Check Script Version: %LMS_SCRIPT_VERSION% (!LMS_SCRIPT_BUILD!)                                                      >> %REPORT_LOGFILE% 2>&1
 echo =  Check Script File   : %0                                                                                             >> %REPORT_LOGFILE% 2>&1
 IF "%~1"=="" (
 	echo =  Command Line Options: no options passed.                                                                         >> %REPORT_LOGFILE% 2>&1
@@ -892,7 +906,7 @@ if %LMS_BUILD_VERSION% NEQ "N/A" (
 	echo NOTE: This is not a valid LMS Installation! LMS Version: !LMS_VERSION!              								 >> %REPORT_LOGFILE% 2>&1
 )
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-echo     Check Script Version: %LMS_SCRIPT_VERSION% (%LMS_SCRIPT_BUILD%)
+echo     Check Script Version: %LMS_SCRIPT_VERSION% (!LMS_SCRIPT_BUILD!)
 if defined OS_PRODUCTNAME (
 	echo     OS Product Name: %OS_PRODUCTNAME%
 	echo OS Product Name: %OS_PRODUCTNAME%                                                                                   >> %REPORT_LOGFILE% 2>&1
@@ -1614,8 +1628,14 @@ if defined LMS_GOTO (
 	goto !LMS_GOTO!
 )
 
+echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+echo =   S Y S T E M   C O N F I G U R A T I O N   S E C T I O N                  =                                          >> %REPORT_LOGFILE% 2>&1
+echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+echo ... system configuration section ...
+
 if defined LMS_SET_FIREWALL (
-	echo ... set firewall settings ...
+	echo     set firewall settings ...
 	echo Set firewall settings ...                                                                                                                        >> %REPORT_LOGFILE% 2>&1
 	if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
 		rem set firewall settings ...
@@ -1688,7 +1708,41 @@ if defined LMS_SET_FIREWALL (
 	Type %REPORT_LOGFILE% >> %REPORT_FULL_LOGFILE%
 	exit /b
 	rem STOP EXECUTION HERE
+) else (
+	echo Set firewall settings ... NO                                                                                            >> %REPORT_LOGFILE% 2>&1
 )
+
+if defined LMS_SET_CHECK_ID_TASK (
+	set taskname=\Siemens\Lms\CheckLMS_CheckID
+	set taskrun="%~dpnx0 /checkid"
+	echo     set CheckId scheduled task '!taskname!' ...
+	echo Set CheckId scheduled task '!taskname!' with command !taskrun! ...                                                  >> %REPORT_LOGFILE% 2>&1
+	SCHTASKS /Create /TN !taskname! /TR !taskrun! /SC MINUTE /MO 60 /F                                                       >> %REPORT_LOGFILE% 2>&1
+	SCHTASKS /Run /TN !taskname!                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo ==============================================================================                                      >> %REPORT_LOGFILE% 2>&1
+	echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                              >> %REPORT_LOGFILE% 2>&1
+	rem save (single) report in full report file
+	Type %REPORT_LOGFILE% >> %REPORT_FULL_LOGFILE%
+	exit /b
+	rem STOP EXECUTION HERE
+) else (
+	echo Set CheckId scheduled task ... NO                                                                                   >> %REPORT_LOGFILE% 2>&1
+)
+if defined LMS_DEL_CHECK_ID_TASK (
+	set taskname=\Siemens\Lms\CheckLMS_CheckID
+	echo     delete CheckId scheduled task '!taskname!' ...
+	echo Delete CheckId scheduled task '!taskname!' ...                                                                      >> %REPORT_LOGFILE% 2>&1
+	SCHTASKS /Delete /TN !taskname! /F                                                                                       >> %REPORT_LOGFILE% 2>&1
+	echo ==============================================================================                                      >> %REPORT_LOGFILE% 2>&1
+	echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                              >> %REPORT_LOGFILE% 2>&1
+	rem save (single) report in full report file
+	Type %REPORT_LOGFILE% >> %REPORT_FULL_LOGFILE%
+	exit /b
+	rem STOP EXECUTION HERE
+) else (
+	echo Delete CheckId scheduled task ... NO                                                                                >> %REPORT_LOGFILE% 2>&1
+)
+echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 
 echo ... start collecting information ...
 
@@ -2466,6 +2520,14 @@ if /I "!LMS_IS_VM!"=="true" (
 		echo AWS instance identity document retrieved:                                                                       >> %REPORT_LOGFILE% 2>&1
 		type "!CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt"                                                 >> %REPORT_LOGFILE% 2>&1
 		echo .                                                                                                               >> %REPORT_LOGFILE% 2>&1
+		for /f "tokens=1,2,3 eol=@ delims=, " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt ^|find /I "pendingTime"') do set "AWS_PENTIME=%%C"
+		for /f "tokens=1,2,3 eol=@ delims=, " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt ^|find /I "instanceId"') do set "AWS_INSTID=%%C"
+		for /f "tokens=1,2,3 eol=@ delims=, " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt ^|find /I "imageId"') do set "AWS_IMGID=%%C"
+		for /f "tokens=1,2,3 eol=@ delims=, " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt ^|find /I "accountId"') do set "AWS_ACCID=%%C"
+		echo     AWS_ACCID=!AWS_ACCID! / AWS_IMGID=!AWS_IMGID! / AWS_INSTID=!AWS_INSTID! / AWS_PENTIME=!AWS_PENTIME!   
+		echo     AWS_ACCID=!AWS_ACCID! / AWS_IMGID=!AWS_IMGID! / AWS_INSTID=!AWS_INSTID! / AWS_PENTIME=!AWS_PENTIME!         >> %REPORT_LOGFILE% 2>&1   
+		echo     AWS_ACCID=!AWS_ACCID! / AWS_IMGID=!AWS_IMGID! / AWS_INSTID=!AWS_INSTID! / AWS_PENTIME=!AWS_PENTIME!  at !DATE! / !TIME!  >> %REPORT_LOG_PATH%\AWS.txt 2>&1
+		echo     AWS_ACCID=!AWS_ACCID! / AWS_IMGID=!AWS_IMGID! / AWS_INSTID=!AWS_INSTID! / AWS_PENTIME=!AWS_PENTIME!  at !DATE! / !TIME!  >  %REPORT_LOG_PATH%\AWS_Latest.txt 2>&1
 	) else (
 		echo AWS instance identity document not found!                                                                       >> %REPORT_LOGFILE% 2>&1
 	)
@@ -3489,7 +3551,9 @@ rem Execute always, even LMS_SKIPFNP is set!
 		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
 	)
 	REM echo     VM_DETECTED=!VM_DETECTED! / VM_FAMILY=!VM_FAMILY! / VM_NAME=!VM_NAME! / VM_UUID=!VM_UUID! / VM_GENID=!VM_GENID!
-	echo VM_DETECTED=!VM_DETECTED! / VM_FAMILY=!VM_FAMILY! / VM_NAME=!VM_NAME! / VM_UUID=!VM_UUID! / VM_GENID=!VM_GENID!         >> %REPORT_LOGFILE% 2>&1
+	echo     VM_DETECTED=!VM_DETECTED! / VM_FAMILY=!VM_FAMILY! / VM_NAME=!VM_NAME! / VM_UUID=!VM_UUID! / VM_GENID=!VM_GENID!     >> %REPORT_LOGFILE% 2>&1
+	echo     VM_DETECTED=!VM_DETECTED! / VM_FAMILY=!VM_FAMILY! / VM_NAME=!VM_NAME! / VM_UUID=!VM_UUID! / VM_GENID=!VM_GENID!  at !DATE! / !TIME!  >> %REPORT_LOG_PATH%\VMID.txt 2>&1
+	echo     VM_DETECTED=!VM_DETECTED! / VM_FAMILY=!VM_FAMILY! / VM_NAME=!VM_NAME! / VM_UUID=!VM_UUID! / VM_GENID=!VM_GENID!  at !DATE! / !TIME!  >  %REPORT_LOG_PATH%\VMID_Latest.txt 2>&1
 	if "!VM_FAMILY!" == "UNKNOWNVM" (
 		if defined SHOW_COLORED_OUTPUT (
 			echo [1;31m    ATTENTION: Unknown VM family detected. [1;37m
@@ -3534,16 +3598,16 @@ if not defined LMS_SKIPFNP (
 	)
 	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-	echo lmstat.exe -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -A                                         >> %REPORT_LOGFILE% 2>&1
+	echo lmstat.exe -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -A                                                     >> %REPORT_LOGFILE% 2>&1
 	if defined LMS_LMSTAT (
-		"%LMS_LMSTAT%" -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -A                                      >> %REPORT_LOGFILE% 2>&1
+		"%LMS_LMSTAT%" -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -A                                                  >> %REPORT_LOGFILE% 2>&1
 	) else (
 		echo     lmstat.exe doesn't exist, cannot perform operation.                                                             >> %REPORT_LOGFILE% 2>&1
 	)
 	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-	echo lmstat.exe -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -a                                         >> %REPORT_LOGFILE% 2>&1
+	echo lmstat.exe -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -a                                                     >> %REPORT_LOGFILE% 2>&1
 	if defined LMS_LMSTAT (
-		"%LMS_LMSTAT%" -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -a                                      >> %REPORT_LOGFILE% 2>&1
+		"%LMS_LMSTAT%" -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -a                                                  >> %REPORT_LOGFILE% 2>&1
 	) else (
 		echo     lmstat.exe doesn't exist, cannot perform operation.                                                             >> %REPORT_LOGFILE% 2>&1
 	)
@@ -3819,40 +3883,89 @@ if not defined LMS_SKIPFNP (
 	) else (
 		echo     lmhostid.exe doesn't exist, cannot perform operation.                                                           >> %REPORT_LOGFILE% 2>&1
 	)
+)
+rem Execute always, even LMS_SKIPFNP is set!
 	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 	echo ... read host id's [using ecmcommonutil.exe] ...
 	IF EXIST "%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" (
+		rem log regular (non debug) output in general logfile
 		echo Read host id: device [using ecmcommonutil.exe -l -f -d device]:                                                     >> %REPORT_LOGFILE% 2>&1
-		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d device                                                                  >> %REPORT_LOGFILE% 2>&1
+		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f device                                                                     >> %REPORT_LOGFILE% 2>&1
 		echo Read host id: net [using ecmcommonutil.exe -l -f -d net]:                                                           >> %REPORT_LOGFILE% 2>&1
-		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d net                                                                     >> %REPORT_LOGFILE% 2>&1
+		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f net                                                                        >> %REPORT_LOGFILE% 2>&1
 		echo Read host id: smbios [using ecmcommonutil.exe -l -f -d smbios]:                                                     >> %REPORT_LOGFILE% 2>&1
-		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d smbios                                                                  >> %REPORT_LOGFILE% 2>&1
+		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f smbios                                                                     >> %REPORT_LOGFILE% 2>&1
 		echo Read host id: vm [using ecmcommonutil.exe -l -f -d vm]:                                                             >> %REPORT_LOGFILE% 2>&1
-		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d vm                                                                      >> %REPORT_LOGFILE% 2>&1
+		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f vm                                                                         >> %REPORT_LOGFILE% 2>&1
+
+		rem log debug output in a separate file
+		echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_device.txt 2>&1
+		echo Read host id: device [using ecmcommonutil.exe -l -f -d device] at !DATE! !TIME! ....        >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_device.txt 2>&1
+		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d device                                          >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_device.txt 2>&1
+		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d device                                          >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_device_Latest.txt 2>&1
+		echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_net.txt 2>&1
+		echo Read host id: net [using ecmcommonutil.exe -l -f -d net] at !DATE! !TIME! ....              >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_net.txt 2>&1
+		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d net                                             >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_net.txt 2>&1
+		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d net                                             >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_net_Latest.txt 2>&1
+		echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_smbios.txt 2>&1
+		echo Read host id: smbios [using ecmcommonutil.exe -l -f -d smbios] at !DATE! !TIME! ....        >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_smbios.txt 2>&1
+		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d smbios                                          >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_smbios.txt 2>&1
+		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d smbios                                          >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_smbios_Latest.txt 2>&1
+		echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm.txt 2>&1
+		echo Read host id: vm [using ecmcommonutil.exe -l -f -d vm] at !DATE! !TIME! ....                >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm.txt 2>&1
+		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d vm                                              >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm.txt 2>&1
+		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d vm                                              >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt 2>&1
+		
+		if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_smbios_Latest.txt" for /f "tokens=1,2 eol=@ delims==" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_smbios_Latest.txt ^|find /I "Smbios UUID"') do set "ECM_SMBIOS_UUID=%%B"
+		if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt ^|find /I "FAMILY"') do set "ECM_VM_FAMILY=%%B"
+		if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt ^|find /I "NAME"') do set "ECM_VM_NAME=%%B"
+		if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt ^|find /I "UUID"') do set "ECM_VM_UUID=%%B"
+		if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt ^|find /I "GENID"') do set "ECM_VM_GENID=%%B"
+		
+		rem echo     ECM_VM_FAMILY=!ECM_VM_FAMILY! / ECM_VM_NAME=!ECM_VM_NAME! / ECM_VM_UUID=!ECM_VM_UUID! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID! / ECM_VM_GENID=!ECM_VM_GENID! 
+		echo     ECM_VM_FAMILY=!ECM_VM_FAMILY! / ECM_VM_NAME=!ECM_VM_NAME! / ECM_VM_UUID=!ECM_VM_UUID! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID! / ECM_VM_GENID=!ECM_VM_GENID!                      >> %REPORT_LOGFILE% 2>&1
+		echo     ECM_VM_FAMILY=!ECM_VM_FAMILY! / ECM_VM_NAME=!ECM_VM_NAME! / ECM_VM_UUID=!ECM_VM_UUID! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID! / ECM_VM_GENID=!ECM_VM_GENID!  at !DATE! / !TIME!  >> %REPORT_LOG_PATH%\VMECMID.txt 2>&1
+		echo     ECM_VM_FAMILY=!ECM_VM_FAMILY! / ECM_VM_NAME=!ECM_VM_NAME! / ECM_VM_UUID=!ECM_VM_UUID! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID! / ECM_VM_GENID=!ECM_VM_GENID!  at !DATE! / !TIME!  >  %REPORT_LOG_PATH%\VMECMID_Latest.txt 2>&1
+		
 	) else (
 		echo     ecmcommonutil.exe doesn't exist, cannot perform operation.                                                      >> %REPORT_LOGFILE% 2>&1
 	)
 	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 	echo ... read host id's [using ecmcommonutil_1.19.exe] ...
 	IF EXIST "%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" (
+		rem log regular (non debug) output in general logfile
 		echo Read host id: device [using ecmcommonutil_1.19.exe -l -f -d device]:                                                >> %REPORT_LOGFILE% 2>&1
-		"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d device                                                             >> %REPORT_LOGFILE% 2>&1
+		"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f device                                                                >> %REPORT_LOGFILE% 2>&1
 		echo Read host id: net [using ecmcommonutil_1.19.exe -l -f -d net]:                                                      >> %REPORT_LOGFILE% 2>&1
-		"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d net                                                                >> %REPORT_LOGFILE% 2>&1
+		"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f net                                                                   >> %REPORT_LOGFILE% 2>&1
 		echo Read host id: smbios [using ecmcommonutil_1.19.exe -l -f -d smbios]:                                                >> %REPORT_LOGFILE% 2>&1
-		"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d smbios                                                             >> %REPORT_LOGFILE% 2>&1
+		"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f smbios                                                                >> %REPORT_LOGFILE% 2>&1
 		echo Read host id: vm [using ecmcommonutil_1.19.exe -l -f -d vm]:                                                        >> %REPORT_LOGFILE% 2>&1
-		"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d vm                                                                 >> %REPORT_LOGFILE% 2>&1
+		"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f vm                                                                    >> %REPORT_LOGFILE% 2>&1
+
+		rem log debug output in a separate file
+		echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_device.txt 2>&1
+		echo Read host id: device [using ecmcommonutil_1.19.exe -l -f -d device] at !DATE! !TIME! ....   >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_device.txt 2>&1
+		"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d device                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_device.txt 2>&1
+		echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_net.txt 2>&1
+		echo Read host id: net [using ecmcommonutil_1.19.exe -l -f -d net] at !DATE! !TIME! ....         >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_net.txt 2>&1
+		"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d net                                        >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_net.txt 2>&1
+		echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_smbios.txt 2>&1
+		echo Read host id: smbios [using ecmcommonutil_1.19.exe -l -f -d smbios] at !DATE! !TIME! ....   >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_smbios.txt 2>&1
+		"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d smbios                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_smbios.txt 2>&1
+		echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm.txt 2>&1
+		echo Read host id: vm [using ecmcommonutil_1.19.exe -l -f -d vm] at !DATE! !TIME! ....           >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm.txt 2>&1
+		"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d vm                                         >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm.txt 2>&1
 	) else (
 		echo     ecmcommonutil_1.19.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
 	)
+if not defined LMS_SKIPFNP ( 
 	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 	echo ... list available offline request files ...
 	echo List available offline request files:                                                                                   >> %REPORT_LOGFILE% 2>&1
-	echo Content of folder: "!LMS_PROGRAMDATA!\Requests"                                                             >> %REPORT_LOGFILE% 2>&1
-	dir /S /A /X /4 /W "!LMS_PROGRAMDATA!\Requests"                                                                  >> %REPORT_LOGFILE% 2>&1
+	echo Content of folder: "!LMS_PROGRAMDATA!\Requests"                                                                         >> %REPORT_LOGFILE% 2>&1
+	dir /S /A /X /4 /W "!LMS_PROGRAMDATA!\Requests"                                                                              >> %REPORT_LOGFILE% 2>&1
 	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 	del !CHECKLMS_REPORT_LOG_PATH!\license_all_requests.txt >nul 2>&1
 	FOR %%i IN ("!LMS_PROGRAMDATA!\Requests\*") DO (
@@ -3867,8 +3980,8 @@ if not defined LMS_SKIPFNP (
 	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 	echo ... analyze installed/available local certificates ...
 	echo Installed/available local certificates:                                                                                 >> %REPORT_LOGFILE% 2>&1
-	echo Content of folder: "!LMS_PROGRAMDATA!\Certificates"                                                         >> %REPORT_LOGFILE% 2>&1
-	dir /S /A /X /4 /W "!LMS_PROGRAMDATA!\Certificates"                                                              >> %REPORT_LOGFILE% 2>&1
+	echo Content of folder: "!LMS_PROGRAMDATA!\Certificates"                                                                     >> %REPORT_LOGFILE% 2>&1
+	dir /S /A /X /4 /W "!LMS_PROGRAMDATA!\Certificates"                                                                          >> %REPORT_LOGFILE% 2>&1
 	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 	del !CHECKLMS_REPORT_LOG_PATH!\license_all_certificates.txt >nul 2>&1
 	FOR %%i IN ("!LMS_PROGRAMDATA!\Certificates\*") DO (    
@@ -3897,8 +4010,8 @@ if not defined LMS_SKIPFNP (
 	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 	echo ... analyze installed/available server certificates ...
 	echo Installed/available server certificates:                                                                                >> %REPORT_LOGFILE% 2>&1
-	echo Content of folder: "!LMS_PROGRAMDATA!\Server Certificates"                                                  >> %REPORT_LOGFILE% 2>&1
-	dir /S /A /X /4 /W "!LMS_PROGRAMDATA!\Server Certificates"                                                       >> %REPORT_LOGFILE% 2>&1
+	echo Content of folder: "!LMS_PROGRAMDATA!\Server Certificates"                                                              >> %REPORT_LOGFILE% 2>&1
+	dir /S /A /X /4 /W "!LMS_PROGRAMDATA!\Server Certificates"                                                                   >> %REPORT_LOGFILE% 2>&1
 	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 	del !CHECKLMS_REPORT_LOG_PATH!\license_all_servercertificates.txt >nul 2>&1
 	FOR %%i IN ("!LMS_PROGRAMDATA!\Server Certificates\*") DO (
@@ -6158,7 +6271,7 @@ echo LMS Status Report for LMS Version: !LMS_VERSION! (on %COMPUTERNAME%) instal
 echo     Date: !DATE! / Time: !TIME!                                                                                     >> %REPORT_LOGFILE% 2>&1
 echo     LMS System Id: !LMS_SYSTEMID!                                                                                   >> %REPORT_LOGFILE% 2>&1
 echo     Machine GUID : %OS_MACHINEGUID%                                                                                 >> %REPORT_LOGFILE% 2>&1
-echo     Check Script Version: %LMS_SCRIPT_VERSION% (%LMS_SCRIPT_BUILD%)                                                 >> %REPORT_LOGFILE% 2>&1
+echo     Check Script Version: %LMS_SCRIPT_VERSION% (!LMS_SCRIPT_BUILD!)                                                 >> %REPORT_LOGFILE% 2>&1
 echo     Hypervisor Present  : !LMS_IS_VM!                                                                               >> %REPORT_LOGFILE% 2>&1
 echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
 echo     PublisherId: !LMS_TS_PUBLISHER!  /  TS ClientVersion: !LMS_TS_CLIENT_VERSION!                                   >> %REPORT_LOGFILE% 2>&1
@@ -6186,16 +6299,18 @@ IF EXIST "%DOCUMENTATION_PATH%\\info.txt" (
 	Type "%DOCUMENTATION_PATH%\\info.txt"                                                                                >> %REPORT_LOGFILE% 2>&1
 )
 echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-echo Connection Test Status: !ConnectionTestStatus! ( https://static.siemens.com/btdownloads/ )                          >> %REPORT_LOGFILE% 2>&1
-if defined LMS_CON_TEST_FAILED (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;31m    ATTENTION: Enhanced Connection Test Status: FAILED! [1;37m
+if not defined LMS_CHECK_ID (
+	echo Connection Test Status: !ConnectionTestStatus! [ https://static.siemens.com/btdownloads/ ]                      >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_CON_TEST_FAILED (
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: Enhanced Connection Test Status: FAILED! [1;37m
+		) else (
+			echo     ATTENTION: Enhanced Connection Test Status: FAILED!
+		)
+		echo ATTENTION: Enhanced Connection Test Status: FAILED!                                                         >> %REPORT_LOGFILE% 2>&1
 	) else (
-		echo     ATTENTION: Enhanced Connection Test Status: FAILED!
+		echo Enhanced Connection Test Status: PASSED!                                                                    >> %REPORT_LOGFILE% 2>&1
 	)
-	echo ATTENTION: Enhanced Connection Test Status: FAILED!                                                             >> %REPORT_LOGFILE% 2>&1
-) else (
-	echo Enhanced Connection Test Status: PASSED!                                                                        >> %REPORT_LOGFILE% 2>&1
 )
 echo Installed FNP Version: !FNPVersion! (!fnpversionFromLogFile!)                                                       >> %REPORT_LOGFILE% 2>&1
 echo Installed .NET Version: %NETVersion%                                                                                >> %REPORT_LOGFILE% 2>&1
@@ -6210,14 +6325,14 @@ if defined VM_DETECTED (
 		echo Physical machine detected.                                                                                  >> %REPORT_LOGFILE% 2>&1
 	) else (
 		if "!VM_DETECTED!" == "YES" (
-			echo Virtual machine detected!                                                                               >> %REPORT_LOGFILE% 2>&1
-			echo     VM_FAMILY=!VM_FAMILY! / VM_NAME=!VM_NAME! / VM_UUID=!VM_UUID! / VM_GENID=!VM_GENID!                 >> %REPORT_LOGFILE% 2>&1
+			echo Virtual machine detected!                                                                                                                                     >> %REPORT_LOGFILE% 2>&1
+			echo     AWS_ACCID=!AWS_ACCID! / AWS_IMGID=!AWS_IMGID! / AWS_INSTID=!AWS_INSTID! / AWS_PENTIME=!AWS_PENTIME!                                                       >> %REPORT_LOGFILE% 2>&1   
+			echo     VM_DETECTED=!VM_DETECTED! / VM_FAMILY=!VM_FAMILY! / VM_NAME=!VM_NAME! / VM_UUID=!VM_UUID! / VM_GENID=!VM_GENID!                                           >> %REPORT_LOGFILE% 2>&1
+			echo     ECM_VM_FAMILY=!ECM_VM_FAMILY! / ECM_VM_NAME=!ECM_VM_NAME! / ECM_VM_UUID=!ECM_VM_UUID! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID! / ECM_VM_GENID=!ECM_VM_GENID!   >> %REPORT_LOGFILE% 2>&1
 		) else (
 			echo Detection of physical or virtual machine failed. Not able to determine.                                 >> %REPORT_LOGFILE% 2>&1
 			echo     ATTENTION: VM detection failed. VM_DETECTED=!VM_DETECTED!                                           >> %REPORT_LOGFILE% 2>&1
 		)
-		echo     VM_DETECTED=!VM_DETECTED! / VM_FAMILY=!VM_FAMILY! / VM_NAME=!VM_NAME! / VM_UUID=!VM_UUID! / VM_GENID=!VM_GENID!  at !DATE! / !TIME!  >> %REPORT_LOG_PATH%\VMID.txt 2>&1
-		echo     VM_DETECTED=!VM_DETECTED! / VM_FAMILY=!VM_FAMILY! / VM_NAME=!VM_NAME! / VM_UUID=!VM_UUID! / VM_GENID=!VM_GENID!  at !DATE! / !TIME!  >  %REPORT_LOG_PATH%\VMID_Latest.txt 2>&1
 		if "!VM_FAMILY!" == "UNKNOWNVM" (
 			echo     ATTENTION: Unknown VM family detected.                                                              >> %REPORT_LOGFILE% 2>&1
 		)
@@ -6232,55 +6347,57 @@ if defined VM_DETECTED (
 echo     SIEMBT Virtual Environment: !LMS_SIEMBT_HYPERVISOR!                                                             >> %REPORT_LOGFILE% 2>&1
 echo Number of UMN used to bind TS: !UMN_COUNT!                                                                          >> %REPORT_LOGFILE% 2>&1
 echo     UMN1=!UMN1! / UMN2=!UMN2! / UMN3=!UMN3! / UMN4=!UMN4! / UMN5=!UMN5!                                             >> %REPORT_LOGFILE% 2>&1
-if defined DONGLE_DRIVER_PKG_VERSION (
-	echo Dongle Driver: %DONGLE_DRIVER_VERSION% [%DONGLE_DRIVER_PKG_VERSION%] installed %DONGLE_DRIVER_INST_COUNT% times >> %REPORT_LOGFILE% 2>&1
-	if defined DONGLE_DRIVER_MOST_RECENT_VERSION_INSTALLED (
-		echo     Most recent or newer dongle driver !DONGLE_DRIVER_PKG_VERSION! installed on the system.                 >> %REPORT_LOGFILE% 2>&1
+if not defined LMS_CHECK_ID (
+	if defined DONGLE_DRIVER_PKG_VERSION (
+		echo Dongle Driver: %DONGLE_DRIVER_VERSION% [%DONGLE_DRIVER_PKG_VERSION%] installed %DONGLE_DRIVER_INST_COUNT% times >> %REPORT_LOGFILE% 2>&1
+		if defined DONGLE_DRIVER_MOST_RECENT_VERSION_INSTALLED (
+			echo     Most recent or newer dongle driver !DONGLE_DRIVER_PKG_VERSION! installed on the system.                 >> %REPORT_LOGFILE% 2>&1
+		) else (
+			if defined SHOW_COLORED_OUTPUT (
+				echo [1;33m    WARNING: There is not the most recent dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! installed on the system. Installed driver is !DONGLE_DRIVER_PKG_VERSION!. [1;37m
+			) else (
+				echo     WARNING: There is not the most recent dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! installed on the system. Installed driver is !DONGLE_DRIVER_PKG_VERSION!.
+			)
+			echo     WARNING: There is not the most recent dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! installed on the system. Installed driver is !DONGLE_DRIVER_PKG_VERSION!.   >> %REPORT_LOGFILE% 2>&1
+		)
+		if defined DONGLE_DRIVER_UPDATE_TO781_BY_ATOS (
+			echo     NOTE: There was a dongle driver update to version V7.81 at %DONGLE_DRIVER_UPDATE_TO781_BY_ATOS% provided by ATOS.  >> %REPORT_LOGFILE% 2>&1
+		)
+		if defined DONGLE_DRIVER_UPDATE_TO792_BY_ATOS (
+			echo     NOTE: There was a dongle driver update to version V7.92 at %DONGLE_DRIVER_UPDATE_TO792_BY_ATOS% provided by ATOS.  >> %REPORT_LOGFILE% 2>&1
+		)
 	) else (
 		if defined SHOW_COLORED_OUTPUT (
-			echo [1;33m    WARNING: There is not the most recent dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! installed on the system. Installed driver is !DONGLE_DRIVER_PKG_VERSION!. [1;37m
+			echo [1;31m    ATTENTION: No Dongle Driver installed. [1;37m
 		) else (
-			echo     WARNING: There is not the most recent dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! installed on the system. Installed driver is !DONGLE_DRIVER_PKG_VERSION!.
+			echo     ATTENTION: No Dongle Driver installed.
 		)
-		echo     WARNING: There is not the most recent dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! installed on the system. Installed driver is !DONGLE_DRIVER_PKG_VERSION!.   >> %REPORT_LOGFILE% 2>&1
-	)
-	if defined DONGLE_DRIVER_UPDATE_TO781_BY_ATOS (
-		echo     NOTE: There was a dongle driver update to version V7.81 at %DONGLE_DRIVER_UPDATE_TO781_BY_ATOS% provided by ATOS.  >> %REPORT_LOGFILE% 2>&1
-	)
-	if defined DONGLE_DRIVER_UPDATE_TO792_BY_ATOS (
-		echo     NOTE: There was a dongle driver update to version V7.92 at %DONGLE_DRIVER_UPDATE_TO792_BY_ATOS% provided by ATOS.  >> %REPORT_LOGFILE% 2>&1
-	)
-) else (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;31m    ATTENTION: No Dongle Driver installed. [1;37m
-	) else (
-		echo     ATTENTION: No Dongle Driver installed.
-	)
-	echo ATTENTION: No Dongle Driver installed.                                                                          >> %REPORT_LOGFILE% 2>&1
-	if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
-		IF EXIST "%DOWNLOAD_LMS_PATH%\haspdinst.exe" (
-			rem install dongle driver downloaded by this script
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    --- Install newest dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! just downloaded by this script. [1;37m
-			) else (
-				echo     --- Install newest dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! just downloaded by this script.
+		echo ATTENTION: No Dongle Driver installed.                                                                          >> %REPORT_LOGFILE% 2>&1
+		if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
+			IF EXIST "%DOWNLOAD_LMS_PATH%\haspdinst.exe" (
+				rem install dongle driver downloaded by this script
+				if defined SHOW_COLORED_OUTPUT (
+					echo [1;31m    --- Install newest dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! just downloaded by this script. [1;37m
+				) else (
+					echo     --- Install newest dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! just downloaded by this script.
+				)
+				echo --- Install newest dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! just downloaded by this script.    >> %REPORT_LOGFILE% 2>&1
+				start "Install dongle driver" "%DOWNLOAD_LMS_PATH%\haspdinst.exe" -install -killprocess
+				echo --- Installation started in an own process/shell.                                                       >> %REPORT_LOGFILE% 2>&1
 			)
-			echo --- Install newest dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! just downloaded by this script.    >> %REPORT_LOGFILE% 2>&1
-			start "Install dongle driver" "%DOWNLOAD_LMS_PATH%\haspdinst.exe" -install -killprocess
-			echo --- Installation started in an own process/shell.                                                       >> %REPORT_LOGFILE% 2>&1
-		)
-	) else (
-		IF EXIST "%DOWNLOAD_LMS_PATH%\haspdinst.exe" (
-			rem show message to install dongle driver downloaded by this script
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    --- Install newest dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! just downloaded by this script. [1;37m
-				echo [1;31m    --- Execute '"%DOWNLOAD_LMS_PATH%\haspdinst.exe" -install -killprocess' with administrator priviledge. [1;37m
-			) else (
-				echo     --- Install newest dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! just downloaded by this script.
-				echo     --- Execute '"%DOWNLOAD_LMS_PATH%\haspdinst.exe" -install -killprocess' with administrator priviledge.
+		) else (
+			IF EXIST "%DOWNLOAD_LMS_PATH%\haspdinst.exe" (
+				rem show message to install dongle driver downloaded by this script
+				if defined SHOW_COLORED_OUTPUT (
+					echo [1;31m    --- Install newest dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! just downloaded by this script. [1;37m
+					echo [1;31m    --- Execute '"%DOWNLOAD_LMS_PATH%\haspdinst.exe" -install -killprocess' with administrator priviledge. [1;37m
+				) else (
+					echo     --- Install newest dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! just downloaded by this script.
+					echo     --- Execute '"%DOWNLOAD_LMS_PATH%\haspdinst.exe" -install -killprocess' with administrator priviledge.
+				)
+				echo --- Install newest dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! just downloaded by this script.    >> %REPORT_LOGFILE% 2>&1
+				echo --- Execute '"%DOWNLOAD_LMS_PATH%\haspdinst.exe" -install -killprocess' with administrator priviledge.  >> %REPORT_LOGFILE% 2>&1
 			)
-			echo --- Install newest dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! just downloaded by this script.    >> %REPORT_LOGFILE% 2>&1
-			echo --- Execute '"%DOWNLOAD_LMS_PATH%\haspdinst.exe" -install -killprocess' with administrator priviledge.  >> %REPORT_LOGFILE% 2>&1
 		)
 	)
 )
@@ -6516,10 +6633,8 @@ if /I !SIEMBTLOG_FILESIZE! GEQ !LOG_FILESIZE_LIMIT! (
 echo ==============================================================================                                                             >> %REPORT_LOGFILE% 2>&1
 echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                                                     >> %REPORT_LOGFILE% 2>&1
 
-if not defined LMS_CHECK_ID (
-	rem save (single) report in full report file
-	Type %REPORT_LOGFILE% >> %REPORT_FULL_LOGFILE%
-)
+rem save (single) report in full report file
+Type %REPORT_LOGFILE% >> %REPORT_FULL_LOGFILE%
 
 rem copy default logfile to specified <LMS_LOGFILENAME>
 if defined LMS_LOGFILENAME (
@@ -6530,9 +6645,9 @@ if not defined LMS_CHECK_ID (
 	set LMS_BALLOON_TIP_TITLE=CheckLMS Script
 	set LMS_BALLOON_TIP_TEXT=Script CheckLMS ended, on %COMPUTERNAME% with LMS Version !LMS_VERSION!, see %REPORT_LOGFILE%. Send this log file togther with zipped archive of !REPORT_LOG_PATH! to your local system supplier. 
 	set LMS_BALLOON_TIP_ICON=Information
-	powershell -Command "[void] [System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms'); $objNotifyIcon=New-Object System.Windows.Forms.NotifyIcon; $objNotifyIcon.BalloonTipText='%LMS_BALLOON_TIP_TEXT%'; $objNotifyIcon.Icon=[system.drawing.systemicons]::%LMS_BALLOON_TIP_ICON%; $objNotifyIcon.BalloonTipTitle='%LMS_BALLOON_TIP_TITLE%'; $objNotifyIcon.BalloonTipIcon='None'; $objNotifyIcon.Visible=$True; $objNotifyIcon.ShowBalloonTip(5000);"
+	powershell -Command "[void] [System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms'); $objNotifyIcon=New-Object System.Windows.Forms.NotifyIcon; $objNotifyIcon.BalloonTipText='!LMS_BALLOON_TIP_TEXT!'; $objNotifyIcon.Icon=[system.drawing.systemicons]::!LMS_BALLOON_TIP_ICON!; $objNotifyIcon.BalloonTipTitle='!LMS_BALLOON_TIP_TITLE!'; $objNotifyIcon.BalloonTipIcon='None'; $objNotifyIcon.Visible=$True; $objNotifyIcon.ShowBalloonTip(5000);"
 	if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
-		EVENTCREATE /T INFORMATION /L Siemens /so CheckLMS /ID 302 /D "%LMS_BALLOON_TIP_TEXT%"  >nul 2>&1
+		EVENTCREATE /T INFORMATION /L Siemens /so CheckLMS /ID 302 /D "!LMS_BALLOON_TIP_TEXT!"  >nul 2>&1
 	)
 )
 
