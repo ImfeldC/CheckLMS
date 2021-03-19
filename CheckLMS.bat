@@ -136,6 +136,10 @@ rem        - add VMECMID.txt (and VMECMID_Latest.txt) which contains results of 
 rem        - add AWS.txt (and AWS_Latest.txt) which contains specific AWS information
 rem        - add /setcheckidtask option, to setup periodic task to run checklms.bat with /checkid option.
 rem        - add /delcheckidtask to delete periodic checkid task, see option /setcheckidtask
+rem     19-Mar-2021:
+rem        - added new section "C H E C K - I D"
+rem        - moved several existing checks into this new section
+rem        - added further checks, to compare values from previous run with values of current run.
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -161,8 +165,8 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 18-Mar-2021"
-set LMS_SCRIPT_BUILD=20210318
+set LMS_SCRIPT_VERSION="CheckLMS Script 19-Mar-2021"
+set LMS_SCRIPT_BUILD=20210319
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -416,9 +420,13 @@ FOR %%A IN (%*) DO (
 		)
 		if "!var!"=="setcheckidtask" (
 			set LMS_SET_CHECK_ID_TASK=1
+			set LMS_SKIPDOWNLOAD=1
+			set LMS_SKIPUNZIP=1
 		)
 		if "!var!"=="delcheckidtask" (
 			set LMS_DEL_CHECK_ID_TASK=1
+			set LMS_SKIPDOWNLOAD=1
+			set LMS_SKIPUNZIP=1
 		)
 		if "!var!"=="setfirewall" (
 			set LMS_SET_FIREWALL=1
@@ -869,12 +877,12 @@ if NOT defined UNZIP_TOOL (
 	"!UNZIP_TOOL!" -version    >> "!CHECKLMS_REPORT_LOG_PATH!\unziptool_version.log" 2>&1
 )
 
-if %LMS_BUILD_VERSION% NEQ "N/A" (
+if !LMS_BUILD_VERSION! NEQ "N/A" (
 	REM Check: not 2.4.815 AND not 2.3.745 AND less or equal than 2.3.744  --> DEPRECATED (per Oct-2020)
 	REM See https://support.industry.siemens.com/cs/document/109738214/
-	if /I %LMS_BUILD_VERSION% NEQ 815 (
-		if /I %LMS_BUILD_VERSION% NEQ 745 (
-			if /I %LMS_BUILD_VERSION% LEQ 744 (
+	if /I !LMS_BUILD_VERSION! NEQ 815 (
+		if /I !LMS_BUILD_VERSION! NEQ 745 (
+			if /I !LMS_BUILD_VERSION! LEQ 744 (
 				REM LMS Version 2.3.744 or older (lower build number)
 				if defined SHOW_COLORED_OUTPUT (
 					echo [1;31m    NOTE: The LMS version !LMS_VERSION! which you are using is DEPRECATED, pls update your system. [1;37m
@@ -884,7 +892,7 @@ if %LMS_BUILD_VERSION% NEQ "N/A" (
 				echo NOTE: The LMS version !LMS_VERSION! which you are using is DEPRECATED, pls update your system.              >> %REPORT_LOGFILE% 2>&1
 			) else (
 				REM Check: ... less than MOST_RECENT_LMS_BUILD --> IN TEST
-				if /I %LMS_BUILD_VERSION% LSS %MOST_RECENT_LMS_BUILD% (
+				if /I !LMS_BUILD_VERSION! LSS %MOST_RECENT_LMS_BUILD% (
 					if defined SHOW_COLORED_OUTPUT (
 						echo [1;33m    WARNING: The LMS version !LMS_VERSION! which you are using is a field test version, pls update your system as soon final version is available. [1;37m
 					) else (
@@ -1087,7 +1095,7 @@ if not defined LMS_SKIPDOWNLOAD (
 				echo Skip download from github,  because option 'donotstartnewerscript' is set. '%0'                                                                                            >> %REPORT_LOGFILE% 2>&1
 			) 
 
-			if /I %LMS_BUILD_VERSION% NEQ %MOST_RECENT_LMS_BUILD% (
+			if /I !LMS_BUILD_VERSION! NEQ %MOST_RECENT_LMS_BUILD% (
 				rem Not "most recent" [="released"] build installed, download latest released LMS client; e.g. from https://static.siemens.com/btdownloads/lms/LMSSetup2.6.826/x64/setup64.exe
 				set LMS_SETUP_EXECUTABLE=%DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_LMS_VERSION%\setup64.exe
 				IF NOT EXIST "!LMS_SETUP_EXECUTABLE!" (
@@ -1105,7 +1113,7 @@ if not defined LMS_SKIPDOWNLOAD (
 				)
 			)
 			
-			if /I %LMS_BUILD_VERSION% NEQ %MOST_RECENT_FT_LMS_BUILD% (
+			if /I !LMS_BUILD_VERSION! NEQ %MOST_RECENT_FT_LMS_BUILD% (
 				rem Not "most recent" field test build installed, download latest field test LMS client; e.g. from https://static.siemens.com/btdownloads/lms/LMSSetup2.6.826/x64/setup64.exe
 				set LMS_FT_SETUP_EXECUTABLE=%DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_FT_LMS_VERSION%\setup64.exe
 				IF NOT EXIST "!LMS_FT_SETUP_EXECUTABLE!" (
@@ -2512,7 +2520,20 @@ IF EXIST "%DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe" (
 )
 if /I "!LMS_IS_VM!"=="true" (
 	rem call further commands only, when running on a virtual machine, wthin a hypervisor.
-	
+
+	if exist "%REPORT_LOG_PATH%\AWS_Latest.txt" (
+		for /f "tokens=1,2,3,4,* eol=@ delims=,/ " %%A in ('type %REPORT_LOG_PATH%\AWS_Latest.txt ^|find /I "AWS_ACCID"') do (
+			rem echo %%A / %%B / %%C // %%F
+			for /f "tokens=1,2 delims==" %%a in ("%%A") do set AWS_ACCID_PREV=%%b
+			for /f "tokens=1,2 delims==" %%a in ("%%B") do set AWS_IMGID_PREV=%%b
+			for /f "tokens=1,2 delims==" %%a in ("%%C") do set AWS_INSTID_PREV=%%b
+			for /f "tokens=1,2 delims==" %%a in ("%%D") do set AWS_PENTIME_PREV=%%b
+			set AWSINFO_PREV=%%E
+		)
+		echo Previous AWS instance identity document values, collected !AWSINFO_PREV!                                                                                >> %REPORT_LOGFILE% 2>&1
+		echo     AWS_ACCID_PREV=!AWS_ACCID_PREV! / AWS_IMGID_PREV=!AWS_IMGID_PREV! / AWS_INSTID_PREV=!AWS_INSTID_PREV! / AWS_PENTIME_PREV=!AWS_PENTIME_PREV!         >> %REPORT_LOGFILE% 2>&1   
+	)
+
 	rem get AWS instance identify document (see https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/instance-identity-documents.html )
 	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
 	powershell -Command "(New-Object Net.WebClient).DownloadFile('http://169.254.169.254/latest/dynamic/instance-identity/document', '!CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt')"  >!CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document_result.txt 2>&1
@@ -2876,8 +2897,8 @@ if not defined LMS_SKIPLMS (
 	echo Read-out "SUR expiration date" for this system, with LmuTool.exe /SUREDATE                                              >> %REPORT_LOGFILE% 2>&1
 	echo     Read-out "SUR expiration date" for this system, with LmuTool.exe /SUREDATE
 	if defined LMS_LMUTOOL (
-		if /I %LMS_BUILD_VERSION% NEQ 721 (
-			if /I %LMS_BUILD_VERSION% NEQ 610 (
+		if /I !LMS_BUILD_VERSION! NEQ 721 (
+			if /I !LMS_BUILD_VERSION! NEQ 610 (
 				"!LMS_LMUTOOL!" /SUREDATE                                                                                        >> %REPORT_LOGFILE% 2>&1
 			) else (
 				echo     This operation is not supported with LMS !LMS_VERSION!, cannot perform operation.                       >> %REPORT_LOGFILE% 2>&1 
@@ -2893,8 +2914,8 @@ if not defined LMS_SKIPLMS (
 	echo Read-out "site value" for this system, with LmuTool.exe /SITEVALUE                                                      >> %REPORT_LOGFILE% 2>&1
 	echo     Read-out "site value" for this system, with LmuTool.exe /SITEVALUE
 	if defined LMS_LMUTOOL (
-		if /I %LMS_BUILD_VERSION% NEQ 721 (
-			if /I %LMS_BUILD_VERSION% NEQ 610 (
+		if /I !LMS_BUILD_VERSION! NEQ 721 (
+			if /I !LMS_BUILD_VERSION! NEQ 610 (
 				"!LMS_LMUTOOL!" /SITEVALUE                                                                                       >> %REPORT_LOGFILE% 2>&1
 			) else (
 				echo     This operation is not supported with LMS !LMS_VERSION!, cannot perform operation.                       >> %REPORT_LOGFILE% 2>&1 
@@ -2910,8 +2931,8 @@ if not defined LMS_SKIPLMS (
 	echo Run health check, with LmuTool.exe /healthcheck                                                                         >> %REPORT_LOGFILE% 2>&1
 	echo     Run health check, with LmuTool.exe /healthcheck
 	if defined LMS_LMUTOOL (
-		if /I %LMS_BUILD_VERSION% NEQ 721 (
-			if /I %LMS_BUILD_VERSION% NEQ 610 (
+		if /I !LMS_BUILD_VERSION! NEQ 721 (
+			if /I !LMS_BUILD_VERSION! NEQ 610 (
 				"!LMS_LMUTOOL!" /healthcheck                                                                                     >> %REPORT_LOGFILE% 2>&1
 			) else (
 				echo     This operation is not supported with LMS !LMS_VERSION!, cannot perform operation.                       >> %REPORT_LOGFILE% 2>&1 
@@ -2927,7 +2948,7 @@ if not defined LMS_SKIPLMS (
 	echo Run TS clean-up, with LmuTool.exe /cleants                                                                              >> %REPORT_LOGFILE% 2>&1
 	echo     Run TS clean-up, with LmuTool.exe /cleants
 	if defined LMS_LMUTOOL (
-		if /I %LMS_BUILD_VERSION% GEQ 800 (
+		if /I !LMS_BUILD_VERSION! GEQ 800 (
 			"!LMS_LMUTOOL!" /cleants                                                                                             >> %REPORT_LOGFILE% 2>&1
 		) else (
 			echo     This operation is not supported with LMS !LMS_VERSION!, cannot perform operation.                           >> %REPORT_LOGFILE% 2>&1 
@@ -3003,8 +3024,8 @@ if not defined LMS_SKIPLMS (
 	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 	echo Display the connected dongles, with LmuTool.exe /DONGLES                                                                >> %REPORT_LOGFILE% 2>&1
 	if defined LMS_LMUTOOL (
-		if /I %LMS_BUILD_VERSION% NEQ 721 (
-			if /I %LMS_BUILD_VERSION% NEQ 610 (
+		if /I !LMS_BUILD_VERSION! NEQ 721 (
+			if /I !LMS_BUILD_VERSION! NEQ 610 (
 				"!LMS_LMUTOOL!" /DONGLES                                                                                         >> %REPORT_LOGFILE% 2>&1
 			) else (
 				echo     This operation is not supported with LMS !LMS_VERSION!, cannot perform operation.                       >> %REPORT_LOGFILE% 2>&1 
@@ -3272,67 +3293,76 @@ if not defined LMS_SKIPFNP (
 	)
 )
 rem Run *always* even if LMS_SKIPFNP is set
-	echo -------------------------------------------------------                                                                                                    >> %REPORT_LOGFILE% 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                                                                >> %REPORT_LOGFILE% 2>&1
-	echo Create offline activation request file [using servercomptranutil.exe -n "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml" -activate fake_id] ...       >> %REPORT_LOGFILE% 2>&1
-	echo     Create offline activation request file ...
-	if defined LMS_SERVERCOMTRANUTIL (
-		"%LMS_SERVERCOMTRANUTIL%" -n "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml" ref=CheckLMS_CreateOffActRequestFile -activate fake_id                   >> %REPORT_LOGFILE% 2>&1
+echo -------------------------------------------------------                                                                                                    >> %REPORT_LOGFILE% 2>&1
+echo Start at !DATE! !TIME! ....                                                                                                                                >> %REPORT_LOGFILE% 2>&1
+echo Create offline activation request file [using servercomptranutil.exe -n "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml" -activate fake_id] ...       >> %REPORT_LOGFILE% 2>&1
+echo     Create offline activation request file ...
+if defined LMS_SERVERCOMTRANUTIL (
+	"%LMS_SERVERCOMTRANUTIL%" -n "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml" ref=CheckLMS_CreateOffActRequestFile -activate fake_id                   >> %REPORT_LOGFILE% 2>&1
 
-		Powershell -ExecutionPolicy Bypass -Command "& '%lms_ps_script1%'"
-		Powershell -ExecutionPolicy Bypass -Command "& '%lms_ps_script2%'"
-		
-		rem read machine identifiers from offline request file
-		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml ^|find /I "<PublisherId>"') do set "LMS_TS_PUBLISHER=%%i"
-		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml ^|find /I "<ClientVersion>"') do set "LMS_TS_CLIENT_VERSION=%%i"
-		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml ^|find /I "<Revision>"') do set "LMS_TS_REVISION=%%i"
-		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml ^|find /I "<MachineIdentifier>"') do set "LMS_TS_MACHINE_IDENTIFIER=%%i"
-		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml ^|find /I "<TrustedStorageSerialNumber>"') do set "LMS_TS_SERIAL_NUMBER=%%i"
-		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml ^|find /I "<SequenceNumber>"') do set "LMS_TS_SEQ_NUM=%%i"
-		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml ^|find /I "<Status>"') do set "LMS_TS_STATUS=%%i"	
-		echo     PublisherId: !LMS_TS_PUBLISHER!  /  TS ClientVersion: !LMS_TS_CLIENT_VERSION!                                   >> %REPORT_LOGFILE% 2>&1
-		echo     MachineIdentifier: !LMS_TS_MACHINE_IDENTIFIER!  /  TrustedStorageSerialNumber: !LMS_TS_SERIAL_NUMBER!           >> %REPORT_LOGFILE% 2>&1
-		echo     TS Status: !LMS_TS_STATUS!  /  TS SequenceNumber: !LMS_TS_SEQ_NUM!  /  TS Revision: !LMS_TS_REVISION!           >> %REPORT_LOGFILE% 2>&1
+	Powershell -ExecutionPolicy Bypass -Command "& '%lms_ps_script1%'"
+	Powershell -ExecutionPolicy Bypass -Command "& '%lms_ps_script2%'"
+	
+	rem read machine identifiers from offline request file
+	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml ^|find /I "<PublisherId>"') do set "LMS_TS_PUBLISHER=%%i"
+	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml ^|find /I "<ClientVersion>"') do set "LMS_TS_CLIENT_VERSION=%%i"
+	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml ^|find /I "<Revision>"') do set "LMS_TS_REVISION=%%i"
+	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml ^|find /I "<MachineIdentifier>"') do set "LMS_TS_MACHINE_IDENTIFIER=%%i"
+	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml ^|find /I "<TrustedStorageSerialNumber>"') do set "LMS_TS_SERIAL_NUMBER=%%i"
+	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml ^|find /I "<SequenceNumber>"') do set "LMS_TS_SEQ_NUM=%%i"
+	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml ^|find /I "<Status>"') do set "LMS_TS_STATUS=%%i"	
+	echo     PublisherId: !LMS_TS_PUBLISHER!  /  TS ClientVersion: !LMS_TS_CLIENT_VERSION!                                   >> %REPORT_LOGFILE% 2>&1
+	echo     MachineIdentifier: !LMS_TS_MACHINE_IDENTIFIER!  /  TrustedStorageSerialNumber: !LMS_TS_SERIAL_NUMBER!           >> %REPORT_LOGFILE% 2>&1
+	echo     TS Status: !LMS_TS_STATUS!  /  TS SequenceNumber: !LMS_TS_SEQ_NUM!  /  TS Revision: !LMS_TS_REVISION!           >> %REPORT_LOGFILE% 2>&1
 
-		rem retreieve UMN values from offline request file
-		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml ^|find /I "<Type>1"') do if "%%i" NEQ "/Value" set "UMN1_TS=%%i"
-		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml ^|find /I "<Type>2"') do if "%%i" NEQ "/Value" set "UMN2_TS=%%i"
-		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml ^|find /I "<Type>3"') do if "%%i" NEQ "/Value" set "UMN3_TS=%%i"
-		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml ^|find /I "<Type>4"') do if "%%i" NEQ "/Value" set "UMN4_TS=%%i"
-		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml ^|find /I "<Type>5"') do if "%%i" NEQ "/Value" set "UMN5_TS=%%i"
-		echo     UMN1=!UMN1_TS! / UMN2=!UMN2_TS! / UMN3=!UMN3_TS! / UMN4=!UMN4_TS! / UMN5=!UMN5_TS!                              >> %REPORT_LOGFILE% 2>&1
-		echo     UMN1=!UMN1_TS! / UMN2=!UMN2_TS! / UMN3=!UMN3_TS! / UMN4=!UMN4_TS! / UMN5=!UMN5_TS! at !DATE! / !TIME! / retrieved from offline request file >> %REPORT_LOG_PATH%\UMN.txt 2>&1
+	rem retreieve UMN values from offline request file
+	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml ^|find /I "<Type>1"') do if "%%i" NEQ "/Value" set "UMN1_TS=%%i"
+	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml ^|find /I "<Type>2"') do if "%%i" NEQ "/Value" set "UMN2_TS=%%i"
+	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml ^|find /I "<Type>3"') do if "%%i" NEQ "/Value" set "UMN3_TS=%%i"
+	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml ^|find /I "<Type>4"') do if "%%i" NEQ "/Value" set "UMN4_TS=%%i"
+	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml" for /f "tokens=6 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml ^|find /I "<Type>5"') do if "%%i" NEQ "/Value" set "UMN5_TS=%%i"
+	rem Evaluate number of UMN used for TS binding
+	set /a UMN_COUNT_TS = 0
+	if defined UMN1_TS SET /A UMN_COUNT_TS += 1
+	if defined UMN2_TS SET /A UMN_COUNT_TS += 1
+	if defined UMN3_TS SET /A UMN_COUNT_TS += 1
+	if defined UMN4_TS SET /A UMN_COUNT_TS += 1
+	if defined UMN5_TS SET /A UMN_COUNT_TS += 1
+	echo     Number of UMN used to bind TS: !UMN_COUNT_TS!
+	echo     Number of UMN used to bind TS: !UMN_COUNT_TS!                                                                   >> %REPORT_LOGFILE% 2>&1
+	echo     UMN1=!UMN1_TS! / UMN2=!UMN2_TS! / UMN3=!UMN3_TS! / UMN4=!UMN4_TS! / UMN5=!UMN5_TS!                              >> %REPORT_LOGFILE% 2>&1
+	echo     UMN1=!UMN1_TS! / UMN2=!UMN2_TS! / UMN3=!UMN3_TS! / UMN4=!UMN4_TS! / UMN5=!UMN5_TS! at !DATE! / !TIME! / retrieved from offline request file >> %REPORT_LOG_PATH%\UMN.txt 2>&1
 
-		rem retrieve section break info
-		findstr /m /c:"StorageBreakInfo" "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml"                           >> %REPORT_LOGFILE% 2>&1
-		if !ERRORLEVEL!==0 (
-			echo     'StorageBreakInfo' section was found in !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml ...     >> %REPORT_LOGFILE% 2>&1
-			Set LMS_START_LOG=0
-			FOR /F "eol=@ delims=@" %%i IN (!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml) DO ( 
-				ECHO "%%i" | FINDSTR /C:"<StorageBreakInfo>" 1>nul 
+	rem retrieve section break info
+	findstr /m /c:"StorageBreakInfo" "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml"                           >> %REPORT_LOGFILE% 2>&1
+	if !ERRORLEVEL!==0 (
+		echo     'StorageBreakInfo' section was found in !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml ...     >> %REPORT_LOGFILE% 2>&1
+		Set LMS_START_LOG=0
+		FOR /F "eol=@ delims=@" %%i IN (!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml) DO ( 
+			ECHO "%%i" | FINDSTR /C:"<StorageBreakInfo>" 1>nul 
+			if !ERRORLEVEL!==0 (
+				echo     Start of 'StorageBreakInfo' section found ...                                               >> %REPORT_LOGFILE% 2>&1
+				Set LMS_START_LOG=1
+			)
+			if !LMS_START_LOG!==1 (
+				echo     %%i                                                                                         >> %REPORT_LOGFILE% 2>&1
+				
+				rem check for end of 'StorageBreakInfo' section
+				ECHO "%%i" | FINDSTR /C:"</StorageBreakInfo>" 1>nul 
 				if !ERRORLEVEL!==0 (
-					echo     Start of 'StorageBreakInfo' section found ...                                               >> %REPORT_LOGFILE% 2>&1
-					Set LMS_START_LOG=1
-				)
-				if !LMS_START_LOG!==1 (
-					echo     %%i                                                                                         >> %REPORT_LOGFILE% 2>&1
-					
-					rem check for end of 'StorageBreakInfo' section
-					ECHO "%%i" | FINDSTR /C:"</StorageBreakInfo>" 1>nul 
-					if !ERRORLEVEL!==0 (
-						echo     End of 'StorageBreakInfo' section found ...                                             >> %REPORT_LOGFILE% 2>&1
-						Set LMS_START_LOG=0
-					)
+					echo     End of 'StorageBreakInfo' section found ...                                             >> %REPORT_LOGFILE% 2>&1
+					Set LMS_START_LOG=0
 				)
 			)
-		) else (
-			echo     NO 'StorageBreakInfo' section was found in !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml ...  >> %REPORT_LOGFILE% 2>&1
 		)
-
 	) else (
-		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
+		echo     NO 'StorageBreakInfo' section was found in !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml ...  >> %REPORT_LOGFILE% 2>&1
 	)
-	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+
+) else (
+	echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
+)
+echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 if not defined LMS_SKIPFNP (
 	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
@@ -3365,211 +3395,155 @@ if not defined LMS_SKIPFNP (
 	)
 )
 rem Execute always, even LMS_SKIPFNP is set!
-	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-	echo retrieve license information [using servercomptranutil.exe -unique, is equal to: servercomptranutil.exe -umn] ...       >> %REPORT_LOGFILE% 2>&1
-	echo     retrieve license information [using servercomptranutil.exe -unique, is equal to: servercomptranutil.exe -umn] ...
-	if defined LMS_SERVERCOMTRANUTIL (
-		if "!FNPVersion!" == "11.14.0.0" (
-			echo     servercomptranutil.exe -unique is not available for FNP=!FNPVersion!, cannot perform operation.         >> %REPORT_LOGFILE% 2>&1
-		) else (
-			"%LMS_SERVERCOMTRANUTIL%" -unique > !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_unique.txt  2>&1
-			type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_unique.txt                                                    >> %REPORT_LOGFILE% 2>&1
-			IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_unique.txt ^|find /I "UMN1"') do set "UMN1_A=%%B"   
-			IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_unique.txt ^|find /I "UMN2"') do set "UMN2_A=%%B"   
-			IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_unique.txt ^|find /I "UMN3"') do set "UMN3_A=%%B"   
-			IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_unique.txt ^|find /I "UMN4"') do set "UMN4_A=%%B"   
-			IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_unique.txt ^|find /I "UMN5"') do set "UMN5_A=%%B"   
-			rem Evaluate number of UMN used for TS binding
-			set /a UMN_COUNT_A = 0
-			if defined UMN1_A SET /A UMN_COUNT_A += 1
-			if defined UMN2_A SET /A UMN_COUNT_A += 1
-			if defined UMN3_A SET /A UMN_COUNT_A += 1
-			if defined UMN4_A SET /A UMN_COUNT_A += 1
-			if defined UMN5_A SET /A UMN_COUNT_A += 1
-			echo     Number of UMN used to bind TS: !UMN_COUNT_A!
-			echo     Number of UMN used to bind TS: !UMN_COUNT_A!                                                                                    >> %REPORT_LOGFILE% 2>&1
-			echo     UMN1=!UMN1_A! / UMN2=!UMN2_A! / UMN3=!UMN3_A! / UMN4=!UMN4_A! / UMN5=!UMN5_A!                                                   >> %REPORT_LOGFILE% 2>&1
-			echo     UMN1=!UMN1_A! / UMN2=!UMN2_A! / UMN3=!UMN3_A! / UMN4=!UMN4_A! / UMN5=!UMN5_A! at !DATE! / !TIME! / using servercomptranutil.exe >> %REPORT_LOG_PATH%\UMN.txt 2>&1
-			echo     UMN1=!UMN1_A! / UMN2=!UMN2_A! / UMN3=!UMN3_A! / UMN4=!UMN4_A! / UMN5=!UMN5_A! at !DATE! / !TIME! / using servercomptranutil.exe >  %REPORT_LOG_PATH%\UMN_Latest.txt 2>&1
-			if !UMN_COUNT_A! leq 1 (
-				if defined SHOW_COLORED_OUTPUT (
-					echo [1;31m    ATTENTION: Only ONE UMN is used to bind TS. [1;37m
-				) else (
-					echo     ATTENTION: Only ONE UMN is used to bind TS.
-				)
-			)
-		)
-	) else (
-		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
+echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+echo retrieve license information [using servercomptranutil.exe -unique, is equal to: servercomptranutil.exe -umn] ...       >> %REPORT_LOGFILE% 2>&1
+echo     retrieve license information [using servercomptranutil.exe -unique, is equal to: servercomptranutil.exe -umn] ...
+if exist "%REPORT_LOG_PATH%\UMN_Latest.txt" (
+	for /f "tokens=1,2,3,4,5,* eol=@ delims=,/ " %%A in ('type %REPORT_LOG_PATH%\UMN_Latest.txt ^|find /I "UMN1"') do (
+		rem Load UMN values from previous run ...
+		rem echo %%A / %%B / %%C // %%F
+		for /f "tokens=1,2 delims==" %%a in ("%%A") do set UMN1_PREV=%%b
+		for /f "tokens=1,2 delims==" %%a in ("%%B") do set UMN2_PREV=%%b
+		for /f "tokens=1,2 delims==" %%a in ("%%C") do set UMN3_PREV=%%b
+		for /f "tokens=1,2 delims==" %%a in ("%%D") do set UMN4_PREV=%%b
+		for /f "tokens=1,2 delims==" %%a in ("%%E") do set UMN5_PREV=%%b
+		set UMNINFO_PREV=%%F
 	)
-	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-	echo retrieve license information [using appactutil.exe -unique] ...                                                         >> %REPORT_LOGFILE% 2>&1
-	echo     retrieve license information [using appactutil.exe -unique] ...
-	if defined LMS_APPACTUTIL (
-		"%LMS_APPACTUTIL%" -unique > !CHECKLMS_REPORT_LOG_PATH!\appactutil_unique.txt  2>&1
-		type !CHECKLMS_REPORT_LOG_PATH!\appactutil_unique.txt                                                                    >> %REPORT_LOGFILE% 2>&1
-		
-		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\appactutil_unique.txt ^|find /I "one"')   do if "%%A" NEQ "ERROR" set "UMN1_B=%%B"   
-		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\appactutil_unique.txt ^|find /I "two"')   do if "%%A" NEQ "ERROR" set "UMN2_B=%%B"   
-		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\appactutil_unique.txt ^|find /I "three"') do if "%%A" NEQ "ERROR" set "UMN3_B=%%B"   
-		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\appactutil_unique.txt ^|find /I "four"')  do if "%%A" NEQ "ERROR" set "UMN4_B=%%B"   
-		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\appactutil_unique.txt ^|find /I "five"')  do if "%%A" NEQ "ERROR" set "UMN5_B=%%B"   
+	rem Evaluate number of UMN used for TS binding
+	set /a UMN_COUNT_PREV = 0
+	if defined UMN1_PREV SET /A UMN_COUNT_PREV += 1
+	if defined UMN2_PREV SET /A UMN_COUNT_PREV += 1
+	if defined UMN3_PREV SET /A UMN_COUNT_PREV += 1
+	if defined UMN4_PREV SET /A UMN_COUNT_PREV += 1
+	if defined UMN5_PREV SET /A UMN_COUNT_PREV += 1
+	echo Previous UMN values, collected !UMNINFO_PREV!                                                                   >> %REPORT_LOGFILE% 2>&1
+	echo     Number of UMN used to bind TS: !UMN_COUNT_PREV!                                                             >> %REPORT_LOGFILE% 2>&1
+	echo     UMN1=!UMN1_PREV! / UMN2=!UMN2_PREV! / UMN3=!UMN3_PREV! / UMN4=!UMN4_PREV! / UMN5=!UMN5_PREV!                >> %REPORT_LOGFILE% 2>&1
+)
+if defined LMS_SERVERCOMTRANUTIL (
+	if "!FNPVersion!" == "11.14.0.0" (
+		echo     servercomptranutil.exe -unique is not available for FNP=!FNPVersion!, cannot perform operation.         >> %REPORT_LOGFILE% 2>&1
+	) else (
+		"%LMS_SERVERCOMTRANUTIL%" -unique > !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_unique.txt  2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_unique.txt                                                    >> %REPORT_LOGFILE% 2>&1
+		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_unique.txt ^|find /I "UMN1"') do set "UMN1_A=%%B"   
+		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_unique.txt ^|find /I "UMN2"') do set "UMN2_A=%%B"   
+		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_unique.txt ^|find /I "UMN3"') do set "UMN3_A=%%B"   
+		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_unique.txt ^|find /I "UMN4"') do set "UMN4_A=%%B"   
+		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_unique.txt" for /f "tokens=1,2 eol=@ delims== " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_unique.txt ^|find /I "UMN5"') do set "UMN5_A=%%B"   
 		rem Evaluate number of UMN used for TS binding
-		set /a UMN_COUNT_B = 0
-		if defined UMN1_B SET /A UMN_COUNT_B += 1
-		if defined UMN2_B SET /A UMN_COUNT_B += 1
-		if defined UMN3_B SET /A UMN_COUNT_B += 1
-		if defined UMN4_B SET /A UMN_COUNT_B += 1
-		if defined UMN5_B SET /A UMN_COUNT_B += 1
-		echo     Number of UMN used to bind TS: !UMN_COUNT_B!
-		echo     Number of UMN used to bind TS: !UMN_COUNT_B!                                                                            >> %REPORT_LOGFILE% 2>&1
-		echo     UMN1=!UMN1_B! / UMN2=!UMN2_B! / UMN3=!UMN3_B! / UMN4=!UMN4_B! / UMN5=!UMN5_B!                                           >> %REPORT_LOGFILE% 2>&1
-		echo     UMN1=!UMN1_B! / UMN2=!UMN2_B! / UMN3=!UMN3_B! / UMN4=!UMN4_B! / UMN5=!UMN5_B! at !DATE! / !TIME! / using appactutil.exe >> %REPORT_LOG_PATH%\UMN.txt 2>&1
-		if !UMN_COUNT_B! leq 1 (
+		set /a UMN_COUNT_A = 0
+		if defined UMN1_A SET /A UMN_COUNT_A += 1
+		if defined UMN2_A SET /A UMN_COUNT_A += 1
+		if defined UMN3_A SET /A UMN_COUNT_A += 1
+		if defined UMN4_A SET /A UMN_COUNT_A += 1
+		if defined UMN5_A SET /A UMN_COUNT_A += 1
+		echo Current UMN values, collected with servercomptranutil ...                                                                           >> %REPORT_LOGFILE% 2>&1
+		echo     Number of UMN used to bind TS: !UMN_COUNT_A!
+		echo     Number of UMN used to bind TS: !UMN_COUNT_A!                                                                                    >> %REPORT_LOGFILE% 2>&1
+		echo     UMN1=!UMN1_A! / UMN2=!UMN2_A! / UMN3=!UMN3_A! / UMN4=!UMN4_A! / UMN5=!UMN5_A!                                                   >> %REPORT_LOGFILE% 2>&1
+		echo     UMN1=!UMN1_A! / UMN2=!UMN2_A! / UMN3=!UMN3_A! / UMN4=!UMN4_A! / UMN5=!UMN5_A! at !DATE! / !TIME! / using servercomptranutil.exe >> %REPORT_LOG_PATH%\UMN.txt 2>&1
+		echo     UMN1=!UMN1_A! / UMN2=!UMN2_A! / UMN3=!UMN3_A! / UMN4=!UMN4_A! / UMN5=!UMN5_A! at !DATE! / !TIME! / using servercomptranutil.exe >  %REPORT_LOG_PATH%\UMN_Latest.txt 2>&1
+		if !UMN_COUNT_A! leq 1 (
 			if defined SHOW_COLORED_OUTPUT (
 				echo [1;31m    ATTENTION: Only ONE UMN is used to bind TS. [1;37m
 			) else (
 				echo     ATTENTION: Only ONE UMN is used to bind TS.
 			)
 		)
-		
-	) else (
-		echo     appactutil.exe doesn't exist, cannot perform operation.                                                         >> %REPORT_LOGFILE% 2>&1
 	)
-
-	rem compare the UMNs read with the two commands
-	set UMN_CHECK_STATUS=Unknown
-	if defined UMN_COUNT_A (
-		set UMN_CHECK_STATUS=Ok
-		if /I !UMN_COUNT_A! NEQ !UMN_COUNT_B! (
-			set UMN_CHECK_STATUS=Failed
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    ATTENTION: UMN count differs between servercomptranutil = !UMN_COUNT_A! and appactutil = !UMN_COUNT_B! [1;37m
-			) else (
-				echo     ATTENTION: UMN count differs between servercomptranutil = !UMN_COUNT_A! and appactutil = !UMN_COUNT_B!
-			)
-			echo     ATTENTION: UMN count differs between servercomptranutil = !UMN_COUNT_A! and appactutil = !UMN_COUNT_B! >> %REPORT_LOGFILE% 2>&1
+) else (
+	echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
+)
+echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+echo retrieve license information [using appactutil.exe -unique] ...                                                         >> %REPORT_LOGFILE% 2>&1
+echo     retrieve license information [using appactutil.exe -unique] ...
+if defined LMS_APPACTUTIL (
+	"%LMS_APPACTUTIL%" -unique > !CHECKLMS_REPORT_LOG_PATH!\appactutil_unique.txt  2>&1
+	type !CHECKLMS_REPORT_LOG_PATH!\appactutil_unique.txt                                                                    >> %REPORT_LOGFILE% 2>&1
+	
+	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\appactutil_unique.txt ^|find /I "one"')   do if "%%A" NEQ "ERROR" set "UMN1_B=%%B"   
+	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\appactutil_unique.txt ^|find /I "two"')   do if "%%A" NEQ "ERROR" set "UMN2_B=%%B"   
+	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\appactutil_unique.txt ^|find /I "three"') do if "%%A" NEQ "ERROR" set "UMN3_B=%%B"   
+	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\appactutil_unique.txt ^|find /I "four"')  do if "%%A" NEQ "ERROR" set "UMN4_B=%%B"   
+	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\appactutil_unique.txt" for /f "tokens=1,7 eol=@ delims=:= " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\appactutil_unique.txt ^|find /I "five"')  do if "%%A" NEQ "ERROR" set "UMN5_B=%%B"   
+	rem Evaluate number of UMN used for TS binding
+	set /a UMN_COUNT_B = 0
+	if defined UMN1_B SET /A UMN_COUNT_B += 1
+	if defined UMN2_B SET /A UMN_COUNT_B += 1
+	if defined UMN3_B SET /A UMN_COUNT_B += 1
+	if defined UMN4_B SET /A UMN_COUNT_B += 1
+	if defined UMN5_B SET /A UMN_COUNT_B += 1
+	echo Current UMN values, collected with appactutil ...                                                                           >> %REPORT_LOGFILE% 2>&1
+	echo     Number of UMN used to bind TS: !UMN_COUNT_B!
+	echo     Number of UMN used to bind TS: !UMN_COUNT_B!                                                                            >> %REPORT_LOGFILE% 2>&1
+	echo     UMN1=!UMN1_B! / UMN2=!UMN2_B! / UMN3=!UMN3_B! / UMN4=!UMN4_B! / UMN5=!UMN5_B!                                           >> %REPORT_LOGFILE% 2>&1
+	echo     UMN1=!UMN1_B! / UMN2=!UMN2_B! / UMN3=!UMN3_B! / UMN4=!UMN4_B! / UMN5=!UMN5_B! at !DATE! / !TIME! / using appactutil.exe >> %REPORT_LOG_PATH%\UMN.txt 2>&1
+	if !UMN_COUNT_B! leq 1 (
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: Only ONE UMN is used to bind TS. [1;37m
 		) else (
-			set /a UMN_COUNT = !UMN_COUNT_A!
-		)
-		if /I !UMN1_A! NEQ !UMN1_B! (
-			set UMN_CHECK_STATUS=Failed
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    ATTENTION: UMN1 differs between servercomptranutil = !UMN1_A! and appactutil = !UMN1_B! [1;37m
-			) else (
-				echo     ATTENTION: UMN1 differs between servercomptranutil = !UMN1_A! and appactutil = !UMN1_B!
-			)
-			echo     ATTENTION: UMN1 differs between servercomptranutil = !UMN1_A! and appactutil = !UMN1_B! >> %REPORT_LOGFILE% 2>&1
-		) else (
-			set UMN1=!UMN1_A!
-		)
-		if /I !UMN2_A! NEQ !UMN2_B! (
-			set UMN_CHECK_STATUS=Failed
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    ATTENTION: UMN2 differs between servercomptranutil = !UMN2_A! and appactutil = !UMN2_B! [1;37m
-			) else (
-				echo     ATTENTION: UMN2 differs between servercomptranutil = !UMN2_A! and appactutil = !UMN2_B!
-			)
-			echo     ATTENTION: UMN2 differs between servercomptranutil = !UMN2_A! and appactutil = !UMN2_B! >> %REPORT_LOGFILE% 2>&1
-		) else (
-			set UMN2=!UMN2_A!
-		)
-		if /I !UMN3_A! NEQ !UMN3_B! (
-			set UMN_CHECK_STATUS=Failed
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    ATTENTION: UMN3 differs between servercomptranutil = !UMN3_A! and appactutil = !UMN3_B! [1;37m
-			) else (
-				echo     ATTENTION: UMN3 differs between servercomptranutil = !UMN3_A! and appactutil = !UMN3_B!
-			)
-			echo     ATTENTION: UMN3 differs between servercomptranutil = !UMN3_A! and appactutil = !UMN3_B! >> %REPORT_LOGFILE% 2>&1
-		) else (
-			set UMN3=!UMN3_A!
-		)
-		if /I !UMN4_A! NEQ !UMN4_B! (
-			set UMN_CHECK_STATUS=Failed
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    ATTENTION: UMN4 differs between servercomptranutil = !UMN4_A! and appactutil = !UMN4_B! [1;37m
-			) else (
-				echo     ATTENTION: UMN4 differs between servercomptranutil = !UMN4_A! and appactutil = !UMN4_B!
-			)
-			echo     ATTENTION: UMN4 differs between servercomptranutil = !UMN4_A! and appactutil = !UMN4_B! >> %REPORT_LOGFILE% 2>&1
-		) else (
-			set UMN4=!UMN4_A!
-		)
-		if /I !UMN5_A! NEQ !UMN5_B! (
-			set UMN_CHECK_STATUS=Failed
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    ATTENTION: UMN5 differs between servercomptranutil = !UMN5_A! and appactutil = !UMN5_B! [1;37m
-			) else (
-				echo     ATTENTION: UMN5 differs between servercomptranutil = !UMN5_A! and appactutil = !UMN5_B!
-			)
-			echo     ATTENTION: UMN5 differs between servercomptranutil = !UMN5_A! and appactutil = !UMN5_B! >> %REPORT_LOGFILE% 2>&1
-		) else (
-			set UMN5=!UMN5_A!
-		)
-	) else (
-		set UMN_CHECK_STATUS=n/a
-		if defined UMN_COUNT_B (
-			rem only the command appactutil executed, use those results
-			set /a UMN_COUNT = !UMN_COUNT_B!
-			set UMN1=!UMN1_B!
-			set UMN2=!UMN2_B!
-			set UMN3=!UMN3_B!
-			set UMN4=!UMN4_B!
-			set UMN5=!UMN5_B!
+			echo     ATTENTION: Only ONE UMN is used to bind TS.
 		)
 	)
-	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-	echo retrieve virtual information [using servercomptranutil.exe -virtual] ...                                                >> %REPORT_LOGFILE% 2>&1
-	echo     retrieve virtual information [using servercomptranutil.exe -virtual] ...
-	if defined LMS_SERVERCOMTRANUTIL (
-		if "!FNPVersion!" == "11.14.0.0" (
-			echo     servercomptranutil.exe -virtual is not available for FNP=!FNPVersion!, cannot perform operation.        >> %REPORT_LOGFILE% 2>&1
-		) else (
-			"%LMS_SERVERCOMTRANUTIL%" -virtual > !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_virtual.txt  2>&1
-			type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_virtual.txt                                                   >> %REPORT_LOGFILE% 2>&1
+	
+) else (
+	echo     appactutil.exe doesn't exist, cannot perform operation.                                                         >> %REPORT_LOGFILE% 2>&1
+)
 
-			IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_virtual.txt" (
-				for /f "tokens=1,2 eol=@ delims== " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_virtual.txt ^|find /I "physical"') do set "VM_DETECTED=NO"   
-				if not defined VM_DETECTED (
-					for /f "tokens=1,2 eol=@ delims== " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_virtual.txt ^|find /I "virtual"')  do set "VM_DETECTED=YES"   
-					for /f "tokens=1,2 eol=@ delims== " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_virtual.txt ^|find /I "FAMILY"')   do set "VM_FAMILY=%%B"   
-					for /f "tokens=1,2 eol=@ delims== " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_virtual.txt ^|find /I "NAME"')     do set "VM_NAME=%%B"   
-					for /f "tokens=1,2 eol=@ delims== " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_virtual.txt ^|find /I "UUID"')     do set "VM_UUID=%%B"   
-					for /f "tokens=1,2 eol=@ delims== " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_virtual.txt ^|find /I "GENID"')    do set "VM_GENID=%%B"   
-					rem Handle "  GENID    Not available on this platform"
-					if "!VM_GENID!" == "Not" (
-						set VM_GENID=
-					)
+rem compare the UMNs read with the two commands
+rem Moved the check to own section further down
+
+echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+echo retrieve virtual information [using servercomptranutil.exe -virtual] ...                                                >> %REPORT_LOGFILE% 2>&1
+echo     retrieve virtual information [using servercomptranutil.exe -virtual] ...
+if exist "%REPORT_LOG_PATH%\VMID_Latest.txt" (
+	for /f "tokens=1,2,3,4,5,* eol=@ delims=,/ " %%A in ('type %REPORT_LOG_PATH%\VMID_Latest.txt ^|find /I "VM_DETECTED"') do (
+		rem echo %%A / %%B / %%C / %%D / %%E // %%F
+		for /f "tokens=1,2 delims==" %%a in ("%%A") do set VM_DETECTED_PREV=%%b
+		for /f "tokens=1,2 delims==" %%a in ("%%B") do set VM_FAMILY_PREV=%%b
+		for /f "tokens=1,2 delims==" %%a in ("%%C") do set VM_NAME_PREV=%%b
+		for /f "tokens=1,2 delims==" %%a in ("%%D") do set VM_UUID_PREV=%%b
+		for /f "tokens=1,2 delims==" %%a in ("%%E") do set VM_GENID_PREV=%%b
+		set VMINFO_PREV=%%F
+	)
+	echo Previous VM values, collected !VMINFO_PREV!                                                                         >> %REPORT_LOGFILE% 2>&1
+	echo     VM_DETECTED=!VM_DETECTED_PREV! / VM_FAMILY=!VM_FAMILY_PREV! / VM_NAME=!VM_NAME_PREV! / VM_UUID=!VM_UUID_PREV! / VM_GENID=!VM_GENID_PREV!  >> %REPORT_LOGFILE% 2>&1
+)
+if defined LMS_SERVERCOMTRANUTIL (
+	if "!FNPVersion!" == "11.14.0.0" (
+		echo     servercomptranutil.exe -virtual is not available for FNP=!FNPVersion!, cannot perform operation.            >> %REPORT_LOGFILE% 2>&1
+	) else (
+		"%LMS_SERVERCOMTRANUTIL%" -virtual > !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_virtual.txt  2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_virtual.txt                                                       >> %REPORT_LOGFILE% 2>&1
+
+		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_virtual.txt" (
+			for /f "tokens=1,2 eol=@ delims== " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_virtual.txt ^|find /I "physical"') do set "VM_DETECTED=NO"   
+			if not defined VM_DETECTED (
+				for /f "tokens=1,2 eol=@ delims== " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_virtual.txt ^|find /I "virtual"')  do set "VM_DETECTED=YES"   
+				for /f "tokens=1,2 eol=@ delims== " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_virtual.txt ^|find /I "FAMILY"')   do set "VM_FAMILY=%%B"   
+				for /f "tokens=1,2 eol=@ delims== " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_virtual.txt ^|find /I "NAME"')     do set "VM_NAME=%%B"   
+				for /f "tokens=1,2 eol=@ delims== " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_virtual.txt ^|find /I "UUID"')     do set "VM_UUID=%%B"   
+				for /f "tokens=1,2 eol=@ delims== " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_virtual.txt ^|find /I "GENID"')    do set "VM_GENID=%%B"   
+				rem Handle "  GENID    Not available on this platform"
+				if "!VM_GENID!" == "Not" (
+					set VM_GENID=
 				)
 			)
 		)
-	) else (
-		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
 	)
-	REM echo     VM_DETECTED=!VM_DETECTED! / VM_FAMILY=!VM_FAMILY! / VM_NAME=!VM_NAME! / VM_UUID=!VM_UUID! / VM_GENID=!VM_GENID!
-	echo     VM_DETECTED=!VM_DETECTED! / VM_FAMILY=!VM_FAMILY! / VM_NAME=!VM_NAME! / VM_UUID=!VM_UUID! / VM_GENID=!VM_GENID!     >> %REPORT_LOGFILE% 2>&1
-	echo     VM_DETECTED=!VM_DETECTED! / VM_FAMILY=!VM_FAMILY! / VM_NAME=!VM_NAME! / VM_UUID=!VM_UUID! / VM_GENID=!VM_GENID!  at !DATE! / !TIME!  >> %REPORT_LOG_PATH%\VMID.txt 2>&1
-	echo     VM_DETECTED=!VM_DETECTED! / VM_FAMILY=!VM_FAMILY! / VM_NAME=!VM_NAME! / VM_UUID=!VM_UUID! / VM_GENID=!VM_GENID!  at !DATE! / !TIME!  >  %REPORT_LOG_PATH%\VMID_Latest.txt 2>&1
-	if "!VM_FAMILY!" == "UNKNOWNVM" (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: Unknown VM family detected. [1;37m
-		) else (
-			echo     ATTENTION: Unknown VM family detected.
-		)
-		echo ATTENTION: Unknown VM family detected.                                                                              >> %REPORT_LOGFILE% 2>&1
-	)
-	if "!VM_NAME!" == "UNKNOWNVM" (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: Unknown VM name detected. [1;37m
-		) else (
-			echo     ATTENTION: Unknown VM name detected.
-		)
-		echo ATTENTION: Unknown VM name detected.                                                                                >> %REPORT_LOGFILE% 2>&1
-	)
+) else (
+	echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
+)
+echo Current VM values, collected with servercomptranutil ...                                                                >> %REPORT_LOGFILE% 2>&1
+REM echo     VM_DETECTED=!VM_DETECTED! / VM_FAMILY=!VM_FAMILY! / VM_NAME=!VM_NAME! / VM_UUID=!VM_UUID! / VM_GENID=!VM_GENID!
+echo     VM_DETECTED=!VM_DETECTED! / VM_FAMILY=!VM_FAMILY! / VM_NAME=!VM_NAME! / VM_UUID=!VM_UUID! / VM_GENID=!VM_GENID!     >> %REPORT_LOGFILE% 2>&1
+echo     VM_DETECTED=!VM_DETECTED! / VM_FAMILY=!VM_FAMILY! / VM_NAME=!VM_NAME! / VM_UUID=!VM_UUID! / VM_GENID=!VM_GENID!  at !DATE! / !TIME!  >> %REPORT_LOG_PATH%\VMID.txt 2>&1
+echo     VM_DETECTED=!VM_DETECTED! / VM_FAMILY=!VM_FAMILY! / VM_NAME=!VM_NAME! / VM_UUID=!VM_UUID! / VM_GENID=!VM_GENID!  at !DATE! / !TIME!  >  %REPORT_LOG_PATH%\VMID_Latest.txt 2>&1
+
 if not defined LMS_SKIPFNP (
 	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
@@ -3636,63 +3610,8 @@ if not defined LMS_SKIPFNP (
 		echo     lmvminfo.exe doesn't exist, cannot perform operation.                                                           >> %REPORT_LOGFILE% 2>&1
 	)
 	REM echo     VM_DETECTED_2=%VM_DETECTED_2% / VM_FAMILY_2=%VM_FAMILY_2% / VM_NAME_2=%VM_NAME_2% / VM_UUID_2=%VM_UUID_2% / VM_GENID_2=%VM_GENID_2%
+	echo Current VM values, collected with lmvminfo ...                                                                          >> %REPORT_LOGFILE% 2>&1
 	echo VM_DETECTED_2=%VM_DETECTED_2% / VM_FAMILY_2=%VM_FAMILY_2% / VM_NAME_2=%VM_NAME_2% / VM_UUID_2=%VM_UUID_2% / VM_GENID_2=%VM_GENID_2% >> %REPORT_LOGFILE% 2>&1
-	if "%VM_FAMILY_2%" == "UNKNOWNVM" (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: Unknown VM family detected. [1;37m
-		) else (
-			echo     ATTENTION: Unknown VM family detected.
-		)
-		echo ATTENTION: Unknown VM family detected.                                                                              >> %REPORT_LOGFILE% 2>&1
-	)
-	if "%VM_NAME_2%" == "UNKNOWNVM" (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: Unknown VM name detected. [1;37m
-		) else (
-			echo     ATTENTION: Unknown VM name detected.
-		)
-		echo ATTENTION: Unknown VM name detected.                                                                                >> %REPORT_LOGFILE% 2>&1
-	)
-	REM Compare output of two VM detections with servercomptranutil and lmvminfo
-	if defined VM_DETECTED if defined VM_DETECTED_2 (
-		set VM_DETECTION_CHECK_STATUS=Ok
-		if /I "!VM_FAMILY!" NEQ "!VM_FAMILY_2!" (
-			set VM_DETECTION_CHECK_STATUS=Failed
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    ATTENTION: VM family detection differs between servercomptranutil = !VM_FAMILY! and lmvminfo = !VM_FAMILY_2! [1;37m
-			) else (
-				echo     ATTENTION: VM family differs detection between servercomptranutil = !VM_FAMILY! and lmvminfo = !VM_FAMILY_2!
-			)
-			echo     ATTENTION: VM family detection differs between servercomptranutil = !VM_FAMILY! and lmvminfo = !VM_FAMILY_2!     >> %REPORT_LOGFILE% 2>&1
-		)
-		if /I "!VM_NAME!" NEQ "!VM_NAME_2!" (
-			set VM_DETECTION_CHECK_STATUS=Failed
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    ATTENTION: VM name detection differs between servercomptranutil = !VM_NAME! and lmvminfo = !VM_NAME_2! [1;37m
-			) else (
-				echo     ATTENTION: VM name differs detection between servercomptranutil = !VM_NAME! and lmvminfo = !VM_NAME_2!
-			)
-			echo     ATTENTION: VM name detection differs between servercomptranutil = !VM_NAME! and lmvminfo = !VM_NAME_2!      >> %REPORT_LOGFILE% 2>&1
-		)
-		if /I "!VM_UUID!" NEQ "!VM_UUID_2!" (
-			set VM_DETECTION_CHECK_STATUS=Failed
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    ATTENTION: VM UUID detection differs between servercomptranutil = !VM_UUID! and lmvminfo = !VM_UUID_2! [1;37m
-			) else (
-				echo     ATTENTION: VM UUID differs detection between servercomptranutil = !VM_UUID! and lmvminfo = !VM_UUID_2!
-			)
-			echo     ATTENTION: VM UUID detection differs between servercomptranutil = !VM_UUID! and lmvminfo = !VM_UUID_2!      >> %REPORT_LOGFILE% 2>&1
-		)
-		if /I "!VM_GENID!" NEQ "!VM_GENID_2!" (
-			set VM_DETECTION_CHECK_STATUS=Failed
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    ATTENTION: VM GENID detection differs between servercomptranutil = !VM_GENID! and lmvminfo = !VM_GENID_2! [1;37m
-			) else (
-				echo     ATTENTION: VM GENID differs detection between servercomptranutil = !VM_GENID! and lmvminfo = !VM_GENID_2!
-			)
-			echo     ATTENTION: VM GENID detection differs between servercomptranutil = !VM_GENID! and lmvminfo = !VM_GENID_2!   >> %REPORT_LOGFILE% 2>&1
-		)
-	)
 	if not defined VM_DETECTED (
 		REM For backward compatibility; in case virtual environment could not be determined so far; use lmvminfo output 
 		if defined VM_DETECTED_2 (
@@ -3885,80 +3804,96 @@ if not defined LMS_SKIPFNP (
 	)
 )
 rem Execute always, even LMS_SKIPFNP is set!
-	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-	echo ... read host id's [using ecmcommonutil.exe] ...
-	IF EXIST "%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" (
-		rem log regular (non debug) output in general logfile
-		echo Read host id: device [using ecmcommonutil.exe -l -f -d device]:                                                     >> %REPORT_LOGFILE% 2>&1
-		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f device                                                                     >> %REPORT_LOGFILE% 2>&1
-		echo Read host id: net [using ecmcommonutil.exe -l -f -d net]:                                                           >> %REPORT_LOGFILE% 2>&1
-		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f net                                                                        >> %REPORT_LOGFILE% 2>&1
-		echo Read host id: smbios [using ecmcommonutil.exe -l -f -d smbios]:                                                     >> %REPORT_LOGFILE% 2>&1
-		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f smbios                                                                     >> %REPORT_LOGFILE% 2>&1
-		echo Read host id: vm [using ecmcommonutil.exe -l -f -d vm]:                                                             >> %REPORT_LOGFILE% 2>&1
-		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f vm                                                                         >> %REPORT_LOGFILE% 2>&1
+echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 
-		rem log debug output in a separate file
-		echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_device.txt 2>&1
-		echo Read host id: device [using ecmcommonutil.exe -l -f -d device] at !DATE! !TIME! ....        >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_device.txt 2>&1
-		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d device                                          >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_device.txt 2>&1
-		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d device                                          >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_device_Latest.txt 2>&1
-		echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_net.txt 2>&1
-		echo Read host id: net [using ecmcommonutil.exe -l -f -d net] at !DATE! !TIME! ....              >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_net.txt 2>&1
-		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d net                                             >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_net.txt 2>&1
-		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d net                                             >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_net_Latest.txt 2>&1
-		echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_smbios.txt 2>&1
-		echo Read host id: smbios [using ecmcommonutil.exe -l -f -d smbios] at !DATE! !TIME! ....        >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_smbios.txt 2>&1
-		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d smbios                                          >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_smbios.txt 2>&1
-		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d smbios                                          >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_smbios_Latest.txt 2>&1
-		echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm.txt 2>&1
-		echo Read host id: vm [using ecmcommonutil.exe -l -f -d vm] at !DATE! !TIME! ....                >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm.txt 2>&1
-		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d vm                                              >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm.txt 2>&1
-		"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d vm                                              >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt 2>&1
-		
-		if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_smbios_Latest.txt" for /f "tokens=1,2 eol=@ delims==" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_smbios_Latest.txt ^|find /I "Smbios UUID"') do set "ECM_SMBIOS_UUID=%%B"
-		if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt ^|find /I "FAMILY"') do set "ECM_VM_FAMILY=%%B"
-		if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt ^|find /I "NAME"') do set "ECM_VM_NAME=%%B"
-		if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt ^|find /I "UUID"') do set "ECM_VM_UUID=%%B"
-		if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt ^|find /I "GENID"') do set "ECM_VM_GENID=%%B"
-		
-		rem echo     ECM_VM_FAMILY=!ECM_VM_FAMILY! / ECM_VM_NAME=!ECM_VM_NAME! / ECM_VM_UUID=!ECM_VM_UUID! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID! / ECM_VM_GENID=!ECM_VM_GENID! 
-		echo     ECM_VM_FAMILY=!ECM_VM_FAMILY! / ECM_VM_NAME=!ECM_VM_NAME! / ECM_VM_UUID=!ECM_VM_UUID! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID! / ECM_VM_GENID=!ECM_VM_GENID!                      >> %REPORT_LOGFILE% 2>&1
-		echo     ECM_VM_FAMILY=!ECM_VM_FAMILY! / ECM_VM_NAME=!ECM_VM_NAME! / ECM_VM_UUID=!ECM_VM_UUID! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID! / ECM_VM_GENID=!ECM_VM_GENID!  at !DATE! / !TIME!  >> %REPORT_LOG_PATH%\VMECMID.txt 2>&1
-		echo     ECM_VM_FAMILY=!ECM_VM_FAMILY! / ECM_VM_NAME=!ECM_VM_NAME! / ECM_VM_UUID=!ECM_VM_UUID! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID! / ECM_VM_GENID=!ECM_VM_GENID!  at !DATE! / !TIME!  >  %REPORT_LOG_PATH%\VMECMID_Latest.txt 2>&1
-		
-	) else (
-		echo     ecmcommonutil.exe doesn't exist, cannot perform operation.                                                      >> %REPORT_LOGFILE% 2>&1
+if exist "%REPORT_LOG_PATH%\VMECMID_Latest.txt" (
+	for /f "tokens=1,2,3,4,5,* eol=@ delims=,/ " %%A in ('type %REPORT_LOG_PATH%\VMECMID_Latest.txt ^|find /I "ECM_VM_FAMILY"') do (
+		rem echo %%A / %%B / %%C / %%D / %%E // %%F
+		for /f "tokens=1,2 delims==" %%a in ("%%A") do set ECM_VM_FAMILY_PREV=%%b
+		for /f "tokens=1,2 delims==" %%a in ("%%B") do set ECM_VM_NAME_PREV=%%b
+		for /f "tokens=1,2 delims==" %%a in ("%%C") do set ECM_VM_UUID_PREV=%%b
+		for /f "tokens=1,2 delims==" %%a in ("%%D") do set ECM_SMBIOS_UUID_PREV=%%b
+		for /f "tokens=1,2 delims==" %%a in ("%%E") do set ECM_VM_GENID_PREV=%%b
+		set ECMINFO_PREV=%%F
 	)
-	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-	echo ... read host id's [using ecmcommonutil_1.19.exe] ...
-	IF EXIST "%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" (
-		rem log regular (non debug) output in general logfile
-		echo Read host id: device [using ecmcommonutil_1.19.exe -l -f -d device]:                                                >> %REPORT_LOGFILE% 2>&1
-		"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f device                                                                >> %REPORT_LOGFILE% 2>&1
-		echo Read host id: net [using ecmcommonutil_1.19.exe -l -f -d net]:                                                      >> %REPORT_LOGFILE% 2>&1
-		"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f net                                                                   >> %REPORT_LOGFILE% 2>&1
-		echo Read host id: smbios [using ecmcommonutil_1.19.exe -l -f -d smbios]:                                                >> %REPORT_LOGFILE% 2>&1
-		"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f smbios                                                                >> %REPORT_LOGFILE% 2>&1
-		echo Read host id: vm [using ecmcommonutil_1.19.exe -l -f -d vm]:                                                        >> %REPORT_LOGFILE% 2>&1
-		"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f vm                                                                    >> %REPORT_LOGFILE% 2>&1
+	echo Previous ECM values, collected !ECMINFO_PREV! ...                                                                   >> %REPORT_LOGFILE% 2>&1
+	echo     ECM_VM_FAMILY=!ECM_VM_FAMILY_PREV! / ECM_VM_NAME=!ECM_VM_NAME_PREV! / ECM_VM_UUID=!ECM_VM_UUID_PREV! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID_PREV! / ECM_VM_GENID=!ECM_VM_GENID_PREV!  >> %REPORT_LOGFILE% 2>&1
+)
 
-		rem log debug output in a separate file
-		echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_device.txt 2>&1
-		echo Read host id: device [using ecmcommonutil_1.19.exe -l -f -d device] at !DATE! !TIME! ....   >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_device.txt 2>&1
-		"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d device                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_device.txt 2>&1
-		echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_net.txt 2>&1
-		echo Read host id: net [using ecmcommonutil_1.19.exe -l -f -d net] at !DATE! !TIME! ....         >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_net.txt 2>&1
-		"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d net                                        >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_net.txt 2>&1
-		echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_smbios.txt 2>&1
-		echo Read host id: smbios [using ecmcommonutil_1.19.exe -l -f -d smbios] at !DATE! !TIME! ....   >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_smbios.txt 2>&1
-		"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d smbios                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_smbios.txt 2>&1
-		echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm.txt 2>&1
-		echo Read host id: vm [using ecmcommonutil_1.19.exe -l -f -d vm] at !DATE! !TIME! ....           >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm.txt 2>&1
-		"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d vm                                         >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm.txt 2>&1
-	) else (
-		echo     ecmcommonutil_1.19.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
-	)
+echo ... read host id's [using ecmcommonutil.exe] ...
+IF EXIST "%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" (
+	rem log regular (non debug) output in general logfile
+	echo Read host id: device [using ecmcommonutil.exe -l -f -d device]:                                                     >> %REPORT_LOGFILE% 2>&1
+	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f device                                                                     >> %REPORT_LOGFILE% 2>&1
+	echo Read host id: net [using ecmcommonutil.exe -l -f -d net]:                                                           >> %REPORT_LOGFILE% 2>&1
+	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f net                                                                        >> %REPORT_LOGFILE% 2>&1
+	echo Read host id: smbios [using ecmcommonutil.exe -l -f -d smbios]:                                                     >> %REPORT_LOGFILE% 2>&1
+	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f smbios                                                                     >> %REPORT_LOGFILE% 2>&1
+	echo Read host id: vm [using ecmcommonutil.exe -l -f -d vm]:                                                             >> %REPORT_LOGFILE% 2>&1
+	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f vm                                                                         >> %REPORT_LOGFILE% 2>&1
+
+	rem log debug output in a separate file
+	echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_device.txt 2>&1
+	echo Read host id: device [using ecmcommonutil.exe -l -f -d device] at !DATE! !TIME! ....        >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_device.txt 2>&1
+	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d device                                          >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_device.txt 2>&1
+	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d device                                          >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_device_Latest.txt 2>&1
+	echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_net.txt 2>&1
+	echo Read host id: net [using ecmcommonutil.exe -l -f -d net] at !DATE! !TIME! ....              >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_net.txt 2>&1
+	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d net                                             >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_net.txt 2>&1
+	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d net                                             >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_net_Latest.txt 2>&1
+	echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_smbios.txt 2>&1
+	echo Read host id: smbios [using ecmcommonutil.exe -l -f -d smbios] at !DATE! !TIME! ....        >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_smbios.txt 2>&1
+	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d smbios                                          >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_smbios.txt 2>&1
+	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d smbios                                          >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_smbios_Latest.txt 2>&1
+	echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm.txt 2>&1
+	echo Read host id: vm [using ecmcommonutil.exe -l -f -d vm] at !DATE! !TIME! ....                >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm.txt 2>&1
+	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d vm                                              >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm.txt 2>&1
+	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d vm                                              >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt 2>&1
+	
+	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_smbios_Latest.txt" for /f "tokens=1,2 eol=@ delims==" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_smbios_Latest.txt ^|find /I "Smbios UUID"') do set "ECM_SMBIOS_UUID=%%B"
+	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt ^|findstr /I /B "FAMILY"') do if not "%%B" == " ERROR - Unavailable." set "ECM_VM_FAMILY=%%B"
+	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt ^|findstr /I /B "NAME"') do if not "%%B" == " ERROR - Unavailable." set "ECM_VM_NAME=%%B"
+	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt ^|findstr /I /B "UUID"') do if not "%%B" == " ERROR - Unavailable." set "ECM_VM_UUID=%%B"
+	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt ^|findstr /I /B "GENID"') do if not "%%B" == " ERROR - Unavailable." set "ECM_VM_GENID=%%B"
+	
+	rem echo     ECM_VM_FAMILY=!ECM_VM_FAMILY! / ECM_VM_NAME=!ECM_VM_NAME! / ECM_VM_UUID=!ECM_VM_UUID! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID! / ECM_VM_GENID=!ECM_VM_GENID! 
+	echo Current ECM values, collected with ecmcommonutil ...                                                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo     ECM_VM_FAMILY=!ECM_VM_FAMILY! / ECM_VM_NAME=!ECM_VM_NAME! / ECM_VM_UUID=!ECM_VM_UUID! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID! / ECM_VM_GENID=!ECM_VM_GENID!                      >> %REPORT_LOGFILE% 2>&1
+	echo     ECM_VM_FAMILY=!ECM_VM_FAMILY! / ECM_VM_NAME=!ECM_VM_NAME! / ECM_VM_UUID=!ECM_VM_UUID! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID! / ECM_VM_GENID=!ECM_VM_GENID!  at !DATE! / !TIME!  >> %REPORT_LOG_PATH%\VMECMID.txt 2>&1
+	echo     ECM_VM_FAMILY=!ECM_VM_FAMILY! / ECM_VM_NAME=!ECM_VM_NAME! / ECM_VM_UUID=!ECM_VM_UUID! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID! / ECM_VM_GENID=!ECM_VM_GENID!  at !DATE! / !TIME!  >  %REPORT_LOG_PATH%\VMECMID_Latest.txt 2>&1
+	
+) else (
+	echo     ecmcommonutil.exe doesn't exist, cannot perform operation.                                                      >> %REPORT_LOGFILE% 2>&1
+)
+echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+echo ... read host id's [using ecmcommonutil_1.19.exe] ...
+IF EXIST "%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" (
+	rem log regular (non debug) output in general logfile
+	echo Read host id: device [using ecmcommonutil_1.19.exe -l -f -d device]:                                                >> %REPORT_LOGFILE% 2>&1
+	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f device                                                                >> %REPORT_LOGFILE% 2>&1
+	echo Read host id: net [using ecmcommonutil_1.19.exe -l -f -d net]:                                                      >> %REPORT_LOGFILE% 2>&1
+	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f net                                                                   >> %REPORT_LOGFILE% 2>&1
+	echo Read host id: smbios [using ecmcommonutil_1.19.exe -l -f -d smbios]:                                                >> %REPORT_LOGFILE% 2>&1
+	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f smbios                                                                >> %REPORT_LOGFILE% 2>&1
+	echo Read host id: vm [using ecmcommonutil_1.19.exe -l -f -d vm]:                                                        >> %REPORT_LOGFILE% 2>&1
+	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f vm                                                                    >> %REPORT_LOGFILE% 2>&1
+
+	rem log debug output in a separate file
+	echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_device.txt 2>&1
+	echo Read host id: device [using ecmcommonutil_1.19.exe -l -f -d device] at !DATE! !TIME! ....   >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_device.txt 2>&1
+	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d device                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_device.txt 2>&1
+	echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_net.txt 2>&1
+	echo Read host id: net [using ecmcommonutil_1.19.exe -l -f -d net] at !DATE! !TIME! ....         >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_net.txt 2>&1
+	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d net                                        >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_net.txt 2>&1
+	echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_smbios.txt 2>&1
+	echo Read host id: smbios [using ecmcommonutil_1.19.exe -l -f -d smbios] at !DATE! !TIME! ....   >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_smbios.txt 2>&1
+	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d smbios                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_smbios.txt 2>&1
+	echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm.txt 2>&1
+	echo Read host id: vm [using ecmcommonutil_1.19.exe -l -f -d vm] at !DATE! !TIME! ....           >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm.txt 2>&1
+	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d vm                                         >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm.txt 2>&1
+) else (
+	echo     ecmcommonutil_1.19.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
+)
 if not defined LMS_SKIPFNP ( 
 	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
@@ -4713,8 +4648,8 @@ if not defined LMS_SKIPLOCLICSERV (
 	echo ... run repair all command using LmuTool /REPALL /M:O ...
 	echo ... run repair all command using LmuTool /REPALL /M:O ...                                                               >> %REPORT_LOGFILE% 2>&1
 	if defined LMS_LMUTOOL (
-		if /I %LMS_BUILD_VERSION% NEQ 721 (
-			if /I %LMS_BUILD_VERSION% NEQ 610 (
+		if /I !LMS_BUILD_VERSION! NEQ 721 (
+			if /I !LMS_BUILD_VERSION! NEQ 610 (
 				"!LMS_LMUTOOL!" /REPALL /M:O                                                                                     >> %REPORT_LOGFILE% 2>&1
 			) else (
 				echo     This operation is not supported with LMS !LMS_VERSION!, cannot perform operation.                       >> %REPORT_LOGFILE% 2>&1 
@@ -4823,7 +4758,7 @@ if not defined LMS_CHECK_ID (
 	echo .                                                                                                                       >> %REPORT_LOGFILE% 2>&1
 	rem echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 	rem echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-	rem if /I %LMS_BUILD_VERSION% GEQ 681 (
+	rem if /I !LMS_BUILD_VERSION! GEQ 681 (
 	rem 	echo Write Log Message: LmuTool /LOG:"Run CheckLMS.bat 64-Bit"                                                           >> %REPORT_LOGFILE% 2>&1
 	rem 	if exist "%ProgramFiles%\Siemens\LMS\bin\LmuTool.exe" (
 	rem 		"%ProgramFiles%\Siemens\LMS\bin\LmuTool.exe" /LOG:"Run CheckLMS.bat 64-Bit"                                          >> %REPORT_LOGFILE% 2>&1
@@ -4835,7 +4770,7 @@ if not defined LMS_CHECK_ID (
 	rem )	
 	rem echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 	rem echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-	rem if /I %LMS_BUILD_VERSION% GEQ 681 (
+	rem if /I !LMS_BUILD_VERSION! GEQ 681 (
 	rem 	echo Write Log Message: LmuTool /LOG:"Run CheckLMS.bat 32-Bit"                                                           >> %REPORT_LOGFILE% 2>&1
 	rem 	if exist "%ProgramFiles%\Siemens\LMS\bin\LmuTool.exe" (
 	rem 		"%ProgramFiles(x86)%\Siemens\LMS\bin\LmuTool.exe" /LOG:"Run CheckLMS.bat 32-Bit"                                     >> %REPORT_LOGFILE% 2>&1
@@ -5939,6 +5874,9 @@ if not defined LMS_SKIPCONTEST (
 )
 echo Start at !DATE! !TIME! ....                                                                                                              >> %REPORT_LOGFILE% 2>&1
 :collect_product_info
+echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+echo =   P R O D U C T   S P E C I F I C   I N F O R M A T I O N                  =                                          >> %REPORT_LOGFILE% 2>&1
+echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 echo ... start to collect product specific information ...
 if not defined LMS_SKIPPRODUCTS (
 	echo ==============================================================================                                      >> %REPORT_LOGFILE% 2>&1
@@ -6262,6 +6200,390 @@ if not defined LMS_SKIPPRODUCTS (
 	)
 	echo SKIPPED products section. The script didn't execute the product specific commands.                                  >> %REPORT_LOGFILE% 2>&1
 )
+echo ... perform check on different id's ...
+echo ==============================================================================                                      >> %REPORT_LOGFILE% 2>&1
+echo =   C H E C K - I D                                                          =                                      >> %REPORT_LOGFILE% 2>&1
+echo ==============================================================================                                      >> %REPORT_LOGFILE% 2>&1
+
+echo     compare the UMNs read with the two commands ...
+echo Compare the UMNs read with the two commands                                                                         >> %REPORT_LOGFILE% 2>&1
+set UMN_CHECK_STATUS=Unknown
+if defined UMN_COUNT_A (
+	set UMN_CHECK_STATUS=Ok
+	if /I !UMN_COUNT_A! NEQ !UMN_COUNT_B! (
+		set UMN_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: UMN count differs between servercomptranutil = !UMN_COUNT_A! and appactutil = !UMN_COUNT_B! [1;37m
+		) else (
+			echo     ATTENTION: UMN count differs between servercomptranutil = !UMN_COUNT_A! and appactutil = !UMN_COUNT_B!
+		)
+		echo     ATTENTION: UMN count differs between servercomptranutil = !UMN_COUNT_A! and appactutil = !UMN_COUNT_B!  >> %REPORT_LOGFILE% 2>&1
+	) else (
+		set /a UMN_COUNT = !UMN_COUNT_A!
+	)
+	if /I !UMN1_A! NEQ !UMN1_B! (
+		set UMN_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: UMN1 differs between servercomptranutil = !UMN1_A! and appactutil = !UMN1_B! [1;37m
+		) else (
+			echo     ATTENTION: UMN1 differs between servercomptranutil = !UMN1_A! and appactutil = !UMN1_B!
+		)
+		echo     ATTENTION: UMN1 differs between servercomptranutil = !UMN1_A! and appactutil = !UMN1_B!                 >> %REPORT_LOGFILE% 2>&1
+	) else (
+		set UMN1=!UMN1_A!
+	)
+	if /I !UMN2_A! NEQ !UMN2_B! (
+		set UMN_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: UMN2 differs between servercomptranutil = !UMN2_A! and appactutil = !UMN2_B! [1;37m
+		) else (
+			echo     ATTENTION: UMN2 differs between servercomptranutil = !UMN2_A! and appactutil = !UMN2_B!
+		)
+		echo     ATTENTION: UMN2 differs between servercomptranutil = !UMN2_A! and appactutil = !UMN2_B!                 >> %REPORT_LOGFILE% 2>&1
+	) else (
+		set UMN2=!UMN2_A!
+	)
+	if /I !UMN3_A! NEQ !UMN3_B! (
+		set UMN_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: UMN3 differs between servercomptranutil = !UMN3_A! and appactutil = !UMN3_B! [1;37m
+		) else (
+			echo     ATTENTION: UMN3 differs between servercomptranutil = !UMN3_A! and appactutil = !UMN3_B!
+		)
+		echo     ATTENTION: UMN3 differs between servercomptranutil = !UMN3_A! and appactutil = !UMN3_B!                 >> %REPORT_LOGFILE% 2>&1
+	) else (
+		set UMN3=!UMN3_A!
+	)
+	if /I !UMN4_A! NEQ !UMN4_B! (
+		set UMN_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: UMN4 differs between servercomptranutil = !UMN4_A! and appactutil = !UMN4_B! [1;37m
+		) else (
+			echo     ATTENTION: UMN4 differs between servercomptranutil = !UMN4_A! and appactutil = !UMN4_B!
+		)
+		echo     ATTENTION: UMN4 differs between servercomptranutil = !UMN4_A! and appactutil = !UMN4_B!                 >> %REPORT_LOGFILE% 2>&1
+	) else (
+		set UMN4=!UMN4_A!
+	)
+	if /I !UMN5_A! NEQ !UMN5_B! (
+		set UMN_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: UMN5 differs between servercomptranutil = !UMN5_A! and appactutil = !UMN5_B! [1;37m
+		) else (
+			echo     ATTENTION: UMN5 differs between servercomptranutil = !UMN5_A! and appactutil = !UMN5_B!
+		)
+		echo     ATTENTION: UMN5 differs between servercomptranutil = !UMN5_A! and appactutil = !UMN5_B!                 >> %REPORT_LOGFILE% 2>&1
+	) else (
+		set UMN5=!UMN5_A!
+	)
+) else (
+	set UMN_CHECK_STATUS=n/a
+	if defined UMN_COUNT_B (
+		rem only the command appactutil executed, use those results
+		set /a UMN_COUNT = !UMN_COUNT_B!
+		set UMN1=!UMN1_B!
+		set UMN2=!UMN2_B!
+		set UMN3=!UMN3_B!
+		set UMN4=!UMN4_B!
+		set UMN5=!UMN5_B!
+	)
+)
+echo     compare the UMNs read from offline request file ...
+echo Compare the UMNs read from offline request file                                                                         >> %REPORT_LOGFILE% 2>&1
+if defined UMN_COUNT_TS (
+	if /I !UMN_COUNT_TS! NEQ !UMN_COUNT! (
+		set UMN_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: UMN count differs between offline request file = !UMN_COUNT_TS! and command line tool = !UMN_COUNT! [1;37m
+		) else (
+			echo     ATTENTION: UMN count differs between offline request file = !UMN_COUNT_TS! and command line tool = !UMN_COUNT!
+		)
+		echo     ATTENTION: UMN count differs between offline request file = !UMN_COUNT_TS! and command line tool = !UMN_COUNT!  >> %REPORT_LOGFILE% 2>&1
+	)
+	if /I !UMN1_TS! NEQ !UMN1! (
+		set UMN_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: UMN1 differs between offline request file = !UMN1_TS! and command line tool = !UMN1! [1;37m
+		) else (
+			echo     ATTENTION: UMN1 differs between offline request file = !UMN1_TS! and command line tool = !UMN1!
+		)
+		echo     ATTENTION: UMN1 differs between offline request file = !UMN1_TS! and command line tool = !UMN1!                 >> %REPORT_LOGFILE% 2>&1
+	)
+	if /I !UMN2_TS! NEQ !UMN2! (
+		set UMN_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: UMN2 differs between offline request file = !UMN2_TS! and command line tool = !UMN2! [1;37m
+		) else (
+			echo     ATTENTION: UMN2 differs between offline request file = !UMN2_TS! and command line tool = !UMN2!
+		)
+		echo     ATTENTION: UMN2 differs between offline request file = !UMN2_TS! and command line tool = !UMN2!                 >> %REPORT_LOGFILE% 2>&1
+	)
+	if /I !UMN3_TS! NEQ !UMN3! (
+		set UMN_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: UMN3 differs between offline request file = !UMN3_TS! and command line tool = !UMN3! [1;37m
+		) else (
+			echo     ATTENTION: UMN3 differs between offline request file = !UMN3_TS! and command line tool = !UMN3!
+		)
+		echo     ATTENTION: UMN3 differs between offline request file = !UMN3_TS! and command line tool = !UMN3!                 >> %REPORT_LOGFILE% 2>&1
+	)
+	if /I !UMN4_TS! NEQ !UMN4! (
+		set UMN_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: UMN4 differs between offline request file = !UMN4_TS! and command line tool = !UMN4! [1;37m
+		) else (
+			echo     ATTENTION: UMN4 differs between offline request file = !UMN4_TS! and command line tool = !UMN4!
+		)
+		echo     ATTENTION: UMN4 differs between offline request file = !UMN4_TS! and command line tool = !UMN4!                 >> %REPORT_LOGFILE% 2>&1
+	)
+	if /I !UMN5_TS! NEQ !UMN5! (
+		set UMN_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: UMN5 differs between offline request file = !UMN5_TS! and command line tool = !UMN5! [1;37m
+		) else (
+			echo     ATTENTION: UMN5 differs between offline request file = !UMN5_TS! and command line tool = !UMN5!
+		)
+		echo     ATTENTION: UMN5 differs between offline request file = !UMN5_TS! and command line tool = !UMN5!                 >> %REPORT_LOGFILE% 2>&1
+	)
+)
+echo     compare the UMNs read from previous run ...
+echo Compare the UMNs read from previous run                                                                                     >> %REPORT_LOGFILE% 2>&1
+if defined UMN_COUNT_PREV (
+	if /I !UMN_COUNT_PREV! NEQ !UMN_COUNT! (
+		set UMN_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: UMN count differs between previous run = !UMN_COUNT_PREV! and current run = !UMN_COUNT! [1;37m
+		) else (
+			echo     ATTENTION: UMN count differs between previous run = !UMN_COUNT_PREV! and current run = !UMN_COUNT!
+		)
+		echo     ATTENTION: UMN count differs between previous run = !UMN_COUNT_PREV! and current run = !UMN_COUNT!              >> %REPORT_LOGFILE% 2>&1
+	)
+	if /I !UMN1_PREV! NEQ !UMN1! (
+		set UMN_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: UMN1 differs between previous run = !UMN1_PREV! and current run = !UMN1! [1;37m
+		) else (
+			echo     ATTENTION: UMN1 differs between previous run = !UMN1_PREV! and current run = !UMN1!
+		)
+		echo     ATTENTION: UMN1 differs between previous run = !UMN1_PREV! and current run = !UMN1!                             >> %REPORT_LOGFILE% 2>&1
+	)
+	if /I !UMN2_PREV! NEQ !UMN2! (
+		set UMN_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: UMN2 differs between previous run = !UMN2_PREV! and current run = !UMN2! [1;37m
+		) else (
+			echo     ATTENTION: UMN2 differs between previous run = !UMN2_PREV! and current run = !UMN2!
+		)
+		echo     ATTENTION: UMN2 differs between previous run = !UMN2_PREV! and current run = !UMN2!                             >> %REPORT_LOGFILE% 2>&1
+	)
+	if /I !UMN3_PREV! NEQ !UMN3! (
+		set UMN_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: UMN3 differs between previous run = !UMN3_PREV! and current run = !UMN3! [1;37m
+		) else (
+			echo     ATTENTION: UMN3 differs between previous run = !UMN3_PREV! and current run = !UMN3!
+		)
+		echo     ATTENTION: UMN3 differs between previous run = !UMN3_PREV! and current run = !UMN3!                             >> %REPORT_LOGFILE% 2>&1
+	)
+	if /I !UMN4_PREV! NEQ !UMN4! (
+		set UMN_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: UMN4 differs between previous run = !UMN4_PREV! and current run = !UMN4! [1;37m
+		) else (
+			echo     ATTENTION: UMN4 differs between previous run = !UMN4_PREV! and current run = !UMN4!
+		)
+		echo     ATTENTION: UMN4 differs between previous run = !UMN4_PREV! and current run = !UMN4!                             >> %REPORT_LOGFILE% 2>&1
+	)
+	if /I !UMN5_PREV! NEQ !UMN5! (
+		set UMN_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: UMN5 differs between previous run = !UMN5_PREV! and current run = !UMN5! [1;37m
+		) else (
+			echo     ATTENTION: UMN5 differs between previous run = !UMN5_PREV! and current run = !UMN5!
+		)
+		echo     ATTENTION: UMN5 differs between previous run = !UMN5_PREV! and current run = !UMN5!                             >> %REPORT_LOGFILE% 2>&1
+	)
+)
+
+echo     check VM values collected with servercomptranutil ...
+echo Check VM values collected with servercomptranutil                                                                                     >> %REPORT_LOGFILE% 2>&1
+rem check VM values (also on physical machine!)
+if "!VM_FAMILY!" == "UNKNOWNVM" (
+	if defined SHOW_COLORED_OUTPUT (
+		echo [1;31m    ATTENTION: Unknown VM family detected. [1;37m
+	) else (
+		echo     ATTENTION: Unknown VM family detected.
+	)
+	echo ATTENTION: Unknown VM family detected.                                                                              >> %REPORT_LOGFILE% 2>&1
+)
+if "!VM_NAME!" == "UNKNOWNVM" (
+	if defined SHOW_COLORED_OUTPUT (
+		echo [1;31m    ATTENTION: Unknown VM name detected. [1;37m
+	) else (
+		echo     ATTENTION: Unknown VM name detected.
+	)
+	echo ATTENTION: Unknown VM name detected.                                                                                >> %REPORT_LOGFILE% 2>&1
+)
+echo     check VM values collected with lmvminfo ...
+echo Check VM values collected with lmvminfo                                                                                     >> %REPORT_LOGFILE% 2>&1
+if "%VM_FAMILY_2%" == "UNKNOWNVM" (
+	if defined SHOW_COLORED_OUTPUT (
+		echo [1;31m    ATTENTION: Unknown VM family detected. [1;37m
+	) else (
+		echo     ATTENTION: Unknown VM family detected.
+	)
+	echo ATTENTION: Unknown VM family detected.                                                                              >> %REPORT_LOGFILE% 2>&1
+)
+if "%VM_NAME_2%" == "UNKNOWNVM" (
+	if defined SHOW_COLORED_OUTPUT (
+		echo [1;31m    ATTENTION: Unknown VM name detected. [1;37m
+	) else (
+		echo     ATTENTION: Unknown VM name detected.
+	)
+	echo ATTENTION: Unknown VM name detected.                                                                                >> %REPORT_LOGFILE% 2>&1
+)
+REM Compare output of two VM detections with servercomptranutil and lmvminfo
+if defined VM_DETECTED if defined VM_DETECTED_2 (
+	set VM_DETECTION_CHECK_STATUS=Ok
+	if /I "!VM_FAMILY!" NEQ "!VM_FAMILY_2!" (
+		set VM_DETECTION_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: VM family detection differs between servercomptranutil = !VM_FAMILY! and lmvminfo = !VM_FAMILY_2! [1;37m
+		) else (
+			echo     ATTENTION: VM family differs detection between servercomptranutil = !VM_FAMILY! and lmvminfo = !VM_FAMILY_2!
+		)
+		echo     ATTENTION: VM family detection differs between servercomptranutil = !VM_FAMILY! and lmvminfo = !VM_FAMILY_2!     >> %REPORT_LOGFILE% 2>&1
+	)
+	if /I "!VM_NAME!" NEQ "!VM_NAME_2!" (
+		set VM_DETECTION_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: VM name detection differs between servercomptranutil = !VM_NAME! and lmvminfo = !VM_NAME_2! [1;37m
+		) else (
+			echo     ATTENTION: VM name differs detection between servercomptranutil = !VM_NAME! and lmvminfo = !VM_NAME_2!
+		)
+		echo     ATTENTION: VM name detection differs between servercomptranutil = !VM_NAME! and lmvminfo = !VM_NAME_2!      >> %REPORT_LOGFILE% 2>&1
+	)
+	if /I "!VM_UUID!" NEQ "!VM_UUID_2!" (
+		set VM_DETECTION_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: VM UUID detection differs between servercomptranutil = !VM_UUID! and lmvminfo = !VM_UUID_2! [1;37m
+		) else (
+			echo     ATTENTION: VM UUID differs detection between servercomptranutil = !VM_UUID! and lmvminfo = !VM_UUID_2!
+		)
+		echo     ATTENTION: VM UUID detection differs between servercomptranutil = !VM_UUID! and lmvminfo = !VM_UUID_2!      >> %REPORT_LOGFILE% 2>&1
+	)
+	if /I "!VM_GENID!" NEQ "!VM_GENID_2!" (
+		set VM_DETECTION_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: VM GENID detection differs between servercomptranutil = !VM_GENID! and lmvminfo = !VM_GENID_2! [1;37m
+		) else (
+			echo     ATTENTION: VM GENID differs detection between servercomptranutil = !VM_GENID! and lmvminfo = !VM_GENID_2!
+		)
+		echo     ATTENTION: VM GENID detection differs between servercomptranutil = !VM_GENID! and lmvminfo = !VM_GENID_2!   >> %REPORT_LOGFILE% 2>&1
+	)
+)
+
+set VM_CHECK_STATUS=Unknown
+if defined VMINFO_PREV (
+	echo     compare the VM values read from previous run ...
+	echo Compare the VM values read from previous run                                                                                     >> %REPORT_LOGFILE% 2>&1
+	set AWS_CHECK_STATUS=Ok
+
+	rem compare current VM values with previous values
+	if /I !VM_DETECTED! NEQ !VM_DETECTED_PREV! (
+		set VM_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: VM detection differs between previous run = !VM_DETECTED_PREV! and current run = !VM_DETECTED! [1;37m
+		) else (
+			echo     ATTENTION: VM detection differs between previous run = !VM_DETECTED_PREV! and current run = !VM_DETECTED!
+		)
+		echo     ATTENTION: VM detection differs between previous run = !VM_DETECTED_PREV! and current run = !VM_DETECTED!   >> %REPORT_LOGFILE% 2>&1
+	)
+	if /I !VM_FAMILY! NEQ !VM_FAMILY_PREV! (
+		set VM_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: VM family differs between previous run = !VM_FAMILY_PREV! and current run = !VM_FAMILY! [1;37m
+		) else (
+			echo     ATTENTION: VM family differs between previous run = !VM_FAMILY_PREV! and current run = !VM_FAMILY!
+		)
+		echo     ATTENTION: VM family differs between previous run = !VM_FAMILY_PREV! and current run = !VM_FAMILY!          >> %REPORT_LOGFILE% 2>&1
+	)
+	if /I !VM_NAME! NEQ !VM_NAME_PREV! (
+		set VM_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: VM name differs between previous run = !VM_NAME_PREV! and current run = !VM_NAME! [1;37m
+		) else (
+			echo     ATTENTION: VM name differs between previous run = !VM_NAME_PREV! and current run = !VM_NAME!
+		)
+		echo     ATTENTION: VM name differs between previous run = !VM_NAME_PREV! and current run = !VM_NAME!                >> %REPORT_LOGFILE% 2>&1
+	)
+	if /I !VM_UUID! NEQ !VM_UUID_PREV! (
+		set VM_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: VM UUID differs between previous run = !VM_UUID_PREV! and current run = !VM_UUID! [1;37m
+		) else (
+			echo     ATTENTION: VM UUID differs between previous run = !VM_UUID_PREV! and current run = !VM_UUID!
+		)
+		echo     ATTENTION: VM UUID differs between previous run = !VM_UUID_PREV! and current run = !VM_UUID!                >> %REPORT_LOGFILE% 2>&1
+	)
+	if /I !VM_GENID! NEQ !VM_GENID_PREV! (
+		set VM_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: VM GENID differs between previous run = !VM_GENID_PREV! and current run = !VM_GENID! [1;37m
+		) else (
+			echo     ATTENTION: VM GENID differs between previous run = !VM_GENID_PREV! and current run = !VM_GENID!
+		)
+		echo     ATTENTION: VM GENID differs between previous run = !VM_GENID_PREV! and current run = !VM_GENID!             >> %REPORT_LOGFILE% 2>&1
+	)
+)
+
+set AWS_CHECK_STATUS=Unknown
+if /I "!LMS_IS_VM!"=="true" (
+	rem call further commands only, when running on a virtual machine, wthin a hypervisor.
+
+	echo     compare the AWS instance identify document values read from previous run ...
+	echo Compare the AWS instance identify document values read from previous run                                                >> %REPORT_LOGFILE% 2>&1
+	set AWS_CHECK_STATUS=Ok
+
+	rem compare current AWS instance identify document values with previous values
+	if /I !AWS_ACCID! NEQ !AWS_ACCID_PREV! (
+		set AWS_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: AWS Account ID differs between previous run = !AWS_ACCID_PREV! and current run = !AWS_ACCID! [1;37m
+		) else (
+			echo     ATTENTION: AWS Account ID differs between previous run = !AWS_ACCID_PREV! and current run = !AWS_ACCID!
+		)
+		echo     ATTENTION: AWS Account ID differs between previous run = !AWS_ACCID_PREV! and current run = !AWS_ACCID!         >> %REPORT_LOGFILE% 2>&1
+	)
+	if /I !AWS_IMGID! NEQ !AWS_IMGID_PREV! (
+		set AWS_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: AWS Image ID differs between previous run = !AWS_IMGID_PREV! and current run = !AWS_IMGID! [1;37m
+		) else (
+			echo     ATTENTION: AWS Image ID differs between previous run = !AWS_IMGID_PREV! and current run = !AWS_IMGID!
+		)
+		echo     ATTENTION: AWS Image ID differs between previous run = !AWS_IMGID_PREV! and current run = !AWS_IMGID!           >> %REPORT_LOGFILE% 2>&1
+	)
+	if /I !AWS_INSTID! NEQ !AWS_INSTID_PREV! (
+		set AWS_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: AWS Instance ID differs between previous run = !AWS_INSTID_PREV! and current run = !AWS_INSTID! [1;37m
+		) else (
+			echo     ATTENTION: AWS Instance ID differs between previous run = !AWS_INSTID_PREV! and current run = !AWS_INSTID!
+		)
+		echo     ATTENTION: AWS Instance ID differs between previous run = !AWS_INSTID_PREV! and current run = !AWS_INSTID!      >> %REPORT_LOGFILE% 2>&1
+	)
+	if /I !AWS_PENTIME! NEQ !AWS_PENTIME_PREV! (
+		set AWS_CHECK_STATUS=Failed
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    ATTENTION: AWS Pending Time differs between previous run = !AWS_PENTIME_PREV! and current run = !AWS_PENTIME! [1;37m
+		) else (
+			echo     ATTENTION: AWS Pending Time differs between previous run = !AWS_PENTIME_PREV! and current run = !AWS_PENTIME!
+		)
+		echo     ATTENTION: AWS Pending Time differs between previous run = !AWS_PENTIME_PREV! and current run = !AWS_PENTIME!   >> %REPORT_LOGFILE% 2>&1
+	)
+)
+
 :summary
 echo ... summarize collected information ...
 echo ==============================================================================                                      >> %REPORT_LOGFILE% 2>&1
@@ -6591,7 +6913,7 @@ if defined HealthCheckOk (
 	echo Trusted Store needs Repair:       NeedRepairAll=%NeedRepairAll% / NeedRepair=%NeedRepair%                           >> %REPORT_LOGFILE% 2>&1
 	echo UMN Check Status:                 %UMN_CHECK_STATUS%                                                                >> %REPORT_LOGFILE% 2>&1
 	echo VM Detection Check Status:        %VM_DETECTION_CHECK_STATUS%                                                       >> %REPORT_LOGFILE% 2>&1
-	if /I %LMS_BUILD_VERSION% GEQ 681 (
+	if /I !LMS_BUILD_VERSION! GEQ 681 (
 		if defined LMS_LMUTOOL (
 			echo -------------------------------------------------------                                                     >> %REPORT_LOGFILE% 2>&1
 			"!LMS_LMUTOOL!" /LOG:"UMN1=!UMN1! / UMN2=!UMN2! / UMN3=!UMN3! / UMN4=!UMN4! / UMN5=!UMN5!"                       >> %REPORT_LOGFILE% 2>&1
