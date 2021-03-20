@@ -140,6 +140,8 @@ rem     19-Mar-2021:
 rem        - added new section "C H E C K - I D"
 rem        - moved several existing checks into this new section
 rem        - added further checks, to compare values from previous run with values of current run.
+rem     20-Mar-2021:
+rem        - add output of ecmcommonutil V1.19 to the common output, as it seems more reliable on some virtual machines.
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -165,8 +167,8 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 19-Mar-2021"
-set LMS_SCRIPT_BUILD=20210319
+set LMS_SCRIPT_VERSION="CheckLMS Script 20-Mar-2021"
+set LMS_SCRIPT_BUILD=20210320
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -195,6 +197,7 @@ rem Check this issue: https://stackoverflow.com/questions/9797271/strange-charac
 chcp 1252
 rem Check this: https://ss64.com/nt/delayedexpansion.html 
 SETLOCAL EnableDelayedExpansion
+setlocal ENABLEEXTENSIONS
 
 rem https://stackoverflow.com/questions/7727114/batch-command-date-and-time-in-file-name
 for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /format:list') do set lms_report_datetime=%%I
@@ -354,7 +357,6 @@ if exist "%ProgramFiles%\Siemens\LMS\bin\LmuTool.exe" (
 rem External Settings
 set LMS_LIC_SERVER=27000@localhost
 
-setlocal ENABLEEXTENSIONS
 
 rem analyze command line options
 FOR %%A IN (%*) DO (
@@ -3859,8 +3861,9 @@ IF EXIST "%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" (
 	rem echo     ECM_VM_FAMILY=!ECM_VM_FAMILY! / ECM_VM_NAME=!ECM_VM_NAME! / ECM_VM_UUID=!ECM_VM_UUID! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID! / ECM_VM_GENID=!ECM_VM_GENID! 
 	echo Current ECM values, collected with ecmcommonutil ...                                                                                                                             >> %REPORT_LOGFILE% 2>&1
 	echo     ECM_VM_FAMILY=!ECM_VM_FAMILY! / ECM_VM_NAME=!ECM_VM_NAME! / ECM_VM_UUID=!ECM_VM_UUID! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID! / ECM_VM_GENID=!ECM_VM_GENID!                      >> %REPORT_LOGFILE% 2>&1
-	echo     ECM_VM_FAMILY=!ECM_VM_FAMILY! / ECM_VM_NAME=!ECM_VM_NAME! / ECM_VM_UUID=!ECM_VM_UUID! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID! / ECM_VM_GENID=!ECM_VM_GENID!  at !DATE! / !TIME!  >> %REPORT_LOG_PATH%\VMECMID.txt 2>&1
-	echo     ECM_VM_FAMILY=!ECM_VM_FAMILY! / ECM_VM_NAME=!ECM_VM_NAME! / ECM_VM_UUID=!ECM_VM_UUID! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID! / ECM_VM_GENID=!ECM_VM_GENID!  at !DATE! / !TIME!  >  %REPORT_LOG_PATH%\VMECMID_Latest.txt 2>&1
+	echo     ECM_VM_FAMILY=!ECM_VM_FAMILY! / ECM_VM_NAME=!ECM_VM_NAME! / ECM_VM_UUID=!ECM_VM_UUID! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID! / ECM_VM_GENID=!ECM_VM_GENID!  at !DATE! / !TIME! / using ecmcommonutil.exe [V1.21] >> %REPORT_LOG_PATH%\VMECMID.txt 2>&1
+	rem use latest values from ecmcommonutil V1.19 as they same more reliable on some virtual machines
+	rem echo     ECM_VM_FAMILY=!ECM_VM_FAMILY! / ECM_VM_NAME=!ECM_VM_NAME! / ECM_VM_UUID=!ECM_VM_UUID! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID! / ECM_VM_GENID=!ECM_VM_GENID!  at !DATE! / !TIME! / using ecmcommonutil.exe [V1.21] >  %REPORT_LOG_PATH%\VMECMID_Latest.txt 2>&1
 	
 ) else (
 	echo     ecmcommonutil.exe doesn't exist, cannot perform operation.                                                      >> %REPORT_LOGFILE% 2>&1
@@ -3888,9 +3891,24 @@ IF EXIST "%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" (
 	echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_smbios.txt 2>&1
 	echo Read host id: smbios [using ecmcommonutil_1.19.exe -l -f -d smbios] at !DATE! !TIME! ....   >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_smbios.txt 2>&1
 	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d smbios                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_smbios.txt 2>&1
+	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d smbios                                     >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_smbios_Latest.txt 2>&1
 	echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm.txt 2>&1
 	echo Read host id: vm [using ecmcommonutil_1.19.exe -l -f -d vm] at !DATE! !TIME! ....           >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm.txt 2>&1
 	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d vm                                         >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm.txt 2>&1
+	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d vm                                         >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm_Latest.txt 2>&1
+
+	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_smbios_Latest.txt" for /f "tokens=1,2 eol=@ delims==" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_smbios_Latest.txt ^|find /I "Smbios UUID"') do set "ECM_SMBIOS_UUID_2=%%B"
+	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm_Latest.txt ^|findstr /I /B "FAMILY"') do if not "%%B" == " ERROR - Unavailable." set "ECM_VM_FAMILY_2=%%B"
+	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm_Latest.txt ^|findstr /I /B "NAME"') do if not "%%B" == " ERROR - Unavailable." set "ECM_VM_NAME_2=%%B"
+	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm_Latest.txt ^|findstr /I /B "UUID"') do if not "%%B" == " ERROR - Unavailable." set "ECM_VM_UUID_2=%%B"
+	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm_Latest.txt ^|findstr /I /B "GENID"') do if not "%%B" == " ERROR - Unavailable." set "ECM_VM_GENID_2=%%B"
+	
+	rem echo     ECM_VM_FAMILY=!ECM_VM_FAMILY_2! / ECM_VM_NAME=!ECM_VM_NAME_2! / ECM_VM_UUID=!ECM_VM_UUID_2! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID_2! / ECM_VM_GENID=!ECM_VM_GENID_2! 
+	echo Current ECM values, collected with ecmcommonutil ...                                                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo     ECM_VM_FAMILY=!ECM_VM_FAMILY_2! / ECM_VM_NAME=!ECM_VM_NAME_2! / ECM_VM_UUID=!ECM_VM_UUID_2! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID_2! / ECM_VM_GENID=!ECM_VM_GENID_2!                      >> %REPORT_LOGFILE% 2>&1
+	echo     ECM_VM_FAMILY=!ECM_VM_FAMILY_2! / ECM_VM_NAME=!ECM_VM_NAME_2! / ECM_VM_UUID=!ECM_VM_UUID_2! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID_2! / ECM_VM_GENID=!ECM_VM_GENID_2!  at !DATE! / !TIME! / using ecmcommonutil.exe [V1.19] >> %REPORT_LOG_PATH%\VMECMID.txt 2>&1
+	echo     ECM_VM_FAMILY=!ECM_VM_FAMILY_2! / ECM_VM_NAME=!ECM_VM_NAME_2! / ECM_VM_UUID=!ECM_VM_UUID_2! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID_2! / ECM_VM_GENID=!ECM_VM_GENID_2!  at !DATE! / !TIME! / using ecmcommonutil.exe [V1.19] >  %REPORT_LOG_PATH%\VMECMID_Latest.txt 2>&1
+
 ) else (
 	echo     ecmcommonutil_1.19.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
 )
