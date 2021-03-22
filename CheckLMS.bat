@@ -142,6 +142,10 @@ rem        - moved several existing checks into this new section
 rem        - added further checks, to compare values from previous run with values of current run.
 rem     20-Mar-2021:
 rem        - add output of ecmcommonutil V1.19 to the common output, as it seems more reliable on some virtual machines.
+rem     22-Mar-2021:
+rem        - retrieve version of downloaded dongle driver and print them out.
+rem        - use "!ProgramFiles_x86!" instead of "%ProgramFiles(x86)%"
+rem        - add option /installdongledriver and /removedongledriver
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -163,12 +167,14 @@ rem              - /checkid                     check machine identifiers, like 
 rem              - /setcheckidtask              sets periodic task to run checklms.bat with /checkid option.
 rem              - /delcheckidtask              delete periodic checkid task, see option /setcheckidtask
 rem              - /setfirewall                 sets firewall for external access to LMS. 
+rem              - /installdongledriver         installs downloaded dongle driver.
+rem              - /removedongledriver          remove installed dongle driver.
 rem              - /info "Any text"             Adds this text to the output, e.g. reference to field issue /info "SR1-XXXX"
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 20-Mar-2021"
-set LMS_SCRIPT_BUILD=20210320
+set LMS_SCRIPT_VERSION="CheckLMS Script 22-Mar-2021"
+set LMS_SCRIPT_BUILD=20210322
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -198,6 +204,8 @@ chcp 1252
 rem Check this: https://ss64.com/nt/delayedexpansion.html 
 SETLOCAL EnableDelayedExpansion
 setlocal ENABLEEXTENSIONS
+
+set ProgramFiles_x86=%ProgramFiles(x86)%
 
 rem https://stackoverflow.com/questions/7727114/batch-command-date-and-time-in-file-name
 for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /format:list') do set lms_report_datetime=%%I
@@ -307,7 +315,7 @@ IF NOT EXIST "%DOWNLOAD_LMS_PATH%\LMSSetup" (
 	mkdir %DOWNLOAD_LMS_PATH%\LMSSetup\ >nul 2>&1
 )
 rem Check flexera command line tools path 
-set LMS_SERVERTOOL_PATH=%ProgramFiles(x86)%\Siemens\LMS\server
+set LMS_SERVERTOOL_PATH=!ProgramFiles_x86!\Siemens\LMS\server
 IF NOT EXIST "!LMS_SERVERTOOL_PATH!" (
     set LMS_SERVERTOOL_PATH=%ProgramFiles%\Siemens\LMS\server
 )
@@ -432,6 +440,12 @@ FOR %%A IN (%*) DO (
 		)
 		if "!var!"=="setfirewall" (
 			set LMS_SET_FIREWALL=1
+		)
+		if "!var!"=="installdongledriver" (
+			set LMS_INSTALL_DONGLE_DRIVER=1
+		)
+		if "!var!"=="removedongledriver" (
+			set LMS_REMOVE_DONGLE_DRIVER=1
 		)
 		if "!var!"=="info" (
 			set LMS_SET_INFO=1
@@ -721,7 +735,9 @@ REM --- Read FNP Version ---
 REM see https://superuser.com/questions/363278/is-there-a-way-to-get-file-metadata-from-the-command-line for more information
 REM see https://docs.microsoft.com/en-us/windows/desktop/WinProg64/wow64-implementation-details to check bitness of operating system
 REM NOTE: %ProgramFiles(x86)% and %ProgramFiles% doesn't work together with "wmic datafile"
+REM       you need to replace \ with \\, see https://alt.msdos.batch.narkive.com/LNB84uUc/replace-all-backslashes-in-a-string-with-double-backslash
 set FNPVersion=
+REM Keep "old" way to retrieve file version ...
 if exist "C:\Program Files\Common Files\Macrovision Shared\FlexNet Publisher\FNPLicensingService64.exe" (
 	wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService64.exe" get Manufacturer,Name,Version  /format:list
 	IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=2 delims== eol=@" %%i in ('type %REPORT_WMIC_LOGFILE% ^|find /I "Version"') do set "FNPVersion=%%i"
@@ -736,6 +752,32 @@ if not defined FNPVersion (
 	if exist "C:\Program Files\Common Files\Macrovision Shared\FlexNet Publisher\FNPLicensingService.exe" (
 		REM Covers the case of Win7 32-bit
 		wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list
+		IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=2 delims== eol=@" %%i in ('type %REPORT_WMIC_LOGFILE% ^|find /I "Version"') do set "FNPVersion=%%i"
+	)
+)
+REM Add new way to retrieve file version ....
+REM Replace \ with \\, see https://alt.msdos.batch.narkive.com/LNB84uUc/replace-all-backslashes-in-a-string-with-double-backslash
+if not defined FNPVersion (
+	set TARGETFILE=%ProgramFiles%\Common Files\Macrovision Shared\FlexNet Publisher\FNPLicensingService64.exe
+	if exist "!TARGETFILE!" (
+		set TARGETFILE=!TARGETFILE:\=\\!
+		wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
+		IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=2 delims== eol=@" %%i in ('type %REPORT_WMIC_LOGFILE% ^|find /I "Version"') do set "FNPVersion=%%i"
+	)
+)
+if not defined FNPVersion (
+	set TARGETFILE=!ProgramFiles_x86!\Common Files\Macrovision Shared\FlexNet Publisher\FNPLicensingService.exe
+	if exist "!TARGETFILE!" (
+		set TARGETFILE=!TARGETFILE:\=\\!
+		wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
+		IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=2 delims== eol=@" %%i in ('type %REPORT_WMIC_LOGFILE% ^|find /I "Version"') do set "FNPVersion=%%i"
+	)
+)
+if not defined FNPVersion (
+	set TARGETFILE=%ProgramFiles%\Common Files\Macrovision Shared\FlexNet Publisher\FNPLicensingService.exe
+	if exist "!TARGETFILE!" (
+		set TARGETFILE=!TARGETFILE:\=\\!
+		wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
 		IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=2 delims== eol=@" %%i in ('type %REPORT_WMIC_LOGFILE% ^|find /I "Version"') do set "FNPVersion=%%i"
 	)
 )
@@ -1174,11 +1216,18 @@ if not defined LMS_SKIPDOWNLOAD (
 			)
 			
 			rem Download newest dongle driver always, to ensure that older driver get overwritten
-			echo     Download newest dongle driver: %DOWNLOAD_LMS_PATH%\haspdinst.exe [%MOST_RECENT_DONGLE_DRIVER_VERSION%]
-			echo Download newest dongle driver: %DOWNLOAD_LMS_PATH%\haspdinst.exe [%MOST_RECENT_DONGLE_DRIVER_VERSION%]             >> %REPORT_LOGFILE% 2>&1
+			echo     Download newest dongle driver: %DOWNLOAD_LMS_PATH%\haspdinst.exe [%MOST_RECENT_DONGLE_DRIVER_VERSION%] ...
+			echo Download newest dongle driver: %DOWNLOAD_LMS_PATH%\haspdinst.exe [%MOST_RECENT_DONGLE_DRIVER_VERSION%] ...             >> %REPORT_LOGFILE% 2>&1
 			powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/hasp/%MOST_RECENT_DONGLE_DRIVER_VERSION%/haspdinst.exe', '%DOWNLOAD_LMS_PATH%\haspdinst.exe')"   >> %REPORT_LOGFILE% 2>&1
-			
-			
+			if exist "%DOWNLOAD_LMS_PATH%\haspdinst.exe" (
+				set TARGETFILE=%DOWNLOAD_LMS_PATH%\haspdinst.exe
+				set TARGETFILE=!TARGETFILE:\=\\!
+				wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
+				IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=2 delims== eol=@" %%i in ('type %REPORT_WMIC_LOGFILE% ^|find /I "Version"') do set "haspdinstVersion=%%i"
+				echo     Newest dongle driver: %DOWNLOAD_LMS_PATH%\haspdinst.exe [!haspdinstVersion!] downloaded!
+				echo Newest dongle driver: %DOWNLOAD_LMS_PATH%\haspdinst.exe [!haspdinstVersion!] downloaded!                           >> %REPORT_LOGFILE% 2>&1
+			)
+						
 			rem Download AccessChk tool
 			IF NOT EXIST "%DOWNLOAD_LMS_PATH%\AccessChk.zip" (
 				echo     Download AccessChk tool: %DOWNLOAD_LMS_PATH%\AccessChk.zip
@@ -1314,6 +1363,7 @@ if not defined LMS_SKIPUNZIP (
 		echo Don't unzip USBDeview tool [usbdeview-x64.zip], because zip archive doesn't exists.                                      >> %REPORT_LOGFILE% 2>&1
 	)
 
+	set LMS_SCRIPT_BUILD_DOWNLOAD_TO_START=
 	rem Check if newer CheckLMS.bat is available in %DOWNLOAD_LMS_PATH%\CheckLMS.bat (even if connection test doesn't run succesful)
 	IF EXIST "%DOWNLOAD_LMS_PATH%\CheckLMS.bat" (
 		echo     Check script on '%DOWNLOAD_LMS_PATH%\CheckLMS.bat' ... 
@@ -1427,8 +1477,8 @@ IF EXIST "!DOWNLOAD_LMS_PATH!\usbdeview\USBDeview.exe" (
 )
 rem -- appactutil.exe
 set LMS_APPACTUTIL=
-set LMS_APPACTUTIL=%ProgramFiles(x86)%\Siemens\LMS\server\appactutil.exe
-IF NOT EXIST "%ProgramFiles(x86)%\Siemens\LMS\server\appactutil.exe" (
+set LMS_APPACTUTIL=!ProgramFiles_x86!\Siemens\LMS\server\appactutil.exe
+IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\appactutil.exe" (
 	IF EXIST "%ProgramFiles%\Siemens\LMS\server\appactutil.exe" (
 		set LMS_APPACTUTIL=%ProgramFiles%\Siemens\LMS\server\appactutil.exe
 	) else (
@@ -1441,8 +1491,8 @@ IF NOT EXIST "%ProgramFiles(x86)%\Siemens\LMS\server\appactutil.exe" (
 )
 rem -- lmdiag.exe
 set LMS_LMDIAG=
-set LMS_LMDIAG=%ProgramFiles(x86)%\Siemens\LMS\server\lmdiag.exe
-IF NOT EXIST "%ProgramFiles(x86)%\Siemens\LMS\server\lmdiag.exe" (
+set LMS_LMDIAG=!ProgramFiles_x86!\Siemens\LMS\server\lmdiag.exe
+IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\lmdiag.exe" (
 	IF EXIST "%ProgramFiles%\Siemens\LMS\server\lmdiag.exe" (
 		set LMS_LMDIAG=%ProgramFiles%\Siemens\LMS\server\lmdiag.exe
 	) else (
@@ -1455,8 +1505,8 @@ IF NOT EXIST "%ProgramFiles(x86)%\Siemens\LMS\server\lmdiag.exe" (
 )
 rem -- lmhostid.exe
 set LMS_LMHOSTID=
-set LMS_LMHOSTID=%ProgramFiles(x86)%\Siemens\LMS\server\lmhostid.exe
-IF NOT EXIST "%ProgramFiles(x86)%\Siemens\LMS\server\lmhostid.exe" (
+set LMS_LMHOSTID=!ProgramFiles_x86!\Siemens\LMS\server\lmhostid.exe
+IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\lmhostid.exe" (
 	IF EXIST "%ProgramFiles%\Siemens\LMS\server\lmhostid.exe" (
 		set LMS_LMHOSTID=%ProgramFiles%\Siemens\LMS\server\lmhostid.exe
 	) else (
@@ -1469,8 +1519,8 @@ IF NOT EXIST "%ProgramFiles(x86)%\Siemens\LMS\server\lmhostid.exe" (
 )
 rem -- lmstat.exe
 set LMS_LMSTAT=
-set LMS_LMSTAT=%ProgramFiles(x86)%\Siemens\LMS\server\lmstat.exe
-IF NOT EXIST "%ProgramFiles(x86)%\Siemens\LMS\server\lmstat.exe" (
+set LMS_LMSTAT=!ProgramFiles_x86!\Siemens\LMS\server\lmstat.exe
+IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\lmstat.exe" (
 	IF EXIST "%ProgramFiles%\Siemens\LMS\server\lmstat.exe" (
 		set LMS_LMSTAT=%ProgramFiles%\Siemens\LMS\server\lmstat.exe
 	) else (
@@ -1483,8 +1533,8 @@ IF NOT EXIST "%ProgramFiles(x86)%\Siemens\LMS\server\lmstat.exe" (
 )
 rem -- lmtpminfo.exe
 set LMS_LMTPMINFO=
-set LMS_LMTPMINFO=%ProgramFiles(x86)%\Siemens\LMS\server\lmtpminfo.exe
-IF NOT EXIST "%ProgramFiles(x86)%\Siemens\LMS\server\lmtpminfo.exe" (
+set LMS_LMTPMINFO=!ProgramFiles_x86!\Siemens\LMS\server\lmtpminfo.exe
+IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\lmtpminfo.exe" (
 	IF EXIST "%ProgramFiles%\Siemens\LMS\server\lmtpminfo.exe" (
 		set LMS_LMTPMINFO=%ProgramFiles%\Siemens\LMS\server\lmtpminfo.exe
 	) else (
@@ -1497,8 +1547,8 @@ IF NOT EXIST "%ProgramFiles(x86)%\Siemens\LMS\server\lmtpminfo.exe" (
 )
 rem -- lmvminfo.exe
 set LMS_LMVMINFO=
-set LMS_LMVMINFO=%ProgramFiles(x86)%\Siemens\LMS\server\lmvminfo.exe
-IF NOT EXIST "%ProgramFiles(x86)%\Siemens\LMS\server\lmvminfo.exe" (
+set LMS_LMVMINFO=!ProgramFiles_x86!\Siemens\LMS\server\lmvminfo.exe
+IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\lmvminfo.exe" (
 	IF EXIST "%ProgramFiles%\Siemens\LMS\server\lmvminfo.exe" (
 		set LMS_LMVMINFO=%ProgramFiles%\Siemens\LMS\server\lmvminfo.exe
 	) else (
@@ -1511,8 +1561,8 @@ IF NOT EXIST "%ProgramFiles(x86)%\Siemens\LMS\server\lmvminfo.exe" (
 )
 rem -- servercomptranutil.exe
 set LMS_SERVERCOMTRANUTIL=
-set LMS_SERVERCOMTRANUTIL=%ProgramFiles(x86)%\Siemens\LMS\server\servercomptranutil.exe
-IF NOT EXIST "%ProgramFiles(x86)%\Siemens\LMS\server\servercomptranutil.exe" (
+set LMS_SERVERCOMTRANUTIL=!ProgramFiles_x86!\Siemens\LMS\server\servercomptranutil.exe
+IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\servercomptranutil.exe" (
 	IF EXIST "%ProgramFiles%\Siemens\LMS\server\servercomptranutil.exe" (
 		set LMS_SERVERCOMTRANUTIL=%ProgramFiles%\Siemens\LMS\server\servercomptranutil.exe
 	) else (
@@ -1525,8 +1575,8 @@ IF NOT EXIST "%ProgramFiles(x86)%\Siemens\LMS\server\servercomptranutil.exe" (
 )
 rem -- tsactdiags_SIEMBT_svr.exe
 set LMS_TSACTDIAGSSVR=
-set LMS_TSACTDIAGSSVR=%ProgramFiles(x86)%\Siemens\LMS\server\tsactdiags_SIEMBT_svr.exe
-IF NOT EXIST "%ProgramFiles(x86)%\Siemens\LMS\server\tsactdiags_SIEMBT_svr.exe" (
+set LMS_TSACTDIAGSSVR=!ProgramFiles_x86!\Siemens\LMS\server\tsactdiags_SIEMBT_svr.exe
+IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\tsactdiags_SIEMBT_svr.exe" (
 	IF EXIST "%ProgramFiles%\Siemens\LMS\server\tsactdiags_SIEMBT_svr.exe" (
 		set LMS_TSACTDIAGSSVR=%ProgramFiles%\Siemens\LMS\server\tsactdiags_SIEMBT_svr.exe
 	) else (
@@ -1539,8 +1589,8 @@ IF NOT EXIST "%ProgramFiles(x86)%\Siemens\LMS\server\tsactdiags_SIEMBT_svr.exe" 
 )
 rem -- tsreset_svr.exe
 set LMS_TSRESETSVR=
-set LMS_TSRESETSVR=%ProgramFiles(x86)%\Siemens\LMS\server\tsreset_svr.exe
-IF NOT EXIST "%ProgramFiles(x86)%\Siemens\LMS\server\tsreset_svr.exe" (
+set LMS_TSRESETSVR=!ProgramFiles_x86!\Siemens\LMS\server\tsreset_svr.exe
+IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\tsreset_svr.exe" (
 	IF EXIST "%ProgramFiles%\Siemens\LMS\server\tsreset_svr.exe" (
 		set LMS_TSRESETSVR=%ProgramFiles%\Siemens\LMS\server\tsreset_svr.exe
 	) else (
@@ -1553,8 +1603,8 @@ IF NOT EXIST "%ProgramFiles(x86)%\Siemens\LMS\server\tsreset_svr.exe" (
 )
 rem -- tsreset_app.exe
 set LMS_TSRESETAPP=
-set LMS_TSRESETAPP=%ProgramFiles(x86)%\Siemens\LMS\server\tsreset_app.exe
-IF NOT EXIST "%ProgramFiles(x86)%\Siemens\LMS\server\tsreset_app.exe" (
+set LMS_TSRESETAPP=!ProgramFiles_x86!\Siemens\LMS\server\tsreset_app.exe
+IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\tsreset_app.exe" (
 	IF EXIST "%ProgramFiles%\Siemens\LMS\server\tsreset_app.exe" (
 		set LMS_TSRESETAPP=%ProgramFiles%\Siemens\LMS\server\tsreset_app.exe
 	) else (
@@ -1567,8 +1617,8 @@ IF NOT EXIST "%ProgramFiles(x86)%\Siemens\LMS\server\tsreset_app.exe" (
 )
 rem -- serveractutil.exe (since 06-Dec-2018)
 set LMS_SERVERACTUTIL=
-set LMS_SERVERACTUTIL=%ProgramFiles(x86)%\Siemens\LMS\server\serveractutil.exe
-IF NOT EXIST "%ProgramFiles(x86)%\Siemens\LMS\server\serveractutil.exe" (
+set LMS_SERVERACTUTIL=!ProgramFiles_x86!\Siemens\LMS\server\serveractutil.exe
+IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\serveractutil.exe" (
 	IF EXIST "%ProgramFiles%\Siemens\LMS\server\serveractutil.exe" (
 		set LMS_SERVERACTUTIL=%ProgramFiles%\Siemens\LMS\server\serveractutil.exe
 	) else (
@@ -1581,8 +1631,8 @@ IF NOT EXIST "%ProgramFiles(x86)%\Siemens\LMS\server\serveractutil.exe" (
 )
 rem -- appcomptranutil.exe (since 24-Apr-2019)
 set LMS_APPCOMPTRANUTIL=
-set LMS_APPCOMPTRANUTIL=%ProgramFiles(x86)%\Siemens\LMS\server\appcomptranutil.exe
-IF NOT EXIST "%ProgramFiles(x86)%\Siemens\LMS\server\appcomptranutil.exe" (
+set LMS_APPCOMPTRANUTIL=!ProgramFiles_x86!\Siemens\LMS\server\appcomptranutil.exe
+IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\appcomptranutil.exe" (
 	IF EXIST "%ProgramFiles%\Siemens\LMS\server\appcomptranutil.exe" (
 		set LMS_APPCOMPTRANUTIL=%ProgramFiles%\Siemens\LMS\server\appcomptranutil.exe
 	) else (
@@ -1595,8 +1645,8 @@ IF NOT EXIST "%ProgramFiles(x86)%\Siemens\LMS\server\appcomptranutil.exe" (
 )
 rem -- lmutil.exe (since 26-Nov-2019)
 set LMS_LMUTIL=
-set LMS_LMUTIL=%ProgramFiles(x86)%\Siemens\LMS\server\lmutil.exe
-IF NOT EXIST "%ProgramFiles(x86)%\Siemens\LMS\server\lmutil.exe" (
+set LMS_LMUTIL=!ProgramFiles_x86!\Siemens\LMS\server\lmutil.exe
+IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\lmutil.exe" (
 	IF EXIST "%ProgramFiles%\Siemens\LMS\server\lmutil.exe" (
 		set LMS_LMUTIL=%ProgramFiles%\Siemens\LMS\server\lmutil.exe
 	) else (
@@ -1609,8 +1659,8 @@ IF NOT EXIST "%ProgramFiles(x86)%\Siemens\LMS\server\lmutil.exe" (
 )
 rem -- lmver.exe (since 09-Nov-2020)
 set LMS_LMVER=
-set LMS_LMVER=%ProgramFiles(x86)%\Siemens\LMS\server\lmver.exe
-IF NOT EXIST "%ProgramFiles(x86)%\Siemens\LMS\server\lmver.exe" (
+set LMS_LMVER=!ProgramFiles_x86!\Siemens\LMS\server\lmver.exe
+IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\lmver.exe" (
 	IF EXIST "%ProgramFiles%\Siemens\LMS\server\lmver.exe" (
 		set LMS_LMVER=%ProgramFiles%\Siemens\LMS\server\lmver.exe
 	) else (
@@ -1654,10 +1704,10 @@ if defined LMS_SET_FIREWALL (
 		echo Delete rule: netsh advfirewall firewall delete rule name="LMS SIEMBT"                                                                             >> %REPORT_LOGFILE% 2>&1
 		netsh advfirewall firewall delete rule name="LMS SIEMBT"                                                                                               >> %REPORT_LOGFILE% 2>&1
 		rem see also https://wiki.siemens.com/display/en/LMS+VMware+configuration
-		echo Set rule: netsh advfirewall firewall add rule name="LMS lmgrd" dir=in action=allow program="%ProgramFiles(x86)%\Siemens\LMS\server\lmgrd.exe"     >> %REPORT_LOGFILE% 2>&1
-		netsh advfirewall firewall add rule name="LMS lmgrd" dir=in action=allow program="%ProgramFiles(x86)%\Siemens\LMS\server\lmgrd.exe"                    >> %REPORT_LOGFILE% 2>&1
-		echo Setrule : netsh advfirewall firewall add rule name="LMS siembt" dir=in action=allow program="%ProgramFiles(x86)%\Siemens\LMS\server\siembt.exe"   >> %REPORT_LOGFILE% 2>&1
-		netsh advfirewall firewall add rule name="LMS siembt" dir=in action=allow program="%ProgramFiles(x86)%\Siemens\LMS\server\siembt.exe"                  >> %REPORT_LOGFILE% 2>&1
+		echo Set rule: netsh advfirewall firewall add rule name="LMS lmgrd" dir=in action=allow program="!ProgramFiles_x86!\Siemens\LMS\server\lmgrd.exe"     >> %REPORT_LOGFILE% 2>&1
+		netsh advfirewall firewall add rule name="LMS lmgrd" dir=in action=allow program="!ProgramFiles_x86!\Siemens\LMS\server\lmgrd.exe"                    >> %REPORT_LOGFILE% 2>&1
+		echo Setrule : netsh advfirewall firewall add rule name="LMS siembt" dir=in action=allow program="!ProgramFiles_x86!\Siemens\LMS\server\siembt.exe"   >> %REPORT_LOGFILE% 2>&1
+		netsh advfirewall firewall add rule name="LMS siembt" dir=in action=allow program="!ProgramFiles_x86!\Siemens\LMS\server\siembt.exe"                  >> %REPORT_LOGFILE% 2>&1
 		echo     DONE
 		echo Set firewall settings ... DONE                                                                                                                    >> %REPORT_LOGFILE% 2>&1
 	) else (
@@ -1721,6 +1771,95 @@ if defined LMS_SET_FIREWALL (
 ) else (
 	echo Set firewall settings ... NO                                                                                            >> %REPORT_LOGFILE% 2>&1
 )
+if defined LMS_INSTALL_DONGLE_DRIVER (
+	rem The same code block is again at script end (was introduced in an earlier script version and kept for "backward" compatibility)
+	if exist "%DOWNLOAD_LMS_PATH%\haspdinst.exe" (
+		set TARGETFILE=%DOWNLOAD_LMS_PATH%\haspdinst.exe
+		set TARGETFILE=!TARGETFILE:\=\\!
+		wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
+		IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=2 delims== eol=@" %%i in ('type %REPORT_WMIC_LOGFILE% ^|find /I "Version"') do set "haspdinstVersion=%%i"
+		echo     Dongle driver: %DOWNLOAD_LMS_PATH%\haspdinst.exe [!haspdinstVersion!] available!
+		echo Dongle driver: %DOWNLOAD_LMS_PATH%\haspdinst.exe [!haspdinstVersion!] available!                                    >> %REPORT_LOGFILE% 2>&1
+		if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
+			rem install dongle driver downloaded by this script
+			if defined SHOW_COLORED_OUTPUT (
+				echo [1;31m    --- Install newest dongle driver !haspdinstVersion! just downloaded by this script. [1;37m
+			) else (
+				echo     --- Install newest dongle driver !haspdinstVersion! just downloaded by this script.
+			)
+			echo --- Install newest dongle driver !haspdinstVersion! just downloaded by this script.                             >> %REPORT_LOGFILE% 2>&1
+			start "Install dongle driver" "%DOWNLOAD_LMS_PATH%\haspdinst.exe" -install -killprocess 
+			echo --- Installation started in an own process/shell.                                                               >> %REPORT_LOGFILE% 2>&1
+		) else (
+			if defined SHOW_COLORED_OUTPUT (
+				echo [1;33m    WARNING: Cannot install dongle driver, start script with administrator priviledge. [1;37m
+			) else (
+				echo     WARNING: Cannot install dongle driver, start script with administrator priviledge.
+			)
+			echo WARNING: Cannot install dongle driver, start script with administrator priviledge.                              >> %REPORT_LOGFILE% 2>&1
+		)
+	) else (
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;33m    WARNING: Cannot install dongle driver, file '%DOWNLOAD_LMS_PATH%\haspdinst.exe' doesn't exist. [1;37m
+		) else (
+			echo     WARNING: Cannot install dongle driver, file '%DOWNLOAD_LMS_PATH%\haspdinst.exe' doesn't exist.
+		)
+		echo WARNING: Cannot install dongle driver, file '%DOWNLOAD_LMS_PATH%\haspdinst.exe' doesn't exist.                      >> %REPORT_LOGFILE% 2>&1
+	)
+	
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                                  >> %REPORT_LOGFILE% 2>&1
+	rem save (single) report in full report file
+	Type %REPORT_LOGFILE% >> %REPORT_FULL_LOGFILE%
+	exit /b
+	rem STOP EXECUTION HERE
+) else (
+	echo Install Dongle Driver ... NO                                                                                            >> %REPORT_LOGFILE% 2>&1
+)
+if defined LMS_REMOVE_DONGLE_DRIVER (
+	if exist "%DOWNLOAD_LMS_PATH%\haspdinst.exe" (
+		set TARGETFILE=%DOWNLOAD_LMS_PATH%\haspdinst.exe
+		set TARGETFILE=!TARGETFILE:\=\\!
+		wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
+		IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=2 delims== eol=@" %%i in ('type %REPORT_WMIC_LOGFILE% ^|find /I "Version"') do set "haspdinstVersion=%%i"
+		echo     Dongle driver: %DOWNLOAD_LMS_PATH%\haspdinst.exe [!haspdinstVersion!] available!
+		echo Dongle driver: %DOWNLOAD_LMS_PATH%\haspdinst.exe [!haspdinstVersion!] available!                                    >> %REPORT_LOGFILE% 2>&1
+		if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
+			if defined SHOW_COLORED_OUTPUT (
+				echo [1;31m    --- Remove installed dongle driver !haspdinstVersion!. [1;37m
+			) else (
+				echo     --- Remove installed dongle driver !haspdinstVersion!.
+			)
+			echo --- Remove installed dongle driver !haspdinstVersion!.                                                          >> %REPORT_LOGFILE% 2>&1
+			start "Remove dongle driver" "%DOWNLOAD_LMS_PATH%\haspdinst.exe" -remove -killprocess 
+			echo --- Remove started in an own process/shell.                                                                     >> %REPORT_LOGFILE% 2>&1
+		) else (
+			if defined SHOW_COLORED_OUTPUT (
+				echo [1;33m    WARNING: Cannot remove dongle driver, start script with administrator priviledge. [1;37m
+			) else (
+				echo     WARNING: Cannot remove dongle driver, start script with administrator priviledge.
+			)
+			echo WARNING: Cannot remove dongle driver, start script with administrator priviledge.                               >> %REPORT_LOGFILE% 2>&1
+		)
+	) else (
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;33m    WARNING: Cannot remove dongle driver, file '%DOWNLOAD_LMS_PATH%\haspdinst.exe' doesn't exist. [1;37m
+		) else (
+			echo     WARNING: Cannot remove dongle driver, file '%DOWNLOAD_LMS_PATH%\haspdinst.exe' doesn't exist.
+		)
+		echo WARNING: Cannot remove dongle driver, file '%DOWNLOAD_LMS_PATH%\haspdinst.exe' doesn't exist.                       >> %REPORT_LOGFILE% 2>&1
+	)
+
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                                  >> %REPORT_LOGFILE% 2>&1
+	rem save (single) report in full report file
+	Type %REPORT_LOGFILE% >> %REPORT_FULL_LOGFILE%
+	exit /b
+	rem STOP EXECUTION HERE
+) else (
+	echo Remove Dongle Driver ... NO                                                                                             >> %REPORT_LOGFILE% 2>&1
+)
+
 
 if defined LMS_SET_CHECK_ID_TASK (
 	set taskname=\Siemens\Lms\CheckLMS_CheckID
@@ -3189,16 +3328,16 @@ if not defined LMS_SKIPSIGCHECK (
 		echo     No LMS binary folder [%ProgramFiles%\Siemens\LMS\bin] found.                                                >> %REPORT_LOGFILE% 2>&1
 	)
 	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
-	IF EXIST "%ProgramFiles(x86)%\Siemens\LMS\bin" (
+	IF EXIST "!ProgramFiles_x86!\Siemens\LMS\bin" (
 		echo LMS - Get signature status for 32-bit *.exe                                                                     >> %REPORT_LOGFILE% 2>&1
-		powershell -command "Get-AuthenticodeSignature -FilePath '%ProgramFiles(x86)%\Siemens\LMS\bin\*.exe'"                >> %REPORT_LOGFILE% 2>&1
+		powershell -command "Get-AuthenticodeSignature -FilePath '!ProgramFiles_x86!\Siemens\LMS\bin\*.exe'"                >> %REPORT_LOGFILE% 2>&1
 		echo LMS - Get signature status for 32-bit *.dll                                                                     >> %REPORT_LOGFILE% 2>&1
-		powershell -command "Get-AuthenticodeSignature -FilePath '%ProgramFiles(x86)%\Siemens\LMS\bin\*.dll'"                >> %REPORT_LOGFILE% 2>&1
+		powershell -command "Get-AuthenticodeSignature -FilePath '!ProgramFiles_x86!\Siemens\LMS\bin\*.dll'"                >> %REPORT_LOGFILE% 2>&1
 		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
 		echo Check signature with: !SIGCHECK_TOOL! !SIGCHECK_OPTIONS! ...                                                    >> %REPORT_LOGFILE% 2>&1
-		!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "%ProgramFiles(x86)%\Siemens\LMS\bin\LmuTool.exe"                                 >> %REPORT_LOGFILE% 2>&1
-		!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "%ProgramFiles(x86)%\Siemens\LMS\bin\LicEnf.dll"                                  >> %REPORT_LOGFILE% 2>&1
-		!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "%ProgramFiles(x86)%\Siemens\LMS\bin\Siemens.Gms.ApplicationFramework.exe"        >> %REPORT_LOGFILE% 2>&1
+		!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "!ProgramFiles_x86!\Siemens\LMS\bin\LmuTool.exe"                                 >> %REPORT_LOGFILE% 2>&1
+		!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "!ProgramFiles_x86!\Siemens\LMS\bin\LicEnf.dll"                                  >> %REPORT_LOGFILE% 2>&1
+		!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "!ProgramFiles_x86!\Siemens\LMS\bin\Siemens.Gms.ApplicationFramework.exe"        >> %REPORT_LOGFILE% 2>&1
 	) else (
 		echo     No LMS binary 32-bit folder found.                                                                          >> %REPORT_LOGFILE% 2>&1
 	)
@@ -3252,9 +3391,9 @@ if not defined LMS_SKIPFNP (
 		type %REPORT_WMIC_LOGFILE% >> %REPORT_LOGFILE% 2>&1
 		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
 	)
-	IF EXIST "%ProgramFiles(x86)%\Siemens\LMS\server" (
-		echo Content of folder: "%ProgramFiles(x86)%\Siemens\LMS\server"                                                         >> %REPORT_LOGFILE% 2>&1
-		dir /S /A /X /4 /W "%ProgramFiles(x86)%\Siemens\LMS\server"                                                              >> %REPORT_LOGFILE% 2>&1
+	IF EXIST "!ProgramFiles_x86!\Siemens\LMS\server" (
+		echo Content of folder: "!ProgramFiles_x86!\Siemens\LMS\server"                                                         >> %REPORT_LOGFILE% 2>&1
+		dir /S /A /X /4 /W "!ProgramFiles_x86!\Siemens\LMS\server"                                                              >> %REPORT_LOGFILE% 2>&1
 		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
 	)
 	IF EXIST "%ProgramFiles%\Siemens\LMS\server" (
@@ -4791,7 +4930,7 @@ if not defined LMS_CHECK_ID (
 	rem if /I !LMS_BUILD_VERSION! GEQ 681 (
 	rem 	echo Write Log Message: LmuTool /LOG:"Run CheckLMS.bat 32-Bit"                                                           >> %REPORT_LOGFILE% 2>&1
 	rem 	if exist "%ProgramFiles%\Siemens\LMS\bin\LmuTool.exe" (
-	rem 		"%ProgramFiles(x86)%\Siemens\LMS\bin\LmuTool.exe" /LOG:"Run CheckLMS.bat 32-Bit"                                     >> %REPORT_LOGFILE% 2>&1
+	rem 		"!ProgramFiles_x86!\Siemens\LMS\bin\LmuTool.exe" /LOG:"Run CheckLMS.bat 32-Bit"                                     >> %REPORT_LOGFILE% 2>&1
 	rem 	) else (
 	rem 		echo     LmuTool [32-Bit] is not available with LMS !LMS_VERSION!, cannot perform operation.                         >> %REPORT_LOGFILE% 2>&1 
 	rem 	)
@@ -6713,29 +6852,34 @@ if not defined LMS_CHECK_ID (
 			echo     ATTENTION: No Dongle Driver installed.
 		)
 		echo ATTENTION: No Dongle Driver installed.                                                                          >> %REPORT_LOGFILE% 2>&1
-		if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
-			IF EXIST "%DOWNLOAD_LMS_PATH%\haspdinst.exe" (
+
+		if exist "%DOWNLOAD_LMS_PATH%\haspdinst.exe" (
+			set TARGETFILE=%DOWNLOAD_LMS_PATH%\haspdinst.exe
+			set TARGETFILE=!TARGETFILE:\=\\!
+			wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
+			IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=2 delims== eol=@" %%i in ('type %REPORT_WMIC_LOGFILE% ^|find /I "Version"') do set "haspdinstVersion=%%i"
+			echo     Dongle driver: %DOWNLOAD_LMS_PATH%\haspdinst.exe [!haspdinstVersion!] available!
+			echo Dongle driver: %DOWNLOAD_LMS_PATH%\haspdinst.exe [!haspdinstVersion!] available!                            >> %REPORT_LOGFILE% 2>&1
+			if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
 				rem install dongle driver downloaded by this script
 				if defined SHOW_COLORED_OUTPUT (
-					echo [1;31m    --- Install newest dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! just downloaded by this script. [1;37m
+					echo [1;31m    --- Install newest dongle driver !haspdinstVersion! just downloaded by this script. [1;37m
 				) else (
-					echo     --- Install newest dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! just downloaded by this script.
+					echo     --- Install newest dongle driver !haspdinstVersion! just downloaded by this script.
 				)
-				echo --- Install newest dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! just downloaded by this script.    >> %REPORT_LOGFILE% 2>&1
+				echo --- Install newest dongle driver !haspdinstVersion! just downloaded by this script.                     >> %REPORT_LOGFILE% 2>&1
 				start "Install dongle driver" "%DOWNLOAD_LMS_PATH%\haspdinst.exe" -install -killprocess
 				echo --- Installation started in an own process/shell.                                                       >> %REPORT_LOGFILE% 2>&1
-			)
-		) else (
-			IF EXIST "%DOWNLOAD_LMS_PATH%\haspdinst.exe" (
+			) else (
 				rem show message to install dongle driver downloaded by this script
 				if defined SHOW_COLORED_OUTPUT (
-					echo [1;31m    --- Install newest dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! just downloaded by this script. [1;37m
+					echo [1;31m    --- Install newest dongle driver !haspdinstVersion! just downloaded by this script. [1;37m
 					echo [1;31m    --- Execute '"%DOWNLOAD_LMS_PATH%\haspdinst.exe" -install -killprocess' with administrator priviledge. [1;37m
 				) else (
-					echo     --- Install newest dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! just downloaded by this script.
+					echo     --- Install newest dongle driver !haspdinstVersion! just downloaded by this script.
 					echo     --- Execute '"%DOWNLOAD_LMS_PATH%\haspdinst.exe" -install -killprocess' with administrator priviledge.
 				)
-				echo --- Install newest dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! just downloaded by this script.    >> %REPORT_LOGFILE% 2>&1
+				echo --- Install newest dongle driver !haspdinstVersion! just downloaded by this script.                     >> %REPORT_LOGFILE% 2>&1
 				echo --- Execute '"%DOWNLOAD_LMS_PATH%\haspdinst.exe" -install -killprocess' with administrator priviledge.  >> %REPORT_LOGFILE% 2>&1
 			)
 		)
