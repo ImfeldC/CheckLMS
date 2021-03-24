@@ -150,6 +150,10 @@ rem     23-Mar-2021:
 rem        - copy "config" folder and add them to the logfile archive
 rem        - add '!LMS_PROGRAMDATA!\Config\SurHistory', try to decrypt them and show content
 rem        - set field test version to LMS 2.6.829
+rem     24-Mar-2021:
+rem        - download "counted.lic" from https://static.siemens.com/btdownloads/lms/FNP/counted.lic (as part of demo vendor daemon)
+rem        - add option /startdemovd to start the demo vendor daemon provided by Flexera.
+rem        - add option /stopdemovd to stop the demo vendor daemon provided by Flexera.
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -177,8 +181,8 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 23-Mar-2021"
-set LMS_SCRIPT_BUILD=20210323
+set LMS_SCRIPT_VERSION="CheckLMS Script 24-Mar-2021"
+set LMS_SCRIPT_BUILD=20210324
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -450,6 +454,12 @@ FOR %%A IN (%*) DO (
 		)
 		if "!var!"=="removedongledriver" (
 			set LMS_REMOVE_DONGLE_DRIVER=1
+		)
+		if "!var!"=="startdemovd" (
+			set LMS_START_DEMO_VD=1
+		)
+		if "!var!"=="stopdemovd" (
+			set LMS_STOP_DEMO_VD=1
 		)
 		if "!var!"=="info" (
 			set LMS_SET_INFO=1
@@ -1255,11 +1265,21 @@ if not defined LMS_SKIPDOWNLOAD (
 			rem Download USBDeview tool
 			IF NOT EXIST "%DOWNLOAD_LMS_PATH%\usbdeview-x64.zip" (
 				echo     Download USBDeview tool: %DOWNLOAD_LMS_PATH%\usbdeview-x64.zip
-				echo Download USBDeview tool: %DOWNLOAD_LMS_PATH%\usbdeview-x64.zip                                                           >> %REPORT_LOGFILE% 2>&1
+				echo Download USBDeview tool: %DOWNLOAD_LMS_PATH%\usbdeview-x64.zip                                                     >> %REPORT_LOGFILE% 2>&1
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.nirsoft.net/utils/usbdeview-x64.zip', '%DOWNLOAD_LMS_PATH%\usbdeview-x64.zip')"   >> %REPORT_LOGFILE% 2>&1
 			) else (
 				echo     Don't download USBDeview tool [usbdeview-x64.zip], because it exist already.
-				echo Don't download USBDeview tool [usbdeview-x64.zip], because it exist already.                                             >> %REPORT_LOGFILE% 2>&1
+				echo Don't download USBDeview tool [usbdeview-x64.zip], because it exist already.                                       >> %REPORT_LOGFILE% 2>&1
+			)
+			
+			rem Download “counted.lic”
+			IF NOT EXIST "%DOWNLOAD_LMS_PATH%\counted.lic" (
+				echo     Download 'counted.lic': %DOWNLOAD_LMS_PATH%\counted.lic
+				echo Download 'counted.lic': %DOWNLOAD_LMS_PATH%\counted.lic                                                            >> %REPORT_LOGFILE% 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/counted.lic', '%DOWNLOAD_LMS_PATH%\counted.lic')"   >> %REPORT_LOGFILE% 2>&1
+			) else (
+				echo     Don't download 'counted.lic', because it exist already.
+				echo Don't download 'counted.lic', because it exist already.                                                            >> %REPORT_LOGFILE% 2>&1
 			)
 			
 		)
@@ -1675,6 +1695,34 @@ IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\lmver.exe" (
 		)
 	)
 )
+rem -- lmdown.exe (since 24-Mar-2021)
+set LMS_LMDOWN=
+set LMS_LMDOWN=!ProgramFiles_x86!\Siemens\LMS\server\lmdown.exe
+IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\lmdown.exe" (
+	IF EXIST "%ProgramFiles%\Siemens\LMS\server\lmdown.exe" (
+		set LMS_LMDOWN=%ProgramFiles%\Siemens\LMS\server\lmdown.exe
+	) else (
+		IF EXIST "%LMS_SERVERTOOL_DW_PATH%\lmdown.exe" (
+			set LMS_LMDOWN=%LMS_SERVERTOOL_DW_PATH%\lmdown.exe
+		) else (
+			set LMS_LMDOWN=
+		)
+	)
+)
+rem -- demoLF.exe (since 24-Mar-2021)
+set LMS_DEMOLF_VD=
+set LMS_DEMOLF_VD=!ProgramFiles_x86!\Siemens\LMS\server\demoLF.exe
+IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\demoLF.exe" (
+	IF EXIST "%ProgramFiles%\Siemens\LMS\server\demoLF.exe" (
+		set LMS_DEMOLF_VD=%ProgramFiles%\Siemens\LMS\server\demoLF.exe
+	) else (
+		IF EXIST "%LMS_SERVERTOOL_DW_PATH%\demoLF.exe" (
+			set LMS_DEMOLF_VD=%LMS_SERVERTOOL_DW_PATH%\demoLF.exe
+		) else (
+			set LMS_DEMOLF_VD=
+		)
+	)
+)
 
 rem - for test purpose
 rem goto flexera_fnp_information
@@ -1864,7 +1912,6 @@ if defined LMS_REMOVE_DONGLE_DRIVER (
 	echo Remove Dongle Driver ... NO                                                                                             >> %REPORT_LOGFILE% 2>&1
 )
 
-
 if defined LMS_SET_CHECK_ID_TASK (
 	set taskname=\Siemens\Lms\CheckLMS_CheckID
 	set taskrun="%~dpnx0 /checkid"
@@ -1895,6 +1942,109 @@ if defined LMS_DEL_CHECK_ID_TASK (
 ) else (
 	echo Delete CheckId scheduled task ... NO                                                                                >> %REPORT_LOGFILE% 2>&1
 )
+
+rem Start Demo Vendor Daemon provided by Flexera; see also "1253827: CheckLMS: add support to run demo vendor daemon"
+if defined LMS_START_DEMO_VD (
+	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+	echo     start demo vendor daemon ...
+	echo Start Demo Vendor Daemon ...                                                                                        >> %REPORT_LOGFILE% 2>&1
+	if exist "!LMS_DEMOLF_VD!" (
+		if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
+			echo copy "!LMS_DEMOLF_VD!" to "!LMS_SERVERTOOL_PATH!\demo.exe" ...                                              >> %REPORT_LOGFILE% 2>&1
+			copy /Y "!LMS_DEMOLF_VD!" "!LMS_SERVERTOOL_PATH!\demo.exe"                                                       >> %REPORT_LOGFILE% 2>&1
+			if exist "!LMS_SERVERTOOL_PATH!\demo.exe" (
+				echo Started: "!LMS_SERVERTOOL_PATH!\lmgrd.exe" -c !DOWNLOAD_LMS_PATH!\counted.lic -l !REPORT_LOG_PATH!\demo_debuglog.txt >> %REPORT_LOGFILE% 2>&1
+				"!LMS_SERVERTOOL_PATH!\lmgrd.exe" -c "!DOWNLOAD_LMS_PATH!\counted.lic" -l "!REPORT_LOG_PATH!\demo_debuglog.txt"  >> %REPORT_LOGFILE% 2>&1
+			)
+		) else (
+			if defined SHOW_COLORED_OUTPUT (
+				echo [1;33m    WARNING: Cannot start Demo Vendor Daemon, start script with administrator priviledge. [1;37m
+			) else (
+				echo     WARNING: Cannot start Demo Vendor Daemon, start script with administrator priviledge.
+			)
+			echo WARNING: Cannot start Demo Vendor Daemon, start script with administrator priviledge.                       >> %REPORT_LOGFILE% 2>&1
+		)
+	) else (
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;33m    WARNING: Cannot start Demo Vendor Daemon, file '!LMS_DEMOLF_VD!' doesn't exist. [1;37m
+		) else (
+			echo     WARNING: Cannot start Demo Vendor Daemon, file '!LMS_DEMOLF_VD!' doesn't exist.
+		)
+		echo WARNING: Cannot start Demo Vendor Daemon, file '!LMS_DEMOLF_VD!' doesn't exist.                                 >> %REPORT_LOGFILE% 2>&1
+	)
+	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+	if exist "!REPORT_LOG_PATH!\demo_debuglog.txt" (
+		echo LOG FILE: demo_debuglog.txt [last %LOG_FILE_LINES% lines]                                                       >> %REPORT_LOGFILE% 2>&1
+		powershell -command "& {Get-Content '!REPORT_LOG_PATH!\demo_debuglog.txt' | Select-Object -last %LOG_FILE_LINES%}"   >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo LOG FILE: !REPORT_LOG_PATH!\demo_debuglog.txt not found!                                                        >> %REPORT_LOGFILE% 2>&1
+	)
+	echo ==============================================================================                                      >> %REPORT_LOGFILE% 2>&1
+	echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                              >> %REPORT_LOGFILE% 2>&1
+	rem save (single) report in full report file
+	Type %REPORT_LOGFILE% >> %REPORT_FULL_LOGFILE%
+	exit /b
+	rem STOP EXECUTION HERE
+) else (
+	echo Start Demo Vendor Daemon ... NO                                                                                     >> %REPORT_LOGFILE% 2>&1
+)
+rem Stop Demo Vendor Daemon provided by Flexera; see also "1253827: CheckLMS: add support to run demo vendor daemon"
+if defined LMS_STOP_DEMO_VD (
+	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+	echo     stop demo vendor daemon ...
+	echo Stop Demo Vendor Daemon ...                                                                                         >> %REPORT_LOGFILE% 2>&1
+	if exist "!LMS_SERVERTOOL_PATH!\demo.exe" (
+		if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
+			if exist "!LMS_LMDOWN!" (
+				echo Stopped: "!LMS_LMDOWN!" -c !DOWNLOAD_LMS_PATH!\counted.lic -vendor demo -q                              >> %REPORT_LOGFILE% 2>&1
+				"!LMS_LMDOWN!" -c "!DOWNLOAD_LMS_PATH!\counted.lic" -vendor demo -q                                          >> %REPORT_LOGFILE% 2>&1
+				echo Kill all running lmgrd.exe ...                                                                          >> %REPORT_LOGFILE% 2>&1
+				taskkill /f /im lmgrd.exe                                                                                    >> %REPORT_LOGFILE% 2>&1
+				echo Restart: 'FlexNet Licensing Service' and 'Siemens BT Licensing Server'                                  >> %REPORT_LOGFILE% 2>&1
+				powershell -Command "& {Restart-Service -displayname 'FlexNet Licensing Service' -force}"                    >> %REPORT_LOGFILE% 2>&1
+				powershell -Command "& {Restart-Service -displayname 'Siemens BT Licensing Server'}"                         >> %REPORT_LOGFILE% 2>&1
+				
+			) else (
+				if defined SHOW_COLORED_OUTPUT (
+					echo [1;33m    WARNING: Cannot stop Demo Vendor Daemon, file '!LMS_LMDOWN! doesn't exist. [1;37m
+				) else (
+					echo     WARNING: Cannot stop Demo Vendor Daemon, file '!LMS_LMDOWN!' doesn't exist.
+				)
+				echo WARNING: Cannot stop Demo Vendor Daemon, file '!LMS_LMDOWN!' doesn't exist.                             >> %REPORT_LOGFILE% 2>&1
+			)
+		) else (
+			if defined SHOW_COLORED_OUTPUT (
+				echo [1;33m    WARNING: Cannot stop Demo Vendor Daemon, start script with administrator priviledge. [1;37m
+			) else (
+				echo     WARNING: Cannot stop Demo Vendor Daemon, start script with administrator priviledge.
+			)
+			echo WARNING: Cannot stop Demo Vendor Daemon, start script with administrator priviledge.                        >> %REPORT_LOGFILE% 2>&1
+		)
+	) else (
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;33m    WARNING: Cannot stop Demo Vendor Daemon, file '!LMS_SERVERTOOL_PATH!\demo.exe' doesn't exist. [1;37m
+		) else (
+			echo     WARNING: Cannot stop Demo Vendor Daemon, file '!LMS_SERVERTOOL_PATH!\demo.exe' doesn't exist.
+		)
+		echo WARNING: Cannot stop Demo Vendor Daemon, file '!LMS_SERVERTOOL_PATH!\demo.exe' doesn't exist.                   >> %REPORT_LOGFILE% 2>&1
+	)
+	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+	if exist "!REPORT_LOG_PATH!\demo_debuglog.txt" (
+		echo LOG FILE: demo_debuglog.txt [last %LOG_FILE_LINES% lines]                                                       >> %REPORT_LOGFILE% 2>&1
+		powershell -command "& {Get-Content '!REPORT_LOG_PATH!\demo_debuglog.txt' | Select-Object -last %LOG_FILE_LINES%}"   >> %REPORT_LOGFILE% 2>&1
+	) else (
+		echo LOG FILE: !REPORT_LOG_PATH!\demo_debuglog.txt not found!                                                        >> %REPORT_LOGFILE% 2>&1
+	)
+	echo ==============================================================================                                      >> %REPORT_LOGFILE% 2>&1
+	echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                              >> %REPORT_LOGFILE% 2>&1
+	rem save (single) report in full report file
+	Type %REPORT_LOGFILE% >> %REPORT_FULL_LOGFILE%
+	exit /b
+	rem STOP EXECUTION HERE
+) else (
+	echo Stop Demo Vendor Daemon ... NO                                                                                      >> %REPORT_LOGFILE% 2>&1
+)
+
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 
 echo ... start collecting information ...
