@@ -146,6 +146,9 @@ rem     22-Mar-2021:
 rem        - retrieve version of downloaded dongle driver and print them out.
 rem        - use "!ProgramFiles_x86!" instead of "%ProgramFiles(x86)%"
 rem        - add option /installdongledriver and /removedongledriver
+rem     23-Mar-2021:
+rem        - copy "config" folder and add them to the logfile archive
+rem        - add '!LMS_PROGRAMDATA!\Config\SurHistory', try to decrypt them and show content
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -173,8 +176,8 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 22-Mar-2021"
-set LMS_SCRIPT_BUILD=20210322
+set LMS_SCRIPT_VERSION="CheckLMS Script 23-Mar-2021"
+set LMS_SCRIPT_BUILD=20210323
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -4938,30 +4941,40 @@ if not defined LMS_CHECK_ID (
 	rem 	echo Write Log Message: Not supported in this LMS version !LMS_VERSION! - LmuTool /LOG:"Run CheckLMS.bat 32-Bit"         >> %REPORT_LOGFILE% 2>&1
 	rem )	
 	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Content of folder: "!LMS_PROGRAMDATA!\Config"                                                                           >> %REPORT_LOGFILE% 2>&1
+	dir /S /A /X /4 /W "!LMS_PROGRAMDATA!\Config"                                                                                >> %REPORT_LOGFILE% 2>&1
+	mkdir !CHECKLMS_REPORT_LOG_PATH!\Config\  >nul 2>&1
+	xcopy "!LMS_PROGRAMDATA!\Config\*" !CHECKLMS_REPORT_LOG_PATH!\Config\ /E /Y /H /I                                            >> %REPORT_LOGFILE% 2>&1 
+	echo --- Files automatically copied from '!LMS_PROGRAMDATA!\Config\*' to '!CHECKLMS_REPORT_LOG_PATH!\Config\' at !DATE! !TIME! --- > !CHECKLMS_REPORT_LOG_PATH!\Config\__README.txt 2>&1
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-	echo Configuration File: CSID CONFIG                                                                                         >> %REPORT_LOGFILE% 2>&1
+	echo Configuration File: CSID CONFIG '!LMS_PROGRAMDATA!\Config\CsidCfg'                                                      >> %REPORT_LOGFILE% 2>&1
 	if defined LMS_LMUTOOL (
-		"!LMS_LMUTOOL!" /DEC2:!LMS_PROGRAMDATA!\Config\CsidCfg                                                       >> %REPORT_LOGFILE% 2>&1
+		"!LMS_LMUTOOL!" /DEC2:!LMS_PROGRAMDATA!\Config\CsidCfg >nul 2>&1
 		if exist "!LMS_PROGRAMDATA!\Config\CsidCfg.dec" (
-			Type !LMS_PROGRAMDATA!\Config\CsidCfg.dec                                                                >> %REPORT_LOGFILE% 2>&1
+			Type !LMS_PROGRAMDATA!\Config\CsidCfg.dec                                                                            >> %REPORT_LOGFILE% 2>&1
 			del !LMS_PROGRAMDATA!\Config\CsidCfg.dec >nul 2>&1
 			echo .                                                                                                               >> %REPORT_LOGFILE% 2>&1
+		) else (
+			echo     Cannot decrypt file '!LMS_PROGRAMDATA!\Config\CsidCfg', cannot show content.                                >> %REPORT_LOGFILE% 2>&1 
 		)
 	) else (
 		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> %REPORT_LOGFILE% 2>&1 
 	)
 	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-	echo Configuration File: LICENSE CONFIG                                                                                      >> %REPORT_LOGFILE% 2>&1
+	echo Configuration File: LICENSE CONFIG '!LMS_PROGRAMDATA!\Config\LicCfg'                                                    >> %REPORT_LOGFILE% 2>&1
 	if defined LMS_LMUTOOL (
-		"!LMS_LMUTOOL!" /DEC2:!LMS_PROGRAMDATA!\Config\LicCfg                                                        >> %REPORT_LOGFILE% 2>&1
+		"!LMS_LMUTOOL!" /DEC2:!LMS_PROGRAMDATA!\Config\LicCfg  >nul 2>&1
 		if exist "!LMS_PROGRAMDATA!\Config\LicCfg.dec" (
-			Type !LMS_PROGRAMDATA!\Config\LicCfg.dec                                                                 >> %REPORT_LOGFILE% 2>&1
+			Type !LMS_PROGRAMDATA!\Config\LicCfg.dec                                                                             >> %REPORT_LOGFILE% 2>&1
 			del !LMS_PROGRAMDATA!\Config\LicCfg.dec >nul 2>&1
-			echo .                                                                                                           >> %REPORT_LOGFILE% 2>&1
+			echo .                                                                                                               >> %REPORT_LOGFILE% 2>&1
+		) else (
+			echo     Cannot decrypt file '!LMS_PROGRAMDATA!\Config\LicCfg', cannot show content.                                 >> %REPORT_LOGFILE% 2>&1 
 		)
 	) else (
-		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                  >> %REPORT_LOGFILE% 2>&1 
+		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> %REPORT_LOGFILE% 2>&1 
 	)
 	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
@@ -4972,13 +4985,28 @@ if not defined LMS_CHECK_ID (
 	)
 	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo Configuration File: SUR HISTORY '!LMS_PROGRAMDATA!\Config\SurHistory'                                                   >> %REPORT_LOGFILE% 2>&1
+	if defined LMS_LMUTOOL (
+		"!LMS_LMUTOOL!" /DEC2:!LMS_PROGRAMDATA!\Config\SurHistory >nul 2>&1
+		if exist "!LMS_PROGRAMDATA!\Config\SurHistory.dec" (
+			Type !LMS_PROGRAMDATA!\Config\SurHistory.dec                                                                         >> %REPORT_LOGFILE% 2>&1
+			del !LMS_PROGRAMDATA!\Config\SurHistory.dec >nul 2>&1
+			echo .                                                                                                               >> %REPORT_LOGFILE% 2>&1
+		) else (
+			echo     Cannot decrypt file '!LMS_PROGRAMDATA!\Config\SurHistory', cannot show content.                             >> %REPORT_LOGFILE% 2>&1 
+		)
+	) else (
+		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> %REPORT_LOGFILE% 2>&1 
+	)
+	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 	echo Configuration File: LMU PROFILE [%ProgramFiles%\Siemens\LMS\bin\LmuTool.profile]                                        >> %REPORT_LOGFILE% 2>&1
 	Type "%ProgramFiles%\Siemens\LMS\bin\LmuTool.profile"                                                                        >> %REPORT_LOGFILE% 2>&1
 	echo .                                                                                                                       >> %REPORT_LOGFILE% 2>&1
 	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
-	echo Configuration File: LMU SETTINGS [!LMS_PROGRAMDATA!\Config\LmuSettings]                                     >> %REPORT_LOGFILE% 2>&1
-	Type !LMS_PROGRAMDATA!\Config\LmuSettings                                                                        >> %REPORT_LOGFILE% 2>&1
+	echo Configuration File: LMU SETTINGS [!LMS_PROGRAMDATA!\Config\LmuSettings]                                                 >> %REPORT_LOGFILE% 2>&1
+	Type !LMS_PROGRAMDATA!\Config\LmuSettings                                                                                    >> %REPORT_LOGFILE% 2>&1
 	echo .                                                                                                                       >> %REPORT_LOGFILE% 2>&1
 	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 	set backuppath=
