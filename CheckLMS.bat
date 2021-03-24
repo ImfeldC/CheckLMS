@@ -149,6 +149,7 @@ rem        - add option /installdongledriver and /removedongledriver
 rem     23-Mar-2021:
 rem        - copy "config" folder and add them to the logfile archive
 rem        - add '!LMS_PROGRAMDATA!\Config\SurHistory', try to decrypt them and show content
+rem        - set field test version to LMS 2.6.829
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -182,9 +183,9 @@ set LMS_SCRIPT_BUILD=20210323
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
 set MOST_RECENT_LMS_BUILD=824
-rem most recent lms field test version: 2.6.828 (per 10-Mar-2021)
-set MOST_RECENT_FT_LMS_VERSION=2.6.828
-set MOST_RECENT_FT_LMS_BUILD=828
+rem most recent lms field test version: 2.6.829 (per 23-Mar-2021)
+set MOST_RECENT_FT_LMS_VERSION=2.6.829
+set MOST_RECENT_FT_LMS_BUILD=829
 rem most recent dongle driver version (per 13-Nov-2020, LMS 2.5)
 set MOST_RECENT_DONGLE_DRIVER_VERSION=8.13
 set MOST_RECENT_DONGLE_DRIVER_MAJ_VERSION=8
