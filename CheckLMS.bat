@@ -163,6 +163,8 @@ rem        - fix output of lmvminfo
 rem     29-Mar-2021:
 rem        - fix issue with TS backup, introduced with LMS_SKIPTSBACKUP (at 17-Mar-2021)
 rem        - use separate logfile for checkid: LMSStatusReport_%COMPUTERNAME%_checkid
+rem     30-Mar-2021:
+rem        - execute 'LmuTool.exe /MULTICSID' if LMS 2.5.816 or newer
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -190,8 +192,8 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 29-Mar-2021"
-set LMS_SCRIPT_BUILD=20210329
+set LMS_SCRIPT_VERSION="CheckLMS Script 30-Mar-2021"
+set LMS_SCRIPT_BUILD=20210330
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -2062,7 +2064,24 @@ if defined LMS_STOP_DEMO_VD (
 	echo Stop Demo Vendor Daemon ... NO                                                                                      >> %REPORT_LOGFILE% 2>&1
 )
 
-echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+if not defined LMS_CHECK_ID (
+	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                         >> %REPORT_LOGFILE% 2>&1
+	echo Convert CSID configuration file, with LmuTool.exe /MULTICSID                                                        >> %REPORT_LOGFILE% 2>&1
+	echo     Convert CSID configuration file, with LmuTool.exe /MULTICSID
+	if defined LMS_LMUTOOL (
+		rem if 2.5.816 or newer ...
+		if /I !LMS_BUILD_VERSION! GEQ 816 (
+			"!LMS_LMUTOOL!" /MULTICSID                                                                                       >> %REPORT_LOGFILE% 2>&1
+		) else (
+			echo     This operation is not required with LMS !LMS_VERSION!, don't perform operation.                         >> %REPORT_LOGFILE% 2>&1 
+		)
+	) else (
+		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                  >> %REPORT_LOGFILE% 2>&1 
+	)
+)
+
+echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 
 echo ... start collecting information ...
 
@@ -2075,7 +2094,7 @@ echo Use '%USBDEVIEW_TOOL%' to check USB devices connected to this system.      
 echo Use '!REPORT_LOG_PATH!' to search for logfiles.                                                                         >> %REPORT_LOGFILE% 2>&1
 echo Use '%LMS_SERVERTOOL_PATH%' as path to call FNP library tools.                                                          >> %REPORT_LOGFILE% 2>&1
 echo Use '%LMS_SERVERTOOL_DW_PATH%' as path to call FNP library tools just downloaded.                                       >> %REPORT_LOGFILE% 2>&1
-echo Use '%LMS_LMUTOOL%' to call for LmuTool.                                                                                >> %REPORT_LOGFILE% 2>&1
+echo Use '!LMS_LMUTOOL!' to call for LmuTool.                                                                                >> %REPORT_LOGFILE% 2>&1
 echo Use '%LMS_APPACTUTIL%' to call for appactutil.exe.                                                                      >> %REPORT_LOGFILE% 2>&1
 echo Use '%LMS_LMDIAG%' to call for lmdiag.exe.                                                                              >> %REPORT_LOGFILE% 2>&1
 echo Use '%LMS_LMHOSTID%' to call for lmhostid.exe.                                                                          >> %REPORT_LOGFILE% 2>&1
