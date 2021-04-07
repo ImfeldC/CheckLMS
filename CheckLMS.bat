@@ -165,6 +165,13 @@ rem        - fix issue with TS backup, introduced with LMS_SKIPTSBACKUP (at 17-M
 rem        - use separate logfile for checkid: LMSStatusReport_%COMPUTERNAME%_checkid
 rem     30-Mar-2021:
 rem        - execute 'LmuTool.exe /MULTICSID' if LMS 2.5.816 or newer
+rem     06-Apr-2021:
+rem        - Skip download from akamai share, download of 'CheckLMS.ex' is no longer supported.
+rem        - add output of registry key: 'HKLM:\SOFTWARE\Siemens\LMS'
+rem        - add content of the three services (fnls, fnls64 and vd) of 'HKLM:\SYSTEM\CurrentControlSet\Services\'
+rem        - collect vendor daemon specific values from SIEMBT in 'SIEMBTID.txt'
+rem     07-Apr-2021:
+rem        - re-enable download from akamai share, download of 'CheckLMS.ex' is again supported.
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -192,8 +199,8 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 30-Mar-2021"
-set LMS_SCRIPT_BUILD=20210330
+set LMS_SCRIPT_VERSION="CheckLMS Script 07-Apr-2021"
+set LMS_SCRIPT_BUILD=20210407
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -308,9 +315,9 @@ IF NOT EXIST "%CHECKLMS_SETUP_LOG_PATH%\" (
 )
 set CHECKLMS_SSU_PATH=!CHECKLMS_REPORT_LOG_PATH!\SSU
 rem rmdir /S /Q !CHECKLMS_SSU_PATH!\ >nul 2>&1
-IF NOT EXIST "%CHECKLMS_SSU_PATH%\" (
-	rem echo Create new folder: %CHECKLMS_SSU_PATH%\
-    mkdir %CHECKLMS_SSU_PATH%\ >nul 2>&1
+IF NOT EXIST "!CHECKLMS_SSU_PATH!\" (
+	rem echo Create new folder: !CHECKLMS_SSU_PATH!\
+    mkdir !CHECKLMS_SSU_PATH!\ >nul 2>&1
 )
 set CHECKLMS_ALM_PATH=!CHECKLMS_REPORT_LOG_PATH!\Automation
 rmdir /S /Q !CHECKLMS_ALM_PATH!\ >nul 2>&1
@@ -1134,26 +1141,28 @@ if not defined LMS_SKIPDOWNLOAD (
 		if defined DOWNLOAD_LMS_PATH (
 		
 			rem Download newest LMS check script from akamai share
+			rem echo Skip download from akamai share, download of 'CheckLMS.ex' is no longer supported.                                                                                             >> %REPORT_LOGFILE% 2>&1
 			if not defined LMS_DONOTSTARTNEWERSCRIPT (
-				echo     Download newest LMS check script: %DOWNLOAD_LMS_PATH%\CheckLMS.exe
-				echo Download newest LMS check script: %DOWNLOAD_LMS_PATH%\CheckLMS.exe                                                                                                        >> %REPORT_LOGFILE% 2>&1
-				del %DOWNLOAD_LMS_PATH%\CheckLMS.exe >nul 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe', '%DOWNLOAD_LMS_PATH%\CheckLMS.exe')"          >> %REPORT_LOGFILE% 2>&1
-				IF EXIST "%DOWNLOAD_LMS_PATH%\CheckLMS.exe" (
-					rem CheckLMS.exe has been downloaded from akamai share
-					del %DOWNLOAD_LMS_PATH%\CheckLMS.bat >nul 2>&1
-					echo     Extract LMS check script: %DOWNLOAD_LMS_PATH%\CheckLMS.exe
-					echo Extract LMS check script: %DOWNLOAD_LMS_PATH%\CheckLMS.exe                                                                                                            >> %REPORT_LOGFILE% 2>&1
-					%DOWNLOAD_LMS_PATH%\CheckLMS.exe -y -o"%DOWNLOAD_LMS_PATH%\"                                                                                                               >> %REPORT_LOGFILE% 2>&1
-					IF EXIST "%DOWNLOAD_LMS_PATH%\CheckLMS.bat" (
-						for /f "tokens=2 delims== eol=@" %%i in ('type %DOWNLOAD_LMS_PATH%\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_EXE set LMS_SCRIPT_BUILD_DOWNLOAD_EXE=%%i
-						echo     Check script downloaded from akamai share. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_EXE!, Running script version: !LMS_SCRIPT_BUILD!.
-						echo Check script downloaded from akamai share. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_EXE!, Running script version: !LMS_SCRIPT_BUILD!.                  >> %REPORT_LOGFILE% 2>&1
-					)
-				)
+			 	echo     Download newest LMS check script: %DOWNLOAD_LMS_PATH%\CheckLMS.exe
+			 	echo Download newest LMS check script: %DOWNLOAD_LMS_PATH%\CheckLMS.exe                                                                                                        >> %REPORT_LOGFILE% 2>&1
+			 	del %DOWNLOAD_LMS_PATH%\CheckLMS.exe >nul 2>&1
+			 	powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe', '%DOWNLOAD_LMS_PATH%\CheckLMS.exe')"          >> %REPORT_LOGFILE% 2>&1
+			 	IF EXIST "%DOWNLOAD_LMS_PATH%\CheckLMS.exe" (
+			 		rem CheckLMS.exe has been downloaded from akamai share
+			 		del %DOWNLOAD_LMS_PATH%\CheckLMS.bat >nul 2>&1
+			 		echo     Extract LMS check script: %DOWNLOAD_LMS_PATH%\CheckLMS.exe
+			 		echo Extract LMS check script: %DOWNLOAD_LMS_PATH%\CheckLMS.exe                                                                                                            >> %REPORT_LOGFILE% 2>&1
+			 		%DOWNLOAD_LMS_PATH%\CheckLMS.exe -y -o"%DOWNLOAD_LMS_PATH%\"                                                                                                               >> %REPORT_LOGFILE% 2>&1
+			 		IF EXIST "%DOWNLOAD_LMS_PATH%\CheckLMS.bat" (
+			 			for /f "tokens=2 delims== eol=@" %%i in ('type %DOWNLOAD_LMS_PATH%\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_EXE set LMS_SCRIPT_BUILD_DOWNLOAD_EXE=%%i
+			 			echo     Check script downloaded from akamai share. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_EXE!, Running script version: !LMS_SCRIPT_BUILD!.
+			 			echo Check script downloaded from akamai share. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_EXE!, Running script version: !LMS_SCRIPT_BUILD!.                  >> %REPORT_LOGFILE% 2>&1
+			 		)
+			 	)
 			) else (
-				echo Skip download from akamai share, because option 'donotstartnewerscript' is set. '%0'                                                                                      >> %REPORT_LOGFILE% 2>&1
+			 	echo Skip download from akamai share, because option 'donotstartnewerscript' is set. '%0'                                                                                      >> %REPORT_LOGFILE% 2>&1
 			) 
+			
 			rem Download newest LMS check script from github
 			if not defined LMS_DONOTSTARTNEWERSCRIPT (
 				echo     Download newest LMS check script from github: %DOWNLOAD_LMS_PATH%\git\CheckLMS.bat
@@ -2493,6 +2502,19 @@ if not defined LMS_SKIPWINDOWS (
 		)
 		echo ATTENTION: Only !PROC_FOUND! relevant services found.                                                               >> %REPORT_LOGFILE% 2>&1
 	)
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	Powershell -command "Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\FlexNet Licensing Service' | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_fnls.txt 2>&1
+	echo Content of registry key: "HKLM:\SYSTEM\CurrentControlSet\Services\FlexNet Licensing Service" ...                        >> %REPORT_LOGFILE% 2>&1
+	type !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_fnls.txt                                                                            >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	Powershell -command "Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\FlexNet Licensing Service 64' | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_fnls64.txt 2>&1
+	echo Content of registry key: "HKLM:\SYSTEM\CurrentControlSet\Services\FlexNet Licensing Service 64" ...                     >> %REPORT_LOGFILE% 2>&1
+	type !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_fnls64.txt                                                                          >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	Powershell -command "Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\Siemens BT Licensing Server' | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_siembtvd.txt 2>&1
+	echo Content of registry key: "HKLM:\SYSTEM\CurrentControlSet\Services\Siemens BT Licensing Server" ...                      >> %REPORT_LOGFILE% 2>&1
+	type !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_siembtvd.txt                                                                        >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 	echo List installed services [using Get-Service powershell command]:                                                         >> %REPORT_LOGFILE% 2>&1
 	powershell -command "& {Get-Service -Name *}"                                                                                >> %REPORT_LOGFILE% 2>&1
 	echo ---------------- powershell -command "& {Get-Module -ListAvailable -All}"                                               >> %REPORT_LOGFILE% 2>&1
@@ -4579,6 +4601,8 @@ IF EXIST "!REPORT_LOG_PATH!\SIEMBT.log" (
 		for /f "tokens=3* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\SIEMBT.log ^|find /I "Running on Hypervisor"') do for /f "tokens=3* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HYPERVISOR=%%B
 		for /f "tokens=3* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\SIEMBT.log ^|find /I "HostID of the License Server"') do for /f "tokens=5* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HOSTIDS=%%B
 		echo LMS_SIEMBT_HOSTNAME=!LMS_SIEMBT_HOSTNAME! / LMS_SIEMBT_HYPERVISOR=!LMS_SIEMBT_HYPERVISOR! / LMS_SIEMBT_HOSTIDS=!LMS_SIEMBT_HOSTIDS!  >> %REPORT_LOGFILE% 2>&1
+		echo LMS_SIEMBT_HOSTNAME=!LMS_SIEMBT_HOSTNAME! / LMS_SIEMBT_HYPERVISOR=!LMS_SIEMBT_HYPERVISOR! / LMS_SIEMBT_HOSTIDS=!LMS_SIEMBT_HOSTIDS! at !DATE! / !TIME! / retrieved from SIEMBT.log file >> !REPORT_LOG_PATH!\SIEMBTID.txt 2>&1
+		echo LMS_SIEMBT_HOSTNAME=!LMS_SIEMBT_HOSTNAME! / LMS_SIEMBT_HYPERVISOR=!LMS_SIEMBT_HYPERVISOR! / LMS_SIEMBT_HOSTIDS=!LMS_SIEMBT_HOSTIDS! at !DATE! / !TIME! / retrieved from SIEMBT.log file >  !REPORT_LOG_PATH!\SIEMBTID_Latest.txt 2>&1
 
 		echo -- extract ERROR messages from SIEMBT.log [start] --                                                            >> %REPORT_LOGFILE% 2>&1
 		Type "!REPORT_LOG_PATH!\SIEMBT.log" | findstr "ERROR:"                                                               >> %REPORT_LOGFILE% 2>&1
@@ -5171,6 +5195,10 @@ if not defined LMS_CHECK_ID (
 		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> %REPORT_LOGFILE% 2>&1 
 	)
 	echo .                                                                                                                       >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\Siemens\LMS' | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_registry.txt 2>&1
+	echo Content of registry key: "HKLM:\SOFTWARE\Siemens\LMS" ...                                                               >> %REPORT_LOGFILE% 2>&1
+	type !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_registry.txt                                                                        >> %REPORT_LOGFILE% 2>&1
 	rem echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 	rem echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 	rem if /I !LMS_BUILD_VERSION! GEQ 681 (
@@ -5305,32 +5333,32 @@ if not defined LMS_SKIPSSU (
 		echo SSU - setup log-file found in %ALLUSERSPROFILE%\Siemens\SSU\Logs\SSUSetup.log                                       >> %REPORT_LOGFILE% 2>&1
 		Type "%ALLUSERSPROFILE%\Siemens\SSU\Logs\SSUSetup.log"                                                                   >> %REPORT_LOGFILE% 2>&1
 
-		copy "%ALLUSERSPROFILE%\Siemens\SSU\Logs\SSUSetup.log" "%CHECKLMS_SSU_PATH%\SSUSetup.log"                                                      >> %REPORT_LOGFILE% 2>&1
-		echo --- File automatically copied from %ALLUSERSPROFILE%\Siemens\SSU\Logs\SSUSetup.log to %CHECKLMS_SSU_PATH%\SSUSetup.log ---                >> %CHECKLMS_SSU_PATH%\SSUSetup.log 2>&1
+		copy "%ALLUSERSPROFILE%\Siemens\SSU\Logs\SSUSetup.log" "!CHECKLMS_SSU_PATH!\SSUSetup.log"                                                      >> %REPORT_LOGFILE% 2>&1
+		echo --- File automatically copied from %ALLUSERSPROFILE%\Siemens\SSU\Logs\SSUSetup.log to !CHECKLMS_SSU_PATH!\SSUSetup.log ---                >> !CHECKLMS_SSU_PATH!\SSUSetup.log 2>&1
 		powershell -Command "get-childitem '%ALLUSERSPROFILE%\Siemens\SSU\Logs\SSUSetup.log' | select Name,CreationTime,LastAccessTime,LastWriteTime"  >> %REPORT_LOGFILE% 2>&1
 	)
 
 	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 	rem NOTE: The logfiles on %TEMP% [e.g. C:\Users\imfeldc\AppData\Local\Temp] are periodically deleted by opertaing system
 	echo ... search MSI and SSU setup logfiles [MSI*.log]  [on %TEMP%] ...
-	del %CHECKLMS_SSU_PATH%\MSISetupLogFilesFound.txt >nul 2>&1
-	del %CHECKLMS_SSU_PATH%\SSUSetupLogFilesFound.txt >nul 2>&1
+	del !CHECKLMS_SSU_PATH!\MSISetupLogFilesFound.txt >nul 2>&1
+	del !CHECKLMS_SSU_PATH!\SSUSetupLogFilesFound.txt >nul 2>&1
 	cd %TEMP%
 	FOR /r %TEMP% %%X IN (MSI*.log) DO (
 		set SSU_SETUP_LOGFILE_FOUND=
-		echo %%~dpnxX >> %CHECKLMS_SSU_PATH%\MSISetupLogFilesFound.txt
-		for /f "tokens=1 delims= eol=@" %%i in ('type %%~dpnxX ^|find /I "******* Product:"') do echo %%i >> %CHECKLMS_SSU_PATH%\MSISetupLogFilesFound.txt
+		echo %%~dpnxX >> !CHECKLMS_SSU_PATH!\MSISetupLogFilesFound.txt
+		for /f "tokens=1 delims= eol=@" %%i in ('type %%~dpnxX ^|find /I "******* Product:"') do echo %%i >> !CHECKLMS_SSU_PATH!\MSISetupLogFilesFound.txt
 		for /f "tokens=1 delims= eol=@" %%i in ('type %%~dpnxX ^|find /I "SSU_Setupx64.msi"') do set SSU_SETUP_LOGFILE_FOUND=1
 		if defined SSU_SETUP_LOGFILE_FOUND (
-			echo %%~dpnxX >> %CHECKLMS_SSU_PATH%\SSUSetupLogFilesFound.txt
+			echo %%~dpnxX >> !CHECKLMS_SSU_PATH!\SSUSetupLogFilesFound.txt
 		)
 	)
-	IF EXIST "%CHECKLMS_SSU_PATH%\MSISetupLogFilesFound.txt" (
+	IF EXIST "!CHECKLMS_SSU_PATH!\MSISetupLogFilesFound.txt" (
 		echo MSI setup logfiles [MSI*.log] [on %TEMP%]:                                                                          >> %REPORT_LOGFILE% 2>&1
 		Type !CHECKLMS_SSU_PATH!\MSISetupLogFilesFound.txt                                                                       >> %REPORT_LOGFILE% 2>&1
 		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1 
 	)
-	IF EXIST "%CHECKLMS_SSU_PATH%\SSUSetupLogFilesFound.txt" (
+	IF EXIST "!CHECKLMS_SSU_PATH!\SSUSetupLogFilesFound.txt" (
 		echo SSU setup logfiles [MSI*.log] [on %TEMP%]:                                                                          >> %REPORT_LOGFILE% 2>&1
 		Type !CHECKLMS_SSU_PATH!\SSUSetupLogFilesFound.txt                                                                       >> %REPORT_LOGFILE% 2>&1
 		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1 
@@ -5352,13 +5380,13 @@ if not defined LMS_SKIPSSU (
 	echo Retrieve registry permissison for !SSU_MAIN_REGISTRY_KEY! [with "Get-Acl HKLM:\SOFTWARE\Siemens\SSU | Format-List"]     >> %REPORT_LOGFILE% 2>&1
 	Powershell -command "Get-Acl HKLM:\SOFTWARE\Siemens\SSU | Format-List"                                                       >> %REPORT_LOGFILE% 2>&1
 	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-	Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\Siemens\SSU' | Format-List" > %CHECKLMS_SSU_PATH%\ssu_hklm_registry.txt 2>&1
+	Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\Siemens\SSU' | Format-List" > !CHECKLMS_SSU_PATH!\ssu_hklm_registry.txt 2>&1
 	echo Content of registry key: "HKLM:\SOFTWARE\Siemens\SSU" ...                                                               >> %REPORT_LOGFILE% 2>&1
-	type %CHECKLMS_SSU_PATH%\ssu_hklm_registry.txt                                                                               >> %REPORT_LOGFILE% 2>&1
+	type !CHECKLMS_SSU_PATH!\ssu_hklm_registry.txt                                                                               >> %REPORT_LOGFILE% 2>&1
 	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-	Powershell -command "Get-ItemProperty 'HKCU:\SOFTWARE\Siemens\SSU' | Format-List" > %CHECKLMS_SSU_PATH%\ssu_hkcu_registry.txt 2>&1
+	Powershell -command "Get-ItemProperty 'HKCU:\SOFTWARE\Siemens\SSU' | Format-List" > !CHECKLMS_SSU_PATH!\ssu_hkcu_registry.txt 2>&1
 	echo Content of registry key: "HKCU:\SOFTWARE\Siemens\SSU" ...                                                               >> %REPORT_LOGFILE% 2>&1
-	type %CHECKLMS_SSU_PATH%\ssu_hkcu_registry.txt                                                                               >> %REPORT_LOGFILE% 2>&1
+	type !CHECKLMS_SSU_PATH!\ssu_hkcu_registry.txt                                                                               >> %REPORT_LOGFILE% 2>&1
 	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 	echo ... test connection to OSD server ...
 	echo Test connection to OSD server                                                                                           >> %REPORT_LOGFILE% 2>&1 
@@ -5467,8 +5495,8 @@ if not defined LMS_SKIPSSU (
 			echo LOG FILE: debug.log [last %LOG_FILE_LINES% lines]                                                                                  >> %REPORT_LOGFILE% 2>&1
 			powershell -command "& {Get-Content '%ProgramFiles%\Siemens\SSU\bin\debug.log' | Select-Object -last %LOG_FILE_LINES%}"                 >> %REPORT_LOGFILE% 2>&1
 
-			copy "%ProgramFiles%\Siemens\SSU\bin\debug.log" %CHECKLMS_SSU_PATH%\ssu_debug.log                                                       >> %REPORT_LOGFILE% 2>&1
-			echo --- File automatically copied from %ProgramFiles%\Siemens\SSU\bin\debug.log to %CHECKLMS_SSU_PATH%\ssu_debug.log ---               >> %CHECKLMS_SSU_PATH%\ssu_debug.log 2>&1
+			copy "%ProgramFiles%\Siemens\SSU\bin\debug.log" !CHECKLMS_SSU_PATH!\ssu_debug.log                                                       >> %REPORT_LOGFILE% 2>&1
+			echo --- File automatically copied from %ProgramFiles%\Siemens\SSU\bin\debug.log to !CHECKLMS_SSU_PATH!\ssu_debug.log ---               >> !CHECKLMS_SSU_PATH!\ssu_debug.log 2>&1
 			powershell -Command "get-childitem '%ProgramFiles%\Siemens\SSU\bin\debug.log' | select Name,CreationTime,LastAccessTime,LastWriteTime"  >> %REPORT_LOGFILE% 2>&1
 
 			if defined SHOW_COLORED_OUTPUT (
@@ -5968,27 +5996,27 @@ if not defined LMS_SKIPWINEVENT (
 	echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
 	echo     Windows Event Log: Application ['Siemens Software Updater']
 	echo Windows Event Log: Application ['Siemens Software Updater']                                                                                                                                                >> %REPORT_LOGFILE% 2>&1
-	echo     see %CHECKLMS_SSU_PATH%\eventlog_app_ssu.txt                                                                                                                                                           >> %REPORT_LOGFILE% 2>&1
-	WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Siemens Software Updater']]]" > %CHECKLMS_SSU_PATH%\eventlog_app_ssu.txt 2>&1
-	powershell -command "& {Get-Content '%CHECKLMS_SSU_PATH%\eventlog_app_ssu.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                        >> %REPORT_LOGFILE% 2>&1
+	echo     see !CHECKLMS_SSU_PATH!\eventlog_app_ssu.txt                                                                                                                                                           >> %REPORT_LOGFILE% 2>&1
+	WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Siemens Software Updater']]]" > !CHECKLMS_SSU_PATH!\eventlog_app_ssu.txt 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_SSU_PATH!\eventlog_app_ssu.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                        >> %REPORT_LOGFILE% 2>&1
 	echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
 	echo     Windows Event Log: Siemens ['SiemensSoftwareUpdater']
 	echo Windows Event Log: Siemens ['SiemensSoftwareUpdater']                                                                                                                                                      >> %REPORT_LOGFILE% 2>&1
-	echo     see %CHECKLMS_SSU_PATH%\eventlog_ssu.txt                                                                                                                                                               >> %REPORT_LOGFILE% 2>&1
-	WEVTUtil query-events Siemens /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='SiemensSoftwareUpdater']]]" > %CHECKLMS_SSU_PATH%\eventlog_ssu.txt 2>&1
-	powershell -command "& {Get-Content '%CHECKLMS_SSU_PATH%\eventlog_ssu.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                            >> %REPORT_LOGFILE% 2>&1
+	echo     see !CHECKLMS_SSU_PATH!\eventlog_ssu.txt                                                                                                                                                               >> %REPORT_LOGFILE% 2>&1
+	WEVTUtil query-events Siemens /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='SiemensSoftwareUpdater']]]" > !CHECKLMS_SSU_PATH!\eventlog_ssu.txt 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_SSU_PATH!\eventlog_ssu.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                            >> %REPORT_LOGFILE% 2>&1
 	echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
 	echo     Windows Event Log: Microsoft-Windows-Bits-Client/Operational ['Microsoft-Windows-Bits-Client']
 	echo Windows Event Log: Microsoft-Windows-Bits-Client/Operational ['Microsoft-Windows-Bits-Client']                                                                                                             >> %REPORT_LOGFILE% 2>&1
-	echo     see %CHECKLMS_SSU_PATH%\eventlog_bitsclient.txt                                                                                                                                                        >> %REPORT_LOGFILE% 2>&1
-	WEVTUtil query-events Microsoft-Windows-Bits-Client/Operational /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Microsoft-Windows-Bits-Client']]]" > %CHECKLMS_SSU_PATH%\eventlog_bitsclient.txt 2>&1
-	powershell -command "& {Get-Content '%CHECKLMS_SSU_PATH%\eventlog_bitsclient.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                     >> %REPORT_LOGFILE% 2>&1
+	echo     see !CHECKLMS_SSU_PATH!\eventlog_bitsclient.txt                                                                                                                                                        >> %REPORT_LOGFILE% 2>&1
+	WEVTUtil query-events Microsoft-Windows-Bits-Client/Operational /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Microsoft-Windows-Bits-Client']]]" > !CHECKLMS_SSU_PATH!\eventlog_bitsclient.txt 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_SSU_PATH!\eventlog_bitsclient.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                     >> %REPORT_LOGFILE% 2>&1
 	echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
 	echo     Windows Event Log: Microsoft-Windows-NetworkProfile/Operational ['Microsoft-Windows-NetworkProfile']
 	echo Windows Event Log: Microsoft-Windows-NetworkProfile/Operational ['Microsoft-Windows-NetworkProfile']                                                                                                       >> %REPORT_LOGFILE% 2>&1
-	echo     see %CHECKLMS_SSU_PATH%\eventlog_networkprofile.txt                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
-	WEVTUtil query-events Microsoft-Windows-NetworkProfile/Operational /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Microsoft-Windows-NetworkProfile']]]" > %CHECKLMS_SSU_PATH%\eventlog_networkprofile.txt 2>&1
-	powershell -command "& {Get-Content '%CHECKLMS_SSU_PATH%\eventlog_networkprofile.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo     see !CHECKLMS_SSU_PATH!\eventlog_networkprofile.txt                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
+	WEVTUtil query-events Microsoft-Windows-NetworkProfile/Operational /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Microsoft-Windows-NetworkProfile']]]" > !CHECKLMS_SSU_PATH!\eventlog_networkprofile.txt 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_SSU_PATH!\eventlog_networkprofile.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                 >> %REPORT_LOGFILE% 2>&1
 	echo -------------------------------------------------------                                                                                                                                                    >> %REPORT_LOGFILE% 2>&1
 	echo     Windows Event Log: Application ['Automation License Manager API']
 	echo Windows Event Log: Application ['Automation License Manager API']                                                                                                                                          >> %REPORT_LOGFILE% 2>&1
