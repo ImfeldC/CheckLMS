@@ -166,12 +166,11 @@ rem        - use separate logfile for checkid: LMSStatusReport_%COMPUTERNAME%_ch
 rem     30-Mar-2021:
 rem        - execute 'LmuTool.exe /MULTICSID' if LMS 2.5.816 or newer
 rem     06-Apr-2021:
-rem        - Skip download from akamai share, download of 'CheckLMS.ex' is no longer supported.
+rem        - Skip download from akamai share, download of 'CheckLMS.exe' is no longer supported.
 rem        - add output of registry key: 'HKLM:\SOFTWARE\Siemens\LMS'
 rem        - add content of the three services (fnls, fnls64 and vd) of 'HKLM:\SYSTEM\CurrentControlSet\Services\'
 rem        - collect vendor daemon specific values from SIEMBT in 'SIEMBTID.txt'
-rem     07-Apr-2021:
-rem        - re-enable download from akamai share, download of 'CheckLMS.ex' is again supported.
+rem        - re-enable download from akamai share, download of 'CheckLMS.exe' is again supported.
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -199,8 +198,8 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 07-Apr-2021"
-set LMS_SCRIPT_BUILD=20210407
+set LMS_SCRIPT_VERSION="CheckLMS Script 06-Apr-2021"
+set LMS_SCRIPT_BUILD=20210406
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
