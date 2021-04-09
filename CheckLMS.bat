@@ -171,6 +171,13 @@ rem        - add output of registry key: 'HKLM:\SOFTWARE\Siemens\LMS'
 rem        - add content of the three services (fnls, fnls64 and vd) of 'HKLM:\SYSTEM\CurrentControlSet\Services\'
 rem        - collect vendor daemon specific values from SIEMBT in 'SIEMBTID.txt'
 rem        - re-enable download from akamai share, download of 'CheckLMS.exe' is again supported.
+rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem     07-Apr-2021:
+rem        - add 'HKLM:\SYSTEM\CurrentControlSet\Services\hasplms'
+rem     08-Apr-2021:
+rem        - disable and re-enable scheduled tasks CheckID during normal script execution
+rem        - add some enviornment variables to the output of Desigo CC section
+rem        - reset installation counter of hasp driver, to make sure that dongle driver get removed, when using /removedongledriver option
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -198,8 +205,8 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 06-Apr-2021"
-set LMS_SCRIPT_BUILD=20210406
+set LMS_SCRIPT_VERSION="CheckLMS Script 08-Apr-2021"
+set LMS_SCRIPT_BUILD=20210408
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -223,6 +230,9 @@ set LOG_FILESIZE_LIMIT=30000000
 rem Connection Test to CheckLMS share
 set CHECKLMS_PUBLIC_SHARE=\\ch1w43110.ad001.siemens.net\ASSIST_SR_Attachements\CheckLMS
 set CHECKLMS_CONNECTION_TEST_FILE=_CheckLMS_ReadMe_.txt
+
+rem settings for scheduled task: CheckID
+set LMS_SCHEDTASK_CHECKID_NAME=\Siemens\Lms\CheckLMS_CheckID
 
 rem Check this issue: https://stackoverflow.com/questions/9797271/strange-character-in-textoutput-when-piping-from-tasklist-command-win7
 chcp 1252
@@ -499,6 +509,9 @@ if defined LMS_SET_INFO (
 if defined LMS_CHECK_ID (
 	rem adjsut logfile name to avoid clash when two scripts a running at the same time
 	set REPORT_LOGFILE=!REPORT_LOG_PATH!\LMSStatusReport_%COMPUTERNAME%_checkid.log 
+) else (
+	rem disable scheduled task during execution of script, to avoid parallel running
+	schtasks /change /TN !LMS_SCHEDTASK_CHECKID_NAME! /DISABLE >nul 2>&1
 )
 rem Frist access to logfile, create an empty file
 echo.> !REPORT_LOGFILE! 2>&1
@@ -1473,6 +1486,8 @@ if defined LMS_CHECK_DOWNLOAD (
 	)
 	echo -------------------------------------------------------                               >> %REPORT_LOGFILE% 2>&1
 	echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                >> %REPORT_LOGFILE% 2>&1
+	rem enable scheduled task during execution of script
+	schtasks /change /TN !LMS_SCHEDTASK_CHECKID_NAME! /ENABLE >nul 2>&1
 	rem save (single) report in full report file
 	Type %REPORT_LOGFILE% >> %REPORT_FULL_LOGFILE%
 	exit /b
@@ -1490,6 +1505,8 @@ if defined LMS_SCRIPT_BUILD_DOWNLOAD_TO_START (
 		echo ==                                                                                                                                                            >> %REPORT_LOGFILE% 2>&1
 		echo ==============================================================================                                                                                >> %REPORT_LOGFILE% 2>&1
 		echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                                                                        >> %REPORT_LOGFILE% 2>&1
+		rem enable scheduled task during execution of script
+		schtasks /change /TN !LMS_SCHEDTASK_CHECKID_NAME! /ENABLE >nul 2>&1
 		rem save (single) report in full report file
 		Type %REPORT_LOGFILE% >> %REPORT_FULL_LOGFILE%
 		
@@ -1841,6 +1858,8 @@ if defined LMS_SET_FIREWALL (
 	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\firewall_rules_LMS.txt" type "!CHECKLMS_REPORT_LOG_PATH!\firewall_rules_LMS.txt"        >> %REPORT_LOGFILE% 2>&1
 	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 	echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                                  >> %REPORT_LOGFILE% 2>&1
+	rem enable scheduled task during execution of script
+	schtasks /change /TN !LMS_SCHEDTASK_CHECKID_NAME! /ENABLE >nul 2>&1
 	rem save (single) report in full report file
 	Type %REPORT_LOGFILE% >> %REPORT_FULL_LOGFILE%
 	exit /b
@@ -1849,6 +1868,7 @@ if defined LMS_SET_FIREWALL (
 	echo Set firewall settings ... NO                                                                                            >> %REPORT_LOGFILE% 2>&1
 )
 if defined LMS_INSTALL_DONGLE_DRIVER (
+	echo Dongle Driver: !DONGLE_DRIVER_VERSION! [!DONGLE_DRIVER_PKG_VERSION!] / Major=[!DONGLE_DRIVER_MAJ_VERSION!] / Minor=[!DONGLE_DRIVER_MIN_VERSION!] / installed !DONGLE_DRIVER_INST_COUNT! times     >> %REPORT_LOGFILE% 2>&1
 	rem The same code block is again at script end (was introduced in an earlier script version and kept for "backward" compatibility)
 	if exist "%DOWNLOAD_LMS_PATH%\haspdinst.exe" (
 		set TARGETFILE=%DOWNLOAD_LMS_PATH%\haspdinst.exe
@@ -1886,6 +1906,8 @@ if defined LMS_INSTALL_DONGLE_DRIVER (
 	
 	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 	echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                                  >> %REPORT_LOGFILE% 2>&1
+	rem enable scheduled task during execution of script
+	schtasks /change /TN !LMS_SCHEDTASK_CHECKID_NAME! /ENABLE >nul 2>&1
 	rem save (single) report in full report file
 	Type %REPORT_LOGFILE% >> %REPORT_FULL_LOGFILE%
 	exit /b
@@ -1894,6 +1916,7 @@ if defined LMS_INSTALL_DONGLE_DRIVER (
 	echo Install Dongle Driver ... NO                                                                                            >> %REPORT_LOGFILE% 2>&1
 )
 if defined LMS_REMOVE_DONGLE_DRIVER (
+	echo Dongle Driver: !DONGLE_DRIVER_VERSION! [!DONGLE_DRIVER_PKG_VERSION!] / Major=[!DONGLE_DRIVER_MAJ_VERSION!] / Minor=[!DONGLE_DRIVER_MIN_VERSION!] / installed !DONGLE_DRIVER_INST_COUNT! times     >> %REPORT_LOGFILE% 2>&1
 	if exist "%DOWNLOAD_LMS_PATH%\haspdinst.exe" (
 		set TARGETFILE=%DOWNLOAD_LMS_PATH%\haspdinst.exe
 		set TARGETFILE=!TARGETFILE:\=\\!
@@ -1907,6 +1930,8 @@ if defined LMS_REMOVE_DONGLE_DRIVER (
 			) else (
 				echo     --- Remove installed dongle driver !haspdinstVersion!.
 			)
+			rem reset installation counter to make sure that dongle driver get removed!
+			reg add "HKLM\SOFTWARE\Aladdin Knowledge Systems\HASP\Driver\Installer" /v "InstCount" /t REG_DWORD /d 1 /f          >> %REPORT_LOGFILE% 2>&1
 			echo --- Remove installed dongle driver !haspdinstVersion!.                                                          >> %REPORT_LOGFILE% 2>&1
 			start "Remove dongle driver" "%DOWNLOAD_LMS_PATH%\haspdinst.exe" -remove -killprocess 
 			echo --- Remove started in an own process/shell.                                                                     >> %REPORT_LOGFILE% 2>&1
@@ -1929,6 +1954,8 @@ if defined LMS_REMOVE_DONGLE_DRIVER (
 
 	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 	echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                                  >> %REPORT_LOGFILE% 2>&1
+	rem enable scheduled task during execution of script
+	schtasks /change /TN !LMS_SCHEDTASK_CHECKID_NAME! /ENABLE >nul 2>&1
 	rem save (single) report in full report file
 	Type %REPORT_LOGFILE% >> %REPORT_FULL_LOGFILE%
 	exit /b
@@ -1938,7 +1965,7 @@ if defined LMS_REMOVE_DONGLE_DRIVER (
 )
 
 if defined LMS_SET_CHECK_ID_TASK (
-	set taskname=\Siemens\Lms\CheckLMS_CheckID
+	set taskname=!LMS_SCHEDTASK_CHECKID_NAME!
 	set taskrun="%~dpnx0 /checkid"
 	echo     set CheckId scheduled task '!taskname!' ...
 	echo Set CheckId scheduled task '!taskname!' with command !taskrun! ...                                                  >> %REPORT_LOGFILE% 2>&1
@@ -1946,6 +1973,8 @@ if defined LMS_SET_CHECK_ID_TASK (
 	SCHTASKS /Run /TN !taskname!                                                                                             >> %REPORT_LOGFILE% 2>&1
 	echo ==============================================================================                                      >> %REPORT_LOGFILE% 2>&1
 	echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                              >> %REPORT_LOGFILE% 2>&1
+	rem enable scheduled task during execution of script
+	schtasks /change /TN !LMS_SCHEDTASK_CHECKID_NAME! /ENABLE >nul 2>&1
 	rem save (single) report in full report file
 	Type %REPORT_LOGFILE% >> %REPORT_FULL_LOGFILE%
 	exit /b
@@ -1954,12 +1983,14 @@ if defined LMS_SET_CHECK_ID_TASK (
 	echo Set CheckId scheduled task ... NO                                                                                   >> %REPORT_LOGFILE% 2>&1
 )
 if defined LMS_DEL_CHECK_ID_TASK (
-	set taskname=\Siemens\Lms\CheckLMS_CheckID
+	set taskname=!LMS_SCHEDTASK_CHECKID_NAME!
 	echo     delete CheckId scheduled task '!taskname!' ...
 	echo Delete CheckId scheduled task '!taskname!' ...                                                                      >> %REPORT_LOGFILE% 2>&1
 	SCHTASKS /Delete /TN !taskname! /F                                                                                       >> %REPORT_LOGFILE% 2>&1
 	echo ==============================================================================                                      >> %REPORT_LOGFILE% 2>&1
 	echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                              >> %REPORT_LOGFILE% 2>&1
+	rem enable scheduled task during execution of script
+	schtasks /change /TN !LMS_SCHEDTASK_CHECKID_NAME! /ENABLE >nul 2>&1
 	rem save (single) report in full report file
 	Type %REPORT_LOGFILE% >> %REPORT_FULL_LOGFILE%
 	exit /b
@@ -2007,6 +2038,8 @@ if defined LMS_START_DEMO_VD (
 	)
 	echo ==============================================================================                                      >> %REPORT_LOGFILE% 2>&1
 	echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                              >> %REPORT_LOGFILE% 2>&1
+	rem enable scheduled task during execution of script
+	schtasks /change /TN !LMS_SCHEDTASK_CHECKID_NAME! /ENABLE >nul 2>&1
 	rem save (single) report in full report file
 	Type %REPORT_LOGFILE% >> %REPORT_FULL_LOGFILE%
 	exit /b
@@ -2064,6 +2097,8 @@ if defined LMS_STOP_DEMO_VD (
 	)
 	echo ==============================================================================                                      >> %REPORT_LOGFILE% 2>&1
 	echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                              >> %REPORT_LOGFILE% 2>&1
+	rem enable scheduled task during execution of script
+	schtasks /change /TN !LMS_SCHEDTASK_CHECKID_NAME! /ENABLE >nul 2>&1
 	rem save (single) report in full report file
 	Type %REPORT_LOGFILE% >> %REPORT_FULL_LOGFILE%
 	exit /b
@@ -2513,6 +2548,10 @@ if not defined LMS_SKIPWINDOWS (
 	Powershell -command "Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\Siemens BT Licensing Server' | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_siembtvd.txt 2>&1
 	echo Content of registry key: "HKLM:\SYSTEM\CurrentControlSet\Services\Siemens BT Licensing Server" ...                      >> %REPORT_LOGFILE% 2>&1
 	type !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_siembtvd.txt                                                                        >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	Powershell -command "Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\hasplms' | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_hasplms.txt 2>&1
+	echo Content of registry key: "HKLM:\SYSTEM\CurrentControlSet\Services\Sentinel LDK License Manager" ...                     >> %REPORT_LOGFILE% 2>&1
+	type !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_hasplms.txt                                                                         >> %REPORT_LOGFILE% 2>&1
 	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 	echo List installed services [using Get-Service powershell command]:                                                         >> %REPORT_LOGFILE% 2>&1
 	powershell -command "& {Get-Service -Name *}"                                                                                >> %REPORT_LOGFILE% 2>&1
@@ -3315,7 +3354,7 @@ if not defined LMS_SKIPLMS (
 	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 	echo ... retrieve dongle driver information ...
 	if defined DONGLE_DRIVER_PKG_VERSION (
-		echo Dongle Driver: %DONGLE_DRIVER_VERSION% [%DONGLE_DRIVER_PKG_VERSION%] / Major=[!DONGLE_DRIVER_MAJ_VERSION!] / Minor=[!DONGLE_DRIVER_MIN_VERSION!] / installed %DONGLE_DRIVER_INST_COUNT% times     >> %REPORT_LOGFILE% 2>&1
+		echo Dongle Driver: !DONGLE_DRIVER_VERSION! [!DONGLE_DRIVER_PKG_VERSION!] / Major=[!DONGLE_DRIVER_MAJ_VERSION!] / Minor=[!DONGLE_DRIVER_MIN_VERSION!] / installed !DONGLE_DRIVER_INST_COUNT! times     >> %REPORT_LOGFILE% 2>&1
 		if /I !DONGLE_DRIVER_MAJ_VERSION! GTR !MOST_RECENT_DONGLE_DRIVER_MAJ_VERSION! (
 			rem new major version of dongle driver is installed
 			set DONGLE_DRIVER_MOST_RECENT_VERSION_INSTALLED=1
@@ -6371,9 +6410,10 @@ if not defined LMS_SKIPPRODUCTS (
 			for /f "tokens=1* eol=@ delims=<>: " %%A in ('type !CHECKLMS_GMS_PATH!\desigocc_registry.txt ^|find /I "InstallDir"') do set GMS_InstallDir=%%B
 			for /f "tokens=1* eol=@ delims=<>: " %%A in ('type !CHECKLMS_GMS_PATH!\desigocc_registry.txt ^|find /I "InstallDir"') do set GMS_InstallDrive=%%~dB
 		)
+		echo Desigo CC Product Name           : !GmsProductName!                                                             >> %REPORT_LOGFILE% 2>&1
 		echo Desigo CC Version                : !GMS_VERSION!                                                                >> %REPORT_LOGFILE% 2>&1
 		echo Desigo CC Installation drive     : !GMS_InstallDrive!                                                           >> %REPORT_LOGFILE% 2>&1
-		echo Desigo CC Installation directory : !GMS_InstallDir!                                                             >> %REPORT_LOGFILE% 2>&1
+		echo Desigo CC Installation directory : !GMS_InstallDir!  [GMSProjects_Root=!GMSProjects_Root!]                      >> %REPORT_LOGFILE% 2>&1
 		echo Desigo CC Active Project         : !GMS_ActiveProject!                                                          >> %REPORT_LOGFILE% 2>&1
 		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
 		type !CHECKLMS_GMS_PATH!\desigocc_registry.txt >> %REPORT_LOGFILE% 2>&1
@@ -7138,7 +7178,7 @@ echo Number of UMN used to bind TS: !UMN_COUNT!                                 
 echo     UMN1=!UMN1! / UMN2=!UMN2! / UMN3=!UMN3! / UMN4=!UMN4! / UMN5=!UMN5!                                             >> %REPORT_LOGFILE% 2>&1
 if not defined LMS_CHECK_ID (
 	if defined DONGLE_DRIVER_PKG_VERSION (
-		echo Dongle Driver: %DONGLE_DRIVER_VERSION% [%DONGLE_DRIVER_PKG_VERSION%] installed %DONGLE_DRIVER_INST_COUNT% times >> %REPORT_LOGFILE% 2>&1
+		echo Dongle Driver: !DONGLE_DRIVER_VERSION! [!DONGLE_DRIVER_PKG_VERSION!] installed !DONGLE_DRIVER_INST_COUNT! times >> %REPORT_LOGFILE% 2>&1
 		if defined DONGLE_DRIVER_MOST_RECENT_VERSION_INSTALLED (
 			echo     Most recent or newer dongle driver !DONGLE_DRIVER_PKG_VERSION! installed on the system.                 >> %REPORT_LOGFILE% 2>&1
 		) else (
@@ -7449,6 +7489,9 @@ if not defined LMS_CHECK_ID (
 echo Script finished!                  >> %REPORT_LOGFILE% 2>&1
 echo End at !DATE! !TIME! ....         >> %REPORT_LOGFILE% 2>&1
 rem ----- avoid access to the main logfile after ths line -----
+
+rem enable scheduled task during execution of script
+schtasks /change /TN !LMS_SCHEDTASK_CHECKID_NAME! /ENABLE >nul 2>&1
 
 if not defined LMS_CHECK_ID (
 	if defined UNZIP_TOOL (
