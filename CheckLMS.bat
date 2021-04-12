@@ -178,6 +178,10 @@ rem     08-Apr-2021:
 rem        - disable and re-enable scheduled tasks CheckID during normal script execution
 rem        - add some enviornment variables to the output of Desigo CC section
 rem        - reset installation counter of hasp driver, to make sure that dongle driver get removed, when using /removedongledriver option
+rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem     09-Apr-2021:
+rem        - change exit behavior of several command line options, instead of exit goto end of script :script_end 
+rem          (/checkdownload, /setfirewall, /installdongledriver, /removedongledriver, /setcheckidtask, /delcheckidtask, /startdemovd, /stopdemovd)
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -201,12 +205,14 @@ rem              - /delcheckidtask              delete periodic checkid task, se
 rem              - /setfirewall                 sets firewall for external access to LMS. 
 rem              - /installdongledriver         installs downloaded dongle driver.
 rem              - /removedongledriver          remove installed dongle driver.
+rem              - /startdemovd                 to start the demo vendor daemon provided by Flexera.
+rem              - /stopdemovd                  to stop the demo vendor daemon provided by Flexera.
 rem              - /info "Any text"             Adds this text to the output, e.g. reference to field issue /info "SR1-XXXX"
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 08-Apr-2021"
-set LMS_SCRIPT_BUILD=20210408
+set LMS_SCRIPT_VERSION="CheckLMS Script 09-Apr-2021"
+set LMS_SCRIPT_BUILD=20210409
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -1485,12 +1491,8 @@ if defined LMS_CHECK_DOWNLOAD (
 		"!UNZIP_TOOL!" a -ssw -tzip "!DOWNLOAD_ARCHIVE!" "!DOWNLOAD_PATH!"                     >> %REPORT_LOGFILE% 2>&1
 	)
 	echo -------------------------------------------------------                               >> %REPORT_LOGFILE% 2>&1
-	echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                >> %REPORT_LOGFILE% 2>&1
-	rem enable scheduled task during execution of script
-	schtasks /change /TN !LMS_SCHEDTASK_CHECKID_NAME! /ENABLE >nul 2>&1
-	rem save (single) report in full report file
-	Type %REPORT_LOGFILE% >> %REPORT_FULL_LOGFILE%
-	exit /b
+
+	goto script_end
 	rem STOP EXECUTION HERE
 )
 
@@ -1856,13 +1858,8 @@ if defined LMS_SET_FIREWALL (
 		echo     NO Rule for SIEMBT.exe found.
 	)
 	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\firewall_rules_LMS.txt" type "!CHECKLMS_REPORT_LOG_PATH!\firewall_rules_LMS.txt"        >> %REPORT_LOGFILE% 2>&1
-	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-	echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                                  >> %REPORT_LOGFILE% 2>&1
-	rem enable scheduled task during execution of script
-	schtasks /change /TN !LMS_SCHEDTASK_CHECKID_NAME! /ENABLE >nul 2>&1
-	rem save (single) report in full report file
-	Type %REPORT_LOGFILE% >> %REPORT_FULL_LOGFILE%
-	exit /b
+
+	goto script_end
 	rem STOP EXECUTION HERE
 ) else (
 	echo Set firewall settings ... NO                                                                                            >> %REPORT_LOGFILE% 2>&1
@@ -1904,13 +1901,7 @@ if defined LMS_INSTALL_DONGLE_DRIVER (
 		echo WARNING: Cannot install dongle driver, file '%DOWNLOAD_LMS_PATH%\haspdinst.exe' doesn't exist.                      >> %REPORT_LOGFILE% 2>&1
 	)
 	
-	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-	echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                                  >> %REPORT_LOGFILE% 2>&1
-	rem enable scheduled task during execution of script
-	schtasks /change /TN !LMS_SCHEDTASK_CHECKID_NAME! /ENABLE >nul 2>&1
-	rem save (single) report in full report file
-	Type %REPORT_LOGFILE% >> %REPORT_FULL_LOGFILE%
-	exit /b
+	goto script_end
 	rem STOP EXECUTION HERE
 ) else (
 	echo Install Dongle Driver ... NO                                                                                            >> %REPORT_LOGFILE% 2>&1
@@ -1952,13 +1943,7 @@ if defined LMS_REMOVE_DONGLE_DRIVER (
 		echo WARNING: Cannot remove dongle driver, file '%DOWNLOAD_LMS_PATH%\haspdinst.exe' doesn't exist.                       >> %REPORT_LOGFILE% 2>&1
 	)
 
-	echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
-	echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                                  >> %REPORT_LOGFILE% 2>&1
-	rem enable scheduled task during execution of script
-	schtasks /change /TN !LMS_SCHEDTASK_CHECKID_NAME! /ENABLE >nul 2>&1
-	rem save (single) report in full report file
-	Type %REPORT_LOGFILE% >> %REPORT_FULL_LOGFILE%
-	exit /b
+	goto script_end
 	rem STOP EXECUTION HERE
 ) else (
 	echo Remove Dongle Driver ... NO                                                                                             >> %REPORT_LOGFILE% 2>&1
@@ -1971,13 +1956,8 @@ if defined LMS_SET_CHECK_ID_TASK (
 	echo Set CheckId scheduled task '!taskname!' with command !taskrun! ...                                                  >> %REPORT_LOGFILE% 2>&1
 	SCHTASKS /Create /TN !taskname! /TR !taskrun! /SC MINUTE /MO 60 /F                                                       >> %REPORT_LOGFILE% 2>&1
 	SCHTASKS /Run /TN !taskname!                                                                                             >> %REPORT_LOGFILE% 2>&1
-	echo ==============================================================================                                      >> %REPORT_LOGFILE% 2>&1
-	echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                              >> %REPORT_LOGFILE% 2>&1
-	rem enable scheduled task during execution of script
-	schtasks /change /TN !LMS_SCHEDTASK_CHECKID_NAME! /ENABLE >nul 2>&1
-	rem save (single) report in full report file
-	Type %REPORT_LOGFILE% >> %REPORT_FULL_LOGFILE%
-	exit /b
+
+	goto script_end
 	rem STOP EXECUTION HERE
 ) else (
 	echo Set CheckId scheduled task ... NO                                                                                   >> %REPORT_LOGFILE% 2>&1
@@ -1987,13 +1967,8 @@ if defined LMS_DEL_CHECK_ID_TASK (
 	echo     delete CheckId scheduled task '!taskname!' ...
 	echo Delete CheckId scheduled task '!taskname!' ...                                                                      >> %REPORT_LOGFILE% 2>&1
 	SCHTASKS /Delete /TN !taskname! /F                                                                                       >> %REPORT_LOGFILE% 2>&1
-	echo ==============================================================================                                      >> %REPORT_LOGFILE% 2>&1
-	echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                              >> %REPORT_LOGFILE% 2>&1
-	rem enable scheduled task during execution of script
-	schtasks /change /TN !LMS_SCHEDTASK_CHECKID_NAME! /ENABLE >nul 2>&1
-	rem save (single) report in full report file
-	Type %REPORT_LOGFILE% >> %REPORT_FULL_LOGFILE%
-	exit /b
+
+	goto script_end
 	rem STOP EXECUTION HERE
 ) else (
 	echo Delete CheckId scheduled task ... NO                                                                                >> %REPORT_LOGFILE% 2>&1
@@ -2036,13 +2011,8 @@ if defined LMS_START_DEMO_VD (
 	) else (
 		echo LOG FILE: !REPORT_LOG_PATH!\demo_debuglog.txt not found!                                                        >> %REPORT_LOGFILE% 2>&1
 	)
-	echo ==============================================================================                                      >> %REPORT_LOGFILE% 2>&1
-	echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                              >> %REPORT_LOGFILE% 2>&1
-	rem enable scheduled task during execution of script
-	schtasks /change /TN !LMS_SCHEDTASK_CHECKID_NAME! /ENABLE >nul 2>&1
-	rem save (single) report in full report file
-	Type %REPORT_LOGFILE% >> %REPORT_FULL_LOGFILE%
-	exit /b
+
+	goto script_end
 	rem STOP EXECUTION HERE
 ) else (
 	echo Start Demo Vendor Daemon ... NO                                                                                     >> %REPORT_LOGFILE% 2>&1
@@ -2095,13 +2065,8 @@ if defined LMS_STOP_DEMO_VD (
 	) else (
 		echo LOG FILE: !REPORT_LOG_PATH!\demo_debuglog.txt not found!                                                        >> %REPORT_LOGFILE% 2>&1
 	)
-	echo ==============================================================================                                      >> %REPORT_LOGFILE% 2>&1
-	echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                              >> %REPORT_LOGFILE% 2>&1
-	rem enable scheduled task during execution of script
-	schtasks /change /TN !LMS_SCHEDTASK_CHECKID_NAME! /ENABLE >nul 2>&1
-	rem save (single) report in full report file
-	Type %REPORT_LOGFILE% >> %REPORT_FULL_LOGFILE%
-	exit /b
+
+	goto script_end
 	rem STOP EXECUTION HERE
 ) else (
 	echo Stop Demo Vendor Daemon ... NO                                                                                      >> %REPORT_LOGFILE% 2>&1
@@ -7464,6 +7429,8 @@ if /I !LMULOG_FILESIZE! GEQ !LOG_FILESIZE_LIMIT! (
 if /I !SIEMBTLOG_FILESIZE! GEQ !LOG_FILESIZE_LIMIT! (
 	echo     ATTENTION: Filesize of SIEMBT.log with !SIEMBTLOG_FILESIZE! bytes, is exceeding critical limit of !LOG_FILESIZE_LIMIT! bytes!      >> %REPORT_LOGFILE% 2>&1
 )
+
+:script_end
 echo ==============================================================================                                                             >> %REPORT_LOGFILE% 2>&1
 echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                                                     >> %REPORT_LOGFILE% 2>&1
 
@@ -7540,5 +7507,5 @@ if not defined LMS_CHECK_ID (
 		set /p DUMMY=Hit ENTER to continue...
 	)
 	
-	exit
+	rem exit
 )
