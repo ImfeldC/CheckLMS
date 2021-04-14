@@ -11,13 +11,13 @@ rem
 rem     07-Jan-2021:
 rem        - Adjust LMS version check, consider LMS 2.5 (2.5.824)
 rem        - corrected small typo "Measure exection"
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem        - Upload CheckLMS.bat to https://wiki.siemens.com/display/en/LMS%3A+How+to+check+LMS+installation
 rem        - Requested to integrate into LMS 2.5.824 build (Sprint 21)
 rem        - Move CheckLMS script (Version: 07-Jan-2021) under source control: https://github.com/ImfeldC/CheckLMS
 rem     11-Jan-2021:
 rem        - Check if newer CheckLMS.bat is available in C:\ProgramData\Siemens\LMS\Download (see task 1046557)
-rem        - Create new download folder for download from github: %DOWNLOAD_LMS_PATH%\git\
+rem        - Create new download folder for download from github: !LMS_DOWNLOAD_PATH!\git\
 rem     12-Jan-2021:
 rem        - Support USBDeview tool (see task 1198261)
 rem     13-Jan-2021: (see also 09-Nov-2020)
@@ -30,7 +30,7 @@ rem        - add 'ping %COMPUTERNAME%' to connection test section
 rem        - Retrieve content of %WinDir%\System32\Drivers\Etc folder (see task 1202358)
 rem     15-Jan-2021:
 rem        - investigate some suspect crash of CheckLMS.bat in case newer script is downloaded (seen on Christian's laptop)
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem     16-Jan-2021:
 rem        - rename "servercomptranutil_listRequests.xml" to "servercomptranutil_listRequests_XML.xml"
 rem        - store information retrieved with -listrequests in separate files: servercomptranutil_listRequests_simple.xml and servercomptranutil_listRequests_long.xml
@@ -38,7 +38,7 @@ rem        - retrieve pending requests and store them in separate files; e.g. pe
 rem     18-Jan-2021:
 rem        - add script name and path to header output
 rem        - consider script name (%0) when newer script is downloaded; do not replace script itself
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem     19-Jan-2021:
 rem        - add option "checkdownload"
 rem        - Create download archive
@@ -171,17 +171,21 @@ rem        - add output of registry key: 'HKLM:\SOFTWARE\Siemens\LMS'
 rem        - add content of the three services (fnls, fnls64 and vd) of 'HKLM:\SYSTEM\CurrentControlSet\Services\'
 rem        - collect vendor daemon specific values from SIEMBT in 'SIEMBTID.txt'
 rem        - re-enable download from akamai share, download of 'CheckLMS.exe' is again supported.
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem     07-Apr-2021:
 rem        - add 'HKLM:\SYSTEM\CurrentControlSet\Services\hasplms'
 rem     08-Apr-2021:
 rem        - disable and re-enable scheduled tasks CheckID during normal script execution
 rem        - add some enviornment variables to the output of Desigo CC section
 rem        - reset installation counter of hasp driver, to make sure that dongle driver get removed, when using /removedongledriver option
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem     09-Apr-2021:
 rem        - change exit behavior of several command line options, instead of exit goto end of script :script_end 
 rem          (/checkdownload, /setfirewall, /installdongledriver, /removedongledriver, /setcheckidtask, /delcheckidtask, /startdemovd, /stopdemovd)
+rem     12-Apr-2021:
+rem        - check errorcode afetr download checklms from github, show approbiate message instead of real error code.
+rem        - remove name of internal share name
+rem        - added additional output to analyze issue during creation of offline activation request file
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -211,8 +215,8 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 09-Apr-2021"
-set LMS_SCRIPT_BUILD=20210409
+set LMS_SCRIPT_VERSION="CheckLMS Script 12-Apr-2021"
+set LMS_SCRIPT_BUILD=20210412
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -233,8 +237,13 @@ set LOG_EVENTLOG_EVENTS=5000
 set LOG_EVENTLOG_FULL_EVENTS=20000
 set LOG_FILESIZE_LIMIT=30000000
 
+rem CheckLMS configuration (Siemens internal only)
+rem set CHECKLMS_CONFIG=https://wiki.siemens.com/download/attachments/313230891/CheckLMS.config
+set CHECKLMS_CONFIG=https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.config
+
 rem Connection Test to CheckLMS share
-set CHECKLMS_PUBLIC_SHARE=\\ch1w43110.ad001.siemens.net\ASSIST_SR_Attachements\CheckLMS
+rem Internal share names are retrieved from CheckLMS.config
+set CHECKLMS_PUBLIC_SHARE=
 set CHECKLMS_CONNECTION_TEST_FILE=_CheckLMS_ReadMe_.txt
 
 rem settings for scheduled task: CheckID
@@ -342,18 +351,18 @@ IF NOT EXIST "%CHECKLMS_ALM_PATH%\" (
 )
 
 rem Check & create download path
-set DOWNLOAD_LMS_PATH=!LMS_PROGRAMDATA!\Download
-IF NOT EXIST "%DOWNLOAD_LMS_PATH%\" (
-	rem echo Create new folder: %DOWNLOAD_LMS_PATH%\
-	mkdir %DOWNLOAD_LMS_PATH%\ >nul 2>&1
+set LMS_DOWNLOAD_PATH=!LMS_PROGRAMDATA!\Download
+IF NOT EXIST "!LMS_DOWNLOAD_PATH!\" (
+	rem echo Create new folder: !LMS_DOWNLOAD_PATH!\
+	mkdir !LMS_DOWNLOAD_PATH!\ >nul 2>&1
 )
-IF NOT EXIST "%DOWNLOAD_LMS_PATH%\git" (
-	rem echo Create new folder: %DOWNLOAD_LMS_PATH%\git\
-	mkdir %DOWNLOAD_LMS_PATH%\git\ >nul 2>&1
+IF NOT EXIST "!LMS_DOWNLOAD_PATH!\git" (
+	rem echo Create new folder: !LMS_DOWNLOAD_PATH!\git\
+	mkdir !LMS_DOWNLOAD_PATH!\git\ >nul 2>&1
 )
-IF NOT EXIST "%DOWNLOAD_LMS_PATH%\LMSSetup" (
-	rem echo Create new folder: %DOWNLOAD_LMS_PATH%\LMSSetup\
-	mkdir %DOWNLOAD_LMS_PATH%\LMSSetup\ >nul 2>&1
+IF NOT EXIST "!LMS_DOWNLOAD_PATH!\LMSSetup" (
+	rem echo Create new folder: !LMS_DOWNLOAD_PATH!\LMSSetup\
+	mkdir !LMS_DOWNLOAD_PATH!\LMSSetup\ >nul 2>&1
 )
 rem Check flexera command line tools path 
 set LMS_SERVERTOOL_PATH=!ProgramFiles_x86!\Siemens\LMS\server
@@ -845,37 +854,37 @@ if defined FNPVersion (
 		rem FNP 11.17.2.0 used in LMS 2.5
 		set LMS_SERVERTOOL_DW=SiemensFNP-11.17.2.0-Binaries
 		rem the process architecture is no longer considered; we distribute only 32-bit tools
-		set LMS_SERVERTOOL_DW_PATH=%DOWNLOAD_LMS_PATH%\!LMS_SERVERTOOL_DW!\
+		set LMS_SERVERTOOL_DW_PATH=!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!\
 	)
 	if "!FNPVersion!" == "11.17.0.0" (
 		set LMS_SERVERTOOL_DW=SiemensFNP-11.17.0.0-Binaries
 		rem the process architecture is no longer considered; we distribute only 32-bit tools
-		set LMS_SERVERTOOL_DW_PATH=%DOWNLOAD_LMS_PATH%\!LMS_SERVERTOOL_DW!\
+		set LMS_SERVERTOOL_DW_PATH=!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!\
 	)
 	if "!FNPVersion!" == "11.16.6.0" (
 		set LMS_SERVERTOOL_DW=SiemensFNP-11.16.6.0-Binaries
 		rem the process architecture is no longer considered; we distribute only 32-bit tools
-		set LMS_SERVERTOOL_DW_PATH=%DOWNLOAD_LMS_PATH%\!LMS_SERVERTOOL_DW!\
+		set LMS_SERVERTOOL_DW_PATH=!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!\
 	)
 	if "!FNPVersion!" == "11.16.2.0" (
 		set LMS_SERVERTOOL_DW=SiemensFNP-11.16.2.0-Binaries
 		rem the process architecture is no longer considered; we distribute only 32-bit tools
-		set LMS_SERVERTOOL_DW_PATH=%DOWNLOAD_LMS_PATH%\!LMS_SERVERTOOL_DW!\
+		set LMS_SERVERTOOL_DW_PATH=!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!\
 	)
 	if "!FNPVersion!" == "11.16.0.0" (
 		set LMS_SERVERTOOL_DW=SiemensFNP-11.16.0.0-Distr03
 		if "%PROCESSOR_ARCHITECTURE%" == "x86" (
-			set LMS_SERVERTOOL_DW_PATH=%DOWNLOAD_LMS_PATH%\!LMS_SERVERTOOL_DW!\11.16.0.0\x86
+			set LMS_SERVERTOOL_DW_PATH=!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!\11.16.0.0\x86
 		) else (
-			set LMS_SERVERTOOL_DW_PATH=%DOWNLOAD_LMS_PATH%\!LMS_SERVERTOOL_DW!\11.16.0.0\x64
+			set LMS_SERVERTOOL_DW_PATH=!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!\11.16.0.0\x64
 		)
 	)
 	if "!FNPVersion!" == "11.14.0.0" (
 		set LMS_SERVERTOOL_DW=SiemensFNP-11.14.0.0-Distr01
 		if "%PROCESSOR_ARCHITECTURE%" == "x86" (
-			set LMS_SERVERTOOL_DW_PATH=%DOWNLOAD_LMS_PATH%\!LMS_SERVERTOOL_DW!\11.14.0.0\x86
+			set LMS_SERVERTOOL_DW_PATH=!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!\11.14.0.0\x86
 		) else (
-			set LMS_SERVERTOOL_DW_PATH=%DOWNLOAD_LMS_PATH%\!LMS_SERVERTOOL_DW!\11.14.0.0\x64
+			set LMS_SERVERTOOL_DW_PATH=!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!\11.14.0.0\x64
 		)
 	)
 
@@ -883,7 +892,7 @@ if defined FNPVersion (
 	if not defined LMS_SERVERTOOL_DW (
 		rem FNP 11.18.0.0 (or newer) used in LMS 2.6 (or newer)
 		set LMS_SERVERTOOL_DW=SiemensFNP-!FNPVersion!-Binaries
-		set LMS_SERVERTOOL_DW_PATH=%DOWNLOAD_LMS_PATH%\!LMS_SERVERTOOL_DW!\
+		set LMS_SERVERTOOL_DW_PATH=!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!\
 	)
 ) else (
     echo This is not a valid LMS Installation, cannot read FNP version. 
@@ -1059,23 +1068,51 @@ if defined VC_REDIST_VERSION (
 )
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 if not defined LMS_SKIPDOWNLOAD (
+	echo ... check Siemens internal resources ...
+	set LMS_CONTEST_SIEMENSINTERNAL=Unknown
+	rem retrieve CheckLMS configuration file
+	powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_CONFIG!', '!LMS_DOWNLOAD_PATH!\CheckLMS.config')" > !CHECKLMS_REPORT_LOG_PATH!\connection_test_siemensinternal.txt 2>&1
+	if !ERRORLEVEL!==0 (
+		rem Connection Test: PASSED
+		echo     Connection Test PASSED, can access '!CHECKLMS_CONFIG!'
+		echo Connection Test PASSED, can access '!CHECKLMS_CONFIG!'                                                          >> %REPORT_LOGFILE% 2>&1
+		set LMS_CONTEST_SIEMENSINTERNAL=Passed
+		
+		rem read CheckLMS configuration file
+		IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS.config" (
+			for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS.config ^|find /I "CHECKLMS_PUBLIC_SHARE="') do if not defined CHECKLMS_PUBLIC_SHARE set CHECKLMS_PUBLIC_SHARE=%%i
+			echo     CheckLMS configuration downloaded. Public Share is '!CHECKLMS_PUBLIC_SHARE!'.
+			echo     CheckLMS configuration downloaded. Public Share is '!CHECKLMS_PUBLIC_SHARE!'.                          >> %REPORT_LOGFILE% 2>&1
+		)
+		
+	) else if !ERRORLEVEL!==1 (
+		rem Connection Test: FAILED
+		echo     Connection Test FAILED, cannot access '!CHECKLMS_CONFIG!'
+		echo Connection Test FAILED, cannot access '!CHECKLMS_CONFIG!'                                                       >> %REPORT_LOGFILE% 2>&1
+		set LMS_CONTEST_SIEMENSINTERNAL=Failed
+	)
+
 	echo ... download additional tools and libraries ...
 	rem Connection Test to CheckLMS share
 	set SiemensConnectionTestStatus=Unknown
-	IF EXIST "!CHECKLMS_PUBLIC_SHARE!\!CHECKLMS_CONNECTION_TEST_FILE!" (
-		rem Connection Test: PASSED
-		echo     Connection Test to public share PASSED, can access '!CHECKLMS_CONNECTION_TEST_FILE!'
-		echo Connection Test to public share PASSED, can access !CHECKLMS_PUBLIC_SHARE!\!CHECKLMS_CONNECTION_TEST_FILE!          >> %REPORT_LOGFILE% 2>&1
-		set SiemensConnectionTestStatus=Passed
+	if defined CHECKLMS_PUBLIC_SHARE (
+		IF EXIST "!CHECKLMS_PUBLIC_SHARE!\!CHECKLMS_CONNECTION_TEST_FILE!" (
+			rem Connection Test: PASSED
+			echo     Connection Test to public share PASSED, can access '!CHECKLMS_CONNECTION_TEST_FILE!'
+			echo Connection Test to public share PASSED, can access !CHECKLMS_PUBLIC_SHARE!\!CHECKLMS_CONNECTION_TEST_FILE!      >> %REPORT_LOGFILE% 2>&1
+			set SiemensConnectionTestStatus=Passed
+		) else (
+			rem Connection Test: FAILED
+			echo     Connection Test to public share FAILED, cannot access '!CHECKLMS_CONNECTION_TEST_FILE!'
+			echo Connection Test to public share FAILED, cannot access !CHECKLMS_PUBLIC_SHARE!\!CHECKLMS_CONNECTION_TEST_FILE!   >> %REPORT_LOGFILE% 2>&1
+			set SiemensConnectionTestStatus=Failed
+		)
 	) else (
-		rem Connection Test: FAILED
-		echo     Connection Test to public share FAILED, cannot access '!CHECKLMS_CONNECTION_TEST_FILE!'
-		echo Connection Test to public share FAILED, cannot access !CHECKLMS_PUBLIC_SHARE!\!CHECKLMS_CONNECTION_TEST_FILE!       >> %REPORT_LOGFILE% 2>&1
-		set SiemensConnectionTestStatus=Failed
+		echo Connection Test to public share NOT POSSIBLE, no share name defined.                                                >> %REPORT_LOGFILE% 2>&1
 	)
 	rem Connection Test to BT download site
 	set ConnectionTestStatus=Unknown
-	powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/ReadMe.txt', '%DOWNLOAD_LMS_PATH%\ReadMe.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_btdownloads.txt 2>&1
+	powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/ReadMe.txt', '!LMS_DOWNLOAD_PATH!\ReadMe.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_btdownloads.txt 2>&1
 	if !ERRORLEVEL!==0 (
 		rem Connection Test: PASSED
 		echo     Connection Test PASSED, can access https://static.siemens.com/btdownloads/
@@ -1092,42 +1129,42 @@ if not defined LMS_SKIPDOWNLOAD (
 	REM see https://stackoverflow.com/questions/4619088/windows-batch-file-file-download-from-a-url for more information
 	if "!ConnectionTestStatus!" == "Passed" (
 
-		if defined DOWNLOAD_LMS_PATH (
+		if defined LMS_DOWNLOAD_PATH (
 			rem Download 7zip tool [64-bit]
 			rem see also https://sourceforge.net/p/sevenzip/discussion/45798/thread/b599cf02/?limit=25
-			IF NOT EXIST "%DOWNLOAD_LMS_PATH%\7zr.exe" (
+			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\7zr.exe" (
 				echo     Download 7zip app: https://www.7-zip.org/a/7zr.exe
 				echo Download 7zip app: https://www.7-zip.org/a/7zr.exe                                                                         >> %REPORT_LOGFILE% 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.7-zip.org/a/7zr.exe', '%DOWNLOAD_LMS_PATH%\7zr.exe')" >> %REPORT_LOGFILE% 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.7-zip.org/a/7zr.exe', '!LMS_DOWNLOAD_PATH!\7zr.exe')" >> %REPORT_LOGFILE% 2>&1
 
 			) else (
 				echo     Don't download 7zip app [ https://www.7-zip.org/a/7zr.exe ], because they exist already.
 				echo Don't download 7zip app [ https://www.7-zip.org/a/7zr.exe ], because they exist already.                           >> %REPORT_LOGFILE% 2>&1
 			)
-			rem Set unzip tool: %DOWNLOAD_LMS_PATH%\7zr.exe
-			IF EXIST "%DOWNLOAD_LMS_PATH%\7zr.exe" (
+			rem Set unzip tool: !LMS_DOWNLOAD_PATH!\7zr.exe
+			IF EXIST "!LMS_DOWNLOAD_PATH!\7zr.exe" (
 				if not defined UNZIP_TOOL (
-					set UNZIP_TOOL=%DOWNLOAD_LMS_PATH%\7zr.exe
-					echo     Set Unzip tool [%DOWNLOAD_LMS_PATH%\7zr.exe].                                                              >> %REPORT_LOGFILE% 2>&1
+					set UNZIP_TOOL=!LMS_DOWNLOAD_PATH!\7zr.exe
+					echo     Set Unzip tool [!LMS_DOWNLOAD_PATH!\7zr.exe].                                                              >> %REPORT_LOGFILE% 2>&1
 				)
 			) else (
-				echo     No unzip tool [%DOWNLOAD_LMS_PATH%\7zr.exe] downloaded.                                                        >> %REPORT_LOGFILE% 2>&1
+				echo     No unzip tool [!LMS_DOWNLOAD_PATH!\7zr.exe] downloaded.                                                        >> %REPORT_LOGFILE% 2>&1
 			)
 		)
 		if defined LMS_SERVERTOOL_DW (
 			if defined UNZIP_TOOL (
 				rem Download and unzip FNP toolkit [as ZIP]
-				IF NOT EXIST "%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip" (
-					echo     Download FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip
-					echo Download FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip                                                                                                           >> %REPORT_LOGFILE% 2>&1
-					powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/%LMS_SERVERTOOL_DW%.zip', '%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip')"   >> %REPORT_LOGFILE% 2>&1
+				IF NOT EXIST "!LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.zip" (
+					echo     Download FNP Siemens Library: !LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.zip
+					echo Download FNP Siemens Library: !LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.zip                                                                                                           >> %REPORT_LOGFILE% 2>&1
+					powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/%LMS_SERVERTOOL_DW%.zip', '!LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.zip')"   >> %REPORT_LOGFILE% 2>&1
 
 					REM Unzip FNP Siemens Library
 					REM See https://sourceforge.net/p/sevenzip/discussion/45798/thread/8cb61347/?limit=25
-					IF EXIST "%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip" (
-						echo     Extract FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip
-						echo Extract FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip                                       >> %REPORT_LOGFILE% 2>&1
-						"!UNZIP_TOOL!" x -y -spe -o"%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%\" "%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip" > !CHECKLMS_REPORT_LOG_PATH!\unzip_fnp_library_zip.txt 2>&1
+					IF EXIST "!LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.zip" (
+						echo     Extract FNP Siemens Library: !LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.zip
+						echo Extract FNP Siemens Library: !LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.zip                                       >> %REPORT_LOGFILE% 2>&1
+						"!UNZIP_TOOL!" x -y -spe -o"!LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%\" "!LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.zip" > !CHECKLMS_REPORT_LOG_PATH!\unzip_fnp_library_zip.txt 2>&1
 					)
 				) else (
 					echo     Don't download FNP Siemens Library [ZIP], because they exist already.
@@ -1138,17 +1175,17 @@ if not defined LMS_SKIPDOWNLOAD (
 				rem NO LONGER USED EXE DOWNLOAD, as UNZIP tool is also provided 
 				rem 
 				rem Download and unzip FNP toolkit [as EXE]
-				IF NOT EXIST "%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe" (
-					echo     Download FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe
-					echo Download FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe                                                                                                           >> %REPORT_LOGFILE% 2>&1
-					powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/%LMS_SERVERTOOL_DW%.exe', '%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe')"   >> %REPORT_LOGFILE% 2>&1
+				IF NOT EXIST "!LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.exe" (
+					echo     Download FNP Siemens Library: !LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.exe
+					echo Download FNP Siemens Library: !LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.exe                                                                                                           >> %REPORT_LOGFILE% 2>&1
+					powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/%LMS_SERVERTOOL_DW%.exe', '!LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.exe')"   >> %REPORT_LOGFILE% 2>&1
 
 					REM Unzip FNP Siemens Library
 					REM see https://stackoverflow.com/questions/17687390/how-do-i-silently-install-a-7-zip-self-extracting-archive-to-a-specific-director for more information
-					IF EXIST "%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe" (
-						echo     Extract FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe
-						echo Extract FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe                                       >> %REPORT_LOGFILE% 2>&1
-						%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.exe -y -o"%DOWNLOAD_LMS_PATH%\"                                             > !CHECKLMS_REPORT_LOG_PATH!\unzip_fnp_library_exe.txt 2>&1
+					IF EXIST "!LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.exe" (
+						echo     Extract FNP Siemens Library: !LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.exe
+						echo Extract FNP Siemens Library: !LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.exe                                       >> %REPORT_LOGFILE% 2>&1
+						!LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.exe -y -o"!LMS_DOWNLOAD_PATH!\"                                             > !CHECKLMS_REPORT_LOG_PATH!\unzip_fnp_library_exe.txt 2>&1
 					)
 				) else (
 					echo     Don't download FNP Siemens Library [EXE], because they exist already.
@@ -1156,23 +1193,29 @@ if not defined LMS_SKIPDOWNLOAD (
 				)
 			)
 		)	
-		if defined DOWNLOAD_LMS_PATH (
+		if defined LMS_DOWNLOAD_PATH (
 		
 			rem Download newest LMS check script from akamai share
 			rem echo Skip download from akamai share, download of 'CheckLMS.ex' is no longer supported.                                                                                             >> %REPORT_LOGFILE% 2>&1
 			if not defined LMS_DONOTSTARTNEWERSCRIPT (
-			 	echo     Download newest LMS check script: %DOWNLOAD_LMS_PATH%\CheckLMS.exe
-			 	echo Download newest LMS check script: %DOWNLOAD_LMS_PATH%\CheckLMS.exe                                                                                                        >> %REPORT_LOGFILE% 2>&1
-			 	del %DOWNLOAD_LMS_PATH%\CheckLMS.exe >nul 2>&1
-			 	powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe', '%DOWNLOAD_LMS_PATH%\CheckLMS.exe')"          >> %REPORT_LOGFILE% 2>&1
-			 	IF EXIST "%DOWNLOAD_LMS_PATH%\CheckLMS.exe" (
+			 	echo     Download newest LMS check script: !LMS_DOWNLOAD_PATH!\CheckLMS.exe
+			 	echo Download newest LMS check script: !LMS_DOWNLOAD_PATH!\CheckLMS.exe                                                                                                        >> %REPORT_LOGFILE% 2>&1
+			 	del !LMS_DOWNLOAD_PATH!\CheckLMS.exe >nul 2>&1
+				set LMS_DOWNLOAD_LINK=https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe
+			 	powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\CheckLMS.exe')"                                                       >> %REPORT_LOGFILE% 2>&1
+				if !ERRORLEVEL!==0 (
+					echo     Download PASSED, can access '!LMS_DOWNLOAD_LINK!'                                                                                                                 >> %REPORT_LOGFILE% 2>&1
+				) else if !ERRORLEVEL!==1 (
+					echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                                                                              >> %REPORT_LOGFILE% 2>&1
+				)
+			 	IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS.exe" (
 			 		rem CheckLMS.exe has been downloaded from akamai share
-			 		del %DOWNLOAD_LMS_PATH%\CheckLMS.bat >nul 2>&1
-			 		echo     Extract LMS check script: %DOWNLOAD_LMS_PATH%\CheckLMS.exe
-			 		echo Extract LMS check script: %DOWNLOAD_LMS_PATH%\CheckLMS.exe                                                                                                            >> %REPORT_LOGFILE% 2>&1
-			 		%DOWNLOAD_LMS_PATH%\CheckLMS.exe -y -o"%DOWNLOAD_LMS_PATH%\"                                                                                                               >> %REPORT_LOGFILE% 2>&1
-			 		IF EXIST "%DOWNLOAD_LMS_PATH%\CheckLMS.bat" (
-			 			for /f "tokens=2 delims== eol=@" %%i in ('type %DOWNLOAD_LMS_PATH%\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_EXE set LMS_SCRIPT_BUILD_DOWNLOAD_EXE=%%i
+			 		del !LMS_DOWNLOAD_PATH!\CheckLMS.bat >nul 2>&1
+			 		echo     Extract LMS check script: !LMS_DOWNLOAD_PATH!\CheckLMS.exe
+			 		echo Extract LMS check script: !LMS_DOWNLOAD_PATH!\CheckLMS.exe                                                                                                            >> %REPORT_LOGFILE% 2>&1
+			 		!LMS_DOWNLOAD_PATH!\CheckLMS.exe -y -o"!LMS_DOWNLOAD_PATH!\"                                                                                                               >> %REPORT_LOGFILE% 2>&1
+			 		IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS.bat" (
+			 			for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_EXE set LMS_SCRIPT_BUILD_DOWNLOAD_EXE=%%i
 			 			echo     Check script downloaded from akamai share. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_EXE!, Running script version: !LMS_SCRIPT_BUILD!.
 			 			echo Check script downloaded from akamai share. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_EXE!, Running script version: !LMS_SCRIPT_BUILD!.                  >> %REPORT_LOGFILE% 2>&1
 			 		)
@@ -1180,16 +1223,22 @@ if not defined LMS_SKIPDOWNLOAD (
 			) else (
 			 	echo Skip download from akamai share, because option 'donotstartnewerscript' is set. '%0'                                                                                      >> %REPORT_LOGFILE% 2>&1
 			) 
-			
+
 			rem Download newest LMS check script from github
 			if not defined LMS_DONOTSTARTNEWERSCRIPT (
-				echo     Download newest LMS check script from github: %DOWNLOAD_LMS_PATH%\git\CheckLMS.bat
-				echo Download newest LMS check script: %DOWNLOAD_LMS_PATH%\git\CheckLMS.bat                                                                                                     >> %REPORT_LOGFILE% 2>&1
-				del %DOWNLOAD_LMS_PATH%\git\CheckLMS.bat >nul 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://raw.githubusercontent.com/ImfeldC/CheckLMS/master/CheckLMS.bat', '%DOWNLOAD_LMS_PATH%\git\CheckLMS.bat')" >> %REPORT_LOGFILE% 2>&1
-				IF EXIST "%DOWNLOAD_LMS_PATH%\git\CheckLMS.bat" (
+				echo     Download newest LMS check script from github: !LMS_DOWNLOAD_PATH!\git\CheckLMS.bat
+				echo Download newest LMS check script: !LMS_DOWNLOAD_PATH!\git\CheckLMS.bat                                                                                                     >> %REPORT_LOGFILE% 2>&1
+				del !LMS_DOWNLOAD_PATH!\git\CheckLMS.bat >nul 2>&1
+				set LMS_DOWNLOAD_LINK=https://raw.githubusercontent.com/ImfeldC/CheckLMS/master/CheckLMS.bat
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\git\CheckLMS.bat')" > !CHECKLMS_REPORT_LOG_PATH!\download_checklms_git.txt 2>&1
+				if !ERRORLEVEL!==0 (
+					echo     Download PASSED, can access '!LMS_DOWNLOAD_LINK!'                                                                                                                  >> %REPORT_LOGFILE% 2>&1
+				) else if !ERRORLEVEL!==1 (
+					echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                                                                               >> %REPORT_LOGFILE% 2>&1
+				)
+				IF EXIST "!LMS_DOWNLOAD_PATH!\git\CheckLMS.bat" (
 					rem CheckLMS.bat has been downloaded from github
-					for /f "tokens=2 delims== eol=@" %%i in ('type %DOWNLOAD_LMS_PATH%\git\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_GIT set LMS_SCRIPT_BUILD_DOWNLOAD_GIT=%%i
+					for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\git\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_GIT set LMS_SCRIPT_BUILD_DOWNLOAD_GIT=%%i
 					echo     Check script downloaded from github. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_GIT!, Running script version: !LMS_SCRIPT_BUILD!.
 					echo Check script downloaded from github. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_GIT!, Running script version: !LMS_SCRIPT_BUILD!.                             >> %REPORT_LOGFILE% 2>&1
 				)			
@@ -1199,11 +1248,11 @@ if not defined LMS_SKIPDOWNLOAD (
 
 			if /I !LMS_BUILD_VERSION! NEQ %MOST_RECENT_LMS_BUILD% (
 				rem Not "most recent" [="released"] build installed, download latest released LMS client; e.g. from https://static.siemens.com/btdownloads/lms/LMSSetup2.6.826/x64/setup64.exe
-				set LMS_SETUP_EXECUTABLE=%DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_LMS_VERSION%\setup64.exe
+				set LMS_SETUP_EXECUTABLE=!LMS_DOWNLOAD_PATH!\LMSSetup\%MOST_RECENT_LMS_VERSION%\setup64.exe
 				IF NOT EXIST "!LMS_SETUP_EXECUTABLE!" (
-					IF NOT EXIST "%DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_LMS_VERSION%" (
-						rem echo Create new folder: %DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_LMS_VERSION%
-						mkdir %DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_LMS_VERSION% >nul 2>&1
+					IF NOT EXIST "!LMS_DOWNLOAD_PATH!\LMSSetup\%MOST_RECENT_LMS_VERSION%" (
+						rem echo Create new folder: !LMS_DOWNLOAD_PATH!\LMSSetup\%MOST_RECENT_LMS_VERSION%
+						mkdir !LMS_DOWNLOAD_PATH!\LMSSetup\%MOST_RECENT_LMS_VERSION% >nul 2>&1
 					)
 					set LMS_SETUP_DOWNLOAD_LINK=https://static.siemens.com/btdownloads/lms/LMSSetup%MOST_RECENT_LMS_VERSION%/x64/setup64.exe
 					echo     Download latest released LMS setup [%MOST_RECENT_LMS_VERSION%]: !LMS_SETUP_EXECUTABLE!
@@ -1217,11 +1266,11 @@ if not defined LMS_SKIPDOWNLOAD (
 			
 			if /I !LMS_BUILD_VERSION! NEQ %MOST_RECENT_FT_LMS_BUILD% (
 				rem Not "most recent" field test build installed, download latest field test LMS client; e.g. from https://static.siemens.com/btdownloads/lms/LMSSetup2.6.826/x64/setup64.exe
-				set LMS_FT_SETUP_EXECUTABLE=%DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_FT_LMS_VERSION%\setup64.exe
+				set LMS_FT_SETUP_EXECUTABLE=!LMS_DOWNLOAD_PATH!\LMSSetup\%MOST_RECENT_FT_LMS_VERSION%\setup64.exe
 				IF NOT EXIST "!LMS_FT_SETUP_EXECUTABLE!" (
-					IF NOT EXIST "%DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_FT_LMS_VERSION%" (
-						rem echo Create new folder: %DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_FT_LMS_VERSION%
-						mkdir %DOWNLOAD_LMS_PATH%\LMSSetup\%MOST_RECENT_FT_LMS_VERSION% >nul 2>&1
+					IF NOT EXIST "!LMS_DOWNLOAD_PATH!\LMSSetup\%MOST_RECENT_FT_LMS_VERSION%" (
+						rem echo Create new folder: !LMS_DOWNLOAD_PATH!\LMSSetup\%MOST_RECENT_FT_LMS_VERSION%
+						mkdir !LMS_DOWNLOAD_PATH!\LMSSetup\%MOST_RECENT_FT_LMS_VERSION% >nul 2>&1
 					)
 					set LMS_FT_SETUP_DOWNLOAD_LINK=https://static.siemens.com/btdownloads/lms/LMSSetup%MOST_RECENT_FT_LMS_VERSION%/x64/setup64.exe
 					echo     Download latest field test LMS setup [%MOST_RECENT_FT_LMS_VERSION%]: !LMS_FT_SETUP_EXECUTABLE!
@@ -1234,93 +1283,93 @@ if not defined LMS_SKIPDOWNLOAD (
 			)
 			
 			rem Download tool "VMGENID.EXE" (from Stratus) to read-out generation id
-			IF NOT EXIST "%DOWNLOAD_LMS_PATH%\VMGENID.EXE" (
-				echo     Download VM GENID app [from Stratus]: %DOWNLOAD_LMS_PATH%\VMGENID.EXE
-				echo Download VM GENID app [from Stratus]: %DOWNLOAD_LMS_PATH%\VMGENID.EXE                                                                                         >> %REPORT_LOGFILE% 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/tools/VMGENID.EXE', '%DOWNLOAD_LMS_PATH%\VMGENID.EXE')"   >> %REPORT_LOGFILE% 2>&1
+			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\VMGENID.EXE" (
+				echo     Download VM GENID app [from Stratus]: !LMS_DOWNLOAD_PATH!\VMGENID.EXE
+				echo Download VM GENID app [from Stratus]: !LMS_DOWNLOAD_PATH!\VMGENID.EXE                                                                                         >> %REPORT_LOGFILE% 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/tools/VMGENID.EXE', '!LMS_DOWNLOAD_PATH!\VMGENID.EXE')"   >> %REPORT_LOGFILE% 2>&1
 			) else (
 				echo     Don't download VM GENID app [from Stratus] [VMGENID.EXE], because it exist already.
 				echo Don't download VM GENID app [from Stratus] [VMGENID.EXE], because it exist already.                                                                           >> %REPORT_LOGFILE% 2>&1
 			)
 			
 			rem Download tool "GetVMGenerationIdentifier.exe" to read-out generation id
-			IF NOT EXIST "%DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe" (
-				echo     Download VM GENID app: %DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe
-				echo Download VM GENID app: %DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe                                           >> %REPORT_LOGFILE% 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/GetVMGenerationIdentifier.exe', '%DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe')"   >> %REPORT_LOGFILE% 2>&1
+			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe" (
+				echo     Download VM GENID app: !LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe
+				echo Download VM GENID app: !LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe                                           >> %REPORT_LOGFILE% 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/GetVMGenerationIdentifier.exe', '!LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe')"   >> %REPORT_LOGFILE% 2>&1
 			) else (
 				echo     Don't download VM GENID app [GetVMGenerationIdentifier.exe], because they exist already.
 				echo Don't download VM GENID app [GetVMGenerationIdentifier.exe], because they exist already.                           >> %REPORT_LOGFILE% 2>&1
 			)
 			
 			rem Download tool "ecmcommonutil.exe" (from Flexera) to read-out host id's
-			IF NOT EXIST "%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" (
-				echo     Download ecmcommonutil app: %DOWNLOAD_LMS_PATH%\ecmcommonutil.exe
-				echo Download ecmcommonutil app: %DOWNLOAD_LMS_PATH%\ecmcommonutil.exe                                                  >> %REPORT_LOGFILE% 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/ecmcommonutil.exe', '%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe')"   >> %REPORT_LOGFILE% 2>&1
+			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe" (
+				echo     Download ecmcommonutil app: !LMS_DOWNLOAD_PATH!\ecmcommonutil.exe
+				echo Download ecmcommonutil app: !LMS_DOWNLOAD_PATH!\ecmcommonutil.exe                                                  >> %REPORT_LOGFILE% 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/ecmcommonutil.exe', '!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe')"   >> %REPORT_LOGFILE% 2>&1
 			) else (
 				echo     Don't download ecmcommonutil app [ecmcommonutil.exe], because they exist already.
 				echo Don't download ecmcommonutil app [ecmcommonutil.exe], because they exist already.                                  >> %REPORT_LOGFILE% 2>&1
 			)
 			
 			rem Download tool "ecmcommonutil.exe" V1.19 (=ecmcommonutil_1.19.exe) (from Flexera) to read-out host id's
-			IF NOT EXIST "%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" (
-				echo     Download ecmcommonutil app: %DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe
-				echo Download ecmcommonutil app: %DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe                                             >> %REPORT_LOGFILE% 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/ecmcommonutil_1.19.exe', '%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe')"   >> %REPORT_LOGFILE% 2>&1
+			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe" (
+				echo     Download ecmcommonutil app: !LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe
+				echo Download ecmcommonutil app: !LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe                                             >> %REPORT_LOGFILE% 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/ecmcommonutil_1.19.exe', '!LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe')"   >> %REPORT_LOGFILE% 2>&1
 			) else (
 				echo     Don't download ecmcommonutil app V1.19 [ecmcommonutil_1.19.exe], because they exist already.
 				echo Don't download ecmcommonutil app V1.19 [ecmcommonutil_1.19.exe], because they exist already.                       >> %REPORT_LOGFILE% 2>&1
 			)
 			
 			rem Download newest dongle driver always, to ensure that older driver get overwritten
-			echo     Download newest dongle driver: %DOWNLOAD_LMS_PATH%\haspdinst.exe [%MOST_RECENT_DONGLE_DRIVER_VERSION%] ...
-			echo Download newest dongle driver: %DOWNLOAD_LMS_PATH%\haspdinst.exe [%MOST_RECENT_DONGLE_DRIVER_VERSION%] ...             >> %REPORT_LOGFILE% 2>&1
-			powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/hasp/%MOST_RECENT_DONGLE_DRIVER_VERSION%/haspdinst.exe', '%DOWNLOAD_LMS_PATH%\haspdinst.exe')"   >> %REPORT_LOGFILE% 2>&1
-			if exist "%DOWNLOAD_LMS_PATH%\haspdinst.exe" (
-				set TARGETFILE=%DOWNLOAD_LMS_PATH%\haspdinst.exe
+			echo     Download newest dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [%MOST_RECENT_DONGLE_DRIVER_VERSION%] ...
+			echo Download newest dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [%MOST_RECENT_DONGLE_DRIVER_VERSION%] ...             >> %REPORT_LOGFILE% 2>&1
+			powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/hasp/%MOST_RECENT_DONGLE_DRIVER_VERSION%/haspdinst.exe', '!LMS_DOWNLOAD_PATH!\haspdinst.exe')"   >> %REPORT_LOGFILE% 2>&1
+			if exist "!LMS_DOWNLOAD_PATH!\haspdinst.exe" (
+				set TARGETFILE=!LMS_DOWNLOAD_PATH!\haspdinst.exe
 				set TARGETFILE=!TARGETFILE:\=\\!
 				wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
 				IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=2 delims== eol=@" %%i in ('type %REPORT_WMIC_LOGFILE% ^|find /I "Version"') do set "haspdinstVersion=%%i"
-				echo     Newest dongle driver: %DOWNLOAD_LMS_PATH%\haspdinst.exe [!haspdinstVersion!] downloaded!
-				echo Newest dongle driver: %DOWNLOAD_LMS_PATH%\haspdinst.exe [!haspdinstVersion!] downloaded!                           >> %REPORT_LOGFILE% 2>&1
+				echo     Newest dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] downloaded!
+				echo     Newest dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] downloaded!                       >> %REPORT_LOGFILE% 2>&1
 			)
 						
 			rem Download AccessChk tool
-			IF NOT EXIST "%DOWNLOAD_LMS_PATH%\AccessChk.zip" (
-				echo     Download AccessChk tool: %DOWNLOAD_LMS_PATH%\AccessChk.zip
-				echo Download AccessChk tool: %DOWNLOAD_LMS_PATH%\AccessChk.zip                                                         >> %REPORT_LOGFILE% 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://download.sysinternals.com/files/AccessChk.zip', '%DOWNLOAD_LMS_PATH%\AccessChk.zip')"   >> %REPORT_LOGFILE% 2>&1
+			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\AccessChk.zip" (
+				echo     Download AccessChk tool: !LMS_DOWNLOAD_PATH!\AccessChk.zip
+				echo Download AccessChk tool: !LMS_DOWNLOAD_PATH!\AccessChk.zip                                                         >> %REPORT_LOGFILE% 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://download.sysinternals.com/files/AccessChk.zip', '!LMS_DOWNLOAD_PATH!\AccessChk.zip')"   >> %REPORT_LOGFILE% 2>&1
 			) else (
 				echo     Don't download AccessChk tool [AccessChk.zip], because it exist already.
 				echo Don't download AccessChk tool [AccessChk.zip], because it exist already.                                           >> %REPORT_LOGFILE% 2>&1
 			)
 			
 			rem Download SigCheck tool
-			IF NOT EXIST "%DOWNLOAD_LMS_PATH%\Sigcheck.zip" (
-				echo     Download SigCheck tool: %DOWNLOAD_LMS_PATH%\Sigcheck.zip
-				echo Download SigCheck tool: %DOWNLOAD_LMS_PATH%\Sigcheck.zip                                                           >> %REPORT_LOGFILE% 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://download.sysinternals.com/files/Sigcheck.zip', '%DOWNLOAD_LMS_PATH%\Sigcheck.zip')"   >> %REPORT_LOGFILE% 2>&1
+			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\Sigcheck.zip" (
+				echo     Download SigCheck tool: !LMS_DOWNLOAD_PATH!\Sigcheck.zip
+				echo Download SigCheck tool: !LMS_DOWNLOAD_PATH!\Sigcheck.zip                                                           >> %REPORT_LOGFILE% 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://download.sysinternals.com/files/Sigcheck.zip', '!LMS_DOWNLOAD_PATH!\Sigcheck.zip')"   >> %REPORT_LOGFILE% 2>&1
 			) else (
 				echo     Don't download SigCheck tool [Sigcheck.zip], because it exist already.
 				echo Don't download SigCheck tool [Sigcheck.zip], because it exist already.                                             >> %REPORT_LOGFILE% 2>&1
 			)
 			
 			rem Download USBDeview tool
-			IF NOT EXIST "%DOWNLOAD_LMS_PATH%\usbdeview-x64.zip" (
-				echo     Download USBDeview tool: %DOWNLOAD_LMS_PATH%\usbdeview-x64.zip
-				echo Download USBDeview tool: %DOWNLOAD_LMS_PATH%\usbdeview-x64.zip                                                     >> %REPORT_LOGFILE% 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.nirsoft.net/utils/usbdeview-x64.zip', '%DOWNLOAD_LMS_PATH%\usbdeview-x64.zip')"   >> %REPORT_LOGFILE% 2>&1
+			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\usbdeview-x64.zip" (
+				echo     Download USBDeview tool: !LMS_DOWNLOAD_PATH!\usbdeview-x64.zip
+				echo Download USBDeview tool: !LMS_DOWNLOAD_PATH!\usbdeview-x64.zip                                                     >> %REPORT_LOGFILE% 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.nirsoft.net/utils/usbdeview-x64.zip', '!LMS_DOWNLOAD_PATH!\usbdeview-x64.zip')"   >> %REPORT_LOGFILE% 2>&1
 			) else (
 				echo     Don't download USBDeview tool [usbdeview-x64.zip], because it exist already.
 				echo Don't download USBDeview tool [usbdeview-x64.zip], because it exist already.                                       >> %REPORT_LOGFILE% 2>&1
 			)
 			
 			rem Download “counted.lic”
-			IF NOT EXIST "%DOWNLOAD_LMS_PATH%\counted.lic" (
-				echo     Download 'counted.lic': %DOWNLOAD_LMS_PATH%\counted.lic
-				echo Download 'counted.lic': %DOWNLOAD_LMS_PATH%\counted.lic                                                            >> %REPORT_LOGFILE% 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/counted.lic', '%DOWNLOAD_LMS_PATH%\counted.lic')"   >> %REPORT_LOGFILE% 2>&1
+			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\counted.lic" (
+				echo     Download 'counted.lic': !LMS_DOWNLOAD_PATH!\counted.lic
+				echo Download 'counted.lic': !LMS_DOWNLOAD_PATH!\counted.lic                                                            >> %REPORT_LOGFILE% 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/counted.lic', '!LMS_DOWNLOAD_PATH!\counted.lic')"   >> %REPORT_LOGFILE% 2>&1
 			) else (
 				echo     Don't download 'counted.lic', because it exist already.
 				echo Don't download 'counted.lic', because it exist already.                                                            >> %REPORT_LOGFILE% 2>&1
@@ -1383,75 +1432,75 @@ if not defined LMS_SKIPUNZIP (
 	if defined LMS_SERVERTOOL_DW (
 		REM Unzip FNP Siemens Library
 		REM See https://sourceforge.net/p/sevenzip/discussion/45798/thread/8cb61347/?limit=25
-		IF EXIST "%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip" (
-			echo     Extract FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip
-			echo Extract FNP Siemens Library: %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip                                             >> %REPORT_LOGFILE% 2>&1
+		IF EXIST "!LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.zip" (
+			echo     Extract FNP Siemens Library: !LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.zip
+			echo Extract FNP Siemens Library: !LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.zip                                             >> %REPORT_LOGFILE% 2>&1
 			if defined UNZIP_TOOL (
-				"!UNZIP_TOOL!" x -y -spe -o"%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%\" "%DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip"   > !CHECKLMS_REPORT_LOG_PATH!\unzip_fnp_library_using_zip_tool.txt
+				"!UNZIP_TOOL!" x -y -spe -o"!LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%\" "!LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.zip"   > !CHECKLMS_REPORT_LOG_PATH!\unzip_fnp_library_using_zip_tool.txt
 			) else (
 				echo Can't unzip FNP Siemens Library [%LMS_SERVERTOOL_DW%.zip], because no unzip tool is available.                   >> %REPORT_LOGFILE% 2>&1
 			)
-			powershell -Command "Expand-Archive -Path %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%.zip -DestinationPath %DOWNLOAD_LMS_PATH%\%LMS_SERVERTOOL_DW%\ -Verbose -Force"   > !CHECKLMS_REPORT_LOG_PATH!\unzip_fnp_library_using_powershell.txt
+			powershell -Command "Expand-Archive -Path !LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.zip -DestinationPath !LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%\ -Verbose -Force"   > !CHECKLMS_REPORT_LOG_PATH!\unzip_fnp_library_using_powershell.txt
 		)
 	)
 	rem Unzip AccessChk tool
-	IF EXIST "%DOWNLOAD_LMS_PATH%\AccessChk.zip" (
+	IF EXIST "!LMS_DOWNLOAD_PATH!\AccessChk.zip" (
 		if defined UNZIP_TOOL (
-			"!UNZIP_TOOL!" x -o!DOWNLOAD_LMS_PATH!\AccessChk -y %DOWNLOAD_LMS_PATH%\AccessChk.zip                                     > !CHECKLMS_REPORT_LOG_PATH!\unzip_accessChk.txt
+			"!UNZIP_TOOL!" x -o!LMS_DOWNLOAD_PATH!\AccessChk -y !LMS_DOWNLOAD_PATH!\AccessChk.zip                                     > !CHECKLMS_REPORT_LOG_PATH!\unzip_accessChk.txt
 		) else (
 			echo Can't unzip AccessChk tool [AccessChk.zip], because no unzip tool is available.                                      >> %REPORT_LOGFILE% 2>&1
 		)
-		powershell -Command "Expand-Archive -Path %DOWNLOAD_LMS_PATH%\AccessChk.zip -DestinationPath !DOWNLOAD_LMS_PATH!\AccessChk -Verbose -Force"   > !CHECKLMS_REPORT_LOG_PATH!\unzip_accesschk_using_powershell.txt
+		powershell -Command "Expand-Archive -Path !LMS_DOWNLOAD_PATH!\AccessChk.zip -DestinationPath !LMS_DOWNLOAD_PATH!\AccessChk -Verbose -Force"   > !CHECKLMS_REPORT_LOG_PATH!\unzip_accesschk_using_powershell.txt
 	) else (
 		echo     Don't unzip AccessChk tool [AccessChk.zip], because zip archive doesn't exists.
 		echo Don't unzip AccessChk tool [AccessChk.zip], because zip archive doesn't exists.                                          >> %REPORT_LOGFILE% 2>&1
 	)
 	rem Unzip SigCheck tool
-	IF EXIST "%DOWNLOAD_LMS_PATH%\Sigcheck.zip" (
+	IF EXIST "!LMS_DOWNLOAD_PATH!\Sigcheck.zip" (
 		if defined UNZIP_TOOL (
-			"!UNZIP_TOOL!" x -o!DOWNLOAD_LMS_PATH!\SigCheck -y %DOWNLOAD_LMS_PATH%\Sigcheck.zip                                       > !CHECKLMS_REPORT_LOG_PATH!\unzip_sigcheck.txt
+			"!UNZIP_TOOL!" x -o!LMS_DOWNLOAD_PATH!\SigCheck -y !LMS_DOWNLOAD_PATH!\Sigcheck.zip                                       > !CHECKLMS_REPORT_LOG_PATH!\unzip_sigcheck.txt
 		) else (
 			echo Can't unzip SigCheck tool [Sigcheck.zip], because no unzip tool is available.                                        >> %REPORT_LOGFILE% 2>&1
 		)
-		powershell -Command "Expand-Archive -Path %DOWNLOAD_LMS_PATH%\Sigcheck.zip -DestinationPath !DOWNLOAD_LMS_PATH!\SigCheck -Verbose -Force"   > !CHECKLMS_REPORT_LOG_PATH!\unzip_sigcheck_using_powershell.txt
+		powershell -Command "Expand-Archive -Path !LMS_DOWNLOAD_PATH!\Sigcheck.zip -DestinationPath !LMS_DOWNLOAD_PATH!\SigCheck -Verbose -Force"   > !CHECKLMS_REPORT_LOG_PATH!\unzip_sigcheck_using_powershell.txt
 	) else (
 		echo     Don't unzip SigCheck tool [Sigcheck.zip], because zip archive doesn't exists.
 		echo Don't unzip SigCheck tool [Sigcheck.zip], because zip archive doesn't exists.                                            >> %REPORT_LOGFILE% 2>&1
 	)
 	rem Unzip USBDeview tool
-	IF EXIST "%DOWNLOAD_LMS_PATH%\usbdeview-x64.zip" (
+	IF EXIST "!LMS_DOWNLOAD_PATH!\usbdeview-x64.zip" (
 		if defined UNZIP_TOOL (
-			"!UNZIP_TOOL!" x -o!DOWNLOAD_LMS_PATH!\usbdeview -y %DOWNLOAD_LMS_PATH%\usbdeview-x64.zip                                 > !CHECKLMS_REPORT_LOG_PATH!\unzip_usbdeview.txt
+			"!UNZIP_TOOL!" x -o!LMS_DOWNLOAD_PATH!\usbdeview -y !LMS_DOWNLOAD_PATH!\usbdeview-x64.zip                                 > !CHECKLMS_REPORT_LOG_PATH!\unzip_usbdeview.txt
 		) else (
 			echo Can't unzip USBDeview tool [usbdeview-x64.zip], because no unzip tool is available.                                  >> %REPORT_LOGFILE% 2>&1
 		)
-		powershell -Command "Expand-Archive -Path %DOWNLOAD_LMS_PATH%\usbdeview-x64.zip -DestinationPath !DOWNLOAD_LMS_PATH!\usbdeview -Verbose -Force"   > !CHECKLMS_REPORT_LOG_PATH!\unzip_usbdeview_using_powershell.txt
+		powershell -Command "Expand-Archive -Path !LMS_DOWNLOAD_PATH!\usbdeview-x64.zip -DestinationPath !LMS_DOWNLOAD_PATH!\usbdeview -Verbose -Force"   > !CHECKLMS_REPORT_LOG_PATH!\unzip_usbdeview_using_powershell.txt
 	) else (
 		echo     Don't unzip USBDeview tool [usbdeview-x64.zip], because zip archive doesn't exists.
 		echo Don't unzip USBDeview tool [usbdeview-x64.zip], because zip archive doesn't exists.                                      >> %REPORT_LOGFILE% 2>&1
 	)
 
 	set LMS_SCRIPT_BUILD_DOWNLOAD_TO_START=
-	rem Check if newer CheckLMS.bat is available in %DOWNLOAD_LMS_PATH%\CheckLMS.bat (even if connection test doesn't run succesful)
-	IF EXIST "%DOWNLOAD_LMS_PATH%\CheckLMS.bat" (
-		echo     Check script on '%DOWNLOAD_LMS_PATH%\CheckLMS.bat' ... 
-		echo Check script on '%DOWNLOAD_LMS_PATH%\CheckLMS.bat' ...                                                                                                                      >> %REPORT_LOGFILE% 2>&1
-		for /f "tokens=2 delims== eol=@" %%i in ('type %DOWNLOAD_LMS_PATH%\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_1 set LMS_SCRIPT_BUILD_DOWNLOAD_1=%%i
+	rem Check if newer CheckLMS.bat is available in !LMS_DOWNLOAD_PATH!\CheckLMS.bat (even if connection test doesn't run succesful)
+	IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS.bat" (
+		echo     Check script on '!LMS_DOWNLOAD_PATH!\CheckLMS.bat' ... 
+		echo Check script on '!LMS_DOWNLOAD_PATH!\CheckLMS.bat' ...                                                                                                                      >> %REPORT_LOGFILE% 2>&1
+		for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_1 set LMS_SCRIPT_BUILD_DOWNLOAD_1=%%i
 		if /I !LMS_SCRIPT_BUILD_DOWNLOAD_1! GTR !LMS_SCRIPT_BUILD! (
 			echo     Newer check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_1!, Running script version: !LMS_SCRIPT_BUILD!.
 			echo Newer check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_1!, Running script version: !LMS_SCRIPT_BUILD!.                                      >> %REPORT_LOGFILE% 2>&1
-			set LMS_SCRIPT_BUILD_DOWNLOAD_TO_START=%DOWNLOAD_LMS_PATH%\CheckLMS.bat
+			set LMS_SCRIPT_BUILD_DOWNLOAD_TO_START=!LMS_DOWNLOAD_PATH!\CheckLMS.bat
 		)
 	)	
-	rem Check if newer CheckLMS.bat is available in %DOWNLOAD_LMS_PATH%\git\CheckLMS.bat (even if connection test doesn't run succesful)
-	IF EXIST "%DOWNLOAD_LMS_PATH%\git\CheckLMS.bat" (
-		echo     Check script on '%DOWNLOAD_LMS_PATH%\git\CheckLMS.bat' ... 
-		echo Check script on '%DOWNLOAD_LMS_PATH%\git\CheckLMS.bat' ...                                                                                                                  >> %REPORT_LOGFILE% 2>&1
-		for /f "tokens=2 delims== eol=@" %%i in ('type %DOWNLOAD_LMS_PATH%\git\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_2 set LMS_SCRIPT_BUILD_DOWNLOAD_2=%%i
+	rem Check if newer CheckLMS.bat is available in !LMS_DOWNLOAD_PATH!\git\CheckLMS.bat (even if connection test doesn't run succesful)
+	IF EXIST "!LMS_DOWNLOAD_PATH!\git\CheckLMS.bat" (
+		echo     Check script on '!LMS_DOWNLOAD_PATH!\git\CheckLMS.bat' ... 
+		echo Check script on '!LMS_DOWNLOAD_PATH!\git\CheckLMS.bat' ...                                                                                                                  >> %REPORT_LOGFILE% 2>&1
+		for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\git\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_2 set LMS_SCRIPT_BUILD_DOWNLOAD_2=%%i
 		if /I !LMS_SCRIPT_BUILD_DOWNLOAD_2! GTR !LMS_SCRIPT_BUILD! (
 			echo     Newer check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_2!, Running script version: !LMS_SCRIPT_BUILD!.
 			echo Newer check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_2!, Running script version: !LMS_SCRIPT_BUILD!.                                      >> %REPORT_LOGFILE% 2>&1
-			set LMS_SCRIPT_BUILD_DOWNLOAD_TO_START=%DOWNLOAD_LMS_PATH%\git\CheckLMS.bat
+			set LMS_SCRIPT_BUILD_DOWNLOAD_TO_START=!LMS_DOWNLOAD_PATH!\git\CheckLMS.bat
 		)
 	)	
 	if defined LMS_SCRIPT_BUILD_DOWNLOAD_1 (
@@ -1460,15 +1509,15 @@ if not defined LMS_SKIPUNZIP (
 			if /I !LMS_SCRIPT_BUILD_DOWNLOAD_1! GTR !LMS_SCRIPT_BUILD! (
 				if /I !LMS_SCRIPT_BUILD_DOWNLOAD_1! GTR !LMS_SCRIPT_BUILD_DOWNLOAD_2! (
 					rem The CheckLMS.bat script on github is older than the script downloaded from akamai share
-					echo Start script downloaded from akamai '%DOWNLOAD_LMS_PATH%\CheckLMS.bat'. Script version from github: !LMS_SCRIPT_BUILD_DOWNLOAD_2!, Script version from akamai: !LMS_SCRIPT_BUILD_DOWNLOAD_1!.  >> %REPORT_LOGFILE% 2>&1
-					set LMS_SCRIPT_BUILD_DOWNLOAD_TO_START=%DOWNLOAD_LMS_PATH%\CheckLMS.bat
+					echo Start script downloaded from akamai '!LMS_DOWNLOAD_PATH!\CheckLMS.bat'. Script version from github: !LMS_SCRIPT_BUILD_DOWNLOAD_2!, Script version from akamai: !LMS_SCRIPT_BUILD_DOWNLOAD_1!.  >> %REPORT_LOGFILE% 2>&1
+					set LMS_SCRIPT_BUILD_DOWNLOAD_TO_START=!LMS_DOWNLOAD_PATH!\CheckLMS.bat
 				)
 			)
 			if /I !LMS_SCRIPT_BUILD_DOWNLOAD_2! GTR !LMS_SCRIPT_BUILD! (
 				if /I !LMS_SCRIPT_BUILD_DOWNLOAD_2! GTR !LMS_SCRIPT_BUILD_DOWNLOAD_1! (
 					rem The CheckLMS.bat script on github is newer than the script downloaded from akamai share
-					echo Start script downloaded from github '%DOWNLOAD_LMS_PATH%\git\CheckLMS.bat'. Script version from github: !LMS_SCRIPT_BUILD_DOWNLOAD_2!, Script version from akamai: !LMS_SCRIPT_BUILD_DOWNLOAD_1!.  >> %REPORT_LOGFILE% 2>&1
-					set LMS_SCRIPT_BUILD_DOWNLOAD_TO_START=%DOWNLOAD_LMS_PATH%\git\CheckLMS.bat
+					echo Start script downloaded from github '!LMS_DOWNLOAD_PATH!\git\CheckLMS.bat'. Script version from github: !LMS_SCRIPT_BUILD_DOWNLOAD_2!, Script version from akamai: !LMS_SCRIPT_BUILD_DOWNLOAD_1!.  >> %REPORT_LOGFILE% 2>&1
+					set LMS_SCRIPT_BUILD_DOWNLOAD_TO_START=!LMS_DOWNLOAD_PATH!\git\CheckLMS.bat
 				)
 			)
 		)
@@ -1528,20 +1577,20 @@ if defined LMS_SCRIPT_BUILD_DOWNLOAD_TO_START (
 
 rem -- AccessChk.exe
 set ACCESSCHECK_TOOL=
-IF EXIST "!DOWNLOAD_LMS_PATH!\AccessChk\AccessChk.exe" (
-	set ACCESSCHECK_TOOL=!DOWNLOAD_LMS_PATH!\AccessChk\AccessChk.exe
+IF EXIST "!LMS_DOWNLOAD_PATH!\AccessChk\AccessChk.exe" (
+	set ACCESSCHECK_TOOL=!LMS_DOWNLOAD_PATH!\AccessChk\AccessChk.exe
 	set ACCESSCHECK_TOOL=-nobanner -accepteula
 )
 rem -- Sigcheck.exe
 set SIGCHECK_TOOL=
-IF EXIST "!DOWNLOAD_LMS_PATH!\SigCheck\SigCheck.exe" (
-	set SIGCHECK_TOOL=!DOWNLOAD_LMS_PATH!\SigCheck\SigCheck.exe
+IF EXIST "!LMS_DOWNLOAD_PATH!\SigCheck\SigCheck.exe" (
+	set SIGCHECK_TOOL=!LMS_DOWNLOAD_PATH!\SigCheck\SigCheck.exe
 	set SIGCHECK_OPTIONS=-nobanner -accepteula -a -h -i
 )
 rem -- USBDeview.exe
 set USBDEVIEW_TOOL=
-IF EXIST "!DOWNLOAD_LMS_PATH!\usbdeview\USBDeview.exe" (
-	set USBDEVIEW_TOOL=!DOWNLOAD_LMS_PATH!\usbdeview\USBDeview.exe
+IF EXIST "!LMS_DOWNLOAD_PATH!\usbdeview\USBDeview.exe" (
+	set USBDEVIEW_TOOL=!LMS_DOWNLOAD_PATH!\usbdeview\USBDeview.exe
 )
 rem -- appactutil.exe
 set LMS_APPACTUTIL=
@@ -1867,13 +1916,13 @@ if defined LMS_SET_FIREWALL (
 if defined LMS_INSTALL_DONGLE_DRIVER (
 	echo Dongle Driver: !DONGLE_DRIVER_VERSION! [!DONGLE_DRIVER_PKG_VERSION!] / Major=[!DONGLE_DRIVER_MAJ_VERSION!] / Minor=[!DONGLE_DRIVER_MIN_VERSION!] / installed !DONGLE_DRIVER_INST_COUNT! times     >> %REPORT_LOGFILE% 2>&1
 	rem The same code block is again at script end (was introduced in an earlier script version and kept for "backward" compatibility)
-	if exist "%DOWNLOAD_LMS_PATH%\haspdinst.exe" (
-		set TARGETFILE=%DOWNLOAD_LMS_PATH%\haspdinst.exe
+	if exist "!LMS_DOWNLOAD_PATH!\haspdinst.exe" (
+		set TARGETFILE=!LMS_DOWNLOAD_PATH!\haspdinst.exe
 		set TARGETFILE=!TARGETFILE:\=\\!
 		wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
 		IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=2 delims== eol=@" %%i in ('type %REPORT_WMIC_LOGFILE% ^|find /I "Version"') do set "haspdinstVersion=%%i"
-		echo     Dongle driver: %DOWNLOAD_LMS_PATH%\haspdinst.exe [!haspdinstVersion!] available!
-		echo Dongle driver: %DOWNLOAD_LMS_PATH%\haspdinst.exe [!haspdinstVersion!] available!                                    >> %REPORT_LOGFILE% 2>&1
+		echo     Dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] available!
+		echo Dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] available!                                    >> %REPORT_LOGFILE% 2>&1
 		if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
 			rem install dongle driver downloaded by this script
 			if defined SHOW_COLORED_OUTPUT (
@@ -1882,7 +1931,7 @@ if defined LMS_INSTALL_DONGLE_DRIVER (
 				echo     --- Install newest dongle driver !haspdinstVersion! just downloaded by this script.
 			)
 			echo --- Install newest dongle driver !haspdinstVersion! just downloaded by this script.                             >> %REPORT_LOGFILE% 2>&1
-			start "Install dongle driver" "%DOWNLOAD_LMS_PATH%\haspdinst.exe" -install -killprocess 
+			start "Install dongle driver" "!LMS_DOWNLOAD_PATH!\haspdinst.exe" -install -killprocess 
 			echo --- Installation started in an own process/shell.                                                               >> %REPORT_LOGFILE% 2>&1
 		) else (
 			if defined SHOW_COLORED_OUTPUT (
@@ -1894,11 +1943,11 @@ if defined LMS_INSTALL_DONGLE_DRIVER (
 		)
 	) else (
 		if defined SHOW_COLORED_OUTPUT (
-			echo [1;33m    WARNING: Cannot install dongle driver, file '%DOWNLOAD_LMS_PATH%\haspdinst.exe' doesn't exist. [1;37m
+			echo [1;33m    WARNING: Cannot install dongle driver, file '!LMS_DOWNLOAD_PATH!\haspdinst.exe' doesn't exist. [1;37m
 		) else (
-			echo     WARNING: Cannot install dongle driver, file '%DOWNLOAD_LMS_PATH%\haspdinst.exe' doesn't exist.
+			echo     WARNING: Cannot install dongle driver, file '!LMS_DOWNLOAD_PATH!\haspdinst.exe' doesn't exist.
 		)
-		echo WARNING: Cannot install dongle driver, file '%DOWNLOAD_LMS_PATH%\haspdinst.exe' doesn't exist.                      >> %REPORT_LOGFILE% 2>&1
+		echo WARNING: Cannot install dongle driver, file '!LMS_DOWNLOAD_PATH!\haspdinst.exe' doesn't exist.                      >> %REPORT_LOGFILE% 2>&1
 	)
 	
 	goto script_end
@@ -1908,13 +1957,13 @@ if defined LMS_INSTALL_DONGLE_DRIVER (
 )
 if defined LMS_REMOVE_DONGLE_DRIVER (
 	echo Dongle Driver: !DONGLE_DRIVER_VERSION! [!DONGLE_DRIVER_PKG_VERSION!] / Major=[!DONGLE_DRIVER_MAJ_VERSION!] / Minor=[!DONGLE_DRIVER_MIN_VERSION!] / installed !DONGLE_DRIVER_INST_COUNT! times     >> %REPORT_LOGFILE% 2>&1
-	if exist "%DOWNLOAD_LMS_PATH%\haspdinst.exe" (
-		set TARGETFILE=%DOWNLOAD_LMS_PATH%\haspdinst.exe
+	if exist "!LMS_DOWNLOAD_PATH!\haspdinst.exe" (
+		set TARGETFILE=!LMS_DOWNLOAD_PATH!\haspdinst.exe
 		set TARGETFILE=!TARGETFILE:\=\\!
 		wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
 		IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=2 delims== eol=@" %%i in ('type %REPORT_WMIC_LOGFILE% ^|find /I "Version"') do set "haspdinstVersion=%%i"
-		echo     Dongle driver: %DOWNLOAD_LMS_PATH%\haspdinst.exe [!haspdinstVersion!] available!
-		echo Dongle driver: %DOWNLOAD_LMS_PATH%\haspdinst.exe [!haspdinstVersion!] available!                                    >> %REPORT_LOGFILE% 2>&1
+		echo     Dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] available!
+		echo Dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] available!                                    >> %REPORT_LOGFILE% 2>&1
 		if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
 			if defined SHOW_COLORED_OUTPUT (
 				echo [1;31m    --- Remove installed dongle driver !haspdinstVersion!. [1;37m
@@ -1924,7 +1973,7 @@ if defined LMS_REMOVE_DONGLE_DRIVER (
 			rem reset installation counter to make sure that dongle driver get removed!
 			reg add "HKLM\SOFTWARE\Aladdin Knowledge Systems\HASP\Driver\Installer" /v "InstCount" /t REG_DWORD /d 1 /f          >> %REPORT_LOGFILE% 2>&1
 			echo --- Remove installed dongle driver !haspdinstVersion!.                                                          >> %REPORT_LOGFILE% 2>&1
-			start "Remove dongle driver" "%DOWNLOAD_LMS_PATH%\haspdinst.exe" -remove -killprocess 
+			start "Remove dongle driver" "!LMS_DOWNLOAD_PATH!\haspdinst.exe" -remove -killprocess 
 			echo --- Remove started in an own process/shell.                                                                     >> %REPORT_LOGFILE% 2>&1
 		) else (
 			if defined SHOW_COLORED_OUTPUT (
@@ -1936,11 +1985,11 @@ if defined LMS_REMOVE_DONGLE_DRIVER (
 		)
 	) else (
 		if defined SHOW_COLORED_OUTPUT (
-			echo [1;33m    WARNING: Cannot remove dongle driver, file '%DOWNLOAD_LMS_PATH%\haspdinst.exe' doesn't exist. [1;37m
+			echo [1;33m    WARNING: Cannot remove dongle driver, file '!LMS_DOWNLOAD_PATH!\haspdinst.exe' doesn't exist. [1;37m
 		) else (
-			echo     WARNING: Cannot remove dongle driver, file '%DOWNLOAD_LMS_PATH%\haspdinst.exe' doesn't exist.
+			echo     WARNING: Cannot remove dongle driver, file '!LMS_DOWNLOAD_PATH!\haspdinst.exe' doesn't exist.
 		)
-		echo WARNING: Cannot remove dongle driver, file '%DOWNLOAD_LMS_PATH%\haspdinst.exe' doesn't exist.                       >> %REPORT_LOGFILE% 2>&1
+		echo WARNING: Cannot remove dongle driver, file '!LMS_DOWNLOAD_PATH!\haspdinst.exe' doesn't exist.                       >> %REPORT_LOGFILE% 2>&1
 	)
 
 	goto script_end
@@ -1985,8 +2034,8 @@ if defined LMS_START_DEMO_VD (
 			echo copy "!LMS_DEMOLF_VD!" to "!LMS_SERVERTOOL_PATH!\demo.exe" ...                                              >> %REPORT_LOGFILE% 2>&1
 			copy /Y "!LMS_DEMOLF_VD!" "!LMS_SERVERTOOL_PATH!\demo.exe"                                                       >> %REPORT_LOGFILE% 2>&1
 			if exist "!LMS_SERVERTOOL_PATH!\demo.exe" (
-				echo Started: "!LMS_SERVERTOOL_PATH!\lmgrd.exe" -c !DOWNLOAD_LMS_PATH!\counted.lic -l !REPORT_LOG_PATH!\demo_debuglog.txt >> %REPORT_LOGFILE% 2>&1
-				"!LMS_SERVERTOOL_PATH!\lmgrd.exe" -c "!DOWNLOAD_LMS_PATH!\counted.lic" -l "!REPORT_LOG_PATH!\demo_debuglog.txt"  >> %REPORT_LOGFILE% 2>&1
+				echo Started: "!LMS_SERVERTOOL_PATH!\lmgrd.exe" -c !LMS_DOWNLOAD_PATH!\counted.lic -l !REPORT_LOG_PATH!\demo_debuglog.txt >> %REPORT_LOGFILE% 2>&1
+				"!LMS_SERVERTOOL_PATH!\lmgrd.exe" -c "!LMS_DOWNLOAD_PATH!\counted.lic" -l "!REPORT_LOG_PATH!\demo_debuglog.txt"  >> %REPORT_LOGFILE% 2>&1
 			)
 		) else (
 			if defined SHOW_COLORED_OUTPUT (
@@ -2025,8 +2074,8 @@ if defined LMS_STOP_DEMO_VD (
 	if exist "!LMS_SERVERTOOL_PATH!\demo.exe" (
 		if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
 			if exist "!LMS_LMDOWN!" (
-				echo Stopped: "!LMS_LMDOWN!" -c !DOWNLOAD_LMS_PATH!\counted.lic -vendor demo -q                              >> %REPORT_LOGFILE% 2>&1
-				"!LMS_LMDOWN!" -c "!DOWNLOAD_LMS_PATH!\counted.lic" -vendor demo -q                                          >> %REPORT_LOGFILE% 2>&1
+				echo Stopped: "!LMS_LMDOWN!" -c !LMS_DOWNLOAD_PATH!\counted.lic -vendor demo -q                              >> %REPORT_LOGFILE% 2>&1
+				"!LMS_LMDOWN!" -c "!LMS_DOWNLOAD_PATH!\counted.lic" -vendor demo -q                                          >> %REPORT_LOGFILE% 2>&1
 				echo Kill all running lmgrd.exe ...                                                                          >> %REPORT_LOGFILE% 2>&1
 				taskkill /f /im lmgrd.exe                                                                                    >> %REPORT_LOGFILE% 2>&1
 				echo Delete demo vendor daemon ...                                                                           >> %REPORT_LOGFILE% 2>&1
@@ -2856,19 +2905,19 @@ if /I "!LMS_IS_VM!"=="true" (
 	echo Not clear if running on a virtual machine or not. LMS_IS_VM=!LMS_IS_VM!                                             >> %REPORT_LOGFILE% 2>&1
 )
 rem Read VM Generation Id
-IF EXIST "%DOWNLOAD_LMS_PATH%\VMGENID.EXE" (
+IF EXIST "!LMS_DOWNLOAD_PATH!\VMGENID.EXE" (
 	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
 	echo ... read VM Generation Id [using VMGENID.EXE] ...
 	echo Read VM Generation Id [using VMGENID.EXE]:                                                                          >> %REPORT_LOGFILE% 2>&1
-	"%DOWNLOAD_LMS_PATH%\VMGENID.EXE"                                                                                        >> %REPORT_LOGFILE% 2>&1
+	"!LMS_DOWNLOAD_PATH!\VMGENID.EXE"                                                                                        >> %REPORT_LOGFILE% 2>&1
 	echo .                                                                                                                   >> %REPORT_LOGFILE% 2>&1
 )
-IF EXIST "%DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe" (
+IF EXIST "!LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe" (
 	echo -------------------------------------------------------                                                                                 >> %REPORT_LOGFILE% 2>&1
 	if exist "C:\WINDOWS\system32\MSVCR120.dll" (
 		echo ... read VM Generation Id [using GetVMGenerationIdentifier.exe] ...
 		echo Read VM Generation Id [using GetVMGenerationIdentifier.exe]:                                                                        >> %REPORT_LOGFILE% 2>&1
-		"%DOWNLOAD_LMS_PATH%\GetVMGenerationIdentifier.exe"                                                                                      >> %REPORT_LOGFILE% 2>&1
+		"!LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe"                                                                                      >> %REPORT_LOGFILE% 2>&1
 		echo .                                                                                                                                   >> %REPORT_LOGFILE% 2>&1
 	) else (
 		echo ... read VM Generation Id [using GetVMGenerationIdentifier.exe], skipped because 'C:\WINDOWS\system32\MSVCR120.dll' doesn't exist.
@@ -3408,30 +3457,30 @@ if not defined LMS_SKIPLMS (
 	if !ERRORLEVEL!==0 (
 		rem Retrieve information: PASSED
 		echo     Retrieve diagnostic information of dongle driver PASSED, can access !DONGLE_DOWNLOAD_FILE!
-		echo Retrieve diagnostic information of dongle driver PASSED, can access !DONGLE_DOWNLOAD_FILE!                          >> %REPORT_LOGFILE% 2>&1
-		echo Full details see !DONGLE_REPORT_FILE!                                                                               >> %REPORT_LOGFILE% 2>&1
+		echo Retrieve diagnostic information of dongle driver PASSED, can access !DONGLE_DOWNLOAD_FILE!                      >> %REPORT_LOGFILE% 2>&1
+		echo Full details see !DONGLE_REPORT_FILE!                                                                           >> %REPORT_LOGFILE% 2>&1
 	) else if !ERRORLEVEL!==1 (
 		rem Retrieve information: FAILED
 		echo     Retrieve diagnostic information of dongle driver FAILED, cannot access !DONGLE_DOWNLOAD_FILE!
-		echo Retrieve diagnostic information of dongle driver FAILED, cannot access !DONGLE_DOWNLOAD_FILE!                       >> %REPORT_LOGFILE% 2>&1
-		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_dongledriverdiagnostics.txt                                              >> %REPORT_LOGFILE% 2>&1
+		echo Retrieve diagnostic information of dongle driver FAILED, cannot access !DONGLE_DOWNLOAD_FILE!                   >> %REPORT_LOGFILE% 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_dongledriverdiagnostics.txt                                          >> %REPORT_LOGFILE% 2>&1
 	)
-	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
 	rem Check attached USB devices on this system, incl. attached dongles
 	if defined USBDEVIEW_TOOL (
-		echo Check USB devices with: !USBDEVIEW_TOOL! ...                                                                        >> %REPORT_LOGFILE% 2>&1
-		"!USBDEVIEW_TOOL!" /stabular "!CHECKLMS_REPORT_LOG_PATH!\usb_dongles.txt"                                                >> %REPORT_LOGFILE% 2>&1
-		echo ... see '!CHECKLMS_REPORT_LOG_PATH!\usb_dongles.txt'.                                                               >> %REPORT_LOGFILE% 2>&1
-		"!USBDEVIEW_TOOL!" /shtml "!CHECKLMS_REPORT_LOG_PATH!\usb_dongles.html"                                                  >> %REPORT_LOGFILE% 2>&1
-		echo ... see '!CHECKLMS_REPORT_LOG_PATH!\usb_dongles.html'.                                                              >> %REPORT_LOGFILE% 2>&1
-		echo -- extract vendor id 'VID_0529' from usb_dongles.txt [start] --                                                     >> %REPORT_LOGFILE% 2>&1
-		Type "!CHECKLMS_REPORT_LOG_PATH!\usb_dongles.txt" | findstr "VID_0529"                                                   >> %REPORT_LOGFILE% 2>&1
-		echo -- extract vendor id 'VID_0529' from usb_dongles.txt [end] --                                                       >> %REPORT_LOGFILE% 2>&1
+		echo Check USB devices with: !USBDEVIEW_TOOL! ...                                                                    >> %REPORT_LOGFILE% 2>&1
+		"!USBDEVIEW_TOOL!" /stabular "!CHECKLMS_REPORT_LOG_PATH!\usb_dongles.txt"                                            >> %REPORT_LOGFILE% 2>&1
+		echo ... see '!CHECKLMS_REPORT_LOG_PATH!\usb_dongles.txt'.                                                           >> %REPORT_LOGFILE% 2>&1
+		"!USBDEVIEW_TOOL!" /shtml "!CHECKLMS_REPORT_LOG_PATH!\usb_dongles.html"                                              >> %REPORT_LOGFILE% 2>&1
+		echo ... see '!CHECKLMS_REPORT_LOG_PATH!\usb_dongles.html'.                                                          >> %REPORT_LOGFILE% 2>&1
+		echo -- extract vendor id 'VID_0529' from usb_dongles.txt [start] --                                                 >> %REPORT_LOGFILE% 2>&1
+		Type "!CHECKLMS_REPORT_LOG_PATH!\usb_dongles.txt" | findstr "VID_0529"                                               >> %REPORT_LOGFILE% 2>&1
+		echo -- extract vendor id 'VID_0529' from usb_dongles.txt [end] --                                                   >> %REPORT_LOGFILE% 2>&1
 	) else (
-		echo Cannot check USB devices with USBDeview.exe, because the tool is not available/installed.                           >> %REPORT_LOGFILE% 2>&1
+		echo Cannot check USB devices with USBDeview.exe, because the tool is not available/installed.                       >> %REPORT_LOGFILE% 2>&1
 	)
-	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                         >> %REPORT_LOGFILE% 2>&1
 ) else (
 	rem LMS_SKIPLMS
 	if defined SHOW_COLORED_OUTPUT (
@@ -3439,7 +3488,7 @@ if not defined LMS_SKIPLMS (
 	) else (
 		echo     SKIPPED LMS section. The script didn't execute the LMS commands.
 	)
-	echo SKIPPED LMS section. The script didn't execute the LMS commands.                                                        >> %REPORT_LOGFILE% 2>&1
+	echo SKIPPED LMS section. The script didn't execute the LMS commands.                                                    >> %REPORT_LOGFILE% 2>&1
 )
 :alm_section
 echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
@@ -3528,7 +3577,7 @@ if not defined LMS_SKIPBTALMPLUGIN (
 	)
 	echo SKIPPED BT ALM plugin section. The script didn't execute the BT ALM plugin commands.                                >> %REPORT_LOGFILE% 2>&1
 )
-echo ==============================================================================                                      >> %REPORT_LOGFILE% 2>&1
+echo ==============================================================================                                          >> %REPORT_LOGFILE% 2>&1
 if not defined LMS_SKIPSIGCHECK (
 	IF EXIST "%ProgramFiles%\Siemens\LMS\bin" (
 		echo LMS - Get signature status for *.exe [%ProgramFiles%\Siemens\LMS\bin]                                           >> %REPORT_LOGFILE% 2>&1
@@ -3546,14 +3595,14 @@ if not defined LMS_SKIPSIGCHECK (
 	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
 	IF EXIST "!ProgramFiles_x86!\Siemens\LMS\bin" (
 		echo LMS - Get signature status for 32-bit *.exe                                                                     >> %REPORT_LOGFILE% 2>&1
-		powershell -command "Get-AuthenticodeSignature -FilePath '!ProgramFiles_x86!\Siemens\LMS\bin\*.exe'"                >> %REPORT_LOGFILE% 2>&1
+		powershell -command "Get-AuthenticodeSignature -FilePath '!ProgramFiles_x86!\Siemens\LMS\bin\*.exe'"                 >> %REPORT_LOGFILE% 2>&1
 		echo LMS - Get signature status for 32-bit *.dll                                                                     >> %REPORT_LOGFILE% 2>&1
-		powershell -command "Get-AuthenticodeSignature -FilePath '!ProgramFiles_x86!\Siemens\LMS\bin\*.dll'"                >> %REPORT_LOGFILE% 2>&1
+		powershell -command "Get-AuthenticodeSignature -FilePath '!ProgramFiles_x86!\Siemens\LMS\bin\*.dll'"                 >> %REPORT_LOGFILE% 2>&1
 		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
 		echo Check signature with: !SIGCHECK_TOOL! !SIGCHECK_OPTIONS! ...                                                    >> %REPORT_LOGFILE% 2>&1
-		!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "!ProgramFiles_x86!\Siemens\LMS\bin\LmuTool.exe"                                 >> %REPORT_LOGFILE% 2>&1
-		!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "!ProgramFiles_x86!\Siemens\LMS\bin\LicEnf.dll"                                  >> %REPORT_LOGFILE% 2>&1
-		!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "!ProgramFiles_x86!\Siemens\LMS\bin\Siemens.Gms.ApplicationFramework.exe"        >> %REPORT_LOGFILE% 2>&1
+		!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "!ProgramFiles_x86!\Siemens\LMS\bin\LmuTool.exe"                                  >> %REPORT_LOGFILE% 2>&1
+		!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "!ProgramFiles_x86!\Siemens\LMS\bin\LicEnf.dll"                                   >> %REPORT_LOGFILE% 2>&1
+		!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "!ProgramFiles_x86!\Siemens\LMS\bin\Siemens.Gms.ApplicationFramework.exe"         >> %REPORT_LOGFILE% 2>&1
 	) else (
 		echo     No LMS binary 32-bit folder found.                                                                          >> %REPORT_LOGFILE% 2>&1
 	)
@@ -3577,14 +3626,14 @@ set lms_ps_replace=">`r`n<"
 set lms_ps_textFileIn=!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml
 set lms_ps_textFileOut=!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml
 SET lms_ps_script1=!CHECKLMS_REPORT_LOG_PATH!\tmpStrRplc1.ps1
-ECHO (Get-Content "%lms_ps_textFileIn%").replace(%lms_ps_search%, %lms_ps_replace%) ^| Set-Content "%lms_ps_textFileOut%">"%lms_ps_script1%"
+ECHO (Get-Content "!lms_ps_textFileIn!").replace(!lms_ps_search!, !lms_ps_replace!) ^| Set-Content "!lms_ps_textFileOut!">"!lms_ps_script1!"
 rem create powershell script to remove tabs "`t"
 set lms_ps_search="`t"
 set lms_ps_replace=""
 set lms_ps_textFileIn=!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml
 set lms_ps_textFileOut=!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml
 SET lms_ps_script2=!CHECKLMS_REPORT_LOG_PATH!\tmpStrRplc2.ps1
-ECHO (Get-Content "%lms_ps_textFileIn%").replace(%lms_ps_search%, %lms_ps_replace%) ^| Set-Content "%lms_ps_textFileOut%">"%lms_ps_script2%"
+ECHO (Get-Content "!lms_ps_textFileIn!").replace(!lms_ps_search!, !lms_ps_replace!) ^| Set-Content "!lms_ps_textFileOut!">"!lms_ps_script2!"
 
 echo Start at !DATE! !TIME! ....                                                                                             >> %REPORT_LOGFILE% 2>&1
 echo ... retrieve Flexera (FNP) Information ...
@@ -3593,60 +3642,60 @@ if not defined LMS_SKIPFNP (
 		echo wmic datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService64.exe" get Manufacturer,Name,Version  /format:list       >> %REPORT_LOGFILE% 2>&1
 		wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService64.exe" get Manufacturer,Name,Version  /format:list
 		type %REPORT_WMIC_LOGFILE% >> %REPORT_LOGFILE% 2>&1
-		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
 	)
 	IF EXIST "C:\\Program Files (x86)\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" (
 		echo wmic datafile where Name="C:\\Program Files (x86)\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list   >> %REPORT_LOGFILE% 2>&1
 		wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="C:\\Program Files (x86)\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list
 		type %REPORT_WMIC_LOGFILE% >> %REPORT_LOGFILE% 2>&1
-		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
 	)
 	IF EXIST "C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" (
 		echo wmic datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list       >> %REPORT_LOGFILE% 2>&1
 		wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list
 		type %REPORT_WMIC_LOGFILE% >> %REPORT_LOGFILE% 2>&1
-		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
 	)
 	IF EXIST "!ProgramFiles_x86!\Siemens\LMS\server" (
-		echo Content of folder: "!ProgramFiles_x86!\Siemens\LMS\server"                                                         >> %REPORT_LOGFILE% 2>&1
-		dir /S /A /X /4 /W "!ProgramFiles_x86!\Siemens\LMS\server"                                                              >> %REPORT_LOGFILE% 2>&1
-		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+		echo Content of folder: "!ProgramFiles_x86!\Siemens\LMS\server"                                                      >> %REPORT_LOGFILE% 2>&1
+		dir /S /A /X /4 /W "!ProgramFiles_x86!\Siemens\LMS\server"                                                           >> %REPORT_LOGFILE% 2>&1
+		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
 	)
 	IF EXIST "%ProgramFiles%\Siemens\LMS\server" (
-		echo Content of folder: "%ProgramFiles%\Siemens\LMS\server"                                                              >> %REPORT_LOGFILE% 2>&1
-		dir /S /A /X /4 /W "%ProgramFiles%\Siemens\LMS\server"                                                                   >> %REPORT_LOGFILE% 2>&1
-		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+		echo Content of folder: "%ProgramFiles%\Siemens\LMS\server"                                                          >> %REPORT_LOGFILE% 2>&1
+		dir /S /A /X /4 /W "%ProgramFiles%\Siemens\LMS\server"                                                               >> %REPORT_LOGFILE% 2>&1
+		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
 	)
-	echo servercomptranutil.exe -version                                                                                         >> %REPORT_LOGFILE% 2>&1
+	echo servercomptranutil.exe -version                                                                                     >> %REPORT_LOGFILE% 2>&1
 	if defined LMS_SERVERCOMTRANUTIL (
 		if "!FNPVersion!" == "11.14.0.0" (
-			echo     servercomptranutil.exe -version is not available for FNP=!FNPVersion!, cannot perform operation.            >> %REPORT_LOGFILE% 2>&1
+			echo     servercomptranutil.exe -version is not available for FNP=!FNPVersion!, cannot perform operation.        >> %REPORT_LOGFILE% 2>&1
 		) else (
-			"%LMS_SERVERCOMTRANUTIL%" -version                                                                                   >> %REPORT_LOGFILE% 2>&1
+			"%LMS_SERVERCOMTRANUTIL%" -version                                                                               >> %REPORT_LOGFILE% 2>&1
 		)
 	) else (
-		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> %REPORT_LOGFILE% 2>&1
+		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                             >> %REPORT_LOGFILE% 2>&1
 	)
-	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-	echo tsactdiags_SIEMBT_svr.exe --version                                                                                     >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+	echo tsactdiags_SIEMBT_svr.exe --version                                                                                 >> %REPORT_LOGFILE% 2>&1
 	if defined LMS_TSACTDIAGSSVR (
-		"%LMS_TSACTDIAGSSVR%" --version                                                                                          >> %REPORT_LOGFILE% 2>&1
+		"%LMS_TSACTDIAGSSVR%" --version                                                                                      >> %REPORT_LOGFILE% 2>&1
 	) else (
-		echo     tsactdiags_SIEMBT_svr.exe doesn't exist, cannot perform operation.                                              >> %REPORT_LOGFILE% 2>&1
+		echo     tsactdiags_SIEMBT_svr.exe doesn't exist, cannot perform operation.                                          >> %REPORT_LOGFILE% 2>&1
 	)
-	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-	echo lmver.exe -fnls                                                                                                         >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+	echo lmver.exe -fnls                                                                                                     >> %REPORT_LOGFILE% 2>&1
 	if defined LMS_LMVER (
-		"%LMS_LMVER%" -fnls                                                                                                      >> %REPORT_LOGFILE% 2>&1
+		"%LMS_LMVER%" -fnls                                                                                                  >> %REPORT_LOGFILE% 2>&1
 	) else (
-		echo     lmver.exe doesn't exist, cannot perform operation.                                                              >> %REPORT_LOGFILE% 2>&1
+		echo     lmver.exe doesn't exist, cannot perform operation.                                                          >> %REPORT_LOGFILE% 2>&1
 	)
-	echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
-	echo lmutil.exe lmpath -status                                                                                               >> %REPORT_LOGFILE% 2>&1
+	echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+	echo lmutil.exe lmpath -status                                                                                           >> %REPORT_LOGFILE% 2>&1
 	if defined LMS_LMUTIL (
-		"%LMS_LMUTIL%" lmpath -status                                                                                            >> %REPORT_LOGFILE% 2>&1
+		"%LMS_LMUTIL%" lmpath -status                                                                                        >> %REPORT_LOGFILE% 2>&1
 	) else (
-		echo     lmutil.exe doesn't exist, cannot perform operation.                                                             >> %REPORT_LOGFILE% 2>&1
+		echo     lmutil.exe doesn't exist, cannot perform operation.                                                         >> %REPORT_LOGFILE% 2>&1
 	)
 )
 rem Run *always* even if LMS_SKIPFNP is set
@@ -3657,10 +3706,13 @@ echo     Create offline activation request file ...
 if defined LMS_SERVERCOMTRANUTIL (
 	"%LMS_SERVERCOMTRANUTIL%" -n "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml" ref=CheckLMS_CreateOffActRequestFile -activate fake_id                   >> %REPORT_LOGFILE% 2>&1
 
-	Powershell -ExecutionPolicy Bypass -Command "& '%lms_ps_script1%'"
-	Powershell -ExecutionPolicy Bypass -Command "& '%lms_ps_script2%'"
+	echo Execute '!lms_ps_script1!' ...                                                                                                                         >> %REPORT_LOGFILE% 2>&1
+	Powershell -ExecutionPolicy Bypass -Command "& '!lms_ps_script1!'"
+	echo Execute '!lms_ps_script2!' ...                                                                                                                         >> %REPORT_LOGFILE% 2>&1
+	Powershell -ExecutionPolicy Bypass -Command "& '!lms_ps_script2!'"
 	
 	rem read machine identifiers from offline request file
+	echo Read machine identifiers from offline request file ...                                                                                                 >> %REPORT_LOGFILE% 2>&1
 	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml ^|find /I "<PublisherId>"') do set "LMS_TS_PUBLISHER=%%i"
 	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml ^|find /I "<ClientVersion>"') do set "LMS_TS_CLIENT_VERSION=%%i"
 	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml" for /f "tokens=2 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml ^|find /I "<Revision>"') do set "LMS_TS_REVISION=%%i"
@@ -4178,34 +4230,34 @@ if exist "!REPORT_LOG_PATH!\VMECMID_Latest.txt" (
 )
 
 echo ... read host id's [using ecmcommonutil.exe] ...
-IF EXIST "%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" (
+IF EXIST "!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe" (
 	rem log regular (non debug) output in general logfile
 	echo Read host id: device [using ecmcommonutil.exe -l -f -d device]:                                                     >> %REPORT_LOGFILE% 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f device                                                                     >> %REPORT_LOGFILE% 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe" -l -f device                                                                     >> %REPORT_LOGFILE% 2>&1
 	echo Read host id: net [using ecmcommonutil.exe -l -f -d net]:                                                           >> %REPORT_LOGFILE% 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f net                                                                        >> %REPORT_LOGFILE% 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe" -l -f net                                                                        >> %REPORT_LOGFILE% 2>&1
 	echo Read host id: smbios [using ecmcommonutil.exe -l -f -d smbios]:                                                     >> %REPORT_LOGFILE% 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f smbios                                                                     >> %REPORT_LOGFILE% 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe" -l -f smbios                                                                     >> %REPORT_LOGFILE% 2>&1
 	echo Read host id: vm [using ecmcommonutil.exe -l -f -d vm]:                                                             >> %REPORT_LOGFILE% 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f vm                                                                         >> %REPORT_LOGFILE% 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe" -l -f vm                                                                         >> %REPORT_LOGFILE% 2>&1
 
 	rem log debug output in a separate file
 	echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_device.txt 2>&1
 	echo Read host id: device [using ecmcommonutil.exe -l -f -d device] at !DATE! !TIME! ....        >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_device.txt 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d device                                          >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_device.txt 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d device                                          >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_device_Latest.txt 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe" -l -f -d device                                          >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_device.txt 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe" -l -f -d device                                          >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_device_Latest.txt 2>&1
 	echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_net.txt 2>&1
 	echo Read host id: net [using ecmcommonutil.exe -l -f -d net] at !DATE! !TIME! ....              >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_net.txt 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d net                                             >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_net.txt 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d net                                             >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_net_Latest.txt 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe" -l -f -d net                                             >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_net.txt 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe" -l -f -d net                                             >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_net_Latest.txt 2>&1
 	echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_smbios.txt 2>&1
 	echo Read host id: smbios [using ecmcommonutil.exe -l -f -d smbios] at !DATE! !TIME! ....        >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_smbios.txt 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d smbios                                          >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_smbios.txt 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d smbios                                          >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_smbios_Latest.txt 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe" -l -f -d smbios                                          >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_smbios.txt 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe" -l -f -d smbios                                          >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_smbios_Latest.txt 2>&1
 	echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm.txt 2>&1
 	echo Read host id: vm [using ecmcommonutil.exe -l -f -d vm] at !DATE! !TIME! ....                >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm.txt 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d vm                                              >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm.txt 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" -l -f -d vm                                              >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe" -l -f -d vm                                              >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm.txt 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe" -l -f -d vm                                              >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt 2>&1
 	
 	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_smbios_Latest.txt" for /f "tokens=1,2 eol=@ delims==" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_smbios_Latest.txt ^|find /I "Smbios UUID"') do set "ECM_SMBIOS_UUID=%%B"
 	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_vm_Latest.txt ^|findstr /I /B "FAMILY"') do if not "%%B" == " ERROR - Unavailable." set "ECM_VM_FAMILY=%%B"
@@ -4225,32 +4277,32 @@ IF EXIST "%DOWNLOAD_LMS_PATH%\ecmcommonutil.exe" (
 )
 echo -------------------------------------------------------                                                                 >> %REPORT_LOGFILE% 2>&1
 echo ... read host id's [using ecmcommonutil_1.19.exe] ...
-IF EXIST "%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" (
+IF EXIST "!LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe" (
 	rem log regular (non debug) output in general logfile
 	echo Read host id: device [using ecmcommonutil_1.19.exe -l -f -d device]:                                                >> %REPORT_LOGFILE% 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f device                                                                >> %REPORT_LOGFILE% 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe" -l -f device                                                                >> %REPORT_LOGFILE% 2>&1
 	echo Read host id: net [using ecmcommonutil_1.19.exe -l -f -d net]:                                                      >> %REPORT_LOGFILE% 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f net                                                                   >> %REPORT_LOGFILE% 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe" -l -f net                                                                   >> %REPORT_LOGFILE% 2>&1
 	echo Read host id: smbios [using ecmcommonutil_1.19.exe -l -f -d smbios]:                                                >> %REPORT_LOGFILE% 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f smbios                                                                >> %REPORT_LOGFILE% 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe" -l -f smbios                                                                >> %REPORT_LOGFILE% 2>&1
 	echo Read host id: vm [using ecmcommonutil_1.19.exe -l -f -d vm]:                                                        >> %REPORT_LOGFILE% 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f vm                                                                    >> %REPORT_LOGFILE% 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe" -l -f vm                                                                    >> %REPORT_LOGFILE% 2>&1
 
 	rem log debug output in a separate file
 	echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_device.txt 2>&1
 	echo Read host id: device [using ecmcommonutil_1.19.exe -l -f -d device] at !DATE! !TIME! ....   >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_device.txt 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d device                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_device.txt 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe" -l -f -d device                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_device.txt 2>&1
 	echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_net.txt 2>&1
 	echo Read host id: net [using ecmcommonutil_1.19.exe -l -f -d net] at !DATE! !TIME! ....         >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_net.txt 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d net                                        >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_net.txt 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe" -l -f -d net                                        >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_net.txt 2>&1
 	echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_smbios.txt 2>&1
 	echo Read host id: smbios [using ecmcommonutil_1.19.exe -l -f -d smbios] at !DATE! !TIME! ....   >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_smbios.txt 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d smbios                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_smbios.txt 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d smbios                                     >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_smbios_Latest.txt 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe" -l -f -d smbios                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_smbios.txt 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe" -l -f -d smbios                                     >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_smbios_Latest.txt 2>&1
 	echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm.txt 2>&1
 	echo Read host id: vm [using ecmcommonutil_1.19.exe -l -f -d vm] at !DATE! !TIME! ....           >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm.txt 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d vm                                         >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm.txt 2>&1
-	"%DOWNLOAD_LMS_PATH%\ecmcommonutil_1.19.exe" -l -f -d vm                                         >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm_Latest.txt 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe" -l -f -d vm                                         >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm.txt 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe" -l -f -d vm                                         >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm_Latest.txt 2>&1
 
 	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_smbios_Latest.txt" for /f "tokens=1,2 eol=@ delims==" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_smbios_Latest.txt ^|find /I "Smbios UUID"') do set "ECM_SMBIOS_UUID_2=%%B"
 	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_1.19_vm_Latest.txt ^|findstr /I /B "FAMILY"') do if not "%%B" == " ERROR - Unavailable." set "ECM_VM_FAMILY_2=%%B"
@@ -7168,13 +7220,13 @@ if not defined LMS_CHECK_ID (
 		)
 		echo ATTENTION: No Dongle Driver installed.                                                                          >> %REPORT_LOGFILE% 2>&1
 
-		if exist "%DOWNLOAD_LMS_PATH%\haspdinst.exe" (
-			set TARGETFILE=%DOWNLOAD_LMS_PATH%\haspdinst.exe
+		if exist "!LMS_DOWNLOAD_PATH!\haspdinst.exe" (
+			set TARGETFILE=!LMS_DOWNLOAD_PATH!\haspdinst.exe
 			set TARGETFILE=!TARGETFILE:\=\\!
 			wmic /output:%REPORT_WMIC_LOGFILE% datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
 			IF EXIST "%REPORT_WMIC_LOGFILE%" for /f "tokens=2 delims== eol=@" %%i in ('type %REPORT_WMIC_LOGFILE% ^|find /I "Version"') do set "haspdinstVersion=%%i"
-			echo     Dongle driver: %DOWNLOAD_LMS_PATH%\haspdinst.exe [!haspdinstVersion!] available!
-			echo Dongle driver: %DOWNLOAD_LMS_PATH%\haspdinst.exe [!haspdinstVersion!] available!                            >> %REPORT_LOGFILE% 2>&1
+			echo     Dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] available!
+			echo Dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] available!                            >> %REPORT_LOGFILE% 2>&1
 			if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
 				rem install dongle driver downloaded by this script
 				if defined SHOW_COLORED_OUTPUT (
@@ -7183,19 +7235,19 @@ if not defined LMS_CHECK_ID (
 					echo     --- Install newest dongle driver !haspdinstVersion! just downloaded by this script.
 				)
 				echo --- Install newest dongle driver !haspdinstVersion! just downloaded by this script.                     >> %REPORT_LOGFILE% 2>&1
-				start "Install dongle driver" "%DOWNLOAD_LMS_PATH%\haspdinst.exe" -install -killprocess
+				start "Install dongle driver" "!LMS_DOWNLOAD_PATH!\haspdinst.exe" -install -killprocess
 				echo --- Installation started in an own process/shell.                                                       >> %REPORT_LOGFILE% 2>&1
 			) else (
 				rem show message to install dongle driver downloaded by this script
 				if defined SHOW_COLORED_OUTPUT (
 					echo [1;31m    --- Install newest dongle driver !haspdinstVersion! just downloaded by this script. [1;37m
-					echo [1;31m    --- Execute '"%DOWNLOAD_LMS_PATH%\haspdinst.exe" -install -killprocess' with administrator priviledge. [1;37m
+					echo [1;31m    --- Execute '"!LMS_DOWNLOAD_PATH!\haspdinst.exe" -install -killprocess' with administrator priviledge. [1;37m
 				) else (
 					echo     --- Install newest dongle driver !haspdinstVersion! just downloaded by this script.
-					echo     --- Execute '"%DOWNLOAD_LMS_PATH%\haspdinst.exe" -install -killprocess' with administrator priviledge.
+					echo     --- Execute '"!LMS_DOWNLOAD_PATH!\haspdinst.exe" -install -killprocess' with administrator priviledge.
 				)
 				echo --- Install newest dongle driver !haspdinstVersion! just downloaded by this script.                     >> %REPORT_LOGFILE% 2>&1
-				echo --- Execute '"%DOWNLOAD_LMS_PATH%\haspdinst.exe" -install -killprocess' with administrator priviledge.  >> %REPORT_LOGFILE% 2>&1
+				echo --- Execute '"!LMS_DOWNLOAD_PATH!\haspdinst.exe" -install -killprocess' with administrator priviledge.  >> %REPORT_LOGFILE% 2>&1
 			)
 		)
 	)

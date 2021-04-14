@@ -463,7 +463,7 @@ rem        - Copy also crash dumps of SSU Manager
 rem        - search for dongle drivers downloaded by ATOS on C:\ccmcache\
 rem        - set MOST_RECENT_BT_ALM_PLUGIN to 1.1.42.0
 rem        - Upload CheckLMS.bat to https://wiki.siemens.com/display/en/LMS%3A+How+to+check+LMS+installation
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem     20-Nov-2019:
 rem        - Adapt output of number of installed Siemens software.
 rem     21-Nov-2019:
@@ -480,11 +480,11 @@ rem        - add output of several whoami commands: whoami /user  &  whoami /gro
 rem     09-Dec-2019:
 rem        - Add Windows Event Log: Application ('Automation License Manager API') (was part in the past, but seems to be lost)
 rem        - Upload CheckLMS.bat to https://wiki.siemens.com/display/en/LMS%3A+How+to+check+LMS+installation
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem     11-Dec-2019:
 rem        - Check for debug.log in SSU binary folder; if available, type its content
 rem        - Copy debug.log file to %REPORT_LOG_PATH%\ssu_debug.log
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem     12-Dec-2019:
 rem        - Show "creation date" and "last write date" for debug.log
 rem        - set MOST_RECENT_LMS_BUILD=745
@@ -495,7 +495,7 @@ rem        - extract ERROR messages from SIEMBT.log
 rem        - Move SIEMBT.log to FNP information section
 rem     18-Dec-2019:
 rem        - Upload CheckLMS.bat to https://wiki.siemens.com/display/en/LMS%3A+How+to+check+LMS+installation
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem        **** "CheckLMS Script 18-Dec-2019" integrated into LMS 2.3.745 ****
 rem 
 rem     15-Jan-2020:
@@ -510,7 +510,7 @@ rem        - Add a check (and print a note) if default access token is used or n
 rem        - Add a check (and print a note) if installed product name is used or not.
 rem     17-Jan-2020:
 rem        - FIX wrong comparison of dongle driver version (e.g. 7.92 is considered as newer than 7.102)
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem     27-Jan-2020:
 rem        - Check if FIPS mode is enabled or not (see https://bt-clmserver01.hqs.sbt.siemens.com/ccm/resource/itemName/com.ibm.team.workitem.WorkItem/960858)
 rem        - Print content of TEMP environment vriable (see https://bt-clmserver01.hqs.sbt.siemens.com/ccm/resource/itemName/com.ibm.team.workitem.WorkItem/960557)
@@ -528,21 +528,21 @@ rem        - search for LMS setup downloaded by ATOS on C:\ccmcache\
 rem        - introduce CHECKLMS_ALM_PATH to store files from ALM
 rem     31-Jan-2020:
 rem        - Adjust that script runs also on systems w/o installed LMS
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem     06-Feb-2020:
 rem        - print-out the path for "where" and "find"; just for the case of path variable has been mixed-up (e.g. by cygwin installation)
 rem     13-Feb-2020:
 rem        - check if Siveillance Identity (SiID) is installed on the system
 rem        - run "%programfiles%\Siemens\SiId\Siemens.SiId.Diagnostics.exe" and trace output in logfile
 rem        - show content of "%programdata%\Siemens\SiId\Log\"
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem        - Upload CheckLMS.bat to https://wiki.siemens.com/display/en/LMS%3A+How+to+check+LMS+installation
 rem     24-Feb-2020:
 rem        - Support new FNP Version: 11.16.6.0, see https://bt-clmserver01.hqs.sbt.siemens.com/ccm/resource/itemName/com.ibm.team.workitem.WorkItem/957192
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem     25-Feb-2020:
 rem        - Call new LmuTool command: "LmuTool /cleants", see https://bt-clmserver01.hqs.sbt.siemens.com/ccm/resource/itemName/com.ibm.team.workitem.WorkItem/969905
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem     26-Feb-2020:
 rem        - adjust ouptut text of VM GENID app
 rem        - check registration of BT ALM plugin, and - if not registered - register them.
@@ -550,7 +550,7 @@ rem          NOTE: The script must run in administrator mode, to register the BT
 rem     28-Feb-2020:
 rem        - disable /cleants option (see "25-Feb-2020")
 rem        - Make script runable on "none" valid LMS systems
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem     02-Mar-2020:
 rem        - check for existence of scheduled tasks
 rem        - redirect output for errors (add  2>&1)
@@ -560,7 +560,7 @@ rem     19-Mar-2020:
 rem        - Add connection test for FNO server (https://lms.bt.siemens.com/flexnet/services/ActivationService , https://194.138.12.72/flexnet/services/ActivationService , https://158.226.135.60/flexnet/services/ActivationService )
 rem     24-Mar-2020:
 rem        - add "netsh firewall show state"
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem        - Upload CheckLMS.bat to https://wiki.siemens.com/display/en/LMS%3A+How+to+check+LMS+installation
 rem        - Requested to integrate into LMS 2.4.803 build (Sprint 2)
 rem     25-Mar-2020:
@@ -574,7 +574,7 @@ rem        - prepare for publishing newest script in LMS 2.4
 rem        - add parameter "nowait" with same function as "nouserinput"
 rem        - print-out %PROCESSOR_ARCHITECTURE% (near the machine name)
 rem        - add command line option: logfilename
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem        - Upload CheckLMS.bat to https://wiki.siemens.com/display/en/LMS%3A+How+to+check+LMS+installation
 rem        - Requested to integrate into LMS 2.4.804 build (Sprint 3)
 rem     08-Apr-2020:
@@ -586,7 +586,7 @@ rem     17-Apr-2020:
 rem        - add balloon tips when script starts and ends (as preparation for "window-less" execution), see https://stackoverflow.com/questions/50927132/show-balloon-notifications-from-batch-file
 rem     20-Apr-2020:
 rem        - set most recent dongle driver to 7.103 (for LMS 2.4)
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem        - Upload CheckLMS.bat to https://wiki.siemens.com/display/en/LMS%3A+How+to+check+LMS+installation
 rem        - Requested to integrate into LMS 2.4.805 build (Sprint 4)
 rem     21-Apr-2020:
@@ -620,12 +620,12 @@ rem        - rename "servercomptranutil_listRequests_XML.txt" to "servercomptran
 rem        - extract break information (StorageBreakInfo) from servercomptranutil_listRequests.xml and fake_id_request_file.xml 
 rem        - introduce /skipcontest option, to skip connection test(s)
 rem     19-May-2020:
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem        - Upload CheckLMS.bat to https://wiki.siemens.com/display/en/LMS%3A+How+to+check+LMS+installation
 rem        - Requested to integrate into LMS 2.4.808 build (Sprint 6)
 rem     20-May-2020:
 rem        - fix bug in connection test section
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem        - Upload CheckLMS.bat to https://wiki.siemens.com/display/en/LMS%3A+How+to+check+LMS+installation
 rem        - Requested to integrate into LMS 2.4.808 build (Sprint 6)
 rem     04-Jun-2020:
@@ -641,10 +641,10 @@ rem        - fix issue with SiPass registry key, which contains space (see https
 rem     15-Jun-2020:
 rem        - fix issue with SiPass logfiles, copy all rolling files (SiServer-log-file.txt, SiServer-log-file.txt.1, SiServer-log-file.txt.2, ....)
 rem        - add "goto" command line option to simplify testing of the script.
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem     16-Jun-2020:
 rem        - support ABT tool
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem        - Upload CheckLMS.bat to https://wiki.siemens.com/display/en/LMS%3A+How+to+check+LMS+installation
 rem        - Requested to integrate into LMS 2.4.810 build (Sprint 8)
 rem     17-Jun-2020:
@@ -656,13 +656,13 @@ rem        - extend version check for .NET framework, consdier "On Windows 10 Ma
 rem        - donwload newest dongle driver installer from download Link: https://static.siemens.com/btdownloads/lms/hasp/<version>/haspdinst.exe
 rem     14-Jul-2020:
 rem        - read-out registry property SkipALMBtPluginInstallation under key HKEY_LOCAL_MACHINE\SOFTWARE\Siemens\LMS 
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem        - Upload CheckLMS.bat to https://wiki.siemens.com/display/en/LMS%3A+How+to+check+LMS+installation
 rem     22-Jul-2020:
 rem        - Install dongle driver in case driver is not installed on the system.
 rem     23-Jul-2020:
 rem        - Check if DMA is installed on the machine, retreive some basic information about DMA
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem        - Upload CheckLMS.bat to https://wiki.siemens.com/display/en/LMS%3A+How+to+check+LMS+installation
 rem        - Requested to integrate into LMS 2.4.813 build (Sprint 10)
 rem     24-Jul-2020:
@@ -677,25 +677,25 @@ rem        - use "start" command to launch "Main.exe"
 rem        - start "Main.exe" (for DMA) in non-blocking state at script start, this allows them to create the debug output, which is processed at script end.
 rem     29-Jul-2020:
 rem        - start dongle driver installation in an own process/shell, to avoid that checklms script is blocked.
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem     30-Jul-2020:
 rem        - get file details for C:\MainMenuUnitTest.txt
 rem        - copy C:\MainMenuUnitTest.txt to DMA log-folder
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem     31-Jul-2020:
 rem        - Finalize DMA; do no longer start Main.exe; instead write a (blue) message that end customer shall start main.exe manually and provide C:\MainMenuUnitTest.txt
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem        - Upload CheckLMS.bat to https://wiki.siemens.com/display/en/LMS%3A+How+to+check+LMS+installation
 rem     03-Aug-2020:
 rem        - Add "dotnet --info" to system information section
 rem     04-Aug-2020:
 rem        - Add enhanced connection test using known activation id
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem        - Upload CheckLMS.bat to https://wiki.siemens.com/display/en/LMS%3A+How+to+check+LMS+installation
 rem        - Requested to integrate into LMS 2.4.814 build (Sprint 11)
 rem     11-Aug-2020 (was released as version "Script 04-Aug-2020":
 rem        - Adjust LMS version check, consider LMS 2.4 (2.4.815)
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem        - Upload CheckLMS.bat to https://wiki.siemens.com/display/en/LMS%3A+How+to+check+LMS+installation
 rem        - Requested to integrate into LMS 2.4.815 build
 rem        **** "CheckLMS Script 04-Aug-2020" integrated into LMS 2.4.815 ****
@@ -709,7 +709,7 @@ rem        - start ssumanager (if available)
 rem     31-Aug-2020:
 rem        - check for consitency of SSU installation; are the files "icudtl.dat" and "v8_context_snapshot.bin" available? If NOT, write warning message
 rem        - Retrieve time zone information (using 'powershell /command "Get-TimeZone"')
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem     02-Sep-2020:
 rem        - support and check for sentron powermanager installed on the system
 rem        - retrieve and show registry key: HKLM:\SOFTWARE\Siemens\Siemens_GMS
@@ -748,12 +748,12 @@ rem        - create separate ouptut file 'WMIC_Installed_SW_Report.log'
 rem        - read-out registry key "HKLM\SOFTWARE\LicenseManagementSystem\IsInstalled" (is set to "1" if LMS has been installed by ATOS) (2nd package of lMS 2.4.815)
 rem        - Requested to integrate into LMS 2.5.818 build
 rem     07-Oct-2020:
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem        - Upload CheckLMS.bat to https://wiki.siemens.com/display/en/LMS%3A+How+to+check+LMS+installation
 rem     08-Oct-2020:
 rem        - adjust ouptut of "enhanced connection test", redirect error output to logfile (2>&1)
 rem        - provide input "y" to command "servercomptranutil.exe -t %LMS_FNO_SERVER% -stored request=all"
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem        - Upload CheckLMS.bat to https://wiki.siemens.com/display/en/LMS%3A+How+to+check+LMS+installation
 rem        - Requested to integrate into LMS 2.5.819 build (Sprint 17)
 rem     20-Oct-2020:
@@ -785,7 +785,7 @@ rem        - store 'netsh wlan show all' result in %CHECKLMS_REPORT_LOG_PATH%\ne
 rem        - store the different results of netstat commands on separate log files, do not include them any longer in common log-file.
 rem        - limit output of SSU crash file ('debug.log')
 rem     03-Nov-2020:
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem        - Requested to integrate into LMS 2.5.820 build (Sprint 18)
 rem     06-Nov-2020:
 rem        - Fixed typos in script: Retrieving Instead of Retrieveing; doesn't Instead of does't ((credit to Konrad)
@@ -795,7 +795,7 @@ rem        - Execute in script the commands: ecmcommonutil.exe -l -f -d device; 
 rem        - add powershell -c Get-WmiObject -class Win32_BIOS
 rem        - consider "lmver.exe" from FNP toolkit
 rem     10-Nov-2020:
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem     13-Nov-2020:
 rem        - Support "SiemensFNP-11.17.2.0-Binaries", as new FNP library for LMS 2.5
 rem        - switch for FNP libraries from (self-extracting) EXE to ZIP; this allows to use "-spe" option, which "eliminate duplication of root folder for extract command"
@@ -806,12 +806,12 @@ rem     17-Nov-2020:
 rem        - Retrieve powershell version [using 'powershell -command "Get-Host"']
 rem        - Retrieve powershell execution policy [using 'Get-ExecutionPolicy']
 rem        - change powershell execution from "/command" to "-command"
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem        - Requested to integrate into LMS 2.5.821 build (Sprint 19)
 rem     25-Nov-2020:
 rem        - adjust command window output at end during copying ZIP archive to internal share
 rem        - Requested to integrate into LMS 2.5.822 build (Sprint 20)
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem     02-Dec-2020:
 rem        - Add some addtional command window output at start of script execution.
 rem     03-Dec-2020:
@@ -824,6 +824,6 @@ rem        - Adjust LMS version check, consider LMS 2.5 (2.5.823)
 rem        - set MOST_RECENT_LMS_BUILD=823
 rem        - Check: not 2.4.815 AND not 2.3.745 AND less or equal than 2.3.744  --> DEPRECATED (per Oct-2020)
 rem     16-Dec-2020:
-rem        - Upload CheckLMS.exe on \\dekher90mttsto.ad001.siemens.net\webservices-p$\STATIC\12657\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem        - Requested to integrate into LMS 2.5.823 build (Sprint 21)
 ```
