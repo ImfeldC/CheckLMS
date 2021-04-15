@@ -186,6 +186,8 @@ rem     12-Apr-2021:
 rem        - check errorcode afetr download checklms from github, show approbiate message instead of real error code.
 rem        - remove name of internal share name
 rem        - added additional output to analyze issue during creation of offline activation request file
+rem     14-Apr-2021:
+rem        - retrieve content of %ProgramFiles%\Siemens\SSU\bin\
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -215,8 +217,8 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 12-Apr-2021"
-set LMS_SCRIPT_BUILD=20210412
+set LMS_SCRIPT_VERSION="CheckLMS Script 14-Apr-2021"
+set LMS_SCRIPT_BUILD=20210414
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -1212,12 +1214,12 @@ if not defined LMS_SKIPDOWNLOAD (
 			 		rem CheckLMS.exe has been downloaded from akamai share
 			 		del !LMS_DOWNLOAD_PATH!\CheckLMS.bat >nul 2>&1
 			 		echo     Extract LMS check script: !LMS_DOWNLOAD_PATH!\CheckLMS.exe
-			 		echo Extract LMS check script: !LMS_DOWNLOAD_PATH!\CheckLMS.exe                                                                                                            >> %REPORT_LOGFILE% 2>&1
+			 		echo     Extract LMS check script: !LMS_DOWNLOAD_PATH!\CheckLMS.exe                                                                                                        >> %REPORT_LOGFILE% 2>&1
 			 		!LMS_DOWNLOAD_PATH!\CheckLMS.exe -y -o"!LMS_DOWNLOAD_PATH!\"                                                                                                               >> %REPORT_LOGFILE% 2>&1
 			 		IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS.bat" (
 			 			for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_EXE set LMS_SCRIPT_BUILD_DOWNLOAD_EXE=%%i
 			 			echo     Check script downloaded from akamai share. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_EXE!, Running script version: !LMS_SCRIPT_BUILD!.
-			 			echo Check script downloaded from akamai share. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_EXE!, Running script version: !LMS_SCRIPT_BUILD!.                  >> %REPORT_LOGFILE% 2>&1
+			 			echo     Check script downloaded from akamai share. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_EXE!, Running script version: !LMS_SCRIPT_BUILD!.              >> %REPORT_LOGFILE% 2>&1
 			 		)
 			 	)
 			) else (
@@ -1240,7 +1242,7 @@ if not defined LMS_SKIPDOWNLOAD (
 					rem CheckLMS.bat has been downloaded from github
 					for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\git\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_GIT set LMS_SCRIPT_BUILD_DOWNLOAD_GIT=%%i
 					echo     Check script downloaded from github. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_GIT!, Running script version: !LMS_SCRIPT_BUILD!.
-					echo Check script downloaded from github. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_GIT!, Running script version: !LMS_SCRIPT_BUILD!.                             >> %REPORT_LOGFILE% 2>&1
+					echo     Check script downloaded from github. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_GIT!, Running script version: !LMS_SCRIPT_BUILD!.                         >> %REPORT_LOGFILE% 2>&1
 				)			
 			) else (
 				echo Skip download from github,  because option 'donotstartnewerscript' is set. '%0'                                                                                            >> %REPORT_LOGFILE% 2>&1
@@ -5566,6 +5568,10 @@ if not defined LMS_SKIPSSU (
 			echo SSU - Start SSU Manager ....                                                                                    >> %REPORT_LOGFILE% 2>&1
 			start "Start SSU Manager" "%ProgramFiles%\Siemens\SSU\bin\SSUManager.exe"
 		)
+		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
+		echo Content of folder: %ProgramFiles%\Siemens\SSU\bin\                                                                  >> %REPORT_LOGFILE% 2>&1
+		dir /S /A /X /4 /W "%ProgramFiles%\Siemens\SSU\bin\" > !CHECKLMS_SSU_PATH!\ssu_binfolder.log
+		echo     see !CHECKLMS_SSU_PATH!\ssu_binfolder.log                                                                       >> %REPORT_LOGFILE% 2>&1
 		echo -------------------------------------------------------                                                             >> %REPORT_LOGFILE% 2>&1
 		set LMS_SSU_CONSISTENCY_CHECK=0
 		IF NOT EXIST "%ProgramFiles%\Siemens\SSU\bin\icudtl.dat" (
