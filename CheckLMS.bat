@@ -188,6 +188,10 @@ rem        - remove name of internal share name
 rem        - added additional output to analyze issue during creation of offline activation request file
 rem     14-Apr-2021:
 rem        - retrieve content of %ProgramFiles%\Siemens\SSU\bin\
+rem     15-Apr-2021:
+rem        - add 'Start-Date' of SIEMBT.log to log-files
+rem     16-Apr-2021:
+rem        - add 'Start-Date' of demo VD to log-files
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -217,8 +221,8 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 14-Apr-2021"
-set LMS_SCRIPT_BUILD=20210414
+set LMS_SCRIPT_VERSION="CheckLMS Script 16-Apr-2021"
+set LMS_SCRIPT_BUILD=20210416
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -4657,9 +4661,10 @@ IF EXIST "!REPORT_LOG_PATH!\SIEMBT.log" (
 		for /f "tokens=3* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\SIEMBT.log ^|find /I "Host used in license file"') do for /f "tokens=5* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HOSTNAME=%%B
 		for /f "tokens=3* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\SIEMBT.log ^|find /I "Running on Hypervisor"') do for /f "tokens=3* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HYPERVISOR=%%B
 		for /f "tokens=3* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\SIEMBT.log ^|find /I "HostID of the License Server"') do for /f "tokens=5* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HOSTIDS=%%B
-		echo LMS_SIEMBT_HOSTNAME=!LMS_SIEMBT_HOSTNAME! / LMS_SIEMBT_HYPERVISOR=!LMS_SIEMBT_HYPERVISOR! / LMS_SIEMBT_HOSTIDS=!LMS_SIEMBT_HOSTIDS!  >> %REPORT_LOGFILE% 2>&1
-		echo LMS_SIEMBT_HOSTNAME=!LMS_SIEMBT_HOSTNAME! / LMS_SIEMBT_HYPERVISOR=!LMS_SIEMBT_HYPERVISOR! / LMS_SIEMBT_HOSTIDS=!LMS_SIEMBT_HOSTIDS! at !DATE! / !TIME! / retrieved from SIEMBT.log file >> !REPORT_LOG_PATH!\SIEMBTID.txt 2>&1
-		echo LMS_SIEMBT_HOSTNAME=!LMS_SIEMBT_HOSTNAME! / LMS_SIEMBT_HYPERVISOR=!LMS_SIEMBT_HYPERVISOR! / LMS_SIEMBT_HOSTIDS=!LMS_SIEMBT_HOSTIDS! at !DATE! / !TIME! / retrieved from SIEMBT.log file >  !REPORT_LOG_PATH!\SIEMBTID_Latest.txt 2>&1
+		for /f "tokens=3* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\SIEMBT.log ^|find /I "Start-Date"') do for /f "tokens=1* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_STARTTIME=%%B
+		echo LMS_SIEMBT_HOSTNAME=!LMS_SIEMBT_HOSTNAME! / LMS_SIEMBT_HYPERVISOR=!LMS_SIEMBT_HYPERVISOR! / LMS_SIEMBT_HOSTIDS=!LMS_SIEMBT_HOSTIDS! / LMS_SIEMBT_STARTTIME='!LMS_SIEMBT_STARTTIME!' >> %REPORT_LOGFILE% 2>&1
+		echo LMS_SIEMBT_HOSTNAME=!LMS_SIEMBT_HOSTNAME! / LMS_SIEMBT_HYPERVISOR=!LMS_SIEMBT_HYPERVISOR! / LMS_SIEMBT_HOSTIDS=!LMS_SIEMBT_HOSTIDS! / LMS_SIEMBT_STARTTIME='!LMS_SIEMBT_STARTTIME!'  at !DATE! / !TIME! / retrieved from SIEMBT.log file >> !REPORT_LOG_PATH!\SIEMBTID.txt 2>&1
+		echo LMS_SIEMBT_HOSTNAME=!LMS_SIEMBT_HOSTNAME! / LMS_SIEMBT_HYPERVISOR=!LMS_SIEMBT_HYPERVISOR! / LMS_SIEMBT_HOSTIDS=!LMS_SIEMBT_HOSTIDS! / LMS_SIEMBT_STARTTIME='!LMS_SIEMBT_STARTTIME!'  at !DATE! / !TIME! / retrieved from SIEMBT.log file >  !REPORT_LOG_PATH!\SIEMBTID_Latest.txt 2>&1
 
 		echo -- extract ERROR messages from SIEMBT.log [start] --                                                            >> %REPORT_LOGFILE% 2>&1
 		Type "!REPORT_LOG_PATH!\SIEMBT.log" | findstr "ERROR:"                                                               >> %REPORT_LOGFILE% 2>&1
@@ -4722,7 +4727,8 @@ IF EXIST "!REPORT_LOG_PATH!\demo_debuglog.txt" (
 		for /f "tokens=3* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\demo_debuglog.txt ^|find /I "Host used in license file"') do for /f "tokens=5* eol=@ delims=: " %%A in ("%%B") do set LMS_DEMOVD_HOSTNAME=%%B
 		for /f "tokens=3* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\demo_debuglog.txt ^|find /I "Running on Hypervisor"') do for /f "tokens=3* eol=@ delims=: " %%A in ("%%B") do set LMS_DEMOVD_HYPERVISOR=%%B
 		for /f "tokens=3* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\demo_debuglog.txt ^|find /I "HostID of the License Server"') do for /f "tokens=5* eol=@ delims=: " %%A in ("%%B") do set LMS_DEMOVD_HOSTIDS=%%B
-		echo LMS_DEMOVD_HOSTNAME=!LMS_DEMOVD_HOSTNAME! / LMS_DEMOVD_HYPERVISOR=!LMS_DEMOVD_HYPERVISOR! / LMS_DEMOVD_HOSTIDS=!LMS_DEMOVD_HOSTIDS!  >> %REPORT_LOGFILE% 2>&1
+		for /f "tokens=3* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\demo_debuglog.txt ^|find /I "Start-Date"') do for /f "tokens=1* eol=@ delims=: " %%A in ("%%B") do set LMS_DEMOVD_STARTTIME=%%B
+		echo LMS_DEMOVD_HOSTNAME=!LMS_DEMOVD_HOSTNAME! / LMS_DEMOVD_HYPERVISOR=!LMS_DEMOVD_HYPERVISOR! / LMS_DEMOVD_HOSTIDS=!LMS_DEMOVD_HOSTIDS! / LMS_DEMOVD_STARTTIME='!LMS_DEMOVD_STARTTIME!'    >> %REPORT_LOGFILE% 2>&1
 
 		echo -- extract ERROR messages from demo_debuglog.txt [start] --                                                     >> %REPORT_LOGFILE% 2>&1
 		Type "!REPORT_LOG_PATH!\demo_debuglog.txt" | findstr "ERROR:"                                                        >> %REPORT_LOGFILE% 2>&1
