@@ -192,6 +192,8 @@ rem     15-Apr-2021:
 rem        - add 'Start-Date' of SIEMBT.log to log-files
 rem     16-Apr-2021:
 rem        - add 'Start-Date' of demo VD to log-files
+rem     20-Apr-2021:
+rem        - set 2.6.830 as field test version
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -227,9 +229,9 @@ set LMS_SCRIPT_BUILD=20210416
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
 set MOST_RECENT_LMS_BUILD=824
-rem most recent lms field test version: 2.6.829 (per 23-Mar-2021)
-set MOST_RECENT_FT_LMS_VERSION=2.6.829
-set MOST_RECENT_FT_LMS_BUILD=829
+rem most recent lms field test version: 2.6.830 (per 20-Apr-2021)
+set MOST_RECENT_FT_LMS_VERSION=2.6.830
+set MOST_RECENT_FT_LMS_BUILD=830
 rem most recent dongle driver version (per 13-Nov-2020, LMS 2.5)
 set MOST_RECENT_DONGLE_DRIVER_VERSION=8.13
 set MOST_RECENT_DONGLE_DRIVER_MAJ_VERSION=8
