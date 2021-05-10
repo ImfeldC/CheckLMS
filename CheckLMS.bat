@@ -194,6 +194,10 @@ rem     16-Apr-2021:
 rem        - add 'Start-Date' of demo VD to log-files
 rem     20-Apr-2021:
 rem        - set 2.6.830 as field test version
+rem     23-Apr-2021:
+rem        - retrieve listening ports from SIEMBT.log
+rem     05-May-2021:
+rem        - add support for Desigo Insight, read-out licenses registry key: HKLM\SOFTWARE\Landis & Staefa\Licenses
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -223,8 +227,8 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 20-Apr-2021"
-set LMS_SCRIPT_BUILD=20210420
+set LMS_SCRIPT_VERSION="CheckLMS Script 05-May-2021"
+set LMS_SCRIPT_BUILD=20210505
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -4659,6 +4663,10 @@ IF EXIST "!REPORT_LOG_PATH!\SIEMBT.log" (
 		echo     ATTENTION: Filesize of SIEMBT.log with !SIEMBTLOG_FILESIZE! bytes, is exceeding critical limit of !LOG_FILESIZE_LIMIT! bytes!   >> %REPORT_LOGFILE% 2>&1
 		echo     Because filesize of SIEMBT.log with !SIEMBTLOG_FILESIZE! bytes exceeds critical limit it is not further processed!              >> %REPORT_LOGFILE% 2>&1
 	) else (
+		rem Extract listening ports from SIEMBT.log
+		for /f "tokens=6* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\SIEMBT.log ^|find /I "(@lmgrd-SLOG@) Listening port"') do set LMS_SIEMBT_FNLS_PORT=%%A
+		for /f "tokens=6* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\SIEMBT.log ^|find /I "(@SIEMBT-SLOG@) Listening port"') do set LMS_SIEMBT_VD_PORT=%%A
+		
 		rem Extract important identifiers from SIEMBT.log
 		for /f "tokens=3* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\SIEMBT.log ^|find /I "Host used in license file"') do for /f "tokens=5* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HOSTNAME=%%B
 		for /f "tokens=3* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\SIEMBT.log ^|find /I "Running on Hypervisor"') do for /f "tokens=3* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HYPERVISOR=%%B
@@ -6655,6 +6663,26 @@ if not defined LMS_SKIPPRODUCTS (
 		echo SiPass integrated [SiPass] not installed on this machine.                                                       >> %REPORT_LOGFILE% 2>&1
 	)
 	echo ==============================================================================                                      >> %REPORT_LOGFILE% 2>&1
+	echo =   D E S I G O   I N S I G H T                                              =                                      >> %REPORT_LOGFILE% 2>&1
+	echo ==============================================================================                                      >> %REPORT_LOGFILE% 2>&1
+	REM -- Desigo CC (GMS) Registry Keys --
+	set KEY_NAME=HKLM\Software\Landis & Staefa\Licenses
+	set VALUE_NAME=ProjectName
+	for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
+		set INSIGHT_PROJECTNAME=%%A
+	)
+	if defined INSIGHT_PROJECTNAME (
+		echo     Desigo Insight [!INSIGHT_PROJECTNAME!] found ...
+		echo Desigo Insight [!INSIGHT_PROJECTNAME!] found ...                                                                >> %REPORT_LOGFILE% 2>&1
+		echo Desigo Insight Project: !INSIGHT_PROJECTNAME!                                                                   >> %REPORT_LOGFILE% 2>&1
+		echo -------------------------------------------------------                                                         >> %REPORT_LOGFILE% 2>&1
+		Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\Landis & Staefa\Licenses' | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\insight_registry.txt 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\insight_registry.txt >> %REPORT_LOGFILE% 2>&1
+
+	) else (
+		echo Desigo Insight not installed on this machine.                                                                   >> %REPORT_LOGFILE% 2>&1
+	)
+	echo ==============================================================================                                      >> %REPORT_LOGFILE% 2>&1
 	echo =   A P O G E E   D A T A M A T E   A D V A N C E D [DMA, Insight, CommTool] =                                      >> %REPORT_LOGFILE% 2>&1
 	echo ==============================================================================                                      >> %REPORT_LOGFILE% 2>&1
 	REM -- Apogee Datamate Advanced (DMA) Registry Keys --
@@ -7180,6 +7208,7 @@ if defined LMS_CFG_LICENSE_SRV_NAME if not "!LMS_CFG_LICENSE_SRV_NAME!" == "loca
 ) else (
 	echo     Local License Server Configuration                                                                          >> %REPORT_LOGFILE% 2>&1
 )
+echo     SIEMBT FNLS Port: !LMS_SIEMBT_FNLS_PORT! / SIEMBT VD Port: !LMS_SIEMBT_VD_PORT!                                 >> %REPORT_LOGFILE% 2>&1
 if defined VM_DETECTED (
 	if "!VM_DETECTED!" == "NO" (
 		echo Physical machine detected.                                                                                  >> %REPORT_LOGFILE% 2>&1
