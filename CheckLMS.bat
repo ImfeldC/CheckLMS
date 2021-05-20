@@ -204,6 +204,8 @@ rem        - Store status of "CheckLMS_CheckID" scheduled task (Task 1294691)
 rem        - replace at several places %-characters with !-charaters; as they would not work within IF expression (Task 1294840)
 rem     19-May-2021:
 rem        - set most recent lms field test version: 2.6.831 (per 20-May-2021)
+rem     20-May-2021:
+rem        - replace at further places %-characters with !-charaters; as they would not work within IF expression
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -233,8 +235,8 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 19-May-2021"
-set LMS_SCRIPT_BUILD=20210519
+set LMS_SCRIPT_VERSION="CheckLMS Script 20-May-2021"
+set LMS_SCRIPT_BUILD=20210520
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -390,7 +392,7 @@ IF NOT EXIST "!LMS_SERVERTOOL_PATH!" (
 )
 IF NOT EXIST "!LMS_SERVERTOOL_PATH!" (
 	REM No Flexera tools locally installed
-    echo This is not a valid LMS Installation, no Flexera tools locally installed at "%LMS_SERVERTOOL_PATH%" ....
+    echo This is not a valid LMS Installation, no Flexera tools locally installed at "!LMS_SERVERTOOL_PATH!" ....
 	set LMS_SERVERTOOL_PATH=
 )
 
@@ -936,7 +938,7 @@ if defined SHOW_COLORED_OUTPUT (
 	echo    be patient, the collection of the information requires some time, up to several minutes
 )
 echo Check current LMS installation .....
-if exist "%LMS_SERVERTOOL_PATH%" cd "%LMS_SERVERTOOL_PATH%"
+if exist "!LMS_SERVERTOOL_PATH!" cd "!LMS_SERVERTOOL_PATH!"
 
 if not defined LMS_CHECK_ID (
 	set LMS_BALLOON_TIP_TITLE=CheckLMS Script
@@ -987,11 +989,11 @@ echo =  Hypervisor Present  : !LMS_IS_VM!                                       
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 if defined LMS_SET_INFO (
 	echo Info: [!LMS_REPORT_START!] !LMS_SET_INFO! ....                                                                      >> !REPORT_LOGFILE! 2>&1
-	echo [!LMS_REPORT_START!] !LMS_SET_INFO! >> "%DOCUMENTATION_PATH%\info.txt" 2>&1
+	echo [!LMS_REPORT_START!] !LMS_SET_INFO! >> "!DOCUMENTATION_PATH!\info.txt" 2>&1
 )
-IF EXIST "%DOCUMENTATION_PATH%\info.txt" (
+IF EXIST "!DOCUMENTATION_PATH!\info.txt" (
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-	Type "%DOCUMENTATION_PATH%\info.txt"                                                                                     >> !REPORT_LOGFILE! 2>&1
+	Type "!DOCUMENTATION_PATH!\info.txt"                                                                                     >> !REPORT_LOGFILE! 2>&1
 	echo .                                                                                                                   >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 )
@@ -1626,8 +1628,8 @@ IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\appactutil.exe" (
 	IF EXIST "!ProgramFiles!\Siemens\LMS\server\appactutil.exe" (
 		set LMS_APPACTUTIL=!ProgramFiles!\Siemens\LMS\server\appactutil.exe
 	) else (
-		IF EXIST "%LMS_SERVERTOOL_DW_PATH%\appactutil.exe" (
-			set LMS_APPACTUTIL=%LMS_SERVERTOOL_DW_PATH%\appactutil.exe
+		IF EXIST "!LMS_SERVERTOOL_DW_PATH!\appactutil.exe" (
+			set LMS_APPACTUTIL=!LMS_SERVERTOOL_DW_PATH!\appactutil.exe
 		) else (
 			set LMS_APPACTUTIL=
 		)
@@ -1640,8 +1642,8 @@ IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\lmdiag.exe" (
 	IF EXIST "!ProgramFiles!\Siemens\LMS\server\lmdiag.exe" (
 		set LMS_LMDIAG=!ProgramFiles!\Siemens\LMS\server\lmdiag.exe
 	) else (
-		IF EXIST "%LMS_SERVERTOOL_DW_PATH%\lmdiag.exe" (
-			set LMS_LMDIAG=%LMS_SERVERTOOL_DW_PATH%\lmdiag.exe
+		IF EXIST "!LMS_SERVERTOOL_DW_PATH!\lmdiag.exe" (
+			set LMS_LMDIAG=!LMS_SERVERTOOL_DW_PATH!\lmdiag.exe
 		) else (
 			set LMS_LMDIAG=
 		)
@@ -1654,8 +1656,8 @@ IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\lmhostid.exe" (
 	IF EXIST "!ProgramFiles!\Siemens\LMS\server\lmhostid.exe" (
 		set LMS_LMHOSTID=!ProgramFiles!\Siemens\LMS\server\lmhostid.exe
 	) else (
-		IF EXIST "%LMS_SERVERTOOL_DW_PATH%\lmhostid.exe" (
-			set LMS_LMHOSTID=%LMS_SERVERTOOL_DW_PATH%\lmhostid.exe
+		IF EXIST "!LMS_SERVERTOOL_DW_PATH!\lmhostid.exe" (
+			set LMS_LMHOSTID=!LMS_SERVERTOOL_DW_PATH!\lmhostid.exe
 		) else (
 			set LMS_LMHOSTID=
 		)
@@ -1668,8 +1670,8 @@ IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\lmstat.exe" (
 	IF EXIST "!ProgramFiles!\Siemens\LMS\server\lmstat.exe" (
 		set LMS_LMSTAT=!ProgramFiles!\Siemens\LMS\server\lmstat.exe
 	) else (
-		IF EXIST "%LMS_SERVERTOOL_DW_PATH%\lmstat.exe" (
-			set LMS_LMSTAT=%LMS_SERVERTOOL_DW_PATH%\lmstat.exe
+		IF EXIST "!LMS_SERVERTOOL_DW_PATH!\lmstat.exe" (
+			set LMS_LMSTAT=!LMS_SERVERTOOL_DW_PATH!\lmstat.exe
 		) else (
 			set LMS_LMSTAT=
 		)
@@ -1682,8 +1684,8 @@ IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\lmtpminfo.exe" (
 	IF EXIST "!ProgramFiles!\Siemens\LMS\server\lmtpminfo.exe" (
 		set LMS_LMTPMINFO=!ProgramFiles!\Siemens\LMS\server\lmtpminfo.exe
 	) else (
-		IF EXIST "%LMS_SERVERTOOL_DW_PATH%\lmtpminfo.exe" (
-			set LMS_LMTPMINFO=%LMS_SERVERTOOL_DW_PATH%\lmtpminfo.exe
+		IF EXIST "!LMS_SERVERTOOL_DW_PATH!\lmtpminfo.exe" (
+			set LMS_LMTPMINFO=!LMS_SERVERTOOL_DW_PATH!\lmtpminfo.exe
 		) else (
 			set LMS_LMTPMINFO=
 		)
@@ -1696,8 +1698,8 @@ IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\lmvminfo.exe" (
 	IF EXIST "!ProgramFiles!\Siemens\LMS\server\lmvminfo.exe" (
 		set LMS_LMVMINFO=!ProgramFiles!\Siemens\LMS\server\lmvminfo.exe
 	) else (
-		IF EXIST "%LMS_SERVERTOOL_DW_PATH%\lmvminfo.exe" (
-			set LMS_LMVMINFO=%LMS_SERVERTOOL_DW_PATH%\lmvminfo.exe
+		IF EXIST "!LMS_SERVERTOOL_DW_PATH!\lmvminfo.exe" (
+			set LMS_LMVMINFO=!LMS_SERVERTOOL_DW_PATH!\lmvminfo.exe
 		) else (
 			set LMS_LMVMINFO=
 		)
@@ -1710,8 +1712,8 @@ IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\servercomptranutil.exe" (
 	IF EXIST "!ProgramFiles!\Siemens\LMS\server\servercomptranutil.exe" (
 		set LMS_SERVERCOMTRANUTIL=!ProgramFiles!\Siemens\LMS\server\servercomptranutil.exe
 	) else (
-		IF EXIST "%LMS_SERVERTOOL_DW_PATH%\servercomptranutil.exe" (
-			set LMS_SERVERCOMTRANUTIL=%LMS_SERVERTOOL_DW_PATH%\servercomptranutil.exe
+		IF EXIST "!LMS_SERVERTOOL_DW_PATH!\servercomptranutil.exe" (
+			set LMS_SERVERCOMTRANUTIL=!LMS_SERVERTOOL_DW_PATH!\servercomptranutil.exe
 		) else (
 			set LMS_SERVERCOMTRANUTIL=
 		)
@@ -1724,8 +1726,8 @@ IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\tsactdiags_SIEMBT_svr.exe" (
 	IF EXIST "!ProgramFiles!\Siemens\LMS\server\tsactdiags_SIEMBT_svr.exe" (
 		set LMS_TSACTDIAGSSVR=!ProgramFiles!\Siemens\LMS\server\tsactdiags_SIEMBT_svr.exe
 	) else (
-		IF EXIST "%LMS_SERVERTOOL_DW_PATH%\tsactdiags_SIEMBT_svr.exe" (
-			set LMS_TSACTDIAGSSVR=%LMS_SERVERTOOL_DW_PATH%\tsactdiags_SIEMBT_svr.exe
+		IF EXIST "!LMS_SERVERTOOL_DW_PATH!\tsactdiags_SIEMBT_svr.exe" (
+			set LMS_TSACTDIAGSSVR=!LMS_SERVERTOOL_DW_PATH!\tsactdiags_SIEMBT_svr.exe
 		) else (
 			set LMS_TSACTDIAGSSVR=
 		)
@@ -1738,8 +1740,8 @@ IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\tsreset_svr.exe" (
 	IF EXIST "!ProgramFiles!\Siemens\LMS\server\tsreset_svr.exe" (
 		set LMS_TSRESETSVR=!ProgramFiles!\Siemens\LMS\server\tsreset_svr.exe
 	) else (
-		IF EXIST "%LMS_SERVERTOOL_DW_PATH%\tsreset_svr.exe" (
-			set LMS_TSRESETSVR=%LMS_SERVERTOOL_DW_PATH%\tsreset_svr.exe
+		IF EXIST "!LMS_SERVERTOOL_DW_PATH!\tsreset_svr.exe" (
+			set LMS_TSRESETSVR=!LMS_SERVERTOOL_DW_PATH!\tsreset_svr.exe
 		) else (
 			set LMS_TSRESETSVR=
 		)
@@ -1752,8 +1754,8 @@ IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\tsreset_app.exe" (
 	IF EXIST "!ProgramFiles!\Siemens\LMS\server\tsreset_app.exe" (
 		set LMS_TSRESETAPP=!ProgramFiles!\Siemens\LMS\server\tsreset_app.exe
 	) else (
-		IF EXIST "%LMS_SERVERTOOL_DW_PATH%\tsreset_app.exe" (
-			set LMS_TSRESETAPP=%LMS_SERVERTOOL_DW_PATH%\tsreset_app.exe
+		IF EXIST "!LMS_SERVERTOOL_DW_PATH!\tsreset_app.exe" (
+			set LMS_TSRESETAPP=!LMS_SERVERTOOL_DW_PATH!\tsreset_app.exe
 		) else (
 			set LMS_TSRESETAPP=
 		)
@@ -1766,8 +1768,8 @@ IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\serveractutil.exe" (
 	IF EXIST "!ProgramFiles!\Siemens\LMS\server\serveractutil.exe" (
 		set LMS_SERVERACTUTIL=!ProgramFiles!\Siemens\LMS\server\serveractutil.exe
 	) else (
-		IF EXIST "%LMS_SERVERTOOL_DW_PATH%\serveractutil.exe" (
-			set LMS_SERVERACTUTIL=%LMS_SERVERTOOL_DW_PATH%\serveractutil.exe
+		IF EXIST "!LMS_SERVERTOOL_DW_PATH!\serveractutil.exe" (
+			set LMS_SERVERACTUTIL=!LMS_SERVERTOOL_DW_PATH!\serveractutil.exe
 		) else (
 			set LMS_SERVERACTUTIL=
 		)
@@ -1780,8 +1782,8 @@ IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\appcomptranutil.exe" (
 	IF EXIST "!ProgramFiles!\Siemens\LMS\server\appcomptranutil.exe" (
 		set LMS_APPCOMPTRANUTIL=!ProgramFiles!\Siemens\LMS\server\appcomptranutil.exe
 	) else (
-		IF EXIST "%LMS_SERVERTOOL_DW_PATH%\appcomptranutil.exe" (
-			set LMS_APPCOMPTRANUTIL=%LMS_SERVERTOOL_DW_PATH%\appcomptranutil.exe
+		IF EXIST "!LMS_SERVERTOOL_DW_PATH!\appcomptranutil.exe" (
+			set LMS_APPCOMPTRANUTIL=!LMS_SERVERTOOL_DW_PATH!\appcomptranutil.exe
 		) else (
 			set LMS_APPCOMPTRANUTIL=
 		)
@@ -1794,8 +1796,8 @@ IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\lmutil.exe" (
 	IF EXIST "!ProgramFiles!\Siemens\LMS\server\lmutil.exe" (
 		set LMS_LMUTIL=!ProgramFiles!\Siemens\LMS\server\lmutil.exe
 	) else (
-		IF EXIST "%LMS_SERVERTOOL_DW_PATH%\lmutil.exe" (
-			set LMS_LMUTIL=%LMS_SERVERTOOL_DW_PATH%\lmutil.exe
+		IF EXIST "!LMS_SERVERTOOL_DW_PATH!\lmutil.exe" (
+			set LMS_LMUTIL=!LMS_SERVERTOOL_DW_PATH!\lmutil.exe
 		) else (
 			set LMS_LMUTIL=
 		)
@@ -1808,8 +1810,8 @@ IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\lmver.exe" (
 	IF EXIST "!ProgramFiles!\Siemens\LMS\server\lmver.exe" (
 		set LMS_LMVER=!ProgramFiles!\Siemens\LMS\server\lmver.exe
 	) else (
-		IF EXIST "%LMS_SERVERTOOL_DW_PATH%\lmver.exe" (
-			set LMS_LMVER=%LMS_SERVERTOOL_DW_PATH%\lmver.exe
+		IF EXIST "!LMS_SERVERTOOL_DW_PATH!\lmver.exe" (
+			set LMS_LMVER=!LMS_SERVERTOOL_DW_PATH!\lmver.exe
 		) else (
 			set LMS_LMVER=
 		)
@@ -1822,8 +1824,8 @@ IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\lmdown.exe" (
 	IF EXIST "!ProgramFiles!\Siemens\LMS\server\lmdown.exe" (
 		set LMS_LMDOWN=!ProgramFiles!\Siemens\LMS\server\lmdown.exe
 	) else (
-		IF EXIST "%LMS_SERVERTOOL_DW_PATH%\lmdown.exe" (
-			set LMS_LMDOWN=%LMS_SERVERTOOL_DW_PATH%\lmdown.exe
+		IF EXIST "!LMS_SERVERTOOL_DW_PATH!\lmdown.exe" (
+			set LMS_LMDOWN=!LMS_SERVERTOOL_DW_PATH!\lmdown.exe
 		) else (
 			set LMS_LMDOWN=
 		)
@@ -1836,8 +1838,8 @@ IF NOT EXIST "!ProgramFiles_x86!\Siemens\LMS\server\demoLF.exe" (
 	IF EXIST "!ProgramFiles!\Siemens\LMS\server\demoLF.exe" (
 		set LMS_DEMOLF_VD=!ProgramFiles!\Siemens\LMS\server\demoLF.exe
 	) else (
-		IF EXIST "%LMS_SERVERTOOL_DW_PATH%\demoLF.exe" (
-			set LMS_DEMOLF_VD=%LMS_SERVERTOOL_DW_PATH%\demoLF.exe
+		IF EXIST "!LMS_SERVERTOOL_DW_PATH!\demoLF.exe" (
+			set LMS_DEMOLF_VD=!LMS_SERVERTOOL_DW_PATH!\demoLF.exe
 		) else (
 			set LMS_DEMOLF_VD=
 		)
@@ -2169,35 +2171,34 @@ echo ===========================================================================
 
 echo ... start collecting information ...
 
-rem This 'goto' is quite ugly, but some %LMS_xx% contains brackets, which fail within an IF :-(
-if defined LMS_CHECK_ID goto skip_use_block
-echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-echo Use '%UNZIP_TOOL%' to unzip files.                                                                                      >> !REPORT_LOGFILE! 2>&1
-echo Use '%SIGCHECK_TOOL%' with option '!SIGCHECK_OPTIONS!' to check signatutes of files.                                    >> !REPORT_LOGFILE! 2>&1
-echo Use '%USBDEVIEW_TOOL%' to check USB devices connected to this system.                                                   >> !REPORT_LOGFILE! 2>&1
-echo Use '!REPORT_LOG_PATH!' to search for logfiles.                                                                         >> !REPORT_LOGFILE! 2>&1
-echo Use '%LMS_SERVERTOOL_PATH%' as path to call FNP library tools.                                                          >> !REPORT_LOGFILE! 2>&1
-echo Use '%LMS_SERVERTOOL_DW_PATH%' as path to call FNP library tools just downloaded.                                       >> !REPORT_LOGFILE! 2>&1
-echo Use '!LMS_LMUTOOL!' to call for LmuTool.                                                                                >> !REPORT_LOGFILE! 2>&1
-echo Use '!LMS_APPACTUTIL!' to call for appactutil.exe.                                                                      >> !REPORT_LOGFILE! 2>&1
-echo Use '%LMS_LMDIAG%' to call for lmdiag.exe.                                                                              >> !REPORT_LOGFILE! 2>&1
-echo Use '%LMS_LMHOSTID%' to call for lmhostid.exe.                                                                          >> !REPORT_LOGFILE! 2>&1
-echo Use '%LMS_LMSTAT%' to call for lmstat.exe.                                                                              >> !REPORT_LOGFILE! 2>&1
-echo Use '%LMS_LMTPMINFO%' to call for lmtpminfo.exe.                                                                        >> !REPORT_LOGFILE! 2>&1
-echo Use '%LMS_LMVMINFO%' to call for lmvminfo.exe.                                                                          >> !REPORT_LOGFILE! 2>&1
-echo Use '!LMS_SERVERCOMTRANUTIL!' to call for servercomptranutil.exe.                                                       >> !REPORT_LOGFILE! 2>&1
-echo Use '%LMS_TSACTDIAGSSVR%' to call for tsactdiags_SIEMBT_svr.exe.                                                        >> !REPORT_LOGFILE! 2>&1
-echo Use '%LMS_TSRESETSVR%' to call for tsreset_svr.exe.                                                                     >> !REPORT_LOGFILE! 2>&1
-echo Use '%LMS_TSRESETAPP%' to call for tsreset_app.exe.                                                                     >> !REPORT_LOGFILE! 2>&1
-echo Use '!LMS_SERVERACTUTIL!' to call for serveractutil.exe.                                                                >> !REPORT_LOGFILE! 2>&1
-echo Use '%LMS_APPCOMPTRANUTIL%' to call for appcomptranutil.exe.                                                            >> !REPORT_LOGFILE! 2>&1
-echo Use '%LMS_LMUTIL%' to call for lmutil.exe.                                                                              >> !REPORT_LOGFILE! 2>&1
-echo Use '%LMS_LMVER%' to call for lmver.exe.                                                                                >> !REPORT_LOGFILE! 2>&1
-echo Use '!LMS_LMDOWN!' to call for lmdown.exe.                                                                              >> !REPORT_LOGFILE! 2>&1
-echo Use '%DOCUMENTATION_PATH%' to search for documentation.                                                                 >> !REPORT_LOGFILE! 2>&1
-:skip_use_block
+if not defined LMS_CHECK_ID (
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Use '!UNZIP_TOOL!' to unzip files.                                                                                  >> !REPORT_LOGFILE! 2>&1
+	echo Use '!SIGCHECK_TOOL!' with option '!SIGCHECK_OPTIONS!' to check signatutes of files.                                >> !REPORT_LOGFILE! 2>&1
+	echo Use '!USBDEVIEW_TOOL!' to check USB devices connected to this system.                                               >> !REPORT_LOGFILE! 2>&1
+	echo Use '!REPORT_LOG_PATH!' to search for logfiles.                                                                     >> !REPORT_LOGFILE! 2>&1
+	echo Use '!LMS_SERVERTOOL_PATH!' as path to call FNP library tools.                                                      >> !REPORT_LOGFILE! 2>&1
+	echo Use '!LMS_SERVERTOOL_DW_PATH!' as path to call FNP library tools just downloaded.                                   >> !REPORT_LOGFILE! 2>&1
+	echo Use '!LMS_LMUTOOL!' to call for LmuTool.                                                                            >> !REPORT_LOGFILE! 2>&1
+	echo Use '!LMS_APPACTUTIL!' to call for appactutil.exe.                                                                  >> !REPORT_LOGFILE! 2>&1
+	echo Use '!LMS_LMDIAG!' to call for lmdiag.exe.                                                                          >> !REPORT_LOGFILE! 2>&1
+	echo Use '!LMS_LMHOSTID!' to call for lmhostid.exe.                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo Use '!LMS_LMSTAT!' to call for lmstat.exe.                                                                          >> !REPORT_LOGFILE! 2>&1
+	echo Use '!LMS_LMTPMINFO!' to call for lmtpminfo.exe.                                                                    >> !REPORT_LOGFILE! 2>&1
+	echo Use '!LMS_LMVMINFO!' to call for lmvminfo.exe.                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo Use '!LMS_SERVERCOMTRANUTIL!' to call for servercomptranutil.exe.                                                   >> !REPORT_LOGFILE! 2>&1
+	echo Use '!LMS_TSACTDIAGSSVR!' to call for tsactdiags_SIEMBT_svr.exe.                                                    >> !REPORT_LOGFILE! 2>&1
+	echo Use '!LMS_TSRESETSVR!' to call for tsreset_svr.exe.                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo Use '!LMS_TSRESETAPP!' to call for tsreset_app.exe.                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo Use '!LMS_SERVERACTUTIL!' to call for serveractutil.exe.                                                            >> !REPORT_LOGFILE! 2>&1
+	echo Use '!LMS_APPCOMPTRANUTIL!' to call for appcomptranutil.exe.                                                        >> !REPORT_LOGFILE! 2>&1
+	echo Use '!LMS_LMUTIL!' to call for lmutil.exe.                                                                          >> !REPORT_LOGFILE! 2>&1
+	echo Use '!LMS_LMVER!' to call for lmver.exe.                                                                            >> !REPORT_LOGFILE! 2>&1
+	echo Use '!LMS_LMDOWN!' to call for lmdown.exe.                                                                          >> !REPORT_LOGFILE! 2>&1
+	echo Use '!DOCUMENTATION_PATH!' to search for documentation.                                                             >> !REPORT_LOGFILE! 2>&1
+	echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
+)
 
-echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPTSBACKUP (
 	SET STAMP=%DATE:/=-% %TIME::=.%
 	echo Backup trusted store files, into 'TSbackup !STAMP!'                                                                 >> !REPORT_LOGFILE! 2>&1
@@ -3706,21 +3707,21 @@ if not defined LMS_SKIPFNP (
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	echo tsactdiags_SIEMBT_svr.exe --version                                                                                 >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_TSACTDIAGSSVR (
-		"%LMS_TSACTDIAGSSVR%" --version                                                                                      >> !REPORT_LOGFILE! 2>&1
+		"!LMS_TSACTDIAGSSVR!" --version                                                                                      >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo     tsactdiags_SIEMBT_svr.exe doesn't exist, cannot perform operation.                                          >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	echo lmver.exe -fnls                                                                                                     >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_LMVER (
-		"%LMS_LMVER%" -fnls                                                                                                  >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMVER!" -fnls                                                                                                  >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo     lmver.exe doesn't exist, cannot perform operation.                                                          >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	echo lmutil.exe lmpath -status                                                                                           >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_LMUTIL (
-		"%LMS_LMUTIL%" lmpath -status                                                                                        >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMUTIL!" lmpath -status                                                                                        >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo     lmutil.exe doesn't exist, cannot perform operation.                                                         >> !REPORT_LOGFILE! 2>&1
 	)
@@ -4006,7 +4007,7 @@ if not defined LMS_SKIPFNP (
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 	echo lmdiag.exe -c "!LMS_PROGRAMDATA!\Server Certificates\" -n                                                               >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_LMDIAG (
-		"%LMS_LMDIAG%" -c "!LMS_PROGRAMDATA!\Server Certificates\" -n                                                            >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMDIAG!" -c "!LMS_PROGRAMDATA!\Server Certificates\" -n                                                            >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo     lmdiag.exe doesn't exist, cannot perform operation.                                                             >> !REPORT_LOGFILE! 2>&1
 	)
@@ -4014,14 +4015,14 @@ if not defined LMS_SKIPFNP (
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 	echo lmstat.exe -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -A                                                     >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_LMSTAT (
-		"%LMS_LMSTAT%" -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -A                                                  >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMSTAT!" -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -A                                                  >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo     lmstat.exe doesn't exist, cannot perform operation.                                                             >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	echo lmstat.exe -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -a                                                     >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_LMSTAT (
-		"%LMS_LMSTAT%" -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -a                                                  >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMSTAT!" -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -a                                                  >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo     lmstat.exe doesn't exist, cannot perform operation.                                                             >> !REPORT_LOGFILE! 2>&1
 	)
@@ -4079,7 +4080,7 @@ if not defined LMS_SKIPFNP (
 		) else (
 			del !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_8098d100_event_extract.log >nul 2>&1
 			rem logs to C:\ProgramData\FLEXnet\SIEMBT_8098d100_event.log
-			"%LMS_TSRESETSVR%" -logreport verbose                                                                                >> !REPORT_LOGFILE! 2>&1
+			"!LMS_TSRESETSVR!" -logreport verbose                                                                                >> !REPORT_LOGFILE! 2>&1
 			rem read in last line the process id
 			For /F "UseBackQ tokens=1,2,4,6,7 Delims=[]" %%A In ("%programdata%\FLEXnet\SIEMBT_8098d100_event.log") Do ( 
 				Set messagedatetime=%%A  
@@ -4102,11 +4103,11 @@ if not defined LMS_SKIPFNP (
 				)
 				echo     WARNING: One or more orphan anchors have been found! [tsreset_svr.exe]                                  >> !REPORT_LOGFILE! 2>&1
 				echo     Remove orphan anchors with tsreset_svr.exe -anchors orphan                                              >> !REPORT_LOGFILE! 2>&1
-				"%LMS_TSRESETSVR%" -anchors orphan                                                                               >> !REPORT_LOGFILE! 2>&1
+				"!LMS_TSRESETSVR!" -anchors orphan                                                                               >> !REPORT_LOGFILE! 2>&1
 
 				del !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_8098d100_event_extract_retry.log >nul 2>&1
 				rem logs to C:\ProgramData\FLEXnet\SIEMBT_8098d100_event.log
-				"%LMS_TSRESETSVR%" -logreport verbose                                                                            >> !REPORT_LOGFILE! 2>&1
+				"!LMS_TSRESETSVR!" -logreport verbose                                                                            >> !REPORT_LOGFILE! 2>&1
 				rem read in last line the process id
 				For /F "UseBackQ tokens=1,2,4,6,7 Delims=[]" %%A In ("%programdata%\FLEXnet\SIEMBT_8098d100_event.log") Do ( 
 					Set messagedatetime=%%A  
@@ -4142,7 +4143,7 @@ if not defined LMS_SKIPFNP (
 		) else (
 			del !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_0098d100_event_extract.log >nul 2>&1
 			rem logs to C:\ProgramData\FLEXnet\SIEMBT_0098d100_event.log
-			"%LMS_TSRESETAPP%" -logreport verbose                                                                                >> !REPORT_LOGFILE! 2>&1
+			"!LMS_TSRESETAPP!" -logreport verbose                                                                                >> !REPORT_LOGFILE! 2>&1
 			rem read in last line the process id
 			For /F "UseBackQ tokens=1,2,4,6,7 Delims=[]" %%A In ("%programdata%\FLEXnet\SIEMBT_0098d100_event.log") Do ( 
 				Set messagedatetime=%%A  
@@ -4165,11 +4166,11 @@ if not defined LMS_SKIPFNP (
 				)
 				echo     WARNING: One or more orphan anchors have been found! [tsreset_app.exe]                                  >> !REPORT_LOGFILE! 2>&1
 				echo     Remove orphan anchors with tsreset_app.exe -anchors orphan                                              >> !REPORT_LOGFILE! 2>&1
-				"%LMS_TSRESETAPP%" -anchors orphan                                                                               >> !REPORT_LOGFILE! 2>&1
+				"!LMS_TSRESETAPP!" -anchors orphan                                                                               >> !REPORT_LOGFILE! 2>&1
 
 				del !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_0098d100_event_extract_retry.log >nul 2>&1
 				rem logs to C:\ProgramData\FLEXnet\SIEMBT_0098d100_event.log
-				"%LMS_TSRESETAPP%" -logreport verbose                                                                            >> !REPORT_LOGFILE! 2>&1
+				"!LMS_TSRESETAPP!" -logreport verbose                                                                            >> !REPORT_LOGFILE! 2>&1
 				rem read in last line the process id
 				For /F "UseBackQ tokens=1,2,4,6,7 Delims=[]" %%A In ("%programdata%\FLEXnet\SIEMBT_0098d100_event.log") Do ( 
 					Set messagedatetime=%%A  
@@ -4203,42 +4204,42 @@ if not defined LMS_SKIPFNP (
 	echo Collect host id's:                                                                                                      >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_LMHOSTID (
 		echo ======== Host ID:                                                                                                   >> !REPORT_LOGFILE! 2>&1
-		"%LMS_LMHOSTID%"                                                                                                         >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!"                                                                                                         >> !REPORT_LOGFILE! 2>&1
 		echo ======== PHYSICAL Host ID:                                                                                          >> !REPORT_LOGFILE! 2>&1
 		echo --- lmhostid: -user                                                                                                 >> !REPORT_LOGFILE! 2>&1
-		"%LMS_LMHOSTID%" -user                                                                                                   >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -user                                                                                                   >> !REPORT_LOGFILE! 2>&1
 		echo --- lmhostid: -ether                                                                                                >> !REPORT_LOGFILE! 2>&1
-		"%LMS_LMHOSTID%" -ether                                                                                                  >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -ether                                                                                                  >> !REPORT_LOGFILE! 2>&1
 		echo --- lmhostid: -internet v4                                                                                          >> !REPORT_LOGFILE! 2>&1
-		"%LMS_LMHOSTID%" -internet v4                                                                                            >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -internet v4                                                                                            >> !REPORT_LOGFILE! 2>&1
 		echo --- lmhostid: -internet v6                                                                                          >> !REPORT_LOGFILE! 2>&1
-		"%LMS_LMHOSTID%" -internet v6                                                                                            >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -internet v6                                                                                            >> !REPORT_LOGFILE! 2>&1
 		echo --- lmhostid: -utf8                                                                                                 >> !REPORT_LOGFILE! 2>&1
-		"%LMS_LMHOSTID%" -utf8                                                                                                   >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -utf8                                                                                                   >> !REPORT_LOGFILE! 2>&1
 		echo --- lmhostid: -vsn                                                                                                  >> !REPORT_LOGFILE! 2>&1
-		"%LMS_LMHOSTID%" -vsn                                                                                                    >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -vsn                                                                                                    >> !REPORT_LOGFILE! 2>&1
 		echo --- lmhostid: -display                                                                                              >> !REPORT_LOGFILE! 2>&1
-		"%LMS_LMHOSTID%" -display                                                                                                >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -display                                                                                                >> !REPORT_LOGFILE! 2>&1
 		echo --- lmhostid: -hostname                                                                                             >> !REPORT_LOGFILE! 2>&1
-		"%LMS_LMHOSTID%" -hostname                                                                                               >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -hostname                                                                                               >> !REPORT_LOGFILE! 2>&1
 		echo --- lmhostid: -hostdomain                                                                                           >> !REPORT_LOGFILE! 2>&1
-		"%LMS_LMHOSTID%" -hostdomain                                                                                             >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -hostdomain                                                                                             >> !REPORT_LOGFILE! 2>&1
 		echo --- lmhostid: -tpm_id1                                                                                              >> !REPORT_LOGFILE! 2>&1
-		"%LMS_LMHOSTID%" -tpm_id1                                                                                                >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -tpm_id1                                                                                                >> !REPORT_LOGFILE! 2>&1
 		echo --- lmhostid: -flexid                                                                                               >> !REPORT_LOGFILE! 2>&1
-		"%LMS_LMHOSTID%" -flexid                                                                                                 >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -flexid                                                                                                 >> !REPORT_LOGFILE! 2>&1
 		echo ======== VIRTUAL Host ID:                                                                                           >> !REPORT_LOGFILE! 2>&1
 		echo --- lmhostid: -ptype VM -uuid                                                                                       >> !REPORT_LOGFILE! 2>&1
-		"%LMS_LMHOSTID%" -ptype VM -uuid                                                                                         >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -ptype VM -uuid                                                                                         >> !REPORT_LOGFILE! 2>&1
 		echo --- lmhostid: -ptype VM -genid                                                                                      >> !REPORT_LOGFILE! 2>&1
-		"%LMS_LMHOSTID%" -ptype VM -genid                                                                                        >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -ptype VM -genid                                                                                        >> !REPORT_LOGFILE! 2>&1
 		echo ======== AMAZON Host ID:                                                                                            >> !REPORT_LOGFILE! 2>&1
 		echo --- lmhostid: -ptype AMZN -eip                                                                                      >> !REPORT_LOGFILE! 2>&1
-		"%LMS_LMHOSTID%" -ptype AMZN -eip                                                                                        >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -ptype AMZN -eip                                                                                        >> !REPORT_LOGFILE! 2>&1
 		echo --- lmhostid: -ptype AMZN -ami                                                                                      >> !REPORT_LOGFILE! 2>&1
-		"%LMS_LMHOSTID%" -ptype AMZN -ami                                                                                        >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -ptype AMZN -ami                                                                                        >> !REPORT_LOGFILE! 2>&1
 		echo --- lmhostid: -ptype AMZN -iid                                                                                      >> !REPORT_LOGFILE! 2>&1
-		"%LMS_LMHOSTID%" -ptype AMZN -iid                                                                                        >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -ptype AMZN -iid                                                                                        >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo     lmhostid.exe doesn't exist, cannot perform operation.                                                           >> !REPORT_LOGFILE! 2>&1
 	)
@@ -4449,8 +4450,8 @@ if not defined LMS_SKIPFNP (
 	echo ... decrypt Flexera logfiles ... 
 	echo Decrypt Flexera logfiles:                                                                                             >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_TSACTDIAGSSVR (
-		echo Call "%LMS_TSACTDIAGSSVR% --output !REPORT_LOG_PATH!\FlexeraDecryptedEventlog.log" to decrypt ....                  >> !REPORT_LOGFILE! 2>&1
-		"%LMS_TSACTDIAGSSVR%" --output !REPORT_LOG_PATH!\FlexeraDecryptedEventlog.log
+		echo Call "!LMS_TSACTDIAGSSVR! --output !REPORT_LOG_PATH!\FlexeraDecryptedEventlog.log" to decrypt ....                  >> !REPORT_LOGFILE! 2>&1
+		"!LMS_TSACTDIAGSSVR!" --output !REPORT_LOG_PATH!\FlexeraDecryptedEventlog.log
 		
 		rem Analyze the decrypted flexera logfile
 		echo     Analyze the decrypted flexera logfile ...
@@ -7201,9 +7202,9 @@ if "!LMS_SIEMBT_HYPERVISOR!" == "Unknown Hypervisor" (
 	)
 	echo ERROR: Unknown Hypervisor found in SIEMBT.log. Running on Hypervisor: !LMS_SIEMBT_HYPERVISOR!                   >> !REPORT_LOGFILE! 2>&1
 )
-IF EXIST "%DOCUMENTATION_PATH%\\info.txt" (
+IF EXIST "!DOCUMENTATION_PATH!\\info.txt" (
 	echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
-	Type "%DOCUMENTATION_PATH%\\info.txt"                                                                                >> !REPORT_LOGFILE! 2>&1
+	Type "!DOCUMENTATION_PATH!\\info.txt"                                                                                >> !REPORT_LOGFILE! 2>&1
 )
 echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_CHECK_ID (
