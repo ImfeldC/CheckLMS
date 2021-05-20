@@ -202,6 +202,8 @@ rem     18-May-2021:
 rem        - remove temporary created powershell scripts (Task 1289686)
 rem        - Store status of "CheckLMS_CheckID" scheduled task (Task 1294691)
 rem        - replace at several places %-characters with !-charaters; as they would not work within IF expression (Task 1294840)
+rem     19-May-2021:
+rem        - set most recent lms field test version: 2.6.831 (per 20-May-2021)
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -231,15 +233,15 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 18-May-2021"
-set LMS_SCRIPT_BUILD=20210518
+set LMS_SCRIPT_VERSION="CheckLMS Script 19-May-2021"
+set LMS_SCRIPT_BUILD=20210519
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
 set MOST_RECENT_LMS_BUILD=824
-rem most recent lms field test version: 2.6.830 (per 20-Apr-2021)
-set MOST_RECENT_FT_LMS_VERSION=2.6.830
-set MOST_RECENT_FT_LMS_BUILD=830
+rem most recent lms field test version: 2.6.831 (per 20-May-2021)
+set MOST_RECENT_FT_LMS_VERSION=2.6.831
+set MOST_RECENT_FT_LMS_BUILD=831
 rem most recent dongle driver version (per 13-Nov-2020, LMS 2.5)
 set MOST_RECENT_DONGLE_DRIVER_VERSION=8.13
 set MOST_RECENT_DONGLE_DRIVER_MAJ_VERSION=8
