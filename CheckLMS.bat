@@ -101,7 +101,7 @@ rem     24-Feb-2021:
 rem        - download latest released LMS client; e.g. from https://static.siemens.com/btdownloads/lms/LMSSetup2.6.826/x64/setup64.exe
 rem        - disable one of two TS backups; execute second backup only with /extend option
 rem        - skip GetVMGenerationIdentifier.exe execution, in case MSVCR120.dll doesn't exists.
-rem        - improved output on clean/new machines, check existence of '%ALLUSERSPROFILE%\FLEXnet\'
+rem        - improved output on clean/new machines, check existence of '!ALLUSERSPROFILE!\FLEXnet\'
 rem     26-Feb-2021:
 rem        - disable connection test against quality system, run them only when /extend option is set.
 rem     02-Mar-2021:
@@ -206,6 +206,8 @@ rem     19-May-2021:
 rem        - set most recent lms field test version: 2.6.831 (per 20-May-2021)
 rem     20-May-2021:
 rem        - replace at further places %-characters with !-charaters; as they would not work within IF expression
+rem     21-May-2021:
+rem        - set most recent lms field test version: 2.6.832 (per 21-May-2021)
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -235,8 +237,8 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 20-May-2021"
-set LMS_SCRIPT_BUILD=20210520
+set LMS_SCRIPT_VERSION="CheckLMS Script 21-May-2021"
+set LMS_SCRIPT_BUILD=20210521
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -305,7 +307,7 @@ FOR /F "usebackq" %%f IN (`PowerShell -NoProfile -Command "Write-Host([Environme
 rem @ECHO DESKTOP_FOLDER=%DESKTOP_FOLDER%
 
 rem Check report log path
-set LMS_PROGRAMDATA=%ALLUSERSPROFILE%\Siemens\LMS
+set LMS_PROGRAMDATA=!ALLUSERSPROFILE!\Siemens\LMS
 set REPORT_LOG_PATH=!LMS_PROGRAMDATA!\Logs
 IF NOT EXIST "!REPORT_LOG_PATH!\" (
     set REPORT_LOG_PATH=!temp!
@@ -2203,11 +2205,11 @@ if not defined LMS_SKIPTSBACKUP (
 	SET STAMP=%DATE:/=-% %TIME::=.%
 	echo Backup trusted store files, into 'TSbackup !STAMP!'                                                                 >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_EXTENDED_CONTENT (
-		xcopy %ALLUSERSPROFILE%\FLEXnet\SIEMBT* "%ALLUSERSPROFILE%\FLEXnet\TSbackup !STAMP!" /Y /H /I                        >> !REPORT_LOGFILE! 2>&1
-		echo     ... copied to '%ALLUSERSPROFILE%\FLEXnet\TSbackup !STAMP!'                                                  >> !REPORT_LOGFILE! 2>&1
+		xcopy !ALLUSERSPROFILE!\FLEXnet\SIEMBT* "!ALLUSERSPROFILE!\FLEXnet\TSbackup !STAMP!" /Y /H /I                        >> !REPORT_LOGFILE! 2>&1
+		echo     ... copied to '!ALLUSERSPROFILE!\FLEXnet\TSbackup !STAMP!'                                                  >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1 
 	)
-	xcopy %ALLUSERSPROFILE%\FLEXnet\SIEMBT* "!REPORT_LOG_PATH!\TSbackup !STAMP!" /Y /H /I                                    >> !REPORT_LOGFILE! 2>&1
+	xcopy !ALLUSERSPROFILE!\FLEXnet\SIEMBT* "!REPORT_LOG_PATH!\TSbackup !STAMP!" /Y /H /I                                    >> !REPORT_LOGFILE! 2>&1
 	echo     ... copied to '!REPORT_LOG_PATH!\TSbackup !STAMP!'                                                              >> !REPORT_LOGFILE! 2>&1
 ) else (
 	if defined SHOW_COLORED_OUTPUT (
@@ -4430,20 +4432,20 @@ if not defined LMS_SKIPFNP (
 	)
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
-	echo Content of folder: "%ALLUSERSPROFILE%\FLEXnet" [Trusted Store Folder]                                                   >> !REPORT_LOGFILE! 2>&1
-	rem dir "%ALLUSERSPROFILE%\FLEXnet"                                                                                              >> !REPORT_LOGFILE! 2>&1
-	rem dir /AH "%ALLUSERSPROFILE%\FLEXnet"                                                                                          >> !REPORT_LOGFILE! 2>&1
-	dir /S /A /X /4 /W "%ALLUSERSPROFILE%\FLEXnet"                                                                               >> !REPORT_LOGFILE! 2>&1
+	echo Content of folder: "!ALLUSERSPROFILE!\FLEXnet" [Trusted Store Folder]                                                   >> !REPORT_LOGFILE! 2>&1
+	rem dir "!ALLUSERSPROFILE!\FLEXnet"                                                                                              >> !REPORT_LOGFILE! 2>&1
+	rem dir /AH "!ALLUSERSPROFILE!\FLEXnet"                                                                                          >> !REPORT_LOGFILE! 2>&1
+	dir /S /A /X /4 /W "!ALLUSERSPROFILE!\FLEXnet"                                                                               >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1 
 	echo ... search trusted store files ...
 	echo Search trusted store files:                                                                                             >> !REPORT_LOGFILE! 2>&1
-	if exist "%ALLUSERSPROFILE%\FLEXnet\" (
+	if exist "!ALLUSERSPROFILE!\FLEXnet\" (
 		del !CHECKLMS_REPORT_LOG_PATH!\tfsFilesFound.txt >nul 2>&1
-		cd %ALLUSERSPROFILE%\FLEXnet\
-		FOR /r %ALLUSERSPROFILE%\FLEXnet\ %%X IN (*tsf.data) DO echo %%~dpnxX >> !CHECKLMS_REPORT_LOG_PATH!\tfsFilesFound.txt
+		cd !ALLUSERSPROFILE!\FLEXnet\
+		FOR /r !ALLUSERSPROFILE!\FLEXnet\ %%X IN (*tsf.data) DO echo %%~dpnxX >> !CHECKLMS_REPORT_LOG_PATH!\tfsFilesFound.txt
 		Type !CHECKLMS_REPORT_LOG_PATH!\tfsFilesFound.txt                                                                        >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo     No files found, the directory '%ALLUSERSPROFILE%\FLEXnet\' doesn't exist.                                       >> !REPORT_LOGFILE! 2>&1
+		echo     No files found, the directory '!ALLUSERSPROFILE!\FLEXnet\' doesn't exist.                                       >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
@@ -4647,19 +4649,19 @@ if not defined LMS_SKIPFNP (
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 	echo ... search Flexera logfiles ...
 	echo Search Flexera logfiles:                                                                                                >> !REPORT_LOGFILE! 2>&1
-	if exist "%ALLUSERSPROFILE%\FLEXnet\" (
+	if exist "!ALLUSERSPROFILE!\FLEXnet\" (
 		del !CHECKLMS_REPORT_LOG_PATH!\FlexeraLogFilesFound.txt >nul 2>&1
-		cd %ALLUSERSPROFILE%\FLEXnet\
-		FOR /r %ALLUSERSPROFILE%\FLEXnet\ %%X IN (*.log) DO echo %%~dpnxX >> !CHECKLMS_REPORT_LOG_PATH!\FlexeraLogFilesFound.txt
+		cd !ALLUSERSPROFILE!\FLEXnet\
+		FOR /r !ALLUSERSPROFILE!\FLEXnet\ %%X IN (*.log) DO echo %%~dpnxX >> !CHECKLMS_REPORT_LOG_PATH!\FlexeraLogFilesFound.txt
 		Type !CHECKLMS_REPORT_LOG_PATH!\FlexeraLogFilesFound.txt                                                                 >> !REPORT_LOGFILE! 2>&1
-		FOR %%X IN (%ALLUSERSPROFILE%\FLEXnet\*.log) DO ( 
+		FOR %%X IN (!ALLUSERSPROFILE!\FLEXnet\*.log) DO ( 
 			echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1 
 			echo %%X                                                                                                             >> !REPORT_LOGFILE! 2>&1 
 			powershell -command "& {Get-Content '%%X' | Select-Object -last %LOG_FILE_LINES%}"                                   >> !REPORT_LOGFILE! 2>&1 
 			copy %%X !CHECKLMS_REPORT_LOG_PATH!\                                                                                 >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
-		echo     No files found, the directory '%ALLUSERSPROFILE%\FLEXnet\' doesn't exist.                                       >> !REPORT_LOGFILE! 2>&1
+		echo     No files found, the directory '!ALLUSERSPROFILE!\FLEXnet\' doesn't exist.                                       >> !REPORT_LOGFILE! 2>&1
 	)
 ) else (
 	if defined SHOW_COLORED_OUTPUT (
@@ -5419,16 +5421,16 @@ echo UserID=8:%SSU_SYSTEMID%                                                    
 if not defined LMS_SKIPSSU (
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	echo ... get content of SSU log-file folder ...
-	echo Content of folder: %ALLUSERSPROFILE%\Siemens\SSU\Logs                                                                   >> !REPORT_LOGFILE! 2>&1
-	dir /S /A /X /4 /W "%ALLUSERSPROFILE%\Siemens\SSU\Logs"                                                                      >> !REPORT_LOGFILE! 2>&1
-	IF EXIST "%ALLUSERSPROFILE%\Siemens\SSU\Logs\SSUSetup.log" (
+	echo Content of folder: !ALLUSERSPROFILE!\Siemens\SSU\Logs                                                                   >> !REPORT_LOGFILE! 2>&1
+	dir /S /A /X /4 /W "!ALLUSERSPROFILE!\Siemens\SSU\Logs"                                                                      >> !REPORT_LOGFILE! 2>&1
+	IF EXIST "!ALLUSERSPROFILE!\Siemens\SSU\Logs\SSUSetup.log" (
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-		echo SSU - setup log-file found in %ALLUSERSPROFILE%\Siemens\SSU\Logs\SSUSetup.log                                       >> !REPORT_LOGFILE! 2>&1
-		Type "%ALLUSERSPROFILE%\Siemens\SSU\Logs\SSUSetup.log"                                                                   >> !REPORT_LOGFILE! 2>&1
+		echo SSU - setup log-file found in !ALLUSERSPROFILE!\Siemens\SSU\Logs\SSUSetup.log                                       >> !REPORT_LOGFILE! 2>&1
+		Type "!ALLUSERSPROFILE!\Siemens\SSU\Logs\SSUSetup.log"                                                                   >> !REPORT_LOGFILE! 2>&1
 
-		copy "%ALLUSERSPROFILE%\Siemens\SSU\Logs\SSUSetup.log" "!CHECKLMS_SSU_PATH!\SSUSetup.log"                                                      >> !REPORT_LOGFILE! 2>&1
-		echo --- File automatically copied from %ALLUSERSPROFILE%\Siemens\SSU\Logs\SSUSetup.log to !CHECKLMS_SSU_PATH!\SSUSetup.log ---                >> !CHECKLMS_SSU_PATH!\SSUSetup.log 2>&1
-		powershell -Command "get-childitem '%ALLUSERSPROFILE%\Siemens\SSU\Logs\SSUSetup.log' | select Name,CreationTime,LastAccessTime,LastWriteTime"  >> !REPORT_LOGFILE! 2>&1
+		copy "!ALLUSERSPROFILE!\Siemens\SSU\Logs\SSUSetup.log" "!CHECKLMS_SSU_PATH!\SSUSetup.log"                                                      >> !REPORT_LOGFILE! 2>&1
+		echo --- File automatically copied from !ALLUSERSPROFILE!\Siemens\SSU\Logs\SSUSetup.log to !CHECKLMS_SSU_PATH!\SSUSetup.log ---                >> !CHECKLMS_SSU_PATH!\SSUSetup.log 2>&1
+		powershell -Command "get-childitem '!ALLUSERSPROFILE!\Siemens\SSU\Logs\SSUSetup.log' | select Name,CreationTime,LastAccessTime,LastWriteTime"  >> !REPORT_LOGFILE! 2>&1
 	)
 
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
@@ -5541,17 +5543,17 @@ if not defined LMS_SKIPSSU (
 	echo ... read products registered for updates [via SSU] ...
 	echo Products Registered for Updates [via SSU]                                                                               >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	IF EXIST "%ALLUSERSPROFILE%\Siemens\SSU\SiemensSoftwareUpdater.ini" (
-		echo SSU Configuration file found, see %ALLUSERSPROFILE%\Siemens\SSU\SiemensSoftwareUpdater.ini                          >> !REPORT_LOGFILE! 2>&1
-		Type "%ALLUSERSPROFILE%\Siemens\SSU\SiemensSoftwareUpdater.ini"                                                          >> !REPORT_LOGFILE! 2>&1
+	IF EXIST "!ALLUSERSPROFILE!\Siemens\SSU\SiemensSoftwareUpdater.ini" (
+		echo SSU Configuration file found, see !ALLUSERSPROFILE!\Siemens\SSU\SiemensSoftwareUpdater.ini                          >> !REPORT_LOGFILE! 2>&1
+		Type "!ALLUSERSPROFILE!\Siemens\SSU\SiemensSoftwareUpdater.ini"                                                          >> !REPORT_LOGFILE! 2>&1
 		echo .                                                                                                                   >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo     No SSU Configuration file [%ALLUSERSPROFILE%\Siemens\SSU\SiemensSoftwareUpdater.ini] found.                     >> !REPORT_LOGFILE! 2>&1
+		echo     No SSU Configuration file [!ALLUSERSPROFILE!\Siemens\SSU\SiemensSoftwareUpdater.ini] found.                     >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	echo Content of folder: %ALLUSERSPROFILE%\Siemens\SSU\Database                                                               >> !REPORT_LOGFILE! 2>&1
-	dir /S /A /X /4 /W "%ALLUSERSPROFILE%\Siemens\SSU\Database"                                                                  >> !REPORT_LOGFILE! 2>&1
-	FOR %%i IN ("%ALLUSERSPROFILE%\Siemens\SSU\Database\*.ini") DO (
+	echo Content of folder: !ALLUSERSPROFILE!\Siemens\SSU\Database                                                               >> !REPORT_LOGFILE! 2>&1
+	dir /S /A /X /4 /W "!ALLUSERSPROFILE!\Siemens\SSU\Database"                                                                  >> !REPORT_LOGFILE! 2>&1
+	FOR %%i IN ("!ALLUSERSPROFILE!\Siemens\SSU\Database\*.ini") DO (
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 		echo %%i:                                                                                                                >> !REPORT_LOGFILE! 2>&1
 		Type %%i                                                                                                                 >> !REPORT_LOGFILE! 2>&1
@@ -5635,22 +5637,22 @@ if not defined LMS_SKIPSSU (
 	echo **** FNC Windows Client [FNC] ****                                                                                      >> !REPORT_LOGFILE! 2>&1
 	echo ... read products registered for updates [via FNC] ...
 	echo Products Registered for Updates [via FNC]                                                                               >> !REPORT_LOGFILE! 2>&1
-	IF EXIST "%ALLUSERSPROFILE%\FLEXnet\Connect\Database\" (
-		echo Content of folder: %ALLUSERSPROFILE%\FLEXnet\Connect\Database                                                       >> !REPORT_LOGFILE! 2>&1
-		dir /S /A /X /4 /W "%ALLUSERSPROFILE%\FLEXnet\Connect\Database"                                                          >> !REPORT_LOGFILE! 2>&1
+	IF EXIST "!ALLUSERSPROFILE!\FLEXnet\Connect\Database\" (
+		echo Content of folder: !ALLUSERSPROFILE!\FLEXnet\Connect\Database                                                       >> !REPORT_LOGFILE! 2>&1
+		dir /S /A /X /4 /W "!ALLUSERSPROFILE!\FLEXnet\Connect\Database"                                                          >> !REPORT_LOGFILE! 2>&1
 
-		IF EXIST "%ALLUSERSPROFILE%\FLEXnet\Connect\Database\update.ini" (
+		IF EXIST "!ALLUSERSPROFILE!\FLEXnet\Connect\Database\update.ini" (
 			Type "%APPDATA%\FLEXnet\Connect\Database\update.ini" | findstr "UserID="                                             >> !REPORT_LOGFILE! 2>&1
-			FOR %%i IN ("%ALLUSERSPROFILE%\FLEXnet\Connect\Database\*.ini") DO (
+			FOR %%i IN ("!ALLUSERSPROFILE!\FLEXnet\Connect\Database\*.ini") DO (
 				echo -------------------------------------------------------                                                     >> !REPORT_LOGFILE! 2>&1
 				echo %%i:                                                                                                        >> !REPORT_LOGFILE! 2>&1
 				Type %%i                                                                                                         >> !REPORT_LOGFILE! 2>&1
 			)
 		) else (
-			echo     No User FNC Database found [%ALLUSERSPROFILE%\FLEXnet\Connect\Database\update.ini].                         >> !REPORT_LOGFILE! 2>&1
+			echo     No User FNC Database found [!ALLUSERSPROFILE!\FLEXnet\Connect\Database\update.ini].                         >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
-		echo     No User FNC Database found [%ALLUSERSPROFILE%\FLEXnet\Connect\Database\].                                       >> !REPORT_LOGFILE! 2>&1
+		echo     No User FNC Database found [!ALLUSERSPROFILE!\FLEXnet\Connect\Database\].                                       >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "%APPDATA%\FLEXnet\Connect\Database\" (
@@ -5798,48 +5800,48 @@ if not defined LMS_SKIPSETUP (
 		echo     !temp!\setup_LMS_x64.log not found.                                                                             >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
-	IF EXIST "%ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\" (
-		IF EXIST "%ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log" (
-			echo %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log found.                                                                   >> !REPORT_LOGFILE! 2>&1
-			copy %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log %CHECKLMS_SETUP_LOG_PATH%\                                               >> !REPORT_LOGFILE! 2>&1
-			echo --- File automatically copied from %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log to %CHECKLMS_SETUP_LOG_PATH%\ ---  >> %CHECKLMS_SETUP_LOG_PATH%\LMSSetupIS.log 2>&1
+	IF EXIST "!ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\" (
+		IF EXIST "!ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log" (
+			echo !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log found.                                                                   >> !REPORT_LOGFILE! 2>&1
+			copy !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log %CHECKLMS_SETUP_LOG_PATH%\                                               >> !REPORT_LOGFILE! 2>&1
+			echo --- File automatically copied from !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log to %CHECKLMS_SETUP_LOG_PATH%\ ---  >> %CHECKLMS_SETUP_LOG_PATH%\LMSSetupIS.log 2>&1
 		) else (
-			echo     %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log not found.                                                           >> !REPORT_LOGFILE! 2>&1
+			echo     !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log not found.                                                           >> !REPORT_LOGFILE! 2>&1
 		)
 		echo -------------------------------------------------------                                                                                                                    >> !REPORT_LOGFILE! 2>&1
-		IF EXIST "%ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log" (
-			echo %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log found.                                                                  >> !REPORT_LOGFILE! 2>&1
-			copy %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log %CHECKLMS_SETUP_LOG_PATH%\                                              >> !REPORT_LOGFILE! 2>&1
-			echo --- File automatically copied from %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log to %CHECKLMS_SETUP_LOG_PATH%\ ---  >> %CHECKLMS_SETUP_LOG_PATH%\LMSSetupMSI.log 2>&1
+		IF EXIST "!ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log" (
+			echo !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log found.                                                                  >> !REPORT_LOGFILE! 2>&1
+			copy !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log %CHECKLMS_SETUP_LOG_PATH%\                                              >> !REPORT_LOGFILE! 2>&1
+			echo --- File automatically copied from !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log to %CHECKLMS_SETUP_LOG_PATH%\ ---  >> %CHECKLMS_SETUP_LOG_PATH%\LMSSetupMSI.log 2>&1
 		) else (
-			echo      %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log not found.                                                         >> !REPORT_LOGFILE! 2>&1
+			echo      !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log not found.                                                         >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
-		rem echo     No GMS installation! Folder %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\ not found.
-		echo No GMS installation! Folder %ALLUSERSPROFILE%\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\ not found.                                                     >> !REPORT_LOGFILE! 2>&1
+		rem echo     No GMS installation! Folder !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\ not found.
+		echo No GMS installation! Folder !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\ not found.                                                     >> !REPORT_LOGFILE! 2>&1
 	)	
 	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
-	IF EXIST "%ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log" (
-		echo %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log found.                                                                                                  >> !REPORT_LOGFILE! 2>&1
-		copy %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log %CHECKLMS_SETUP_LOG_PATH%\                                                                              >> !REPORT_LOGFILE! 2>&1
-		echo --- File automatically copied from %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log to %CHECKLMS_SETUP_LOG_PATH%\ ---   >> %CHECKLMS_SETUP_LOG_PATH%\LMSSetupIS.log 2>&1
+	IF EXIST "!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log" (
+		echo !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log found.                                                                                                  >> !REPORT_LOGFILE! 2>&1
+		copy !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log %CHECKLMS_SETUP_LOG_PATH%\                                                                              >> !REPORT_LOGFILE! 2>&1
+		echo --- File automatically copied from !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log to %CHECKLMS_SETUP_LOG_PATH%\ ---   >> %CHECKLMS_SETUP_LOG_PATH%\LMSSetupIS.log 2>&1
 	) else (
-		echo     %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log not found.                                                                                          >> !REPORT_LOGFILE! 2>&1
+		echo     !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log not found.                                                                                          >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
-	IF EXIST "%ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log" (
-		echo %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log found.                                                                                                 >> !REPORT_LOGFILE! 2>&1
-		copy %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log %CHECKLMS_SETUP_LOG_PATH%\                                                                             >> !REPORT_LOGFILE! 2>&1
-		echo --- File automatically copied from %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log to %CHECKLMS_SETUP_LOG_PATH%\ ---  >> %CHECKLMS_SETUP_LOG_PATH%\LMSSetupMSI.log 2>&1
+	IF EXIST "!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log" (
+		echo !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log found.                                                                                                 >> !REPORT_LOGFILE! 2>&1
+		copy !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log %CHECKLMS_SETUP_LOG_PATH%\                                                                             >> !REPORT_LOGFILE! 2>&1
+		echo --- File automatically copied from !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log to %CHECKLMS_SETUP_LOG_PATH%\ ---  >> %CHECKLMS_SETUP_LOG_PATH%\LMSSetupMSI.log 2>&1
 	) else (
-		echo     %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log not found.                                                                                         >> !REPORT_LOGFILE! 2>&1
+		echo     !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log not found.                                                                                         >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
-	IF EXIST "%ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\Reports" (
-		echo Content of folder: "%ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\Reports"                                                                                           >> !REPORT_LOGFILE! 2>&1
-		dir /S /A /X /4 /W "%ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\Reports"                                                                                                >> !REPORT_LOGFILE! 2>&1
+	IF EXIST "!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\Reports" (
+		echo Content of folder: "!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\Reports"                                                                                           >> !REPORT_LOGFILE! 2>&1
+		dir /S /A /X /4 /W "!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\Reports"                                                                                                >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo     %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\Reports not found.                                                                                                 >> !REPORT_LOGFILE! 2>&1
+		echo     !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\Reports not found.                                                                                                 >> !REPORT_LOGFILE! 2>&1
 	)
 ) else (
 	rem LMS_SKIPSETUP
@@ -5894,39 +5896,39 @@ if not defined LMS_SKIPLOGS (
 		echo     !REPORT_LOG_PATH!\AlmBt.log not found.                                                                                                                                 >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
-	echo LOG FILE: %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\ALM64_LOG.TXT [last %LOG_FILE_LINES% lines]                                                                      >> !REPORT_LOGFILE! 2>&1
-	IF EXIST "%ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\ALM64_LOG.TXT" (
-		powershell -command "& {Get-Content '%ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\ALM64_LOG.TXT' | Select-Object -last %LOG_FILE_LINES%}"                                >> !REPORT_LOGFILE! 2>&1
-		copy %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\ALM64_LOG.TXT !CHECKLMS_ALM_PATH!\                                                                                     >> !REPORT_LOGFILE! 2>&1
-		echo --- File automatically copied from %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\ALM64_LOG.TXT to !CHECKLMS_ALM_PATH!\ --- >> !CHECKLMS_ALM_PATH!\ALM64_LOG.TXT 2>&1
+	echo LOG FILE: !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\ALM64_LOG.TXT [last %LOG_FILE_LINES% lines]                                                                      >> !REPORT_LOGFILE! 2>&1
+	IF EXIST "!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\ALM64_LOG.TXT" (
+		powershell -command "& {Get-Content '!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\ALM64_LOG.TXT' | Select-Object -last %LOG_FILE_LINES%}"                                >> !REPORT_LOGFILE! 2>&1
+		copy !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\ALM64_LOG.TXT !CHECKLMS_ALM_PATH!\                                                                                     >> !REPORT_LOGFILE! 2>&1
+		echo --- File automatically copied from !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\ALM64_LOG.TXT to !CHECKLMS_ALM_PATH!\ --- >> !CHECKLMS_ALM_PATH!\ALM64_LOG.TXT 2>&1
 	) else (
-		echo     %ALLUSERSPROFILE%\Siemens\Automation\Logfiles\Setup\ALM64_LOG.TXT not found.                                                                                           >> !REPORT_LOGFILE! 2>&1
+		echo     !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\ALM64_LOG.TXT not found.                                                                                           >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
-	echo LOG FILE: %ALLUSERSPROFILE%\Siemens\Automation\Automation License Manager\logging\alm_service_log [last %LOG_FILE_LINES% lines]                                                >> !REPORT_LOGFILE! 2>&1
-	IF EXIST "%ALLUSERSPROFILE%\Siemens\Automation\Automation License Manager\logging\alm_service_log" (
-		powershell -command "& {Get-Content '%ALLUSERSPROFILE%\Siemens\Automation\Automation License Manager\logging\alm_service_log' | Select-Object -last %LOG_FILE_LINES%}"          >> !REPORT_LOGFILE! 2>&1
-		copy "%ALLUSERSPROFILE%\Siemens\Automation\Automation License Manager\logging\alm_service_log" !CHECKLMS_ALM_PATH!\                                                             >> !REPORT_LOGFILE! 2>&1
-		echo --- File automatically copied from %ALLUSERSPROFILE%\Siemens\Automation\Automation License Manager\logging\alm_service_log to !CHECKLMS_ALM_PATH!\ --- >> !CHECKLMS_ALM_PATH!\alm_service_log 2>&1
+	echo LOG FILE: !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\logging\alm_service_log [last %LOG_FILE_LINES% lines]                                                >> !REPORT_LOGFILE! 2>&1
+	IF EXIST "!ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\logging\alm_service_log" (
+		powershell -command "& {Get-Content '!ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\logging\alm_service_log' | Select-Object -last %LOG_FILE_LINES%}"          >> !REPORT_LOGFILE! 2>&1
+		copy "!ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\logging\alm_service_log" !CHECKLMS_ALM_PATH!\                                                             >> !REPORT_LOGFILE! 2>&1
+		echo --- File automatically copied from !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\logging\alm_service_log to !CHECKLMS_ALM_PATH!\ --- >> !CHECKLMS_ALM_PATH!\alm_service_log 2>&1
 	) else (
-		echo     %ALLUSERSPROFILE%\Siemens\Automation\Automation License Manager\logging\alm_service_log not found.                                                                     >> !REPORT_LOGFILE! 2>&1
+		echo     !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\logging\alm_service_log not found.                                                                     >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
-	echo LOG FILE: Copy all files from %ALLUSERSPROFILE%\Siemens\Automation\Automation License Manager\*  to  !CHECKLMS_ALM_PATH!\ALM\                                                  >> !REPORT_LOGFILE! 2>&1
-	IF EXIST "%ALLUSERSPROFILE%\Siemens\Automation\Automation License Manager\" (
+	echo LOG FILE: Copy all files from !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\*  to  !CHECKLMS_ALM_PATH!\ALM\                                                  >> !REPORT_LOGFILE! 2>&1
+	IF EXIST "!ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\" (
 		mkdir !CHECKLMS_ALM_PATH!\ALM\  >nul 2>&1
-		xcopy "%ALLUSERSPROFILE%\Siemens\Automation\Automation License Manager\*" !CHECKLMS_ALM_PATH!\ALM\ /E /Y /H /I                                                                  >> !REPORT_LOGFILE! 2>&1 
-		echo --- Files automatically copied from %ALLUSERSPROFILE%\Siemens\Automation\Automation License Manager\* to !CHECKLMS_ALM_PATH!\ALM\ --- > !CHECKLMS_ALM_PATH!\ALM\__README.txt 2>&1
+		xcopy "!ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\*" !CHECKLMS_ALM_PATH!\ALM\ /E /Y /H /I                                                                  >> !REPORT_LOGFILE! 2>&1 
+		echo --- Files automatically copied from !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\* to !CHECKLMS_ALM_PATH!\ALM\ --- > !CHECKLMS_ALM_PATH!\ALM\__README.txt 2>&1
 	) else (
-		echo     %ALLUSERSPROFILE%\Siemens\Automation\Automation License Manager\ folder not found.                                                                                     >> !REPORT_LOGFILE! 2>&1
+		echo     !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\ folder not found.                                                                                     >> !REPORT_LOGFILE! 2>&1
 	)
-	echo LOG FILE: Copy all files from %ALLUSERSPROFILE%\Siemens\Automation\sws\*  to  !CHECKLMS_ALM_PATH!\sws\                                                                         >> !REPORT_LOGFILE! 2>&1
-	IF EXIST "%ALLUSERSPROFILE%\Siemens\Automation\sws\" (
+	echo LOG FILE: Copy all files from !ALLUSERSPROFILE!\Siemens\Automation\sws\*  to  !CHECKLMS_ALM_PATH!\sws\                                                                         >> !REPORT_LOGFILE! 2>&1
+	IF EXIST "!ALLUSERSPROFILE!\Siemens\Automation\sws\" (
 		mkdir !CHECKLMS_ALM_PATH!\sws\  >nul 2>&1
-		xcopy "%ALLUSERSPROFILE%\Siemens\Automation\sws\*" !CHECKLMS_ALM_PATH!\sws\ /E /Y /H /I                                                                                         >> !REPORT_LOGFILE! 2>&1 
-		echo --- Files automatically copied from %ALLUSERSPROFILE%\Siemens\Automation\Automation License Manager\* to !CHECKLMS_ALM_PATH!\sws\ --- > !CHECKLMS_ALM_PATH!\sws\__README.txt 2>&1
+		xcopy "!ALLUSERSPROFILE!\Siemens\Automation\sws\*" !CHECKLMS_ALM_PATH!\sws\ /E /Y /H /I                                                                                         >> !REPORT_LOGFILE! 2>&1 
+		echo --- Files automatically copied from !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\* to !CHECKLMS_ALM_PATH!\sws\ --- > !CHECKLMS_ALM_PATH!\sws\__README.txt 2>&1
 	) else (
-		echo     %ALLUSERSPROFILE%\Siemens\Automation\sws\ folder not found.                                                                                                            >> !REPORT_LOGFILE! 2>&1
+		echo     !ALLUSERSPROFILE!\Siemens\Automation\sws\ folder not found.                                                                                                            >> !REPORT_LOGFILE! 2>&1
 	)
 ) else (
 	rem LMS_SKIPLOGS
