@@ -208,6 +208,9 @@ rem     20-May-2021:
 rem        - replace at further places %-characters with !-charaters; as they would not work within IF expression
 rem     26-May-2021:
 rem        - set most recent lms field test version: 2.6.832 (per 21-May-2021)
+rem     28-May-2021:
+rem        - re-arrange script start; check first for newer script and - in case avaiulable them - start the before running unzip commands.
+rem        - adjust "reg query" command for products to avoid error message in windows command shell, if regitsr entry doesn't exist
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -237,8 +240,8 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 26-May-2021"
-set LMS_SCRIPT_BUILD=20210526
+set LMS_SCRIPT_VERSION="CheckLMS Script 28-May-2021"
+set LMS_SCRIPT_BUILD=20210528
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -1456,6 +1459,86 @@ if not defined LMS_SKIPDOWNLOAD (
 	echo SKIPPED download section. The script didn't execute the download commands.                                               >> !REPORT_LOGFILE! 2>&1
 )
 
+if not defined LMS_DONOTSTARTNEWERSCRIPT (
+	set LMS_SCRIPT_BUILD_DOWNLOAD_TO_START=
+	rem Check if newer CheckLMS.bat is available in !LMS_DOWNLOAD_PATH!\CheckLMS.bat (even if connection test doesn't run succesful)
+	IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS.bat" (
+		echo     Check script on '!LMS_DOWNLOAD_PATH!\CheckLMS.bat' ... 
+		echo Check script on '!LMS_DOWNLOAD_PATH!\CheckLMS.bat' ...                                                                                                                      >> !REPORT_LOGFILE! 2>&1
+		for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_1 set LMS_SCRIPT_BUILD_DOWNLOAD_1=%%i
+		if /I !LMS_SCRIPT_BUILD_DOWNLOAD_1! GTR !LMS_SCRIPT_BUILD! (
+			echo     Newer check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_1!, Running script version: !LMS_SCRIPT_BUILD!.
+			echo Newer check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_1!, Running script version: !LMS_SCRIPT_BUILD!.                                      >> !REPORT_LOGFILE! 2>&1
+			set LMS_SCRIPT_BUILD_DOWNLOAD_TO_START=!LMS_DOWNLOAD_PATH!\CheckLMS.bat
+		)
+	)	
+	rem Check if newer CheckLMS.bat is available in !LMS_DOWNLOAD_PATH!\git\CheckLMS.bat (even if connection test doesn't run succesful)
+	IF EXIST "!LMS_DOWNLOAD_PATH!\git\CheckLMS.bat" (
+		echo     Check script on '!LMS_DOWNLOAD_PATH!\git\CheckLMS.bat' ... 
+		echo Check script on '!LMS_DOWNLOAD_PATH!\git\CheckLMS.bat' ...                                                                                                                  >> !REPORT_LOGFILE! 2>&1
+		for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\git\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_2 set LMS_SCRIPT_BUILD_DOWNLOAD_2=%%i
+		if /I !LMS_SCRIPT_BUILD_DOWNLOAD_2! GTR !LMS_SCRIPT_BUILD! (
+			echo     Newer check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_2!, Running script version: !LMS_SCRIPT_BUILD!.
+			echo Newer check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_2!, Running script version: !LMS_SCRIPT_BUILD!.                                      >> !REPORT_LOGFILE! 2>&1
+			set LMS_SCRIPT_BUILD_DOWNLOAD_TO_START=!LMS_DOWNLOAD_PATH!\git\CheckLMS.bat
+		)
+	)	
+	if defined LMS_SCRIPT_BUILD_DOWNLOAD_1 (
+		if defined LMS_SCRIPT_BUILD_DOWNLOAD_2 (
+			rem From both servers have new CheckLMS.bat scripts been downloaded.
+			if /I !LMS_SCRIPT_BUILD_DOWNLOAD_1! GTR !LMS_SCRIPT_BUILD! (
+				if /I !LMS_SCRIPT_BUILD_DOWNLOAD_1! GTR !LMS_SCRIPT_BUILD_DOWNLOAD_2! (
+					rem The CheckLMS.bat script on github is older than the script downloaded from akamai share
+					echo Start script downloaded from akamai '!LMS_DOWNLOAD_PATH!\CheckLMS.bat'. Script version from github: !LMS_SCRIPT_BUILD_DOWNLOAD_2!, Script version from akamai: !LMS_SCRIPT_BUILD_DOWNLOAD_1!.  >> !REPORT_LOGFILE! 2>&1
+					set LMS_SCRIPT_BUILD_DOWNLOAD_TO_START=!LMS_DOWNLOAD_PATH!\CheckLMS.bat
+				)
+			)
+			if /I !LMS_SCRIPT_BUILD_DOWNLOAD_2! GTR !LMS_SCRIPT_BUILD! (
+				if /I !LMS_SCRIPT_BUILD_DOWNLOAD_2! GTR !LMS_SCRIPT_BUILD_DOWNLOAD_1! (
+					rem The CheckLMS.bat script on github is newer than the script downloaded from akamai share
+					echo Start script downloaded from github '!LMS_DOWNLOAD_PATH!\git\CheckLMS.bat'. Script version from github: !LMS_SCRIPT_BUILD_DOWNLOAD_2!, Script version from akamai: !LMS_SCRIPT_BUILD_DOWNLOAD_1!.  >> !REPORT_LOGFILE! 2>&1
+					set LMS_SCRIPT_BUILD_DOWNLOAD_TO_START=!LMS_DOWNLOAD_PATH!\git\CheckLMS.bat
+				)
+			)
+		)
+	)
+) else (
+	echo SKIPPED check for newer script. Command line option "Do not start new script" is set.                                                                             >> !REPORT_LOGFILE! 2>&1
+)
+
+if defined LMS_SCRIPT_BUILD_DOWNLOAD_TO_START (
+	if not defined LMS_DONOTSTARTNEWERSCRIPT (
+
+		rem Start newer script in an own command shell window
+		echo ==============================================================================                                                                                >> !REPORT_LOGFILE! 2>&1
+		echo ==                                                                                                                                                            >> !REPORT_LOGFILE! 2>&1
+		echo == Start newer script in an own command shell window.                                                                                                         >> !REPORT_LOGFILE! 2>&1
+		echo ==    command: start "Check LMS !LMS_SCRIPT_BUILD!" !LMS_SCRIPT_BUILD_DOWNLOAD_TO_START! %*                                                                   >> !REPORT_LOGFILE! 2>&1
+		echo ==                                                                                                                                                            >> !REPORT_LOGFILE! 2>&1
+		echo ==============================================================================                                                                                >> !REPORT_LOGFILE! 2>&1
+		echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                                                                        >> !REPORT_LOGFILE! 2>&1
+		if "!LMS_SCHEDTASK_PREV_STATUS!" == "Ready" (
+			rem enable scheduled task during execution of script; if it was enabled at script start ..
+			echo Re-enable scheduled task '!LMS_SCHEDTASK_CHECKID_FULLNAME!', previous state was '!LMS_SCHEDTASK_PREV_STATUS!'                                             >> !REPORT_LOGFILE! 2>&1
+			schtasks /change /TN !LMS_SCHEDTASK_CHECKID_FULLNAME! /ENABLE >nul 2>&1
+		)
+		rem save (single) report in full report file
+		Type !REPORT_LOGFILE! >> %REPORT_FULL_LOGFILE%
+		
+		start "Check LMS" !LMS_SCRIPT_BUILD_DOWNLOAD_TO_START! %* /donotstartnewerscript
+		exit
+		rem STOP EXECUTION HERE
+	
+	) else (
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;33m    SKIPPED start of newer script. Command line option "Do not start new script" is set. [1;37m
+		) else (
+			echo     SKIPPED start of newer script. Command line option "Do not start new script" is set.
+		)
+		echo SKIPPED start of newer script. Command line option "Do not start new script" is set.                                                                          >> !REPORT_LOGFILE! 2>&1
+	)
+)	
+
 if not defined LMS_SKIPUNZIP (
 	if defined LMS_SERVERTOOL_DW (
 		REM Unzip FNP Siemens Library
@@ -1507,49 +1590,6 @@ if not defined LMS_SKIPUNZIP (
 		echo     Don't unzip USBDeview tool [usbdeview-x64.zip], because zip archive doesn't exists.
 		echo Don't unzip USBDeview tool [usbdeview-x64.zip], because zip archive doesn't exists.                                      >> !REPORT_LOGFILE! 2>&1
 	)
-
-	set LMS_SCRIPT_BUILD_DOWNLOAD_TO_START=
-	rem Check if newer CheckLMS.bat is available in !LMS_DOWNLOAD_PATH!\CheckLMS.bat (even if connection test doesn't run succesful)
-	IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS.bat" (
-		echo     Check script on '!LMS_DOWNLOAD_PATH!\CheckLMS.bat' ... 
-		echo Check script on '!LMS_DOWNLOAD_PATH!\CheckLMS.bat' ...                                                                                                                      >> !REPORT_LOGFILE! 2>&1
-		for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_1 set LMS_SCRIPT_BUILD_DOWNLOAD_1=%%i
-		if /I !LMS_SCRIPT_BUILD_DOWNLOAD_1! GTR !LMS_SCRIPT_BUILD! (
-			echo     Newer check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_1!, Running script version: !LMS_SCRIPT_BUILD!.
-			echo Newer check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_1!, Running script version: !LMS_SCRIPT_BUILD!.                                      >> !REPORT_LOGFILE! 2>&1
-			set LMS_SCRIPT_BUILD_DOWNLOAD_TO_START=!LMS_DOWNLOAD_PATH!\CheckLMS.bat
-		)
-	)	
-	rem Check if newer CheckLMS.bat is available in !LMS_DOWNLOAD_PATH!\git\CheckLMS.bat (even if connection test doesn't run succesful)
-	IF EXIST "!LMS_DOWNLOAD_PATH!\git\CheckLMS.bat" (
-		echo     Check script on '!LMS_DOWNLOAD_PATH!\git\CheckLMS.bat' ... 
-		echo Check script on '!LMS_DOWNLOAD_PATH!\git\CheckLMS.bat' ...                                                                                                                  >> !REPORT_LOGFILE! 2>&1
-		for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\git\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_2 set LMS_SCRIPT_BUILD_DOWNLOAD_2=%%i
-		if /I !LMS_SCRIPT_BUILD_DOWNLOAD_2! GTR !LMS_SCRIPT_BUILD! (
-			echo     Newer check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_2!, Running script version: !LMS_SCRIPT_BUILD!.
-			echo Newer check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_2!, Running script version: !LMS_SCRIPT_BUILD!.                                      >> !REPORT_LOGFILE! 2>&1
-			set LMS_SCRIPT_BUILD_DOWNLOAD_TO_START=!LMS_DOWNLOAD_PATH!\git\CheckLMS.bat
-		)
-	)	
-	if defined LMS_SCRIPT_BUILD_DOWNLOAD_1 (
-		if defined LMS_SCRIPT_BUILD_DOWNLOAD_2 (
-			rem From both servers have new CheckLMS.bat scripts been downloaded.
-			if /I !LMS_SCRIPT_BUILD_DOWNLOAD_1! GTR !LMS_SCRIPT_BUILD! (
-				if /I !LMS_SCRIPT_BUILD_DOWNLOAD_1! GTR !LMS_SCRIPT_BUILD_DOWNLOAD_2! (
-					rem The CheckLMS.bat script on github is older than the script downloaded from akamai share
-					echo Start script downloaded from akamai '!LMS_DOWNLOAD_PATH!\CheckLMS.bat'. Script version from github: !LMS_SCRIPT_BUILD_DOWNLOAD_2!, Script version from akamai: !LMS_SCRIPT_BUILD_DOWNLOAD_1!.  >> !REPORT_LOGFILE! 2>&1
-					set LMS_SCRIPT_BUILD_DOWNLOAD_TO_START=!LMS_DOWNLOAD_PATH!\CheckLMS.bat
-				)
-			)
-			if /I !LMS_SCRIPT_BUILD_DOWNLOAD_2! GTR !LMS_SCRIPT_BUILD! (
-				if /I !LMS_SCRIPT_BUILD_DOWNLOAD_2! GTR !LMS_SCRIPT_BUILD_DOWNLOAD_1! (
-					rem The CheckLMS.bat script on github is newer than the script downloaded from akamai share
-					echo Start script downloaded from github '!LMS_DOWNLOAD_PATH!\git\CheckLMS.bat'. Script version from github: !LMS_SCRIPT_BUILD_DOWNLOAD_2!, Script version from akamai: !LMS_SCRIPT_BUILD_DOWNLOAD_1!.  >> !REPORT_LOGFILE! 2>&1
-					set LMS_SCRIPT_BUILD_DOWNLOAD_TO_START=!LMS_DOWNLOAD_PATH!\git\CheckLMS.bat
-				)
-			)
-		)
-	)
 ) else (
 	rem LMS_SKIPUNZIP
 	if defined SHOW_COLORED_OUTPUT (
@@ -1572,39 +1612,6 @@ if defined LMS_CHECK_DOWNLOAD (
 	goto script_end
 	rem STOP EXECUTION HERE
 )
-
-if defined LMS_SCRIPT_BUILD_DOWNLOAD_TO_START (
-	if not defined LMS_DONOTSTARTNEWERSCRIPT (
-
-		rem Start newer script in an own command shell window
-		echo ==============================================================================                                                                                >> !REPORT_LOGFILE! 2>&1
-		echo ==                                                                                                                                                            >> !REPORT_LOGFILE! 2>&1
-		echo == Start newer script in an own command shell window.                                                                                                         >> !REPORT_LOGFILE! 2>&1
-		echo ==    command: start "Check LMS !LMS_SCRIPT_BUILD!" !LMS_SCRIPT_BUILD_DOWNLOAD_TO_START! %*                                                                   >> !REPORT_LOGFILE! 2>&1
-		echo ==                                                                                                                                                            >> !REPORT_LOGFILE! 2>&1
-		echo ==============================================================================                                                                                >> !REPORT_LOGFILE! 2>&1
-		echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                                                                        >> !REPORT_LOGFILE! 2>&1
-		if "!LMS_SCHEDTASK_PREV_STATUS!" == "Ready" (
-			rem enable scheduled task during execution of script; if it was enabled at script start ..
-			echo Re-enable scheduled task '!LMS_SCHEDTASK_CHECKID_FULLNAME!', previous state was '!LMS_SCHEDTASK_PREV_STATUS!'                                             >> !REPORT_LOGFILE! 2>&1
-			schtasks /change /TN !LMS_SCHEDTASK_CHECKID_FULLNAME! /ENABLE >nul 2>&1
-		)
-		rem save (single) report in full report file
-		Type !REPORT_LOGFILE! >> %REPORT_FULL_LOGFILE%
-		
-		start "Check LMS" !LMS_SCRIPT_BUILD_DOWNLOAD_TO_START! %* /donotstartnewerscript
-		exit
-		rem STOP EXECUTION HERE
-	
-	) else (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;33m    SKIPPED start of newer script. Command line option "Do not start new script" is set. [1;37m
-		) else (
-			echo     SKIPPED start of newer script. Command line option "Do not start new script" is set.
-		)
-		echo SKIPPED start of newer script. Command line option "Do not start new script" is set.                                                                          >> !REPORT_LOGFILE! 2>&1
-	)
-)	
 
 rem -- AccessChk.exe
 set ACCESSCHECK_TOOL=
@@ -6450,9 +6457,7 @@ if not defined LMS_SKIPPRODUCTS (
 	echo =   D E S I G O   C C                                                        =                                      >> !REPORT_LOGFILE! 2>&1
 	echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
 	REM -- Desigo CC (GMS) Registry Keys --
-	set KEY_NAME=HKLM\Software\Siemens\Siemens_GMS
-	set VALUE_NAME=Version
-	for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
+	for /F "usebackq tokens=3" %%A IN (`reg query "HKLM\Software\Siemens\Siemens_GMS" /v "Version" 2^>nul ^| find /I "Version"`) do (
 		set GMS_VERSION=%%A
 	)
 	if defined GMS_VERSION (
@@ -6519,9 +6524,7 @@ if not defined LMS_SKIPPRODUCTS (
 	echo =   S E N T R O N   P O W E R M A N A G E R                                  =                                      >> !REPORT_LOGFILE! 2>&1
 	echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
 	REM -- Sentron powermanager Registry Keys --
-	set KEY_NAME=HKLM\SOFTWARE\Siemens\powermanager\V4.20
-	set VALUE_NAME=Version
-	for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
+	for /F "usebackq tokens=3" %%A IN (`reg query "HKLM\SOFTWARE\Siemens\powermanager\V4.20" /v "Version" 2^>nul ^| find /I "Version"`) do (
 		set PM_VERSION=%%A
 	)
 	if defined PM_VERSION (
@@ -6544,9 +6547,7 @@ if not defined LMS_SKIPPRODUCTS (
 	echo =   X W O R K S  P L U S  [ X W P ]                                          =                                      >> !REPORT_LOGFILE! 2>&1
 	echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
 	REM -- XWorks Plus (XWP) Registry Keys --
-	set KEY_NAME=HKLM\SOFTWARE\WOW6432Node\Siemens\DESIGO\XWP
-	set VALUE_NAME=Version
-	for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
+	for /F "usebackq tokens=3" %%A IN (`reg query "HKLM\SOFTWARE\WOW6432Node\Siemens\DESIGO\XWP" /v "Version" 2^>nul ^| find /I "Version"`) do (
 		set XWP_VERSION=%%A
 	)
 	if defined XWP_VERSION (
@@ -6572,9 +6573,7 @@ if not defined LMS_SKIPPRODUCTS (
 	echo =   A U T O M A T I O N   B U I L D I N G   T O O L   [ A B T ]              =                                      >> !REPORT_LOGFILE! 2>&1
 	echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
 	REM -- Automation Building Tool (ABT) Registry Keys --
-	set KEY_NAME=HKLM\SOFTWARE\Siemens\ABTSite
-	set VALUE_NAME=Version
-	for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
+	for /F "usebackq tokens=3" %%A IN (`reg query "HKLM\SOFTWARE\Siemens\ABTSite" /v "Version" 2^>nul ^| find /I "Version"`) do (
 		set ABT_VERSION=%%A
 	)
 	if defined ABT_VERSION (
@@ -6598,9 +6597,7 @@ if not defined LMS_SKIPPRODUCTS (
 	echo =   S I V E I L L A N C E   I D E N T I T Y  [SiID]                          =                                      >> !REPORT_LOGFILE! 2>&1
 	echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
 	REM -- Siveillance Identity (SiID) Registry Keys --
-	set KEY_NAME=HKLM\SOFTWARE\Siemens\SiID
-	set VALUE_NAME=Version
-	for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
+	for /F "usebackq tokens=3" %%A IN (`reg query "HKLM\SOFTWARE\Siemens\SiID" /v "Version" 2^>nul ^| find /I "Version"`) do (
 		set SiID_VERSION=%%A
 	)
 	if defined SiID_VERSION (
@@ -6688,9 +6685,7 @@ if not defined LMS_SKIPPRODUCTS (
 	echo =   D E S I G O   I N S I G H T                                              =                                      >> !REPORT_LOGFILE! 2>&1
 	echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
 	REM -- Desigo CC (GMS) Registry Keys --
-	set KEY_NAME=HKLM\Software\Landis & Staefa\Licenses
-	set VALUE_NAME=ProjectName
-	for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
+	for /F "usebackq tokens=3" %%A IN (`reg query "HKLM\Software\Landis & Staefa\Licenses" /v "ProjectName" 2^>nul ^| find /I "ProjectName"`) do (
 		set INSIGHT_PROJECTNAME=%%A
 	)
 	if defined INSIGHT_PROJECTNAME (
