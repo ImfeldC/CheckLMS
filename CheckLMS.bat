@@ -211,6 +211,12 @@ rem        - set most recent lms field test version: 2.6.832 (per 21-May-2021)
 rem     28-May-2021:
 rem        - re-arrange script start; check first for newer script and - in case avaiulable them - start the before running unzip commands.
 rem        - adjust "reg query" command for products to avoid error message in windows command shell, if regitsr entry doesn't exist
+rem     02-Jun-2021:
+rem        - replace at further places %-characters with !-charaters; as they would not work within IF expression
+rem        - check for presence of "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" before executing powershell command
+rem        - suppress any error during unzip, write them into specific logfile (add 2>&1 to command output)
+rem     07-Jun-2021:
+rem        - read AZURE identify information document (see https://docs.microsoft.com/en-us/azure/virtual-machines/windows/instance-metadata-service?tabs=windows )
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -240,13 +246,14 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 28-May-2021"
-set LMS_SCRIPT_BUILD=20210528
+set LMS_SCRIPT_VERSION="CheckLMS Script 07-Jun-2021"
+set LMS_SCRIPT_BUILD=20210607
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
 set MOST_RECENT_LMS_BUILD=824
 rem most recent lms field test version: 2.6.832 (per 21-May-2021)
+rem - if not set, it is not downloaded.
 set MOST_RECENT_FT_LMS_VERSION=2.6.832
 set MOST_RECENT_FT_LMS_BUILD=832
 rem most recent dongle driver version (per 13-Nov-2020, LMS 2.5)
@@ -551,11 +558,13 @@ if defined LMS_CHECK_ID (
 	rem adjsut logfile name to avoid clash when two scripts a running at the same time
 	set REPORT_LOGFILE=!REPORT_LOG_PATH!\LMSStatusReport_!COMPUTERNAME!_checkid.log 
 ) else (
-    rem retreive previous status of scheduled task
-	for /f "delims=" %%a in ('powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "(Get-ScheduledTask | Where TaskName -eq !LMS_SCHEDTASK_CHECKID_NAME! ).State"') do set LMS_SCHEDTASK_PREV_STATUS=%%a
-	rem disable scheduled task during execution of script, to avoid parallel running
-	echo Disable scheduled task '!LMS_SCHEDTASK_CHECKID_FULLNAME!', previous state was '!LMS_SCHEDTASK_PREV_STATUS!'  
-	schtasks /change /TN !LMS_SCHEDTASK_CHECKID_FULLNAME! /DISABLE  >nul 2>&1
+	IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" (
+		rem retreive previous status of scheduled task
+		for /f "delims=" %%a in ('powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "(Get-ScheduledTask | Where TaskName -eq !LMS_SCHEDTASK_CHECKID_NAME! ).State"') do set LMS_SCHEDTASK_PREV_STATUS=%%a
+		rem disable scheduled task during execution of script, to avoid parallel running
+		echo Disable scheduled task '!LMS_SCHEDTASK_CHECKID_FULLNAME!', previous state was '!LMS_SCHEDTASK_PREV_STATUS!'  
+		schtasks /change /TN !LMS_SCHEDTASK_CHECKID_FULLNAME! /DISABLE  >nul 2>&1
+	)
 )
 
 rem ----- avoid access to the main logfile BEFORE ths line -----
@@ -1032,7 +1041,7 @@ if !LMS_BUILD_VERSION! NEQ "N/A" (
 				echo NOTE: The LMS version !LMS_VERSION! which you are using is DEPRECATED, pls update your system.              >> !REPORT_LOGFILE! 2>&1
 			) else (
 				REM Check: ... less than MOST_RECENT_LMS_BUILD --> IN TEST
-				if /I !LMS_BUILD_VERSION! LSS %MOST_RECENT_LMS_BUILD% (
+				if /I !LMS_BUILD_VERSION! LSS !MOST_RECENT_LMS_BUILD! (
 					if defined SHOW_COLORED_OUTPUT (
 						echo [1;33m    WARNING: The LMS version !LMS_VERSION! which you are using is a field test version, pls update your system as soon final version is available. [1;37m
 					) else (
@@ -1185,17 +1194,17 @@ if not defined LMS_SKIPDOWNLOAD (
 		if defined LMS_SERVERTOOL_DW (
 			if defined UNZIP_TOOL (
 				rem Download and unzip FNP toolkit [as ZIP]
-				IF NOT EXIST "!LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.zip" (
-					echo     Download FNP Siemens Library: !LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.zip
-					echo Download FNP Siemens Library: !LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.zip                                                                                                           >> !REPORT_LOGFILE! 2>&1
-					powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/%LMS_SERVERTOOL_DW%.zip', '!LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.zip')"   >> !REPORT_LOGFILE! 2>&1
+				IF NOT EXIST "!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.zip" (
+					echo     Download FNP Siemens Library: !LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.zip
+					echo Download FNP Siemens Library: !LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.zip                                                                                                           >> !REPORT_LOGFILE! 2>&1
+					powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/!LMS_SERVERTOOL_DW!.zip', '!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.zip')"   >> !REPORT_LOGFILE! 2>&1
 
 					REM Unzip FNP Siemens Library
 					REM See https://sourceforge.net/p/sevenzip/discussion/45798/thread/8cb61347/?limit=25
-					IF EXIST "!LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.zip" (
-						echo     Extract FNP Siemens Library: !LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.zip
-						echo Extract FNP Siemens Library: !LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.zip                                       >> !REPORT_LOGFILE! 2>&1
-						"!UNZIP_TOOL!" x -y -spe -o"!LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%\" "!LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.zip" > !CHECKLMS_REPORT_LOG_PATH!\unzip_fnp_library_zip.txt 2>&1
+					IF EXIST "!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.zip" (
+						echo     Extract FNP Siemens Library: !LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.zip
+						echo Extract FNP Siemens Library: !LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.zip                                       >> !REPORT_LOGFILE! 2>&1
+						"!UNZIP_TOOL!" x -y -spe -o"!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!\" "!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.zip" > !CHECKLMS_REPORT_LOG_PATH!\unzip_fnp_library_zip.txt 2>&1
 					)
 				) else (
 					echo     Don't download FNP Siemens Library [ZIP], because they exist already.
@@ -1206,17 +1215,17 @@ if not defined LMS_SKIPDOWNLOAD (
 				rem NO LONGER USED EXE DOWNLOAD, as UNZIP tool is also provided 
 				rem 
 				rem Download and unzip FNP toolkit [as EXE]
-				IF NOT EXIST "!LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.exe" (
-					echo     Download FNP Siemens Library: !LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.exe
-					echo Download FNP Siemens Library: !LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.exe                                                                                                           >> !REPORT_LOGFILE! 2>&1
-					powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/%LMS_SERVERTOOL_DW%.exe', '!LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.exe')"   >> !REPORT_LOGFILE! 2>&1
+				IF NOT EXIST "!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.exe" (
+					echo     Download FNP Siemens Library: !LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.exe
+					echo Download FNP Siemens Library: !LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.exe                                                                                                           >> !REPORT_LOGFILE! 2>&1
+					powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/!LMS_SERVERTOOL_DW!.exe', '!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.exe')"   >> !REPORT_LOGFILE! 2>&1
 
 					REM Unzip FNP Siemens Library
 					REM see https://stackoverflow.com/questions/17687390/how-do-i-silently-install-a-7-zip-self-extracting-archive-to-a-specific-director for more information
-					IF EXIST "!LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.exe" (
-						echo     Extract FNP Siemens Library: !LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.exe
-						echo Extract FNP Siemens Library: !LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.exe                                       >> !REPORT_LOGFILE! 2>&1
-						!LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.exe -y -o"!LMS_DOWNLOAD_PATH!\"                                             > !CHECKLMS_REPORT_LOG_PATH!\unzip_fnp_library_exe.txt 2>&1
+					IF EXIST "!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.exe" (
+						echo     Extract FNP Siemens Library: !LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.exe
+						echo Extract FNP Siemens Library: !LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.exe                                       >> !REPORT_LOGFILE! 2>&1
+						!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.exe -y -o"!LMS_DOWNLOAD_PATH!\"                                             > !CHECKLMS_REPORT_LOG_PATH!\unzip_fnp_library_exe.txt 2>&1
 					)
 				) else (
 					echo     Don't download FNP Siemens Library [EXE], because they exist already.
@@ -1277,39 +1286,41 @@ if not defined LMS_SKIPDOWNLOAD (
 				echo Skip download from github,  because option 'donotstartnewerscript' is set. '%0'                                                                                            >> !REPORT_LOGFILE! 2>&1
 			) 
 
-			if /I !LMS_BUILD_VERSION! NEQ %MOST_RECENT_LMS_BUILD% (
+			if /I !LMS_BUILD_VERSION! NEQ !MOST_RECENT_LMS_BUILD! (
 				rem Not "most recent" [="released"] build installed, download latest released LMS client; e.g. from https://static.siemens.com/btdownloads/lms/LMSSetup2.6.826/x64/setup64.exe
-				set LMS_SETUP_EXECUTABLE=!LMS_DOWNLOAD_PATH!\LMSSetup\%MOST_RECENT_LMS_VERSION%\setup64.exe
+				set LMS_SETUP_EXECUTABLE=!LMS_DOWNLOAD_PATH!\LMSSetup\!MOST_RECENT_LMS_VERSION!\setup64.exe
 				IF NOT EXIST "!LMS_SETUP_EXECUTABLE!" (
-					IF NOT EXIST "!LMS_DOWNLOAD_PATH!\LMSSetup\%MOST_RECENT_LMS_VERSION%" (
-						rem echo Create new folder: !LMS_DOWNLOAD_PATH!\LMSSetup\%MOST_RECENT_LMS_VERSION%
-						mkdir !LMS_DOWNLOAD_PATH!\LMSSetup\%MOST_RECENT_LMS_VERSION% >nul 2>&1
+					IF NOT EXIST "!LMS_DOWNLOAD_PATH!\LMSSetup\!MOST_RECENT_LMS_VERSION!" (
+						rem echo Create new folder: !LMS_DOWNLOAD_PATH!\LMSSetup\!MOST_RECENT_LMS_VERSION!
+						mkdir !LMS_DOWNLOAD_PATH!\LMSSetup\!MOST_RECENT_LMS_VERSION! >nul 2>&1
 					)
-					set LMS_SETUP_DOWNLOAD_LINK=https://static.siemens.com/btdownloads/lms/LMSSetup%MOST_RECENT_LMS_VERSION%/x64/setup64.exe
-					echo     Download latest released LMS setup [%MOST_RECENT_LMS_VERSION%]: !LMS_SETUP_EXECUTABLE!
-					echo Download latest released LMS setup [%MOST_RECENT_LMS_VERSION%]: !LMS_SETUP_EXECUTABLE!                                      >> !REPORT_LOGFILE! 2>&1
+					set LMS_SETUP_DOWNLOAD_LINK=https://static.siemens.com/btdownloads/lms/LMSSetup!MOST_RECENT_LMS_VERSION!/x64/setup64.exe
+					echo     Download latest released LMS setup [!MOST_RECENT_LMS_VERSION!]: !LMS_SETUP_EXECUTABLE!
+					echo Download latest released LMS setup [!MOST_RECENT_LMS_VERSION!]: !LMS_SETUP_EXECUTABLE!                                      >> !REPORT_LOGFILE! 2>&1
 					powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_SETUP_DOWNLOAD_LINK!', '!LMS_SETUP_EXECUTABLE!')"             >> !REPORT_LOGFILE! 2>&1
 				) else (
-					echo     Don't download latest released LMS setup [%MOST_RECENT_LMS_VERSION%], because it exist already: !LMS_SETUP_EXECUTABLE!
-					echo Don't download latest released LMS setup [%MOST_RECENT_LMS_VERSION%], because it exist already: !LMS_SETUP_EXECUTABLE!      >> !REPORT_LOGFILE! 2>&1
+					echo     Don't download latest released LMS setup [!MOST_RECENT_LMS_VERSION!], because it exist already: !LMS_SETUP_EXECUTABLE!
+					echo Don't download latest released LMS setup [!MOST_RECENT_LMS_VERSION!], because it exist already: !LMS_SETUP_EXECUTABLE!      >> !REPORT_LOGFILE! 2>&1
 				)
 			)
 			
-			if /I !LMS_BUILD_VERSION! NEQ %MOST_RECENT_FT_LMS_BUILD% (
-				rem Not "most recent" field test build installed, download latest field test LMS client; e.g. from https://static.siemens.com/btdownloads/lms/LMSSetup2.6.826/x64/setup64.exe
-				set LMS_FT_SETUP_EXECUTABLE=!LMS_DOWNLOAD_PATH!\LMSSetup\%MOST_RECENT_FT_LMS_VERSION%\setup64.exe
-				IF NOT EXIST "!LMS_FT_SETUP_EXECUTABLE!" (
-					IF NOT EXIST "!LMS_DOWNLOAD_PATH!\LMSSetup\%MOST_RECENT_FT_LMS_VERSION%" (
-						rem echo Create new folder: !LMS_DOWNLOAD_PATH!\LMSSetup\%MOST_RECENT_FT_LMS_VERSION%
-						mkdir !LMS_DOWNLOAD_PATH!\LMSSetup\%MOST_RECENT_FT_LMS_VERSION% >nul 2>&1
+			if defined MOST_RECENT_FT_LMS_BUILD (
+				if /I !LMS_BUILD_VERSION! NEQ !MOST_RECENT_FT_LMS_BUILD! (
+					rem Not "most recent" field test build installed, download latest field test LMS client; e.g. from https://static.siemens.com/btdownloads/lms/LMSSetup2.6.826/x64/setup64.exe
+					set LMS_FT_SETUP_EXECUTABLE=!LMS_DOWNLOAD_PATH!\LMSSetup\!MOST_RECENT_FT_LMS_VERSION!\setup64.exe
+					IF NOT EXIST "!LMS_FT_SETUP_EXECUTABLE!" (
+						IF NOT EXIST "!LMS_DOWNLOAD_PATH!\LMSSetup\!MOST_RECENT_FT_LMS_VERSION!" (
+							rem echo Create new folder: !LMS_DOWNLOAD_PATH!\LMSSetup\!MOST_RECENT_FT_LMS_VERSION!
+							mkdir !LMS_DOWNLOAD_PATH!\LMSSetup\!MOST_RECENT_FT_LMS_VERSION! >nul 2>&1
+						)
+						set LMS_FT_SETUP_DOWNLOAD_LINK=https://static.siemens.com/btdownloads/lms/LMSSetup!MOST_RECENT_FT_LMS_VERSION!/x64/setup64.exe
+						echo     Download latest field test LMS setup [!MOST_RECENT_FT_LMS_VERSION!]: !LMS_FT_SETUP_EXECUTABLE!
+						echo Download latest field test LMS setup [!MOST_RECENT_FT_LMS_VERSION!]: !LMS_FT_SETUP_EXECUTABLE!                                      >> !REPORT_LOGFILE! 2>&1
+						powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_FT_SETUP_DOWNLOAD_LINK!', '!LMS_FT_SETUP_EXECUTABLE!')"               >> !REPORT_LOGFILE! 2>&1
+					) else (
+						echo     Don't download latest field test LMS setup [!MOST_RECENT_FT_LMS_VERSION!], because it exist already: !LMS_FT_SETUP_EXECUTABLE!
+						echo Don't download latest field test LMS setup [!MOST_RECENT_FT_LMS_VERSION!], because it exist already: !LMS_FT_SETUP_EXECUTABLE!      >> !REPORT_LOGFILE! 2>&1
 					)
-					set LMS_FT_SETUP_DOWNLOAD_LINK=https://static.siemens.com/btdownloads/lms/LMSSetup%MOST_RECENT_FT_LMS_VERSION%/x64/setup64.exe
-					echo     Download latest field test LMS setup [%MOST_RECENT_FT_LMS_VERSION%]: !LMS_FT_SETUP_EXECUTABLE!
-					echo Download latest field test LMS setup [%MOST_RECENT_FT_LMS_VERSION%]: !LMS_FT_SETUP_EXECUTABLE!                                      >> !REPORT_LOGFILE! 2>&1
-					powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_FT_SETUP_DOWNLOAD_LINK!', '!LMS_FT_SETUP_EXECUTABLE!')"               >> !REPORT_LOGFILE! 2>&1
-				) else (
-					echo     Don't download latest field test LMS setup [%MOST_RECENT_FT_LMS_VERSION%], because it exist already: !LMS_FT_SETUP_EXECUTABLE!
-					echo Don't download latest field test LMS setup [%MOST_RECENT_FT_LMS_VERSION%], because it exist already: !LMS_FT_SETUP_EXECUTABLE!      >> !REPORT_LOGFILE! 2>&1
 				)
 			)
 			
@@ -1438,7 +1449,7 @@ if not defined LMS_SKIPDOWNLOAD (
 					echo Unzip download archive '!file!' into '!LMS_PROGRAMDATA!' ...                                                     >> !REPORT_LOGFILE! 2>&1
 					if defined UNZIP_TOOL (
 						echo Unzip download archive [LMSDownloadArchive_*.zip] with unzip tool '!UNZIP_TOOL!'.                            >> !REPORT_LOGFILE! 2>&1
-						"!UNZIP_TOOL!" x -y -spe -o"!LMS_PROGRAMDATA!" "!file!"                                                           > !CHECKLMS_REPORT_LOG_PATH!\unzip_download_archive.txt
+						"!UNZIP_TOOL!" x -y -spe -o"!LMS_PROGRAMDATA!" "!file!"                                                           > !CHECKLMS_REPORT_LOG_PATH!\unzip_download_archive.txt 2>&1
 					) else (
 						echo Can't unzip download archive [LMSDownloadArchive_*.zip], because no unzip tool is available.                 >> !REPORT_LOGFILE! 2>&1
 					)
@@ -1543,25 +1554,25 @@ if not defined LMS_SKIPUNZIP (
 	if defined LMS_SERVERTOOL_DW (
 		REM Unzip FNP Siemens Library
 		REM See https://sourceforge.net/p/sevenzip/discussion/45798/thread/8cb61347/?limit=25
-		IF EXIST "!LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.zip" (
-			echo     Extract FNP Siemens Library: !LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.zip
-			echo Extract FNP Siemens Library: !LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.zip                                             >> !REPORT_LOGFILE! 2>&1
+		IF EXIST "!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.zip" (
+			echo     Extract FNP Siemens Library: !LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.zip
+			echo Extract FNP Siemens Library: !LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.zip                                             >> !REPORT_LOGFILE! 2>&1
 			if defined UNZIP_TOOL (
-				"!UNZIP_TOOL!" x -y -spe -o"!LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%\" "!LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.zip"   > !CHECKLMS_REPORT_LOG_PATH!\unzip_fnp_library_using_zip_tool.txt
+				"!UNZIP_TOOL!" x -y -spe -o"!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!\" "!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.zip"   > !CHECKLMS_REPORT_LOG_PATH!\unzip_fnp_library_using_zip_tool.txt 2>&1
 			) else (
-				echo Can't unzip FNP Siemens Library [%LMS_SERVERTOOL_DW%.zip], because no unzip tool is available.                   >> !REPORT_LOGFILE! 2>&1
+				echo Can't unzip FNP Siemens Library [!LMS_SERVERTOOL_DW!.zip], because no unzip tool is available.                   >> !REPORT_LOGFILE! 2>&1
 			)
-			powershell -Command "Expand-Archive -Path !LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%.zip -DestinationPath !LMS_DOWNLOAD_PATH!\%LMS_SERVERTOOL_DW%\ -Verbose -Force"   > !CHECKLMS_REPORT_LOG_PATH!\unzip_fnp_library_using_powershell.txt
+			powershell -Command "Expand-Archive -Path !LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.zip -DestinationPath !LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!\ -Verbose -Force"   > !CHECKLMS_REPORT_LOG_PATH!\unzip_fnp_library_using_powershell.txt 2>&1
 		)
 	)
 	rem Unzip AccessChk tool
 	IF EXIST "!LMS_DOWNLOAD_PATH!\AccessChk.zip" (
 		if defined UNZIP_TOOL (
-			"!UNZIP_TOOL!" x -o!LMS_DOWNLOAD_PATH!\AccessChk -y !LMS_DOWNLOAD_PATH!\AccessChk.zip                                     > !CHECKLMS_REPORT_LOG_PATH!\unzip_accessChk.txt
+			"!UNZIP_TOOL!" x -o!LMS_DOWNLOAD_PATH!\AccessChk -y !LMS_DOWNLOAD_PATH!\AccessChk.zip                                     > !CHECKLMS_REPORT_LOG_PATH!\unzip_accessChk.txt 2>&1
 		) else (
 			echo Can't unzip AccessChk tool [AccessChk.zip], because no unzip tool is available.                                      >> !REPORT_LOGFILE! 2>&1
 		)
-		powershell -Command "Expand-Archive -Path !LMS_DOWNLOAD_PATH!\AccessChk.zip -DestinationPath !LMS_DOWNLOAD_PATH!\AccessChk -Verbose -Force"   > !CHECKLMS_REPORT_LOG_PATH!\unzip_accesschk_using_powershell.txt
+		powershell -Command "Expand-Archive -Path !LMS_DOWNLOAD_PATH!\AccessChk.zip -DestinationPath !LMS_DOWNLOAD_PATH!\AccessChk -Verbose -Force"   > !CHECKLMS_REPORT_LOG_PATH!\unzip_accesschk_using_powershell.txt 2>&1
 	) else (
 		echo     Don't unzip AccessChk tool [AccessChk.zip], because zip archive doesn't exists.
 		echo Don't unzip AccessChk tool [AccessChk.zip], because zip archive doesn't exists.                                          >> !REPORT_LOGFILE! 2>&1
@@ -1569,11 +1580,11 @@ if not defined LMS_SKIPUNZIP (
 	rem Unzip SigCheck tool
 	IF EXIST "!LMS_DOWNLOAD_PATH!\Sigcheck.zip" (
 		if defined UNZIP_TOOL (
-			"!UNZIP_TOOL!" x -o!LMS_DOWNLOAD_PATH!\SigCheck -y !LMS_DOWNLOAD_PATH!\Sigcheck.zip                                       > !CHECKLMS_REPORT_LOG_PATH!\unzip_sigcheck.txt
+			"!UNZIP_TOOL!" x -o!LMS_DOWNLOAD_PATH!\SigCheck -y !LMS_DOWNLOAD_PATH!\Sigcheck.zip                                       > !CHECKLMS_REPORT_LOG_PATH!\unzip_sigcheck.txt 2>&1
 		) else (
 			echo Can't unzip SigCheck tool [Sigcheck.zip], because no unzip tool is available.                                        >> !REPORT_LOGFILE! 2>&1
 		)
-		powershell -Command "Expand-Archive -Path !LMS_DOWNLOAD_PATH!\Sigcheck.zip -DestinationPath !LMS_DOWNLOAD_PATH!\SigCheck -Verbose -Force"   > !CHECKLMS_REPORT_LOG_PATH!\unzip_sigcheck_using_powershell.txt
+		powershell -Command "Expand-Archive -Path !LMS_DOWNLOAD_PATH!\Sigcheck.zip -DestinationPath !LMS_DOWNLOAD_PATH!\SigCheck -Verbose -Force"   > !CHECKLMS_REPORT_LOG_PATH!\unzip_sigcheck_using_powershell.txt 2>&1
 	) else (
 		echo     Don't unzip SigCheck tool [Sigcheck.zip], because zip archive doesn't exists.
 		echo Don't unzip SigCheck tool [Sigcheck.zip], because zip archive doesn't exists.                                            >> !REPORT_LOGFILE! 2>&1
@@ -1581,11 +1592,11 @@ if not defined LMS_SKIPUNZIP (
 	rem Unzip USBDeview tool
 	IF EXIST "!LMS_DOWNLOAD_PATH!\usbdeview-x64.zip" (
 		if defined UNZIP_TOOL (
-			"!UNZIP_TOOL!" x -o!LMS_DOWNLOAD_PATH!\usbdeview -y !LMS_DOWNLOAD_PATH!\usbdeview-x64.zip                                 > !CHECKLMS_REPORT_LOG_PATH!\unzip_usbdeview.txt
+			"!UNZIP_TOOL!" x -o!LMS_DOWNLOAD_PATH!\usbdeview -y !LMS_DOWNLOAD_PATH!\usbdeview-x64.zip                                 > !CHECKLMS_REPORT_LOG_PATH!\unzip_usbdeview.txt 2>&1
 		) else (
 			echo Can't unzip USBDeview tool [usbdeview-x64.zip], because no unzip tool is available.                                  >> !REPORT_LOGFILE! 2>&1
 		)
-		powershell -Command "Expand-Archive -Path !LMS_DOWNLOAD_PATH!\usbdeview-x64.zip -DestinationPath !LMS_DOWNLOAD_PATH!\usbdeview -Verbose -Force"   > !CHECKLMS_REPORT_LOG_PATH!\unzip_usbdeview_using_powershell.txt
+		powershell -Command "Expand-Archive -Path !LMS_DOWNLOAD_PATH!\usbdeview-x64.zip -DestinationPath !LMS_DOWNLOAD_PATH!\usbdeview -Verbose -Force"   > !CHECKLMS_REPORT_LOG_PATH!\unzip_usbdeview_using_powershell.txt 2>&1
 	) else (
 		echo     Don't unzip USBDeview tool [usbdeview-x64.zip], because zip archive doesn't exists.
 		echo Don't unzip USBDeview tool [usbdeview-x64.zip], because zip archive doesn't exists.                                      >> !REPORT_LOGFILE! 2>&1
@@ -2609,8 +2620,10 @@ if not defined LMS_SKIPWINDOWS (
 	echo ---------------- powershell -command "& {Get-Module -ListAvailable -All}"                                               >> !REPORT_LOGFILE! 2>&1
 	echo ... list installed powershell commandlets [using Get-Module powershell command] ...
 	echo List installed powershell commandlets [using Get-Module powershell command]:                                            >> !REPORT_LOGFILE! 2>&1
-	echo For more details, see !CHECKLMS_REPORT_LOG_PATH!\InstalledPowershellCommandlets.txt                                     >> !REPORT_LOGFILE! 2>&1
-	powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Get-Module -ListAvailable -All}" >> !CHECKLMS_REPORT_LOG_PATH!\InstalledPowershellCommandlets.txt 2>&1
+	IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" (
+		echo For more details, see !CHECKLMS_REPORT_LOG_PATH!\InstalledPowershellCommandlets.txt                                     >> !REPORT_LOGFILE! 2>&1
+		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Get-Module -ListAvailable -All}" >> !CHECKLMS_REPORT_LOG_PATH!\InstalledPowershellCommandlets.txt 2>&1
+	)
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	echo Content of folder: "%WinDir%\System32\Drivers\Etc"                                                                      >> !REPORT_LOGFILE! 2>&1
 	dir /S /A /X /4 /W "%WinDir%\System32\Drivers\Etc"                                                                           >> !REPORT_LOGFILE! 2>&1
@@ -2964,6 +2977,10 @@ IF EXIST "!LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe" (
 if /I "!LMS_IS_VM!"=="true" (
 	rem call further commands only, when running on a virtual machine, wthin a hypervisor.
 
+	echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
+	echo ... read AWS instance identity document ...
+	echo Read AWS instance identity document:                                                                                >> !REPORT_LOGFILE! 2>&1
+
 	if exist "!REPORT_LOG_PATH!\AWS_Latest.txt" (
 		for /f "tokens=1,2,3,4,* eol=@ delims=,/ " %%A in ('type !REPORT_LOG_PATH!\AWS_Latest.txt ^|find /I "AWS_ACCID"') do (
 			rem echo %%A / %%B / %%C // %%F
@@ -2995,6 +3012,27 @@ if /I "!LMS_IS_VM!"=="true" (
 	) else (
 		echo AWS instance identity document not found!                                                                       >> !REPORT_LOGFILE! 2>&1
 	)
+
+	echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
+	echo ... read AZURE instance identity document ...
+	echo Read AZURE instance identity document:                                                                              >> !REPORT_LOGFILE! 2>&1
+
+	rem get AZURE instance identify document (see https://docs.microsoft.com/en-us/azure/virtual-machines/windows/instance-metadata-service?tabs=windows )
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+	powershell -Command "Invoke-RestMethod -Headers @{'Metadata'='true'} -Method GET -Proxy $Null -Uri 'http://169.254.169.254/metadata/instance?api-version=2021-02-01' | ConvertTo-Json -Depth 64"  >!CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt 2>&1
+	if exist "!CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt" (
+		echo AZURE instance identity document retrieved:                                                                     >> !REPORT_LOGFILE! 2>&1
+		type "!CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt"                                               >> !REPORT_LOGFILE! 2>&1
+		echo .                                                                                                               >> !REPORT_LOGFILE! 2>&1
+		for /f "tokens=1,2,3 eol=@ delims=:, " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt ^|find /I "vmId"') do set "AZURE_VMID=%%B"
+		echo     AZURE_VMID=!AZURE_VMID!    
+		echo     AZURE_VMID=!AZURE_VMID!                                                                                     >> !REPORT_LOGFILE! 2>&1   
+		echo     AZURE_VMID=!AZURE_VMID!  at !DATE! / !TIME!  >> !REPORT_LOG_PATH!\AZURE.txt 2>&1
+		echo     AZURE_VMID=!AZURE_VMID!  at !DATE! / !TIME!  >  !REPORT_LOG_PATH!\AZURE_Latest.txt 2>&1
+	) else (
+		echo AZURE instance identity document not found!                                                                     >> !REPORT_LOGFILE! 2>&1
+	)
+
 )
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 echo =   L M S   S C H E D U L E D   T A S K S                                    =                                          >> !REPORT_LOGFILE! 2>&1
