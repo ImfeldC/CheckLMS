@@ -217,6 +217,8 @@ rem        - check for presence of "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1"
 rem        - suppress any error during unzip, write them into specific logfile (add 2>&1 to command output)
 rem     07-Jun-2021:
 rem        - read AZURE identify information document (see https://docs.microsoft.com/en-us/azure/virtual-machines/windows/instance-metadata-service?tabs=windows )
+rem     09-Jul-2021:
+rem        - set 2.6.834 as field test version
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -246,16 +248,16 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 07-Jun-2021"
-set LMS_SCRIPT_BUILD=20210607
+set LMS_SCRIPT_VERSION="CheckLMS Script 09-Jul-2021"
+set LMS_SCRIPT_BUILD=20210709
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
 set MOST_RECENT_LMS_BUILD=824
-rem most recent lms field test version: 2.6.832 (per 21-May-2021)
+rem most recent lms field test version: 2.6.834 (per 09-Jul-2021)
 rem - if not set, it is not downloaded.
-set MOST_RECENT_FT_LMS_VERSION=2.6.832
-set MOST_RECENT_FT_LMS_BUILD=832
+set MOST_RECENT_FT_LMS_VERSION=2.6.834
+set MOST_RECENT_FT_LMS_BUILD=834
 rem most recent dongle driver version (per 13-Nov-2020, LMS 2.5)
 set MOST_RECENT_DONGLE_DRIVER_VERSION=8.13
 set MOST_RECENT_DONGLE_DRIVER_MAJ_VERSION=8
