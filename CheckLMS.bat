@@ -219,6 +219,8 @@ rem     07-Jun-2021:
 rem        - read AZURE identify information document (see https://docs.microsoft.com/en-us/azure/virtual-machines/windows/instance-metadata-service?tabs=windows )
 rem     09-Jul-2021:
 rem        - set 2.6.834 as field test version
+rem     12-Jul-2021:
+rem        - set most recent drongle driver to 8.21
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -248,8 +250,8 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 09-Jul-2021"
-set LMS_SCRIPT_BUILD=20210709
+set LMS_SCRIPT_VERSION="CheckLMS Script 12-Jul-2021"
+set LMS_SCRIPT_BUILD=20210712
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -258,10 +260,10 @@ rem most recent lms field test version: 2.6.834 (per 09-Jul-2021)
 rem - if not set, it is not downloaded.
 set MOST_RECENT_FT_LMS_VERSION=2.6.834
 set MOST_RECENT_FT_LMS_BUILD=834
-rem most recent dongle driver version (per 13-Nov-2020, LMS 2.5)
-set MOST_RECENT_DONGLE_DRIVER_VERSION=8.13
+rem most recent dongle driver version (per 12-Jul-2021, LMS 2.6)
+set MOST_RECENT_DONGLE_DRIVER_VERSION=8.21
 set MOST_RECENT_DONGLE_DRIVER_MAJ_VERSION=8
-set MOST_RECENT_DONGLE_DRIVER_MIN_VERSION=13
+set MOST_RECENT_DONGLE_DRIVER_MIN_VERSION=21
 rem most recent BT ALM plugin (per 15-Nov-2019)
 set MOST_RECENT_BT_ALM_PLUGIN=1.1.42.0
 
