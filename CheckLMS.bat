@@ -221,6 +221,12 @@ rem     09-Jul-2021:
 rem        - set 2.6.834 as field test version
 rem     12-Jul-2021:
 rem        - set most recent drongle driver to 8.21
+rem     14-Jul-2021:
+rem        - Add support to install and remove LMS client; ... 
+rem        - use /installlms to install or udpate LMS client to most recent released client version.
+rem        - use /installftlms to install or udpate LMS client to newest field test client version.
+rem        - use /removelms to remove/uninstall installed LMS client
+rem        - remove !-sign at the end of console ouput, it causes problems, when colored output follows.
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -242,6 +248,9 @@ rem              - /checkid                     check machine identifiers, like 
 rem              - /setcheckidtask              sets periodic task to run checklms.bat with /checkid option.
 rem              - /delcheckidtask              delete periodic checkid task, see option /setcheckidtask
 rem              - /setfirewall                 sets firewall for external access to LMS. 
+rem              - /installlms                  installs (or udpates) LMS client, with newest available released client version
+rem              - /installftlms                installs (or udpates) LMS client, with newest available field test client version
+rem              - /removelms                   de-installs LMS client
 rem              - /installdongledriver         installs downloaded dongle driver.
 rem              - /removedongledriver          remove installed dongle driver.
 rem              - /startdemovd                 to start the demo vendor daemon provided by Flexera.
@@ -250,8 +259,8 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 12-Jul-2021"
-set LMS_SCRIPT_BUILD=20210712
+set LMS_SCRIPT_VERSION="CheckLMS Script 14-Jul-2021"
+set LMS_SCRIPT_BUILD=20210714
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -307,11 +316,11 @@ mkdir %WINDIR%\%guid%>nul 2>&1
 rmdir %WINDIR%\%guid%>nul 2>&1
 IF !ERRORLEVEL!==0 (
     rem ECHO PRIVILEGED! (%guid%)
-    echo This script runs with administrator priviledge! 
+    echo This script runs with administrator priviledge. 
 	set LMS_SCRIPT_RUN_AS_ADMINISTRATOR=1
 ) ELSE (
     rem ECHO NOT PRIVILEGED!  (%guid%)
-    echo This script runs with NO administrator priviledge! 
+    echo This script runs with NO administrator priviledge. 
 )
 
 rem Retrieve desktop folder
@@ -526,6 +535,15 @@ FOR %%A IN (%*) DO (
 		)
 		if "!var!"=="setfirewall" (
 			set LMS_SET_FIREWALL=1
+		)
+		if "!var!"=="installlms" (
+			set LMS_INSTALL_LMS_CLIENT=1
+		)
+		if "!var!"=="installftlms" (
+			set LMS_INSTALL_LMS_FT_CLIENT=1
+		)
+		if "!var!"=="removelms" (
+			set LMS_REMOVE_LMS_CLIENT=1
 		)
 		if "!var!"=="installdongledriver" (
 			set LMS_INSTALL_DONGLE_DRIVER=1
@@ -1030,7 +1048,7 @@ if NOT defined UNZIP_TOOL (
 	"!UNZIP_TOOL!" -version    >> "!CHECKLMS_REPORT_LOG_PATH!\unziptool_version.log" 2>&1
 )
 
-if !LMS_BUILD_VERSION! NEQ "N/A" (
+if "!LMS_BUILD_VERSION!" NEQ "N/A" (
 	REM Check: not 2.4.815 AND not 2.3.745 AND less or equal than 2.3.744  --> DEPRECATED (per Oct-2020)
 	REM See https://support.industry.siemens.com/cs/document/109738214/
 	if /I !LMS_BUILD_VERSION! NEQ 815 (
@@ -1439,14 +1457,14 @@ if not defined LMS_SKIPDOWNLOAD (
 			rem ECHO filedrive=!filedrive! / filepath=!filepath! /  filename=!filename! / fileextension=!fileextension!
 			for /f "tokens=1,2,3 eol=@ delims=_" %%a in ("!filename!") do set filemachine=%%b
 			for /f "tokens=1,2,3 eol=@ delims=_" %%a in ("!filename!") do set filetimestamp=%%c
-			rem echo filemachine=!filemachine! / filetimestamp=!filetimestamp!
-			if "!COMPUTERNAME!" == "!filemachine!" (
-				echo Skip download archive '!file!', as it was created on this machine!                                                   >> !REPORT_LOGFILE! 2>&1
+			rem echo filemachine=!filemachine. / filetimestamp=!filetimestamp!
+			if "!COMPUTERNAME!" == "!filemachine." (
+				echo Skip download archive '!file!', as it was created on this machine.                                                   >> !REPORT_LOGFILE! 2>&1
 			) else (
-				echo Found download archive '!file!' from machine '!filemachine!'.                                                        >> !REPORT_LOGFILE! 2>&1
+				echo Found download archive '!file!' from machine '!filemachine.'.                                                        >> !REPORT_LOGFILE! 2>&1
 				if exist "!file!.processed.!COMPUTERNAME!.txt" (
 					rem this download archive has been processed already
-					echo Skip download archive '!file!', as it was processed already on this machine!                                     >> !REPORT_LOGFILE! 2>&1
+					echo Skip download archive '!file!', as it was processed already on this machine.                                     >> !REPORT_LOGFILE! 2>&1
 					type "!file!.processed.!COMPUTERNAME!.txt"                                                                            >> !REPORT_LOGFILE! 2>&1
 				) else (
 					rem unzip this download archive on this machine
@@ -1966,6 +1984,130 @@ if defined LMS_SET_FIREWALL (
 ) else (
 	echo Set firewall settings ... NO                                                                                            >> !REPORT_LOGFILE! 2>&1
 )
+
+if defined LMS_INSTALL_LMS_CLIENT (
+	rem install 'released' LMS client version
+	set LMS_INSTALL_VERSION=!MOST_RECENT_LMS_VERSION!
+	set LMS_INSTALL_BUILD=!MOST_RECENT_LMS_BUILD!
+)
+
+if defined LMS_INSTALL_LMS_FT_CLIENT (
+	rem install 'field test' LMS client version
+	set LMS_INSTALL_VERSION=!MOST_RECENT_FT_LMS_VERSION!
+	set LMS_INSTALL_BUILD=!MOST_RECENT_FT_LMS_BUILD!
+	if defined SHOW_COLORED_OUTPUT (
+		echo [1;33m    WARNING: Your are going to install !LMS_INSTALL_VERSION! which is a 'field test' version of LMS client! [1;37m
+	) else (
+		echo     WARNING: Your are going to install !LMS_INSTALL_VERSION! which is a 'field test' version of LMS client!
+	)
+	echo WARNING: Your are going to install !LMS_INSTALL_VERSION! which is a 'field test' version of LMS client!                 >> !REPORT_LOGFILE! 2>&1
+)
+
+if defined LMS_INSTALL_VERSION (
+	rem Check: Is "most recent" [="released"] build installed, ...
+	if /I !LMS_BUILD_VERSION! NEQ !LMS_INSTALL_BUILD! (
+		REM Check: Is installed client version ...
+		SET Result=0
+		if "!LMS_BUILD_VERSION!" NEQ "N/A" (
+			REM Check: ... lower, than "most recent" [="released"] version ...
+			if /I !LMS_BUILD_VERSION! LSS !LMS_INSTALL_BUILD! SET Result=1
+		) else (
+			REM Check: OR ... not installed at all.
+			SET Result=1
+		)
+		IF !Result! EQU 1 (
+			set LMS_SETUP_EXECUTABLE=!LMS_DOWNLOAD_PATH!\LMSSetup\!LMS_INSTALL_VERSION!\setup64.exe
+			IF EXIST "!LMS_SETUP_EXECUTABLE!" (
+				set TARGETFILE=!LMS_SETUP_EXECUTABLE!
+				set TARGETFILE=!TARGETFILE:\=\\!
+				wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
+				IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "lmsclientVersion=%%i"
+				echo     LMS client: !LMS_SETUP_EXECUTABLE! [!lmsclientVersion!] available
+				echo LMS client: !LMS_SETUP_EXECUTABLE! [!lmsclientVersion!] available                                           >> !REPORT_LOGFILE! 2>&1
+				if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
+					rem install LMS client downloaded by this script
+					if defined SHOW_COLORED_OUTPUT (
+						echo [1;31m    --- Install newest LMS client !lmsclientVersion! just downloaded by this script. [1;37m
+					) else (
+						echo     --- Install newest LMS client !lmsclientVersion! just downloaded by this script.
+					)
+					echo --- Install newest LMS client !lmsclientVersion! just downloaded by this script.                        >> !REPORT_LOGFILE! 2>&1
+					cd !temp!
+					start "Install LMS client" "!LMS_SETUP_EXECUTABLE!"  
+					echo --- Installation started in an own process/shell.                                                       >> !REPORT_LOGFILE! 2>&1
+				) else (
+					if defined SHOW_COLORED_OUTPUT (
+						echo [1;33m    WARNING: Cannot install or update LMS client to !LMS_INSTALL_VERSION!, start script with administrator priviledge. [1;37m
+					) else (
+						echo     WARNING: Cannot install or update LMS client to !LMS_INSTALL_VERSION!, start script with administrator priviledge.
+					)
+					echo WARNING: Cannot install or update LMS client to !LMS_INSTALL_VERSION!, start script with administrator priviledge.                      >> !REPORT_LOGFILE! 2>&1
+				)
+			) else (
+				if defined SHOW_COLORED_OUTPUT (
+					echo [1;33m    WARNING: Cannot install or update LMS client to !LMS_INSTALL_VERSION!, file '!LMS_SETUP_EXECUTABLE!' doesn't exist. [1;37m
+				) else (
+					echo     WARNING: Cannot install or update LMS client to !LMS_INSTALL_VERSION!, file '!LMS_SETUP_EXECUTABLE!' doesn't exist.
+				)
+				echo WARNING: Cannot install or update LMS client to !LMS_INSTALL_VERSION!, file '!LMS_SETUP_EXECUTABLE!' doesn't exist.                         >> !REPORT_LOGFILE! 2>&1
+			)
+		) else (
+			if defined SHOW_COLORED_OUTPUT (
+				echo [1;33m    WARNING: Cannot install or update LMS client to !LMS_INSTALL_VERSION!, because the LMS version !LMS_VERSION! which you are using is newer. [1;37m
+			) else (
+				echo     WARNING: Cannot install or update LMS client to !LMS_INSTALL_VERSION!, because the LMS version !LMS_VERSION! which you are using is newer.
+			)
+			echo WARNING: Cannot install or update LMS client to !LMS_INSTALL_VERSION!, because the LMS version !LMS_VERSION! which you are using is newer.      >> !REPORT_LOGFILE! 2>&1
+		)
+	) else (
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;33m    Cannot install or update LMS client to !LMS_INSTALL_VERSION!, because the LMS version !LMS_VERSION! is alraedy installed. [1;37m
+		) else (
+			echo     Cannot install or update LMS client to !LMS_INSTALL_VERSION!, because the LMS version !LMS_VERSION! is alraedy installed.
+		)
+		echo Cannot install or update LMS client to !LMS_INSTALL_VERSION!, because the LMS version !LMS_VERSION! is alraedy installed.                           >> !REPORT_LOGFILE! 2>&1
+	)	
+	
+	goto script_end
+	rem STOP EXECUTION HERE
+) else (
+	echo Install or udpate LMS Client ... NO                                                                                     >> !REPORT_LOGFILE! 2>&1
+)
+
+if defined LMS_REMOVE_LMS_CLIENT (
+	if defined SHOW_COLORED_OUTPUT (
+		echo [1;33m    WARNING: Your are going to remove LMS client '!LMS_VERSION!' from this machine. [1;37m
+	) else (
+		echo     WARNING: Your are going to remove LMS client '!LMS_VERSION!' from this machine.
+	)
+	echo WARNING: Your are going to remove LMS client '!LMS_VERSION!' from this machine.                                         >> !REPORT_LOGFILE! 2>&1
+
+	if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
+		rem install LMS client downloaded by this script
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;31m    --- Remove LMS client '!LMS_VERSION!'. [1;37m
+		) else (
+			echo     --- Remove LMS client '!LMS_VERSION!'.
+		)
+		echo --- Remove LMS client '!LMS_VERSION!'.                                                                              >> !REPORT_LOGFILE! 2>&1
+		cd !temp!
+		wmic product where name="Siemens License Management" call uninstall                                                      >> !REPORT_LOGFILE! 2>&1
+		echo --- Remove LMS client, FINISHED.                                                                                    >> !REPORT_LOGFILE! 2>&1
+	) else (
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;33m    WARNING: You cannot remove LMS client '!LMS_VERSION!' from this machine, start script with administrator priviledge. [1;37m
+		) else (
+			echo     WARNING: You cannot remove LMS client '!LMS_VERSION!' from this machine, start script with administrator priviledge.
+		)
+		echo WARNING: You cannot remove LMS client '!LMS_VERSION!' from this machine, start script with administrator priviledge.   >> !REPORT_LOGFILE! 2>&1
+	)
+
+	goto script_end
+	rem STOP EXECUTION HERE
+) else (
+	echo Remove LMS Client ... NO                                                                                                >> !REPORT_LOGFILE! 2>&1
+)
+
 if defined LMS_INSTALL_DONGLE_DRIVER (
 	echo Dongle Driver: !DONGLE_DRIVER_VERSION! [!DONGLE_DRIVER_PKG_VERSION!] / Major=[!DONGLE_DRIVER_MAJ_VERSION!] / Minor=[!DONGLE_DRIVER_MIN_VERSION!] / installed !DONGLE_DRIVER_INST_COUNT! times     >> !REPORT_LOGFILE! 2>&1
 	rem The same code block is again at script end (was introduced in an earlier script version and kept for "backward" compatibility)
@@ -1974,8 +2116,8 @@ if defined LMS_INSTALL_DONGLE_DRIVER (
 		set TARGETFILE=!TARGETFILE:\=\\!
 		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
 		IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "haspdinstVersion=%%i"
-		echo     Dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] available!
-		echo Dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] available!                                    >> !REPORT_LOGFILE! 2>&1
+		echo     Dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] available 
+		echo Dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] available                                     >> !REPORT_LOGFILE! 2>&1
 		if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
 			rem install dongle driver downloaded by this script
 			if defined SHOW_COLORED_OUTPUT (
@@ -2015,8 +2157,8 @@ if defined LMS_REMOVE_DONGLE_DRIVER (
 		set TARGETFILE=!TARGETFILE:\=\\!
 		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
 		IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "haspdinstVersion=%%i"
-		echo     Dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] available!
-		echo Dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] available!                                    >> !REPORT_LOGFILE! 2>&1
+		echo     Dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] available 
+		echo Dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] available                                     >> !REPORT_LOGFILE! 2>&1
 		if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
 			if defined SHOW_COLORED_OUTPUT (
 				echo [1;31m    --- Remove installed dongle driver !haspdinstVersion!. [1;37m
@@ -7032,7 +7174,7 @@ if defined UMN_COUNT_PREV (
 
 echo     check VM values collected with servercomptranutil ...
 echo Check VM values collected with servercomptranutil                                                                                     >> !REPORT_LOGFILE! 2>&1
-rem check VM values (also on physical machine!)
+rem check VM values (also on physical machine.)
 if "!VM_FAMILY!" == "UNKNOWNVM" (
 	if defined SHOW_COLORED_OUTPUT (
 		echo [1;31m    ATTENTION: Unknown VM family detected. [1;37m
@@ -7327,8 +7469,8 @@ if not defined LMS_CHECK_ID (
 			set TARGETFILE=!TARGETFILE:\=\\!
 			wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
 			IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "haspdinstVersion=%%i"
-			echo     Dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] available!
-			echo Dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] available!                            >> !REPORT_LOGFILE! 2>&1
+			echo     Dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] available 
+			echo Dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] available                             >> !REPORT_LOGFILE! 2>&1
 			if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
 				rem install dongle driver downloaded by this script
 				if defined SHOW_COLORED_OUTPUT (
