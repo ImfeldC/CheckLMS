@@ -227,6 +227,8 @@ rem        - use /installlms to install or udpate LMS client to most recent rele
 rem        - use /installftlms to install or udpate LMS client to newest field test client version.
 rem        - use /removelms to remove/uninstall installed LMS client
 rem        - remove !-sign at the end of console ouput, it causes problems, when colored output follows.
+rem     20-Jul-2021:
+rem        - set 2.6.835 as field test version
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -259,8 +261,8 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 14-Jul-2021"
-set LMS_SCRIPT_BUILD=20210714
+set LMS_SCRIPT_VERSION="CheckLMS Script 20-Jul-2021"
+set LMS_SCRIPT_BUILD=20210720
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
