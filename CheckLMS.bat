@@ -229,6 +229,8 @@ rem        - use /removelms to remove/uninstall installed LMS client
 rem        - remove !-sign at the end of console ouput, it causes problems, when colored output follows.
 rem     20-Jul-2021:
 rem        - set 2.6.835 as field test version
+rem     05-Aug-2021:
+rem        - retrieve metadata for VMs running on Google Cloud Platform (GCP)
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -261,8 +263,8 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 20-Jul-2021"
-set LMS_SCRIPT_BUILD=20210720
+set LMS_SCRIPT_VERSION="CheckLMS Script 05-Aug-2021"
+set LMS_SCRIPT_BUILD=20210805
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -3102,33 +3104,34 @@ if /I "!LMS_IS_VM!"=="true" (
 	echo     Not clear if running on a virtual machine or not. LMS_IS_VM=!LMS_IS_VM!
 	echo Not clear if running on a virtual machine or not. LMS_IS_VM=!LMS_IS_VM!                                             >> !REPORT_LOGFILE! 2>&1
 )
-rem Read VM Generation Id
-IF EXIST "!LMS_DOWNLOAD_PATH!\VMGENID.EXE" (
-	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-	echo ... read VM Generation Id [using VMGENID.EXE] ...
-	echo Read VM Generation Id [using VMGENID.EXE]:                                                                          >> !REPORT_LOGFILE! 2>&1
-	"!LMS_DOWNLOAD_PATH!\VMGENID.EXE"                                                                                        >> !REPORT_LOGFILE! 2>&1
-	echo .                                                                                                                   >> !REPORT_LOGFILE! 2>&1
-)
-IF EXIST "!LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe" (
-	echo -------------------------------------------------------                                                                                 >> !REPORT_LOGFILE! 2>&1
-	if exist "C:\WINDOWS\system32\MSVCR120.dll" (
-		echo ... read VM Generation Id [using GetVMGenerationIdentifier.exe] ...
-		echo Read VM Generation Id [using GetVMGenerationIdentifier.exe]:                                                                        >> !REPORT_LOGFILE! 2>&1
-		"!LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe"                                                                                      >> !REPORT_LOGFILE! 2>&1
-		echo .                                                                                                                                   >> !REPORT_LOGFILE! 2>&1
-	) else (
-		echo ... read VM Generation Id [using GetVMGenerationIdentifier.exe], skipped because 'C:\WINDOWS\system32\MSVCR120.dll' doesn't exist.
-		echo Read VM Generation Id [using GetVMGenerationIdentifier.exe], skipped because 'C:\WINDOWS\system32\MSVCR120.dll' doesn't exist.      >> !REPORT_LOGFILE! 2>&1
-	)
-)
+
 if /I "!LMS_IS_VM!"=="true" (
 	rem call further commands only, when running on a virtual machine, wthin a hypervisor.
 
+	rem Read VM Generation Id
+	IF EXIST "!LMS_DOWNLOAD_PATH!\VMGENID.EXE" (
+		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
+		echo ... read VM Generation Id [using VMGENID.EXE] ...
+		echo Read VM Generation Id [using VMGENID.EXE]:                                                                      >> !REPORT_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\VMGENID.EXE"                                                                                    >> !REPORT_LOGFILE! 2>&1
+		echo .                                                                                                               >> !REPORT_LOGFILE! 2>&1
+	)
+	IF EXIST "!LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe" (
+		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
+		if exist "C:\WINDOWS\system32\MSVCR120.dll" (
+			echo ... read VM Generation Id [using GetVMGenerationIdentifier.exe] ...
+			echo Read VM Generation Id [using GetVMGenerationIdentifier.exe]:                                                >> !REPORT_LOGFILE! 2>&1
+			"!LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe"                                                              >> !REPORT_LOGFILE! 2>&1
+			echo .                                                                                                           >> !REPORT_LOGFILE! 2>&1
+		) else (
+			echo ... read VM Generation Id [using GetVMGenerationIdentifier.exe], skipped because 'C:\WINDOWS\system32\MSVCR120.dll' doesn't exist.
+			echo Read VM Generation Id [using GetVMGenerationIdentifier.exe], skipped because 'C:\WINDOWS\system32\MSVCR120.dll' doesn't exist.      >> !REPORT_LOGFILE! 2>&1
+		)
+	)
+	
 	echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
 	echo ... read AWS instance identity document ...
 	echo Read AWS instance identity document:                                                                                >> !REPORT_LOGFILE! 2>&1
-
 	if exist "!REPORT_LOG_PATH!\AWS_Latest.txt" (
 		for /f "tokens=1,2,3,4,* eol=@ delims=,/ " %%A in ('type !REPORT_LOG_PATH!\AWS_Latest.txt ^|find /I "AWS_ACCID"') do (
 			rem echo %%A / %%B / %%C // %%F
@@ -3141,9 +3144,9 @@ if /I "!LMS_IS_VM!"=="true" (
 		echo Previous AWS instance identity document values, collected !AWSINFO_PREV!                                                                                >> !REPORT_LOGFILE! 2>&1
 		echo     AWS_ACCID_PREV=!AWS_ACCID_PREV! / AWS_IMGID_PREV=!AWS_IMGID_PREV! / AWS_INSTID_PREV=!AWS_INSTID_PREV! / AWS_PENTIME_PREV=!AWS_PENTIME_PREV!         >> !REPORT_LOGFILE! 2>&1   
 	)
-
 	rem get AWS instance identify document (see https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/instance-identity-documents.html )
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+	del !CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document_result.txt >nul 2>&1
 	powershell -Command "(New-Object Net.WebClient).DownloadFile('http://169.254.169.254/latest/dynamic/instance-identity/document', '!CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt')"  >!CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document_result.txt 2>&1
 	if exist "!CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt" (
 		echo AWS instance identity document retrieved:                                                                       >> !REPORT_LOGFILE! 2>&1
@@ -3164,23 +3167,51 @@ if /I "!LMS_IS_VM!"=="true" (
 	echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
 	echo ... read AZURE instance identity document ...
 	echo Read AZURE instance identity document:                                                                              >> !REPORT_LOGFILE! 2>&1
-
 	rem get AZURE instance identify document (see https://docs.microsoft.com/en-us/azure/virtual-machines/windows/instance-metadata-service?tabs=windows )
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+	del !CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt >nul 2>&1
 	powershell -Command "Invoke-RestMethod -Headers @{'Metadata'='true'} -Method GET -Proxy $Null -Uri 'http://169.254.169.254/metadata/instance?api-version=2021-02-01' | ConvertTo-Json -Depth 64"  >!CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt 2>&1
 	if exist "!CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt" (
-		echo AZURE instance identity document retrieved:                                                                     >> !REPORT_LOGFILE! 2>&1
-		type "!CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt"                                               >> !REPORT_LOGFILE! 2>&1
-		echo .                                                                                                               >> !REPORT_LOGFILE! 2>&1
 		for /f "tokens=1,2,3 eol=@ delims=:, " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt ^|find /I "vmId"') do set "AZURE_VMID=%%B"
-		echo     AZURE_VMID=!AZURE_VMID!    
-		echo     AZURE_VMID=!AZURE_VMID!                                                                                     >> !REPORT_LOGFILE! 2>&1   
-		echo     AZURE_VMID=!AZURE_VMID!  at !DATE! / !TIME!  >> !REPORT_LOG_PATH!\AZURE.txt 2>&1
-		echo     AZURE_VMID=!AZURE_VMID!  at !DATE! / !TIME!  >  !REPORT_LOG_PATH!\AZURE_Latest.txt 2>&1
+		if defined AZURE_VMID (
+			echo     AZURE_VMID=!AZURE_VMID!    
+			echo     AZURE_VMID=!AZURE_VMID!                                                                                 >> !REPORT_LOGFILE! 2>&1   
+			echo     AZURE_VMID=!AZURE_VMID!  at !DATE! / !TIME!  >> !REPORT_LOG_PATH!\AZURE.txt 2>&1
+			echo     AZURE_VMID=!AZURE_VMID!  at !DATE! / !TIME!  >  !REPORT_LOG_PATH!\AZURE_Latest.txt 2>&1
+			echo AZURE instance identity document retrieved:                                                                 >> !REPORT_LOGFILE! 2>&1
+			type "!CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt"                                           >> !REPORT_LOGFILE! 2>&1
+			echo .                                                                                                           >> !REPORT_LOGFILE! 2>&1
+		) else (
+			echo AZURE instance identity document not valid. Check 'AZURE_instance-identity-document.txt'                    >> !REPORT_LOGFILE! 2>&1
+		)
 	) else (
 		echo AZURE instance identity document not found!                                                                     >> !REPORT_LOGFILE! 2>&1
 	)
 
+	echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
+	echo ... read GCP instance metadata ...
+	echo Read GCP instance metadata:                                                                                         >> !REPORT_LOGFILE! 2>&1
+	rem get GCP instance metadata document (see https://cloud.google.com/compute/docs/metadata/querying-metadata )
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+	del !CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt >nul 2>&1
+	rem *** Needs curl :-( ***  curl "http://metadata.google.internal/computeMetadata/v1/?recursive=true&alt=text" -o !CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt -H "Metadata-Flavor: Google"  >!CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document_output.txt 2>&1
+	powershell -Command "Invoke-RestMethod -Headers @{'Metadata-Flavor'='Google'} -Method GET -Proxy $Null -Uri 'http://metadata.google.internal/computeMetadata/v1/?recursive=true&alt=text' >!CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt 2>&1
+	if exist "!CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt" (
+		for /f "tokens=1,2,3 eol=@ delims= " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt ^|find /I "instance/id"') do set "GCP_ID=%%B"
+		if defined GCP_ID (
+			echo     GCP_ID=!GCP_ID!    
+			echo     GCP_ID=!GCP_ID!                                                                                         >> !REPORT_LOGFILE! 2>&1   
+			echo     GCP_ID=!GCP_ID!  at !DATE! / !TIME!  >> !REPORT_LOG_PATH!\GCP.txt 2>&1
+			echo     GCP_ID=!GCP_ID!  at !DATE! / !TIME!  >  !REPORT_LOG_PATH!\GCP_Latest.txt 2>&1
+			echo GCP instance metadata document retrieved:                                                                   >> !REPORT_LOGFILE! 2>&1
+			type "!CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt"                                                      >> !REPORT_LOGFILE! 2>&1
+			echo .                                                                                                           >> !REPORT_LOGFILE! 2>&1
+		) else (
+			echo GCP instance metadata document not valid. Check 'GCP-metadata-documen.txt'                                  >> !REPORT_LOGFILE! 2>&1
+		)
+	) else (
+		echo GCP instance metadata document not found!                                                                       >> !REPORT_LOGFILE! 2>&1
+	)
 )
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 echo =   L M S   S C H E D U L E D   T A S K S                                    =                                          >> !REPORT_LOGFILE! 2>&1
@@ -3379,11 +3410,11 @@ if not defined LMS_SKIPLMS (
 			if /I !LMS_CFG_CULTUREID! EQU 0 (
 				rem Show error message, that invalid culture id has been found
 				if defined SHOW_COLORED_OUTPUT (
-					echo [1;31m    ERROR: Configured culture id [read with LMU PowerShell command] is NOT valid!  [1;37m
+					echo [1;31m    ERROR: Configured culture id [read with LMU PowerShell command] is NOT valid.  [1;37m
 				) else (
-					echo     ERROR: Configured culture id [read with LMU PowerShell command] is NOT valid! 
+					echo     ERROR: Configured culture id [read with LMU PowerShell command] is NOT valid. 
 				)
-				echo ERROR: Configured culture id [read with LMU PowerShell command] is NOT valid!                                                                         >> !REPORT_LOGFILE! 2>&1
+				echo ERROR: Configured culture id [read with LMU PowerShell command] is NOT valid.                                                                         >> !REPORT_LOGFILE! 2>&1
 				rem FIX wrong configured culture id
 				if "!LMS_PS_CULTUREID!" == "en-US" (
 					powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {set-lms -CultureId 1033}"                                         >> !REPORT_LOGFILE! 2>&1
@@ -3447,11 +3478,11 @@ if not defined LMS_SKIPLMS (
 		if "!LMS_PS_TOKEN!" EQU "" (
 			rem Show error message, that empty/invalid access token has been found
 			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    ERROR: Configured access token [read with LMU PowerShell command] is NOT valid!  [1;37m
+				echo [1;31m    ERROR: Configured access token [read with LMU PowerShell command] is NOT valid.  [1;37m
 			) else (
-				echo     ERROR: Configured access token [read with LMU PowerShell command] is NOT valid! 
+				echo     ERROR: Configured access token [read with LMU PowerShell command] is NOT valid. 
 			)
-			echo ERROR: Configured access token [read with LMU PowerShell command] is NOT valid!                                                                           >> !REPORT_LOGFILE! 2>&1
+			echo ERROR: Configured access token [read with LMU PowerShell command] is NOT valid.                                                                           >> !REPORT_LOGFILE! 2>&1
 			rem FIX wrong configured access token
 			powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {set-lms -Token act_imhg05mh_dmg4ufrigv03}"                                >> !REPORT_LOGFILE! 2>&1
 			rem re-read configured access token
