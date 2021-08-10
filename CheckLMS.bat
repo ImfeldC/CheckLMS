@@ -267,8 +267,8 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 06-Aug-2021"
-set LMS_SCRIPT_BUILD=20210806
+set LMS_SCRIPT_VERSION="CheckLMS Script 10-Aug-2021"
+set LMS_SCRIPT_BUILD=20210810
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
