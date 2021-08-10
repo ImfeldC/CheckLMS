@@ -231,6 +231,10 @@ rem     20-Jul-2021:
 rem        - set 2.6.835 as field test version
 rem     05-Aug-2021:
 rem        - retrieve metadata for VMs running on Google Cloud Platform (GCP)
+rem     06-Aug-2021:
+rem        - suppress error output on conosle during retreieving GCP metadata.
+rem     10-Aug-2021:
+rem        - set 2.6.836 as field test version
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -263,16 +267,16 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 05-Aug-2021"
-set LMS_SCRIPT_BUILD=20210805
+set LMS_SCRIPT_VERSION="CheckLMS Script 06-Aug-2021"
+set LMS_SCRIPT_BUILD=20210806
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
 set MOST_RECENT_LMS_BUILD=824
-rem most recent lms field test version: 2.6.835 (per 20-Jul-2021)
+rem most recent lms field test version: 2.6.836 (per 10-Aug-2021)
 rem - if not set, it is not downloaded.
-set MOST_RECENT_FT_LMS_VERSION=2.6.835
-set MOST_RECENT_FT_LMS_BUILD=835
+set MOST_RECENT_FT_LMS_VERSION=2.6.836
+set MOST_RECENT_FT_LMS_BUILD=836
 rem most recent dongle driver version (per 12-Jul-2021, LMS 2.6)
 set MOST_RECENT_DONGLE_DRIVER_VERSION=8.21
 set MOST_RECENT_DONGLE_DRIVER_MAJ_VERSION=8
@@ -3147,7 +3151,7 @@ if /I "!LMS_IS_VM!"=="true" (
 	rem get AWS instance identify document (see https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/instance-identity-documents.html )
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	del !CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document_result.txt >nul 2>&1
-	powershell -Command "(New-Object Net.WebClient).DownloadFile('http://169.254.169.254/latest/dynamic/instance-identity/document', '!CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt')"  >!CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document_result.txt 2>&1
+	powershell -Command "(New-Object Net.WebClient).DownloadFile('http://169.254.169.254/latest/dynamic/instance-identity/document', '!CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt')"  > !CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document_result.txt 2>&1
 	if exist "!CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt" (
 		echo AWS instance identity document retrieved:                                                                       >> !REPORT_LOGFILE! 2>&1
 		type "!CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt"                                                 >> !REPORT_LOGFILE! 2>&1
@@ -3170,7 +3174,7 @@ if /I "!LMS_IS_VM!"=="true" (
 	rem get AZURE instance identify document (see https://docs.microsoft.com/en-us/azure/virtual-machines/windows/instance-metadata-service?tabs=windows )
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	del !CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt >nul 2>&1
-	powershell -Command "Invoke-RestMethod -Headers @{'Metadata'='true'} -Method GET -Proxy $Null -Uri 'http://169.254.169.254/metadata/instance?api-version=2021-02-01' | ConvertTo-Json -Depth 64"  >!CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt 2>&1
+	powershell -Command "Invoke-RestMethod -Headers @{'Metadata'='true'} -Method GET -Proxy $Null -Uri 'http://169.254.169.254/metadata/instance?api-version=2021-02-01' | ConvertTo-Json -Depth 64"  > !CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt 2>&1
 	if exist "!CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt" (
 		for /f "tokens=1,2,3 eol=@ delims=:, " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt ^|find /I "vmId"') do set "AZURE_VMID=%%B"
 		if defined AZURE_VMID (
@@ -3195,7 +3199,7 @@ if /I "!LMS_IS_VM!"=="true" (
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	del !CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt >nul 2>&1
 	rem *** Needs curl :-( ***  curl "http://metadata.google.internal/computeMetadata/v1/?recursive=true&alt=text" -o !CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt -H "Metadata-Flavor: Google"  >!CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document_output.txt 2>&1
-	powershell -Command "Invoke-RestMethod -Headers @{'Metadata-Flavor'='Google'} -Method GET -Proxy $Null -Uri 'http://metadata.google.internal/computeMetadata/v1/?recursive=true&alt=text' >!CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt 2>&1
+	powershell -Command "Invoke-RestMethod -Headers @{'Metadata-Flavor'='Google'} -Method GET -Proxy $Null -Uri 'http://metadata.google.internal/computeMetadata/v1/?recursive=true&alt=text'" > !CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt 2>&1
 	if exist "!CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt" (
 		for /f "tokens=1,2,3 eol=@ delims= " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt ^|find /I "instance/id"') do set "GCP_ID=%%B"
 		if defined GCP_ID (
