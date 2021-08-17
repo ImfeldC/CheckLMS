@@ -235,6 +235,18 @@ rem     06-Aug-2021:
 rem        - suppress error output on conosle during retreieving GCP metadata.
 rem     10-Aug-2021:
 rem        - set 2.6.836 as field test version
+rem     11-Aug-2021:
+rem        - add message in case field test version is already installed.
+rem        - replace %certfeature% with !certfeature!; fixes LmuTool.exe /CHECK  and LmuTool.exe /FC
+rem        - replace %servercertfeature% with !servercertfeature!; fixes LmuTool.exe /CHECK  and LmuTool.exe /FC
+rem        - replace %tsfeature% with !tsfeature!; fixes LmuTool.exe /CHECK  and LmuTool.exe /FC
+rem     12-Aug-2021:
+rem        - add '!LMS_PROGRAMDATA!\Config\LELCfg' and show content
+rem     16-Aug-2021:
+rem        - download BGInfo.exe from https://live.sysinternals.com/Bginfo.exe into C:\ProgramData\Siemens\LMS\Download\BgInfo
+rem        - support option: setbginfo & clearbginfo
+rem     17-Aug-2021:
+rem        - keep setbginfo; once set, udpate bginfo at each run; till clearbginfo is called
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -256,6 +268,8 @@ rem              - /checkid                     check machine identifiers, like 
 rem              - /setcheckidtask              sets periodic task to run checklms.bat with /checkid option.
 rem              - /delcheckidtask              delete periodic checkid task, see option /setcheckidtask
 rem              - /setfirewall                 sets firewall for external access to LMS. 
+rem              - /setbginfo                   sets the background info (uisng lms.bgi)
+rem              - /clearbginfo                 clears the background info (uisng clean.bgi)
 rem              - /installlms                  installs (or udpates) LMS client, with newest available released client version
 rem              - /installftlms                installs (or udpates) LMS client, with newest available field test client version
 rem              - /removelms                   de-installs LMS client
@@ -267,8 +281,8 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 10-Aug-2021"
-set LMS_SCRIPT_BUILD=20210810
+set LMS_SCRIPT_VERSION="CheckLMS Script 17-Aug-2021"
+set LMS_SCRIPT_BUILD=20210817
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -543,6 +557,12 @@ FOR %%A IN (%*) DO (
 		)
 		if "!var!"=="setfirewall" (
 			set LMS_SET_FIREWALL=1
+		)
+		if "!var!"=="setbginfo" (
+			set LMS_SET_BGINFO=1
+		)
+		if "!var!"=="clearbginfo" (
+			set LMS_CLEAR_BGINFO=1
 		)
 		if "!var!"=="installlms" (
 			set LMS_INSTALL_LMS_CLIENT=1
@@ -1351,6 +1371,9 @@ if not defined LMS_SKIPDOWNLOAD (
 						echo     Don't download latest field test LMS setup [!MOST_RECENT_FT_LMS_VERSION!], because it exist already: !LMS_FT_SETUP_EXECUTABLE!
 						echo Don't download latest field test LMS setup [!MOST_RECENT_FT_LMS_VERSION!], because it exist already: !LMS_FT_SETUP_EXECUTABLE!      >> !REPORT_LOGFILE! 2>&1
 					)
+				) else (
+					echo     Don't download latest field test LMS setup [!MOST_RECENT_FT_LMS_VERSION!], because it is already installed.
+					echo Don't download latest field test LMS setup [!MOST_RECENT_FT_LMS_VERSION!], because it is already installed.                             >> !REPORT_LOGFILE! 2>&1
 				)
 			)
 			
@@ -1447,10 +1470,39 @@ if not defined LMS_SKIPDOWNLOAD (
 				echo Don't download 'counted.lic', because it exist already.                                                            >> !REPORT_LOGFILE! 2>&1
 			)
 			
+			rem Download BGInfo tool
+			mkdir !LMS_DOWNLOAD_PATH!\BgInfo\  >nul 2>&1
+			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\BgInfo.exe" (
+				echo     Download BGInfo tool: !LMS_DOWNLOAD_PATH!\BgInfo\BgInfo.exe
+				echo Download BGInfo tool: !LMS_DOWNLOAD_PATH!\BgInfo\BgInfo.exe                                                        >> !REPORT_LOGFILE! 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://live.sysinternals.com/Bginfo.exe', '!LMS_DOWNLOAD_PATH!\BgInfo\BgInfo.exe')"   >> !REPORT_LOGFILE! 2>&1
+			) else (
+				echo     Don't download BGInfo tool [BgInfo.exe], because it exist already.
+				echo Don't download BGInfo tool [BgInfo.exe], because it exist already.                                                 >> !REPORT_LOGFILE! 2>&1
+			)
+			rem Download BGInfo configuration file
+			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\lms.bgi" (
+				echo     Download BGInfo configuration file: !LMS_DOWNLOAD_PATH!\BgInfo\lms.bgi
+				echo Download BGInfo configuration file: !LMS_DOWNLOAD_PATH!\BgInfo\lms.bgi                                             >> !REPORT_LOGFILE! 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/CheckLMS/lms.bgi', '!LMS_DOWNLOAD_PATH!\BgInfo\lms.bgi')"   >> !REPORT_LOGFILE! 2>&1
+			) else (
+				echo     Don't download BGInfo configuration file [lms.bgi], because it exist already.
+				echo Don't download BGInfo configuration file [lms.bgi], because it exist already.                                      >> !REPORT_LOGFILE! 2>&1
+			)
+			rem Download BGInfo clean configuration file
+			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\clean.bgi" (
+				echo     Download BGInfo configuration file: !LMS_DOWNLOAD_PATH!\BgInfo\clean.bgi
+				echo Download BGInfo configuration file: !LMS_DOWNLOAD_PATH!\BgInfo\clean.bgi                                           >> !REPORT_LOGFILE! 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/CheckLMS/clean.bgi', '!LMS_DOWNLOAD_PATH!\BgInfo\clean.bgi')"   >> !REPORT_LOGFILE! 2>&1
+			) else (
+				echo     Don't download BGInfo configuration file [clean.bgi], because it exist already.
+				echo Don't download BGInfo configuration file [clean.bgi], because it exist already.                                    >> !REPORT_LOGFILE! 2>&1
+			)
+
 		)
 	) else (
 		echo     Don't download additional libraries and files, because no internet connection available.
-		echo Don't download additional libraries and files, because no internet connection available.                                         >> !REPORT_LOGFILE! 2>&1
+		echo Don't download additional libraries and files, because no internet connection available.                                   >> !REPORT_LOGFILE! 2>&1
 		
 		rem in case no connection is available, check local folder for a "download" zip archive
 		dir /S /A /B "!LMS_PROGRAMDATA!\LMSDownloadArchive_*.zip" > "!CHECKLMS_REPORT_LOG_PATH!\LMSDownloadArchivesFound.txt"  
@@ -1579,6 +1631,35 @@ if defined LMS_SCRIPT_BUILD_DOWNLOAD_TO_START (
 		echo SKIPPED start of newer script. Command line option "Do not start new script" is set.                                                                          >> !REPORT_LOGFILE! 2>&1
 	)
 )	
+
+rem set background info
+IF defined LMS_SET_BGINFO (
+	mkdir !LMS_DOWNLOAD_PATH!\BgInfo\  >nul 2>&1
+	echo This file is used to enable setbginfo at each run of CheckLMS > "!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.txt" 2>&1
+)
+if exist "!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.txt" (
+	if exist "!LMS_DOWNLOAD_PATH!\BgInfo\BGInfo.exe" (
+		rem execute BGInfo to udpate information displayed on desktop
+		"!LMS_DOWNLOAD_PATH!\BgInfo\BGInfo.exe" "!LMS_DOWNLOAD_PATH!\BgInfo\lms.bgi" /timer:0 /silent /accepteula
+		echo     Updated BGInfo at !DATE! !TIME!
+		echo Updated BGInfo at !DATE! !TIME!                                                                           >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo     CANNOT update BGInfo because '!LMS_DOWNLOAD_PATH!\BgInfo\BGInfo.exe' doesn't exist.
+		echo CANNOT update BGInfo because '!LMS_DOWNLOAD_PATH!\BgInfo\BGInfo.exe' doesn't exist.                       >> !REPORT_LOGFILE! 2>&1
+	)
+)
+rem clear background info
+IF defined LMS_CLEAR_BGINFO (
+	del !LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.txt >nul 2>&1
+	if exist "!LMS_DOWNLOAD_PATH!\BgInfo\BGInfo.exe" (
+		"!LMS_DOWNLOAD_PATH!\BgInfo\BGInfo.exe" "!LMS_DOWNLOAD_PATH!\BgInfo\clean.bgi" /timer:0 /silent /accepteula
+		echo     Removed BGInfo at !DATE! !TIME!
+		echo Removed BGInfo at !DATE! !TIME!                                                                           >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo     CANNOT remove BGInfo because '!LMS_DOWNLOAD_PATH!\BgInfo\BGInfo.exe' doesn't exist.
+		echo CANNOT remove BGInfo because '!LMS_DOWNLOAD_PATH!\BgInfo\BGInfo.exe' doesn't exist.                       >> !REPORT_LOGFILE! 2>&1
+	)
+)
 
 if not defined LMS_SKIPUNZIP (
 	if defined LMS_SERVERTOOL_DW (
@@ -4617,11 +4698,11 @@ if not defined LMS_SKIPFNP (
 	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\license_all_certificates.txt" for /f "tokens=2 eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\license_all_certificates.txt ^|find /I "INCREMENT"') do set "certfeature=%%i"   
 	if defined LMS_LMUTOOL (
 		if defined certfeature (
-			echo Check certificate feature: %certfeature%, with LmuTool.exe /CHECK:%certfeature%                                 >> !REPORT_LOGFILE! 2>&1
-			"!LMS_LMUTOOL!" /CHECK:%certfeature%                                                                                 >> !REPORT_LOGFILE! 2>&1
+			echo Check certificate feature: !certfeature!, with LmuTool.exe /CHECK:!certfeature!                                 >> !REPORT_LOGFILE! 2>&1
+			"!LMS_LMUTOOL!" /CHECK:!certfeature!                                                                                 >> !REPORT_LOGFILE! 2>&1
 			echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1 
-			echo Check certificate feature: %certfeature%, with LmuTool.exe /FC:%certfeature%                                    >> !REPORT_LOGFILE! 2>&1
-			"!LMS_LMUTOOL!" /FC:%certfeature%                                                                                    >> !REPORT_LOGFILE! 2>&1
+			echo Check certificate feature: !certfeature!, with LmuTool.exe /FC:!certfeature!                                    >> !REPORT_LOGFILE! 2>&1
+			"!LMS_LMUTOOL!" /FC:!certfeature!                                                                                    >> !REPORT_LOGFILE! 2>&1
 		) else (
 			echo Check certificate feature: not possible, no feature found in certificates to test.                              >> !REPORT_LOGFILE! 2>&1
 		)
@@ -4647,11 +4728,11 @@ if not defined LMS_SKIPFNP (
 	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\license_all_servercertificates.txt" for /f "tokens=2 eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\license_all_servercertificates.txt ^|find /I "INCREMENT"') do if not "%%i" == "Dummy_valid_feature" set "servercertfeature=%%i"
 	if defined LMS_LMUTOOL (
 		if defined servercertfeature (
-			echo Check server certificate feature: %servercertfeature%, with LmuTool.exe /CHECK:%servercertfeature%              >> !REPORT_LOGFILE! 2>&1
-			"!LMS_LMUTOOL!" /CHECK:%servercertfeature%                                                                           >> !REPORT_LOGFILE! 2>&1
+			echo Check server certificate feature: !servercertfeature!, with LmuTool.exe /CHECK:!servercertfeature!              >> !REPORT_LOGFILE! 2>&1
+			"!LMS_LMUTOOL!" /CHECK:!servercertfeature!                                                                           >> !REPORT_LOGFILE! 2>&1
 			echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1 
-			echo Check server certificate feature: %servercertfeature%, with LmuTool.exe /FC:%servercertfeature%                 >> !REPORT_LOGFILE! 2>&1
-			"!LMS_LMUTOOL!" /FC:%servercertfeature%                                                                              >> !REPORT_LOGFILE! 2>&1
+			echo Check server certificate feature: !servercertfeature!, with LmuTool.exe /FC:!servercertfeature!                 >> !REPORT_LOGFILE! 2>&1
+			"!LMS_LMUTOOL!" /FC:!servercertfeature!                                                                              >> !REPORT_LOGFILE! 2>&1
 		) else (
 			echo Check server certificate feature: not possible, no feature found in server certificates to test.                >> !REPORT_LOGFILE! 2>&1
 		)
@@ -5123,11 +5204,11 @@ if not defined LMS_SKIPLICSERV (
 	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_viewlong.txt" for /f "tokens=2 eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_viewlong.txt ^|find /I "INCREMENT"') do set "tsfeature=%%i"
 	if defined LMS_LMUTOOL (
 		if defined tsfeature (
-			echo Check trusted store feature: %tsfeature%, with LmuTool.exe /CHECK:%tsfeature%                                   >> !REPORT_LOGFILE! 2>&1
-			"!LMS_LMUTOOL!" /CHECK:%tsfeature%                                                                                   >> !REPORT_LOGFILE! 2>&1
+			echo Check trusted store feature: !tsfeature!, with LmuTool.exe /CHECK:!tsfeature!                                   >> !REPORT_LOGFILE! 2>&1
+			"!LMS_LMUTOOL!" /CHECK:!tsfeature!                                                                                   >> !REPORT_LOGFILE! 2>&1
 			echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1 
-			echo Check trusted store feature: %tsfeature%, with LmuTool.exe /FC:%tsfeature%                                      >> !REPORT_LOGFILE! 2>&1
-			"!LMS_LMUTOOL!" /FC:%tsfeature%                                                                                      >> !REPORT_LOGFILE! 2>&1
+			echo Check trusted store feature: !tsfeature!, with LmuTool.exe /FC:!tsfeature!                                      >> !REPORT_LOGFILE! 2>&1
+			"!LMS_LMUTOOL!" /FC:!tsfeature!                                                                                      >> !REPORT_LOGFILE! 2>&1
 		) else (
 			echo Check trusted store feature: not possible, no feature found in trusted store to test.                           >> !REPORT_LOGFILE! 2>&1
 		)
@@ -5603,6 +5684,15 @@ if not defined LMS_CHECK_ID (
 		)
 	) else (
 		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> !REPORT_LOGFILE! 2>&1 
+	)
+	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Configuration File: LEL Config '!LMS_PROGRAMDATA!\Config\LELCfg'                                                        >> !REPORT_LOGFILE! 2>&1
+	if exist "!LMS_PROGRAMDATA!\Config\LELCfg" (
+		Type !LMS_PROGRAMDATA!\Config\LELCfg                                                                                     >> !REPORT_LOGFILE! 2>&1
+		echo .                                                                                                                   >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo     LEL configuration file '!LMS_PROGRAMDATA!\Config\LELCfg' doesn't exist, cannot show content.                    >> !REPORT_LOGFILE! 2>&1 
 	)
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
