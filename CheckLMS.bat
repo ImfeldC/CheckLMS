@@ -295,7 +295,7 @@ set LMS_SCRIPT_BUILD=20210819
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
 set MOST_RECENT_LMS_BUILD=824
-rem most recent lms field test version: 2.6.837 (per 19-Aug-2021)
+rem most recent lms field test version: 2.6.838 (per 19-Aug-2021)
 rem - if not set, it is not downloaded.
 set MOST_RECENT_FT_LMS_VERSION=2.6.838
 set MOST_RECENT_FT_LMS_BUILD=838
