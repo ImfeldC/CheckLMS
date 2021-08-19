@@ -254,7 +254,7 @@ rem        - download further VBS scripts for bginfo
 rem        - delete local bginfo vbs scripts (temporary, to clean-up all test sites)
 rem        - pack all vbs scripts into a zip archive, download and unzip them into C:\ProgramData\Siemens\LMS\Download\BgInfo
 rem     19-Aug-2021:
-rem        - set 2.6.837 as field test version
+rem        - set 2.6.838 as field test version
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -297,8 +297,8 @@ set MOST_RECENT_LMS_VERSION=2.5.824
 set MOST_RECENT_LMS_BUILD=824
 rem most recent lms field test version: 2.6.837 (per 19-Aug-2021)
 rem - if not set, it is not downloaded.
-set MOST_RECENT_FT_LMS_VERSION=2.6.837
-set MOST_RECENT_FT_LMS_BUILD=837
+set MOST_RECENT_FT_LMS_VERSION=2.6.838
+set MOST_RECENT_FT_LMS_BUILD=838
 rem most recent dongle driver version (per 12-Jul-2021, LMS 2.6)
 set MOST_RECENT_DONGLE_DRIVER_VERSION=8.21
 set MOST_RECENT_DONGLE_DRIVER_MAJ_VERSION=8
