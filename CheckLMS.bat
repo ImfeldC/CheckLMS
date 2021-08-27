@@ -265,7 +265,7 @@ rem        - align CheckLMS script, to support bginfo introdusced with LMS 2.6 (
 rem        - Download bginfo.zip and unzip into C:\ProgramData\Siemens\LMS\BgInfo
 rem        - Store info about "setbginfo" mode new in file !REPORT_LOG_PATH!\BgInfo\setbginfo.lock
 rem        - adjust command line options setbginfo & clearbginfo, first try to start downloaded bginfo, if not available start pre-installed bginfo.
-rem     26-Aug-2021:
+rem     27-Aug-2021:
 rem        - use 'call' command to execute (sub-)batch files, see https://stackoverflow.com/questions/1103994/how-to-run-multiple-bat-files-within-a-bat-file
 rem 
 rem
