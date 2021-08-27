@@ -265,6 +265,8 @@ rem        - align CheckLMS script, to support bginfo introdusced with LMS 2.6 (
 rem        - Download bginfo.zip and unzip into C:\ProgramData\Siemens\LMS\BgInfo
 rem        - Store info about "setbginfo" mode new in file !REPORT_LOG_PATH!\BgInfo\setbginfo.lock
 rem        - adjust command line options setbginfo & clearbginfo, first try to start downloaded bginfo, if not available start pre-installed bginfo.
+rem     26-Aug-2021:
+rem        - use 'call' command to execute (sub-)batch files, see https://stackoverflow.com/questions/1103994/how-to-run-multiple-bat-files-within-a-bat-file
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -299,8 +301,8 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 26-Aug-2021"
-set LMS_SCRIPT_BUILD=20210826
+set LMS_SCRIPT_VERSION="CheckLMS Script 27-Aug-2021"
+set LMS_SCRIPT_BUILD=20210827
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -1633,13 +1635,13 @@ if exist "!REPORT_LOG_PATH!\BgInfo\setbginfo.lock" (
 	if exist "!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat" (
 		rem execute BGInfo to udpate information displayed on desktop
 		echo Call '!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat' ...                               >> !REPORT_LOGFILE! 2>&1
-		"!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat"                                             >> !REPORT_LOGFILE! 2>&1
+		call "!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat"                                        >> !REPORT_LOGFILE! 2>&1
 		echo     Updated BGInfo at !DATE! !TIME!
 		echo Updated BGInfo at !DATE! !TIME!                                                   >> !REPORT_LOGFILE! 2>&1
 	) else if exist "!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat" (
 		rem execute pre-installed BGInfo to udpate information displayed on desktop
 		echo Call '!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat' ...                                 >> !REPORT_LOGFILE! 2>&1
-		"!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat"                                               >> !REPORT_LOGFILE! 2>&1
+		call "!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat"                                          >> !REPORT_LOGFILE! 2>&1
 		echo     Updated BGInfo at !DATE! !TIME!
 		echo Updated BGInfo at !DATE! !TIME!                                                   >> !REPORT_LOGFILE! 2>&1
 	) else (
@@ -1653,13 +1655,13 @@ if defined LMS_CLEAR_BGINFO (
 	if exist "!LMS_DOWNLOAD_PATH!\BgInfo\cleanbginfo.bat" (
 		rem execute BGInfo to udpate information displayed on desktop
 		echo Call '!LMS_DOWNLOAD_PATH!\BgInfo\cleanbginfo.bat' ...                             >> !REPORT_LOGFILE! 2>&1
-		"!LMS_DOWNLOAD_PATH!\BgInfo\cleanbginfo.bat"                                           >> !REPORT_LOGFILE! 2>&1
+		call "!LMS_DOWNLOAD_PATH!\BgInfo\cleanbginfo.bat"                                      >> !REPORT_LOGFILE! 2>&1
 		echo     Removed BGInfo at !DATE! !TIME!
 		echo Removed BGInfo at !DATE! !TIME!                                                   >> !REPORT_LOGFILE! 2>&1
 	) else if exist "!LMS_PROGRAMDATA!\BgInfo\cleanbginfo.bat" (
 		rem execute pre-installed BGInfo to udpate information displayed on desktop
 		echo Call '!LMS_PROGRAMDATA!\BgInfo\cleanbginfo.bat' ...                               >> !REPORT_LOGFILE! 2>&1
-		"!LMS_PROGRAMDATA!\BgInfo\cleanbginfo.bat"                                             >> !REPORT_LOGFILE! 2>&1
+		call "!LMS_PROGRAMDATA!\BgInfo\cleanbginfo.bat"                                        >> !REPORT_LOGFILE! 2>&1
 		echo     Removed BGInfo at !DATE! !TIME!
 		echo Removed BGInfo at !DATE! !TIME!                                                   >> !REPORT_LOGFILE! 2>&1
 	) else (
