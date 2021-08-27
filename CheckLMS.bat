@@ -255,6 +255,16 @@ rem        - delete local bginfo vbs scripts (temporary, to clean-up all test si
 rem        - pack all vbs scripts into a zip archive, download and unzip them into C:\ProgramData\Siemens\LMS\Download\BgInfo
 rem     19-Aug-2021:
 rem        - set 2.6.838 as field test version
+rem     20-Aug-2021:
+rem        - adjust download messages, remove messages in case nothing is downloaded because it exists already
+rem        - do not download single vbs scripts anymore, downlaod zipped archive (BgInfo_vbs_scripts.zip) and unzip them.
+rem     23-Aug-2021:
+rem        - set LMS_DATA_PATH - if not set - to C:\ProgramData\Siemens\LMS\
+rem     26-Aug-2021:
+rem        - align CheckLMS script, to support bginfo introdusced with LMS 2.6 (located in C:\ProgramData\Siemens\LMS\BgInfo)
+rem        - Download bginfo.zip and unzip into C:\ProgramData\Siemens\LMS\BgInfo
+rem        - Store info about "setbginfo" mode new in file !REPORT_LOG_PATH!\BgInfo\setbginfo.lock
+rem        - adjust command line options setbginfo & clearbginfo, first try to start downloaded bginfo, if not available start pre-installed bginfo.
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -289,8 +299,8 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 19-Aug-2021"
-set LMS_SCRIPT_BUILD=20210819
+set LMS_SCRIPT_VERSION="CheckLMS Script 26-Aug-2021"
+set LMS_SCRIPT_BUILD=20210826
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -359,6 +369,10 @@ FOR /F "usebackq" %%f IN (`PowerShell -NoProfile -Command "Write-Host([Environme
 )
 rem @ECHO DESKTOP_FOLDER=%DESKTOP_FOLDER%
 
+rem Check LMS install & data path
+if not defined LMS_DATA_PATH (
+	set LMS_DATA_PATH=!ALLUSERSPROFILE!\Siemens\LMS
+)
 rem Check report log path
 set LMS_PROGRAMDATA=!ALLUSERSPROFILE!\Siemens\LMS
 set REPORT_LOG_PATH=!LMS_PROGRAMDATA!\Logs
@@ -835,6 +849,8 @@ for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>
 	rem convert hex in decimal (see https://stackoverflow.com/questions/9453246/reg-query-returning-hexadecimal-value)
 	set /A DONGLE_DRIVER_INST_COUNT=%%A
 )
+rem 1204576: CheckLMS: Consider that ” DrvPkgVersion” is not longer available!
+rem the content of «HKLM\SOFTWARE\Aladdin Knowledge Systems\HASP\Driver\Installer» has changed in 8.13; the entry ” DrvPkgVersion” is not longer available!
 if not defined DONGLE_DRIVER_PKG_VERSION (
 	set DONGLE_DRIVER_PKG_VERSION=!DONGLE_DRIVER_VERSION!
 )
@@ -1396,9 +1412,6 @@ if not defined LMS_SKIPDOWNLOAD (
 				echo     Download VM GENID app [from Stratus]: !LMS_DOWNLOAD_PATH!\VMGENID.EXE
 				echo Download VM GENID app [from Stratus]: !LMS_DOWNLOAD_PATH!\VMGENID.EXE                                                                                         >> !REPORT_LOGFILE! 2>&1
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/tools/VMGENID.EXE', '!LMS_DOWNLOAD_PATH!\VMGENID.EXE')"   >> !REPORT_LOGFILE! 2>&1
-			) else (
-				echo     Don't download VM GENID app [from Stratus] [VMGENID.EXE], because it exist already.
-				echo Don't download VM GENID app [from Stratus] [VMGENID.EXE], because it exist already.                                                                           >> !REPORT_LOGFILE! 2>&1
 			)
 			
 			rem Download tool "GetVMGenerationIdentifier.exe" to read-out generation id
@@ -1406,9 +1419,6 @@ if not defined LMS_SKIPDOWNLOAD (
 				echo     Download VM GENID app: !LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe
 				echo Download VM GENID app: !LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe                                           >> !REPORT_LOGFILE! 2>&1
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/GetVMGenerationIdentifier.exe', '!LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe')"   >> !REPORT_LOGFILE! 2>&1
-			) else (
-				echo     Don't download VM GENID app [GetVMGenerationIdentifier.exe], because they exist already.
-				echo Don't download VM GENID app [GetVMGenerationIdentifier.exe], because they exist already.                           >> !REPORT_LOGFILE! 2>&1
 			)
 			
 			rem Download tool "ecmcommonutil.exe" (from Flexera) to read-out host id's
@@ -1416,9 +1426,6 @@ if not defined LMS_SKIPDOWNLOAD (
 				echo     Download ecmcommonutil app: !LMS_DOWNLOAD_PATH!\ecmcommonutil.exe
 				echo Download ecmcommonutil app: !LMS_DOWNLOAD_PATH!\ecmcommonutil.exe                                                  >> !REPORT_LOGFILE! 2>&1
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/ecmcommonutil.exe', '!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe')"   >> !REPORT_LOGFILE! 2>&1
-			) else (
-				echo     Don't download ecmcommonutil app [ecmcommonutil.exe], because they exist already.
-				echo Don't download ecmcommonutil app [ecmcommonutil.exe], because they exist already.                                  >> !REPORT_LOGFILE! 2>&1
 			)
 			
 			rem Download tool "ecmcommonutil.exe" V1.19 (=ecmcommonutil_1.19.exe) (from Flexera) to read-out host id's
@@ -1426,9 +1433,6 @@ if not defined LMS_SKIPDOWNLOAD (
 				echo     Download ecmcommonutil app: !LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe
 				echo Download ecmcommonutil app: !LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe                                             >> !REPORT_LOGFILE! 2>&1
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/ecmcommonutil_1.19.exe', '!LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe')"   >> !REPORT_LOGFILE! 2>&1
-			) else (
-				echo     Don't download ecmcommonutil app V1.19 [ecmcommonutil_1.19.exe], because they exist already.
-				echo Don't download ecmcommonutil app V1.19 [ecmcommonutil_1.19.exe], because they exist already.                       >> !REPORT_LOGFILE! 2>&1
 			)
 			
 			rem Download newest dongle driver always, to ensure that older driver get overwritten
@@ -1449,9 +1453,6 @@ if not defined LMS_SKIPDOWNLOAD (
 				echo     Download AccessChk tool: !LMS_DOWNLOAD_PATH!\AccessChk.zip
 				echo Download AccessChk tool: !LMS_DOWNLOAD_PATH!\AccessChk.zip                                                         >> !REPORT_LOGFILE! 2>&1
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://download.sysinternals.com/files/AccessChk.zip', '!LMS_DOWNLOAD_PATH!\AccessChk.zip')"   >> !REPORT_LOGFILE! 2>&1
-			) else (
-				echo     Don't download AccessChk tool [AccessChk.zip], because it exist already.
-				echo Don't download AccessChk tool [AccessChk.zip], because it exist already.                                           >> !REPORT_LOGFILE! 2>&1
 			)
 			
 			rem Download SigCheck tool
@@ -1459,9 +1460,6 @@ if not defined LMS_SKIPDOWNLOAD (
 				echo     Download SigCheck tool: !LMS_DOWNLOAD_PATH!\Sigcheck.zip
 				echo Download SigCheck tool: !LMS_DOWNLOAD_PATH!\Sigcheck.zip                                                           >> !REPORT_LOGFILE! 2>&1
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://download.sysinternals.com/files/Sigcheck.zip', '!LMS_DOWNLOAD_PATH!\Sigcheck.zip')"   >> !REPORT_LOGFILE! 2>&1
-			) else (
-				echo     Don't download SigCheck tool [Sigcheck.zip], because it exist already.
-				echo Don't download SigCheck tool [Sigcheck.zip], because it exist already.                                             >> !REPORT_LOGFILE! 2>&1
 			)
 			
 			rem Download USBDeview tool
@@ -1469,9 +1467,6 @@ if not defined LMS_SKIPDOWNLOAD (
 				echo     Download USBDeview tool: !LMS_DOWNLOAD_PATH!\usbdeview-x64.zip
 				echo Download USBDeview tool: !LMS_DOWNLOAD_PATH!\usbdeview-x64.zip                                                     >> !REPORT_LOGFILE! 2>&1
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.nirsoft.net/utils/usbdeview-x64.zip', '!LMS_DOWNLOAD_PATH!\usbdeview-x64.zip')"   >> !REPORT_LOGFILE! 2>&1
-			) else (
-				echo     Don't download USBDeview tool [usbdeview-x64.zip], because it exist already.
-				echo Don't download USBDeview tool [usbdeview-x64.zip], because it exist already.                                       >> !REPORT_LOGFILE! 2>&1
 			)
 			
 			rem Download “counted.lic”
@@ -1479,111 +1474,22 @@ if not defined LMS_SKIPDOWNLOAD (
 				echo     Download 'counted.lic': !LMS_DOWNLOAD_PATH!\counted.lic
 				echo Download 'counted.lic': !LMS_DOWNLOAD_PATH!\counted.lic                                                            >> !REPORT_LOGFILE! 2>&1
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/counted.lic', '!LMS_DOWNLOAD_PATH!\counted.lic')"   >> !REPORT_LOGFILE! 2>&1
-			) else (
-				echo     Don't download 'counted.lic', because it exist already.
-				echo Don't download 'counted.lic', because it exist already.                                                            >> !REPORT_LOGFILE! 2>&1
 			)
 			
 			rem Download BGInfo tool
-			mkdir !LMS_DOWNLOAD_PATH!\BgInfo\  >nul 2>&1
-			del "!LMS_DOWNLOAD_PATH!\BgInfo\*.vbs" >nul 2>&1
-			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\BgInfo.exe" (
-				echo     Download BGInfo tool: !LMS_DOWNLOAD_PATH!\BgInfo\BgInfo.exe
-				echo Download BGInfo tool: !LMS_DOWNLOAD_PATH!\BgInfo\BgInfo.exe                                                        >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://live.sysinternals.com/Bginfo.exe', '!LMS_DOWNLOAD_PATH!\BgInfo\BgInfo.exe')"   >> !REPORT_LOGFILE! 2>&1
-			) else (
-				echo     Don't download BGInfo tool [BgInfo.exe], because it exist already.
-				echo Don't download BGInfo tool [BgInfo.exe], because it exist already.                                                 >> !REPORT_LOGFILE! 2>&1
-			)
-			rem Download BGInfo configuration file
-			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\lms.bgi" (
-				echo     Download BGInfo configuration file: !LMS_DOWNLOAD_PATH!\BgInfo\lms.bgi
-				echo Download BGInfo configuration file: !LMS_DOWNLOAD_PATH!\BgInfo\lms.bgi                                             >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/BgInfo/lms.bgi', '!LMS_DOWNLOAD_PATH!\BgInfo\lms.bgi')"   >> !REPORT_LOGFILE! 2>&1
-			)
-			rem Download BGInfo clean configuration file
-			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\clean.bgi" (
-				echo     Download BGInfo configuration file: !LMS_DOWNLOAD_PATH!\BgInfo\clean.bgi
-				echo Download BGInfo configuration file: !LMS_DOWNLOAD_PATH!\BgInfo\clean.bgi                                           >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/BgInfo/clean.bgi', '!LMS_DOWNLOAD_PATH!\BgInfo\clean.bgi')"   >> !REPORT_LOGFILE! 2>&1
-			)
-			rem Download and unzip BgInfo VBS scripts [as ZIP]
-			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\BgInfo_vbs_scripts.zip" (
-				echo     Download BgInfo VBS scripts: !LMS_DOWNLOAD_PATH!\BgInfo\BgInfo_vbs_scripts.zip
-				echo Download BgInfo VBS scripts: !LMS_DOWNLOAD_PATH!\BgInfo\BgInfo_vbs_scripts.zip                                     >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/BgInfo/BgInfo_vbs_scripts.zip', '!LMS_DOWNLOAD_PATH!\BgInfo\BgInfo_vbs_scripts.zip')"   >> !REPORT_LOGFILE! 2>&1
-				IF EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\BgInfo_vbs_scripts.zip" (
-					echo     Extract BgInfo VBS scripts: !LMS_DOWNLOAD_PATH!\BgInfo\BgInfo_vbs_scripts.zip
-					echo Extract BgInfo VBS scripts: !LMS_DOWNLOAD_PATH!\BgInfo\BgInfo_vbs_scripts.zip                                  >> !REPORT_LOGFILE! 2>&1
-					"!UNZIP_TOOL!" x -y -spe -o"!LMS_DOWNLOAD_PATH!\BgInfo\" "!LMS_DOWNLOAD_PATH!\BgInfo\BgInfo_vbs_scripts.zip" > !CHECKLMS_REPORT_LOG_PATH!\unzip_vbs_scripts_zip.txt 2>&1
+			rmdir /S /Q "!LMS_DOWNLOAD_PATH!\BgInfo\" >nul 2>&1
+			del !LMS_DOWNLOAD_PATH!\BgInfo.zip >nul 2>&1
+			rem Download and unzip BgInfo ZIP archive [as ZIP]
+			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\BgInfo.zip" (
+				echo     Download BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip
+				echo Download BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip                                     >> !REPORT_LOGFILE! 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/BgInfo/BgInfo.zip', '!LMS_DOWNLOAD_PATH!\BgInfo.zip')"   >> !REPORT_LOGFILE! 2>&1
+				IF EXIST "!LMS_DOWNLOAD_PATH!\BgInfo.zip" (
+					echo     Extract BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip
+					echo Extract BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip                                  >> !REPORT_LOGFILE! 2>&1
+					"!UNZIP_TOOL!" x -y -spe -o"!LMS_DOWNLOAD_PATH!\BgInfo\" "!LMS_DOWNLOAD_PATH!\BgInfo.zip" > !CHECKLMS_REPORT_LOG_PATH!\unzip_bginfo_zip.txt 2>&1
 				)
-			) else (
-				echo     Don't download BgInfo VBS scripts [ZIP], because they exist already.
-				echo Don't download BgInfo VBS scripts [ZIP], because they exist already.                                               >> !REPORT_LOGFILE! 2>&1
 			)
-
-			rem **** NO LONBER USED, REPLACED WITH DOWNLOAD OF VBS SCRIPT ZIP ARCHIVE
-			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\publicip.vbs" (
-				echo     Download BGInfo VB script: !LMS_DOWNLOAD_PATH!\BgInfo\publicip.vbs
-				echo Download BGInfo VB script: !LMS_DOWNLOAD_PATH!\BgInfo\publicip.vbs                                                 >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/BgInfo/publicip.vbs', '!LMS_DOWNLOAD_PATH!\BgInfo\publicip.vbs')"   >> !REPORT_LOGFILE! 2>&1
-			)
-			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\ISP Name.vbs" (
-				echo     Download BGInfo VB script: !LMS_DOWNLOAD_PATH!\BgInfo\ISP Name.vbs
-				echo Download BGInfo VB script: !LMS_DOWNLOAD_PATH!\BgInfo\ISP Name.vbs                                                 >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/BgInfo/ISP Name.vbs', '!LMS_DOWNLOAD_PATH!\BgInfo\ISP Name.vbs')"   >> !REPORT_LOGFILE! 2>&1
-			)
-			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\UMN.vbs" (
-				echo     Download BGInfo VB script: !LMS_DOWNLOAD_PATH!\BgInfo\UMN.vbs
-				echo Download BGInfo VB script: !LMS_DOWNLOAD_PATH!\BgInfo\UMN.vbs                                                      >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/BgInfo/UMN.vbs', '!LMS_DOWNLOAD_PATH!\BgInfo\UMN.vbs')"   >> !REPORT_LOGFILE! 2>&1
-			)
-			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\UMN1.vbs" (
-				echo     Download BGInfo VB script: !LMS_DOWNLOAD_PATH!\BgInfo\UMN1.vbs
-				echo Download BGInfo VB script: !LMS_DOWNLOAD_PATH!\BgInfo\UMN1.vbs                                                     >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/BgInfo/UMN1.vbs', '!LMS_DOWNLOAD_PATH!\BgInfo\UMN1.vbs')"   >> !REPORT_LOGFILE! 2>&1
-			)
-			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\UMN2.vbs" (
-				echo     Download BGInfo VB script: !LMS_DOWNLOAD_PATH!\BgInfo\UMN2.vbs
-				echo Download BGInfo VB script: !LMS_DOWNLOAD_PATH!\BgInfo\UMN2.vbs                                                     >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/BgInfo/UMN2.vbs', '!LMS_DOWNLOAD_PATH!\BgInfo\UMN2.vbs')"   >> !REPORT_LOGFILE! 2>&1
-			)
-			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\UMN3.vbs" (
-				echo     Download BGInfo VB script: !LMS_DOWNLOAD_PATH!\BgInfo\UMN3.vbs
-				echo Download BGInfo VB script: !LMS_DOWNLOAD_PATH!\BgInfo\UMN3.vbs                                                     >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/BgInfo/UMN3.vbs', '!LMS_DOWNLOAD_PATH!\BgInfo\UMN3.vbs')"   >> !REPORT_LOGFILE! 2>&1
-			)
-			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\UMN5.vbs" (
-				echo     Download BGInfo VB script: !LMS_DOWNLOAD_PATH!\BgInfo\UMN5.vbs
-				echo Download BGInfo VB script: !LMS_DOWNLOAD_PATH!\BgInfo\UMN5.vbs                                                     >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/BgInfo/UMN5.vbs', '!LMS_DOWNLOAD_PATH!\BgInfo\UMN5.vbs')"   >> !REPORT_LOGFILE! 2>&1
-			)
-			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\lmhostid_tpm.vbs" (
-				echo     Download BGInfo VB script: !LMS_DOWNLOAD_PATH!\BgInfo\lmhostid_tpm.vbs
-				echo Download BGInfo VB script: !LMS_DOWNLOAD_PATH!\BgInfo\lmhostid_tpm.vbs                                             >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/BgInfo/lmhostid_tpm.vbs', '!LMS_DOWNLOAD_PATH!\BgInfo\lmhostid_tpm.vbs')"   >> !REPORT_LOGFILE! 2>&1
-			)
-			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\lmhostid_vmuuid.vbs" (
-				echo     Download BGInfo VB script: !LMS_DOWNLOAD_PATH!\BgInfo\lmhostid_vmuuid.vbs
-				echo Download BGInfo VB script: !LMS_DOWNLOAD_PATH!\BgInfo\lmhostid_vmuuid.vbs                                          >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/BgInfo/lmhostid_vmuuid.vbs', '!LMS_DOWNLOAD_PATH!\BgInfo\lmhostid_vmuuid.vbs')"   >> !REPORT_LOGFILE! 2>&1
-			)
-			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\lmvminfo_family.vbs" (
-				echo     Download BGInfo VB script: !LMS_DOWNLOAD_PATH!\BgInfo\lmvminfo_family.vbs
-				echo Download BGInfo VB script: !LMS_DOWNLOAD_PATH!\BgInfo\lmvminfo_family.vbs                                          >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/BgInfo/lmvminfo_family.vbs', '!LMS_DOWNLOAD_PATH!\BgInfo\lmvminfo_family.vbs')"   >> !REPORT_LOGFILE! 2>&1
-			)
-			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\lmvminfo_name.vbs" (
-				echo     Download BGInfo VB script: !LMS_DOWNLOAD_PATH!\BgInfo\lmvminfo_name.vbs
-				echo Download BGInfo VB script: !LMS_DOWNLOAD_PATH!\BgInfo\lmvminfo_name.vbs                                            >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/BgInfo/lmvminfo_name.vbs', '!LMS_DOWNLOAD_PATH!\BgInfo\lmvminfo_name.vbs')"   >> !REPORT_LOGFILE! 2>&1
-			)
-			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\lmvminfo_vmgenid.vbs" (
-				echo     Download BGInfo VB script: !LMS_DOWNLOAD_PATH!\BgInfo\lmvminfo_vmgenid.vbs
-				echo Download BGInfo VB script: !LMS_DOWNLOAD_PATH!\BgInfo\lmvminfo_vmgenid.vbs                                         >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/BgInfo/lmvminfo_vmgenid.vbs', '!LMS_DOWNLOAD_PATH!\BgInfo\lmvminfo_vmgenid.vbs')"   >> !REPORT_LOGFILE! 2>&1
-			)
-			rem **** NO LONBER USED, REPLACED WITH DOWNLOAD OF VBS SCRIPT ZIP ARCHIVE
 
 		)
 	) else (
@@ -1719,31 +1625,46 @@ if defined LMS_SCRIPT_BUILD_DOWNLOAD_TO_START (
 )	
 
 rem set background info
-IF defined LMS_SET_BGINFO (
-	mkdir !LMS_DOWNLOAD_PATH!\BgInfo\  >nul 2>&1
-	echo This file is used to enable setbginfo at each run of CheckLMS > "!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.txt" 2>&1
+if defined LMS_SET_BGINFO (
+	mkdir !REPORT_LOG_PATH!\BgInfo\  >nul 2>&1
+	echo This file is used to enable setbginfo at each run of CheckLMS > "!REPORT_LOG_PATH!\BgInfo\setbginfo.lock" 2>&1
 )
-if exist "!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.txt" (
-	if exist "!LMS_DOWNLOAD_PATH!\BgInfo\BGInfo.exe" (
+if exist "!REPORT_LOG_PATH!\BgInfo\setbginfo.lock" (
+	if exist "!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat" (
 		rem execute BGInfo to udpate information displayed on desktop
-		"!LMS_DOWNLOAD_PATH!\BgInfo\BGInfo.exe" "!LMS_DOWNLOAD_PATH!\BgInfo\lms.bgi" /timer:0 /silent /accepteula
+		echo Call '!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat' ...                               >> !REPORT_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat"                                             >> !REPORT_LOGFILE! 2>&1
 		echo     Updated BGInfo at !DATE! !TIME!
-		echo Updated BGInfo at !DATE! !TIME!                                                                           >> !REPORT_LOGFILE! 2>&1
+		echo Updated BGInfo at !DATE! !TIME!                                                   >> !REPORT_LOGFILE! 2>&1
+	) else if exist "!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat" (
+		rem execute pre-installed BGInfo to udpate information displayed on desktop
+		echo Call '!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat' ...                                 >> !REPORT_LOGFILE! 2>&1
+		"!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat"                                               >> !REPORT_LOGFILE! 2>&1
+		echo     Updated BGInfo at !DATE! !TIME!
+		echo Updated BGInfo at !DATE! !TIME!                                                   >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo     CANNOT update BGInfo because '!LMS_DOWNLOAD_PATH!\BgInfo\BGInfo.exe' doesn't exist.
-		echo CANNOT update BGInfo because '!LMS_DOWNLOAD_PATH!\BgInfo\BGInfo.exe' doesn't exist.                       >> !REPORT_LOGFILE! 2>&1
+		echo     CANNOT update BGInfo because 'setbginfo.bat' doesn't exist.
+		echo CANNOT update BGInfo because 'setbginfo.bat' doesn't exist.                       >> !REPORT_LOGFILE! 2>&1
 	)
 )
 rem clear background info
-IF defined LMS_CLEAR_BGINFO (
-	del !LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.txt >nul 2>&1
-	if exist "!LMS_DOWNLOAD_PATH!\BgInfo\BGInfo.exe" (
-		"!LMS_DOWNLOAD_PATH!\BgInfo\BGInfo.exe" "!LMS_DOWNLOAD_PATH!\BgInfo\clean.bgi" /timer:0 /silent /accepteula
+if defined LMS_CLEAR_BGINFO (
+	del !REPORT_LOG_PATH!\BgInfo\setbginfo.lock >nul 2>&1
+	if exist "!LMS_DOWNLOAD_PATH!\BgInfo\cleanbginfo.bat" (
+		rem execute BGInfo to udpate information displayed on desktop
+		echo Call '!LMS_DOWNLOAD_PATH!\BgInfo\cleanbginfo.bat' ...                             >> !REPORT_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\BgInfo\cleanbginfo.bat"                                           >> !REPORT_LOGFILE! 2>&1
 		echo     Removed BGInfo at !DATE! !TIME!
-		echo Removed BGInfo at !DATE! !TIME!                                                                           >> !REPORT_LOGFILE! 2>&1
+		echo Removed BGInfo at !DATE! !TIME!                                                   >> !REPORT_LOGFILE! 2>&1
+	) else if exist "!LMS_PROGRAMDATA!\BgInfo\cleanbginfo.bat" (
+		rem execute pre-installed BGInfo to udpate information displayed on desktop
+		echo Call '!LMS_PROGRAMDATA!\BgInfo\cleanbginfo.bat' ...                               >> !REPORT_LOGFILE! 2>&1
+		"!LMS_PROGRAMDATA!\BgInfo\cleanbginfo.bat"                                             >> !REPORT_LOGFILE! 2>&1
+		echo     Removed BGInfo at !DATE! !TIME!
+		echo Removed BGInfo at !DATE! !TIME!                                                   >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo     CANNOT remove BGInfo because '!LMS_DOWNLOAD_PATH!\BgInfo\BGInfo.exe' doesn't exist.
-		echo CANNOT remove BGInfo because '!LMS_DOWNLOAD_PATH!\BgInfo\BGInfo.exe' doesn't exist.                       >> !REPORT_LOGFILE! 2>&1
+		echo     CANNOT remove BGInfo because 'cleanbginfo.bat' doesn't exist.
+		echo CANNOT remove BGInfo because 'cleanbginfo.bat' doesn't exist.                     >> !REPORT_LOGFILE! 2>&1
 	)
 )
 
