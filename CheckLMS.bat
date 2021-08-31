@@ -273,6 +273,9 @@ rem        - replace 'https://static.siemens.com/btdownloads/' with 'https://d32
 rem        - replace 'akamai' with 'download share'
 rem        - adjust the donwload section, check for newer script version BEFORE downloading further libraries.
 rem        - move (internal) folder from !LMS_DOWNLOAD_PATH!\git to !LMS_DOWNLOAD_PATH!\CheckLMS\git
+rem        - remove support to download 'CheckLMS.exe', 'CheckLMS.bat' instead
+rem        - add option to show CheckLMS script version: /showversion
+rem        - change script behavior for /showversion, /setbginfo and /clearbginfo; stop script execution after the command has been executed.
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -282,6 +285,7 @@ rem        - To run the script w/o window, execute:
 rem              "!ProgramFiles!\Siemens\LMS\bin\Launcher.exe" "!ProgramFiles!\Siemens\LMS\scripts\CheckLMS.bat" /nouserinput /B
 rem              NOTE: the /B option needs to be the last option, as it is used by launcher app.
 rem        - The following command line options are supported:
+rem              - /showversion                 shows the script version. NOTE: The download of newer scripts is executed.
 rem              - /nouserinput                 supresses any user input (mainly the stop command at the end of the script)
 rem              - /nowait                      supresses any user input and any further "wait" commands 
 rem              - /logfilename <logfilename>   specifies the name and location of the logfile
@@ -399,6 +403,33 @@ IF NOT EXIST "!CHECKLMS_REPORT_LOG_PATH!\" (
     mkdir !CHECKLMS_REPORT_LOG_PATH!\ >nul 2>&1
 )
 
+rem Check & create download path
+set LMS_DOWNLOAD_PATH=!LMS_PROGRAMDATA!\Download
+IF NOT EXIST "!LMS_DOWNLOAD_PATH!\" (
+	rem echo Create new folder: !LMS_DOWNLOAD_PATH!\
+	mkdir !LMS_DOWNLOAD_PATH!\ >nul 2>&1
+)
+rem Check & create download path for CheckLMS
+IF NOT EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS" (
+	mkdir !LMS_DOWNLOAD_PATH!\CheckLMS\ >nul 2>&1
+)
+IF NOT EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\git" (
+	mkdir !LMS_DOWNLOAD_PATH!\CheckLMS\git\ >nul 2>&1
+)
+IF NOT EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\bat" (
+	mkdir !LMS_DOWNLOAD_PATH!\CheckLMS\bat\ >nul 2>&1
+)
+IF NOT EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\exe" (
+	mkdir !LMS_DOWNLOAD_PATH!\CheckLMS\exe\ >nul 2>&1
+)
+IF NOT EXIST "!LMS_DOWNLOAD_PATH!\LMSSetup" (
+	rem echo Create new folder: !LMS_DOWNLOAD_PATH!\LMSSetup\
+	mkdir !LMS_DOWNLOAD_PATH!\LMSSetup\ >nul 2>&1
+)
+
+rem clean-up files downloaded used with older CheckLMS script
+del !LMS_DOWNLOAD_PATH!\CheckLMS.exe >nul 2>&1
+
 rem clean-up logfiles created with older CheckLMS script
 del !REPORT_LOG_PATH!\eventlog_*.txt >nul 2>&1
 del !REPORT_LOG_PATH!\aksdrvsetup*.log >nul 2>&1
@@ -453,29 +484,6 @@ IF NOT EXIST "%CHECKLMS_ALM_PATH%\" (
     mkdir %CHECKLMS_ALM_PATH%\ >nul 2>&1
 )
 
-rem Check & create download path
-set LMS_DOWNLOAD_PATH=!LMS_PROGRAMDATA!\Download
-IF NOT EXIST "!LMS_DOWNLOAD_PATH!\" (
-	rem echo Create new folder: !LMS_DOWNLOAD_PATH!\
-	mkdir !LMS_DOWNLOAD_PATH!\ >nul 2>&1
-)
-rem Check & create download path for CheckLMS
-IF NOT EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS" (
-	mkdir !LMS_DOWNLOAD_PATH!\CheckLMS\ >nul 2>&1
-)
-IF NOT EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\git" (
-	mkdir !LMS_DOWNLOAD_PATH!\CheckLMS\git\ >nul 2>&1
-)
-IF NOT EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\bat" (
-	mkdir !LMS_DOWNLOAD_PATH!\CheckLMS\bat\ >nul 2>&1
-)
-IF NOT EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\exe" (
-	mkdir !LMS_DOWNLOAD_PATH!\CheckLMS\exe\ >nul 2>&1
-)
-IF NOT EXIST "!LMS_DOWNLOAD_PATH!\LMSSetup" (
-	rem echo Create new folder: !LMS_DOWNLOAD_PATH!\LMSSetup\
-	mkdir !LMS_DOWNLOAD_PATH!\LMSSetup\ >nul 2>&1
-)
 rem Check flexera command line tools path 
 set LMS_SERVERTOOL_PATH=!ProgramFiles_x86!\Siemens\LMS\server
 IF NOT EXIST "!LMS_SERVERTOOL_PATH!" (
@@ -540,6 +548,12 @@ FOR %%A IN (%*) DO (
 	) else (
 		set var=!var:~1!
 		echo     var=!var!
+		if "!var!"=="showversion" (
+			set LMS_SHOW_VERSION=1
+			set LMS_NOUSERINPUT=1
+			rem this prevents from creating logfile archive
+			set LMS_CHECK_ID=1
+		)
 		if "!var!"=="nouserinput" (
 			set LMS_NOUSERINPUT=1
 		)
@@ -1077,13 +1091,13 @@ echo =   LLLLL  M     M  SSSS                                                   
 echo =                                                                                                                       >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 echo =                                                                                                                       >> !REPORT_LOGFILE! 2>&1
-echo =  LMS Status Report for LMS Version: !LMS_VERSION! (on !COMPUTERNAME!, with !PROCESSOR_ARCHITECTURE!)                  >> !REPORT_LOGFILE! 2>&1
+echo =  LMS Status Report for LMS Version: !LMS_VERSION! on !COMPUTERNAME!, with !PROCESSOR_ARCHITECTURE!                    >> !REPORT_LOGFILE! 2>&1
 echo =  Date: !DATE! / Time: !TIME!                                                                                          >> !REPORT_LOGFILE! 2>&1
 echo =  LMS System Id: !LMS_SYSTEMID!                                                                                        >> !REPORT_LOGFILE! 2>&1
 echo =  SSU System Id: %SSU_SYSTEMID%                                                                                        >> !REPORT_LOGFILE! 2>&1
 echo =  Machine GUID : %OS_MACHINEGUID%                                                                                      >> !REPORT_LOGFILE! 2>&1
 echo =                                                                                                                       >> !REPORT_LOGFILE! 2>&1
-echo =  Check Script Version: %LMS_SCRIPT_VERSION% (!LMS_SCRIPT_BUILD!)                                                      >> !REPORT_LOGFILE! 2>&1
+echo =  Check Script Version: %LMS_SCRIPT_VERSION% [!LMS_SCRIPT_BUILD!]                                                      >> !REPORT_LOGFILE! 2>&1
 echo =  Check Script File   : %0                                                                                             >> !REPORT_LOGFILE! 2>&1
 IF "%~1"=="" (
 	echo =  Command Line Options: no options passed.                                                                         >> !REPORT_LOGFILE! 2>&1
@@ -1159,7 +1173,7 @@ if "!LMS_BUILD_VERSION!" NEQ "N/A" (
 	echo NOTE: This is not a valid LMS Installation! LMS Version: !LMS_VERSION!              								 >> !REPORT_LOGFILE! 2>&1
 )
 echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-echo     Check Script Version: !LMS_SCRIPT_VERSION! (!LMS_SCRIPT_BUILD!)
+echo     Check Script Version: !LMS_SCRIPT_VERSION! [!LMS_SCRIPT_BUILD!]
 if defined OS_PRODUCTNAME (
 	echo     OS Product Name: !OS_PRODUCTNAME!
 	echo OS Product Name: !OS_PRODUCTNAME!                                                                                   >> !REPORT_LOGFILE! 2>&1
@@ -1232,45 +1246,6 @@ if not defined LMS_SKIPDOWNLOAD (
 				echo Check script on '!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat' ...                                                                                                           >> !REPORT_LOGFILE! 2>&1
 				for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD set LMS_SCRIPT_BUILD_DOWNLOAD=%%i
 			)	
-		
-			rem Download newest LMS check script from download share as 'CheckLMS.exe'
-			rem echo Skip download from download share, download of 'CheckLMS.exe' is no longer supported.                                                                                     >> !REPORT_LOGFILE! 2>&1
-			if not defined LMS_DONOTSTARTNEWERSCRIPT (
-			 	echo     Download newest LMS check script: !LMS_DOWNLOAD_PATH!\CheckLMS\exe\CheckLMS.exe
-			 	echo Download newest LMS check script: !LMS_DOWNLOAD_PATH!\CheckLMS\exe\CheckLMS.exe                                                                                           >> !REPORT_LOGFILE! 2>&1
-			 	del !LMS_DOWNLOAD_PATH!\CheckLMS.exe >nul 2>&1
-			 	del !LMS_DOWNLOAD_PATH!\CheckLMS\exe\CheckLMS.exe >nul 2>&1
-				set LMS_DOWNLOAD_LINK=!CHECKLMS_EXTERNAL_SHARE!lms/CheckLMS/CheckLMS.exe
-			 	powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\CheckLMS\exe\CheckLMS.exe')"                                          >> !REPORT_LOGFILE! 2>&1
-				if !ERRORLEVEL!==0 (
-					echo     Download PASSED, can access '!LMS_DOWNLOAD_LINK!'                                                                                                                 >> !REPORT_LOGFILE! 2>&1
-				) else if !ERRORLEVEL!==1 (
-					echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                                                                              >> !REPORT_LOGFILE! 2>&1
-				)
-			 	IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\exe\CheckLMS.exe" (
-			 		rem CheckLMS.exe has been downloaded from download share
-			 		del !LMS_DOWNLOAD_PATH!\CheckLMS\exe\CheckLMS.bat >nul 2>&1
-			 		echo     Extract LMS check script: !LMS_DOWNLOAD_PATH!\CheckLMS\exe\CheckLMS.exe                                                                                       >> !REPORT_LOGFILE! 2>&1
-			 		!LMS_DOWNLOAD_PATH!\CheckLMS\exe\CheckLMS.exe -y -o"!LMS_DOWNLOAD_PATH!\CheckLMS\exe\"                                                                                 >> !REPORT_LOGFILE! 2>&1
-			 		IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\exe\CheckLMS.bat" (
-			 			for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS\exe\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_EXE set LMS_SCRIPT_BUILD_DOWNLOAD_EXE=%%i
-			 			echo     Check script downloaded from download share. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_EXE!, Running script version: !LMS_SCRIPT_BUILD!.
-			 			echo     Check script downloaded from download share. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_EXE!, Running script version: !LMS_SCRIPT_BUILD!.        >> !REPORT_LOGFILE! 2>&1
-						IF defined LMS_SCRIPT_BUILD_DOWNLOAD (
-							if /I !LMS_SCRIPT_BUILD_DOWNLOAD_EXE! GTR !LMS_SCRIPT_BUILD_DOWNLOAD! (
-								echo Newer check script copied. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_EXE!, Previous script version: !LMS_SCRIPT_BUILD_DOWNLOAD!.            >> !REPORT_LOGFILE! 2>&1
-								copy /Y "!LMS_DOWNLOAD_PATH!\CheckLMS\exe\CheckLMS.bat" "!LMS_DOWNLOAD_PATH!\CheckLMS\"                                                                    >> !REPORT_LOGFILE! 2>&1
-								set LMS_SCRIPT_BUILD_DOWNLOAD=!LMS_SCRIPT_BUILD_DOWNLOAD_EXE!
-							)
-						) else (
-							copy /Y "!LMS_DOWNLOAD_PATH!\CheckLMS\exe\CheckLMS.bat" "!LMS_DOWNLOAD_PATH!\CheckLMS\"                                                                        >> !REPORT_LOGFILE! 2>&1
-							set LMS_SCRIPT_BUILD_DOWNLOAD=!LMS_SCRIPT_BUILD_DOWNLOAD_EXE!
-						)
-			 		)
-			 	)
-			) else (
-				echo Skip download of 'CheckLMS.exe' from download share,  because option 'donotstartnewerscript' is set. '%0'                                                             >> !REPORT_LOGFILE! 2>&1
-			) 
 
 			rem Download newest LMS check script from github 'CheckLMS.bat'
 			if not defined LMS_DONOTSTARTNEWERSCRIPT (
@@ -1389,6 +1364,33 @@ if defined LMS_SCRIPT_BUILD_DOWNLOAD_TO_START (
 		echo SKIPPED start of newer script. Command line option "Do not start new script" is set.                                                                          >> !REPORT_LOGFILE! 2>&1
 	)
 )	
+
+if defined LMS_SHOW_VERSION (
+	echo ==============================================================================                                          
+	echo =                                                                                                                       
+	echo =  LMS Status Report for LMS Version: !LMS_VERSION! on !COMPUTERNAME!, with !PROCESSOR_ARCHITECTURE!
+	echo =  LMS System Id: !LMS_SYSTEMID! 
+	echo =  SSU System Id: %SSU_SYSTEMID% 
+	echo =  Machine GUID : %OS_MACHINEGUID%
+	echo =                                 
+	echo =  Check Script Version: %LMS_SCRIPT_VERSION% [!LMS_SCRIPT_BUILD!]
+	echo =  Check Script File   : %0       
+	IF "%~1"=="" (
+		echo =  Command Line Options: no options passed. 
+	) else (
+		echo =  Command Line Options: %*                 
+	)
+	if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
+		echo =  Script started with : Administrator priviledge   
+	) else (
+		echo =  Script started with : normal priviledge          
+	)
+	echo =  Hypervisor Present  : !LMS_IS_VM!                                                                                    
+	echo ==============================================================================
+
+	goto script_end
+	rem STOP EXECUTION HERE
+)
 
 if not defined LMS_SKIPDOWNLOAD (
 	echo ... Connection Test to BT download site ...
@@ -1680,6 +1682,10 @@ if exist "!REPORT_LOG_PATH!\BgInfo\setbginfo.lock" (
 		echo CANNOT update BGInfo because 'setbginfo.bat' doesn't exist.                       >> !REPORT_LOGFILE! 2>&1
 	)
 )
+if defined LMS_SET_BGINFO (
+	goto script_end
+	rem STOP EXECUTION HERE
+)
 rem clear background info
 if defined LMS_CLEAR_BGINFO (
 	del !REPORT_LOG_PATH!\BgInfo\setbginfo.lock >nul 2>&1
@@ -1699,6 +1705,9 @@ if defined LMS_CLEAR_BGINFO (
 		echo     CANNOT remove BGInfo because 'cleanbginfo.bat' doesn't exist.
 		echo CANNOT remove BGInfo because 'cleanbginfo.bat' doesn't exist.                     >> !REPORT_LOGFILE! 2>&1
 	)
+
+	goto script_end
+	rem STOP EXECUTION HERE
 )
 
 if not defined LMS_SKIPUNZIP (
@@ -7575,11 +7584,11 @@ echo ... summarize collected information ...
 echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
 echo =   S U M M A R Y                                                            =                                      >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
-echo LMS Status Report for LMS Version: !LMS_VERSION! (on !COMPUTERNAME!) installed at %LMS_INSTALL_DATE%                >> !REPORT_LOGFILE! 2>&1
+echo LMS Status Report for LMS Version: !LMS_VERSION! on !COMPUTERNAME! installed at %LMS_INSTALL_DATE%                  >> !REPORT_LOGFILE! 2>&1
 echo     Date: !DATE! / Time: !TIME!                                                                                     >> !REPORT_LOGFILE! 2>&1
 echo     LMS System Id: !LMS_SYSTEMID!                                                                                   >> !REPORT_LOGFILE! 2>&1
 echo     Machine GUID : %OS_MACHINEGUID%                                                                                 >> !REPORT_LOGFILE! 2>&1
-echo     Check Script Version: %LMS_SCRIPT_VERSION% (!LMS_SCRIPT_BUILD!)                                                 >> !REPORT_LOGFILE! 2>&1
+echo     Check Script Version: %LMS_SCRIPT_VERSION% [!LMS_SCRIPT_BUILD!]                                                 >> !REPORT_LOGFILE! 2>&1
 echo     Hypervisor Present  : !LMS_IS_VM!                                                                               >> !REPORT_LOGFILE! 2>&1
 echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 echo     PublisherId: !LMS_TS_PUBLISHER!  /  TS ClientVersion: !LMS_TS_CLIENT_VERSION!                                   >> !REPORT_LOGFILE! 2>&1
