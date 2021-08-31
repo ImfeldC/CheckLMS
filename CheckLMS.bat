@@ -267,6 +267,12 @@ rem        - Store info about "setbginfo" mode new in file !REPORT_LOG_PATH!\BgI
 rem        - adjust command line options setbginfo & clearbginfo, first try to start downloaded bginfo, if not available start pre-installed bginfo.
 rem     27-Aug-2021:
 rem        - use 'call' command to execute (sub-)batch files, see https://stackoverflow.com/questions/1103994/how-to-run-multiple-bat-files-within-a-bat-file
+rem     31-Aug-2021:
+rem        - start support for CloudFront: https://d32nyvdepsrb0n.cloudfront.net/lms/ ( https://licensemanagementsystem.s3.eu-west-1.amazonaws.com/lms/ )
+rem        - replace 'https://static.siemens.com/btdownloads/' with 'https://d32nyvdepsrb0n.cloudfront.net/'
+rem        - replace 'akamai' with 'download share'
+rem        - adjust the donwload section, check for newer script version BEFORE downloading further libraries.
+rem        - move (internal) folder from !LMS_DOWNLOAD_PATH!\git to !LMS_DOWNLOAD_PATH!\CheckLMS\git
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -301,8 +307,8 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 27-Aug-2021"
-set LMS_SCRIPT_BUILD=20210827
+set LMS_SCRIPT_VERSION="CheckLMS Script 31-Aug-2021"
+set LMS_SCRIPT_BUILD=20210831
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -330,9 +336,14 @@ rem Check this: https://ss64.com/nt/delayedexpansion.html
 SETLOCAL EnableDelayedExpansion
 setlocal ENABLEEXTENSIONS
 
+rem External public download location
+rem set CHECKLMS_EXTERNAL_SHARE=https://static.siemens.com/btdownloads/
+set CHECKLMS_EXTERNAL_SHARE=https://d32nyvdepsrb0n.cloudfront.net/
+
 rem CheckLMS configuration (Siemens internal only)
 rem set CHECKLMS_CONFIG=https://wiki.siemens.com/download/attachments/313230891/CheckLMS.config
-set CHECKLMS_CONFIG=https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.config
+rem set CHECKLMS_CONFIG=https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.config
+set CHECKLMS_CONFIG=https://d32nyvdepsrb0n.cloudfront.net/lms/CheckLMS/CheckLMS.config
 
 rem Connection Test to CheckLMS share
 rem Internal share names are retrieved from CheckLMS.config
@@ -448,9 +459,18 @@ IF NOT EXIST "!LMS_DOWNLOAD_PATH!\" (
 	rem echo Create new folder: !LMS_DOWNLOAD_PATH!\
 	mkdir !LMS_DOWNLOAD_PATH!\ >nul 2>&1
 )
-IF NOT EXIST "!LMS_DOWNLOAD_PATH!\git" (
-	rem echo Create new folder: !LMS_DOWNLOAD_PATH!\git\
-	mkdir !LMS_DOWNLOAD_PATH!\git\ >nul 2>&1
+rem Check & create download path for CheckLMS
+IF NOT EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS" (
+	mkdir !LMS_DOWNLOAD_PATH!\CheckLMS\ >nul 2>&1
+)
+IF NOT EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\git" (
+	mkdir !LMS_DOWNLOAD_PATH!\CheckLMS\git\ >nul 2>&1
+)
+IF NOT EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\bat" (
+	mkdir !LMS_DOWNLOAD_PATH!\CheckLMS\bat\ >nul 2>&1
+)
+IF NOT EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\exe" (
+	mkdir !LMS_DOWNLOAD_PATH!\CheckLMS\exe\ >nul 2>&1
 )
 IF NOT EXIST "!LMS_DOWNLOAD_PATH!\LMSSetup" (
 	rem echo Create new folder: !LMS_DOWNLOAD_PATH!\LMSSetup\
@@ -1184,69 +1204,211 @@ if defined VC_REDIST_VERSION (
 )
 echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPDOWNLOAD (
-	echo ... check Siemens internal resources ...
-	set LMS_CONTEST_SIEMENSINTERNAL=Unknown
-	rem retrieve CheckLMS configuration file
-	powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_CONFIG!', '!LMS_DOWNLOAD_PATH!\CheckLMS.config')" > !CHECKLMS_REPORT_LOG_PATH!\connection_test_siemensinternal.txt 2>&1
-	if !ERRORLEVEL!==0 (
-		rem Connection Test: PASSED
-		echo     Connection Test PASSED, can access '!CHECKLMS_CONFIG!'
-		echo Connection Test PASSED, can access '!CHECKLMS_CONFIG!'                                                          >> !REPORT_LOGFILE! 2>&1
-		set LMS_CONTEST_SIEMENSINTERNAL=Passed
-		
-		rem read CheckLMS configuration file
-		IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS.config" (
-			for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS.config ^|find /I "CHECKLMS_PUBLIC_SHARE="') do if not defined CHECKLMS_PUBLIC_SHARE set CHECKLMS_PUBLIC_SHARE=%%i
-			echo     CheckLMS configuration downloaded. Public Share is '!CHECKLMS_PUBLIC_SHARE!'.
-			echo     CheckLMS configuration downloaded. Public Share is '!CHECKLMS_PUBLIC_SHARE!'.                           >> !REPORT_LOGFILE! 2>&1
-		) else (
-			rem Connection Test: FAILED
-			echo     Connection Test FAILED, cannot open '!LMS_DOWNLOAD_PATH!\CheckLMS.config'
-			echo Connection Test FAILED, cannot open '!LMS_DOWNLOAD_PATH!\CheckLMS.config'                                   >> !REPORT_LOGFILE! 2>&1
-			set LMS_CONTEST_SIEMENSINTERNAL=Failed
-		)
-		
-	) else if !ERRORLEVEL!==1 (
-		rem Connection Test: FAILED
-		echo     Connection Test FAILED, cannot access '!CHECKLMS_CONFIG!'
-		echo Connection Test FAILED, cannot access '!CHECKLMS_CONFIG!'                                                       >> !REPORT_LOGFILE! 2>&1
-		set LMS_CONTEST_SIEMENSINTERNAL=Failed
-	)
-
-	echo ... download additional tools and libraries ...
-	rem Connection Test to CheckLMS share
-	set SiemensConnectionTestStatus=Unknown
-	if defined CHECKLMS_PUBLIC_SHARE (
-		IF EXIST "!CHECKLMS_PUBLIC_SHARE!\!CHECKLMS_CONNECTION_TEST_FILE!" (
-			rem Connection Test: PASSED
-			echo     Connection Test to public share PASSED, can access '!CHECKLMS_CONNECTION_TEST_FILE!'
-			echo Connection Test to public share PASSED, can access !CHECKLMS_PUBLIC_SHARE!\!CHECKLMS_CONNECTION_TEST_FILE!      >> !REPORT_LOGFILE! 2>&1
-			set SiemensConnectionTestStatus=Passed
-		) else (
-			rem Connection Test: FAILED
-			echo     Connection Test to public share FAILED, cannot access '!CHECKLMS_CONNECTION_TEST_FILE!'
-			echo Connection Test to public share FAILED, cannot access !CHECKLMS_PUBLIC_SHARE!\!CHECKLMS_CONNECTION_TEST_FILE!   >> !REPORT_LOGFILE! 2>&1
-			set SiemensConnectionTestStatus=Failed
-		)
-	) else (
-		echo Connection Test to public share NOT POSSIBLE, no share name defined.                                                >> !REPORT_LOGFILE! 2>&1
-	)
+	echo ... Connection Test to BT download site ...
 	rem Connection Test to BT download site
 	set ConnectionTestStatus=Unknown
 	del !LMS_DOWNLOAD_PATH!\ReadMe.txt >nul 2>&1
-	powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/ReadMe.txt', '!LMS_DOWNLOAD_PATH!\ReadMe.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_btdownloads.txt 2>&1
+	powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/ReadMe.txt', '!LMS_DOWNLOAD_PATH!\ReadMe.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_btdownloads.txt 2>&1
 	if exist "!LMS_DOWNLOAD_PATH!\ReadMe.txt" (
 		rem Connection Test: PASSED
-		echo     Connection Test PASSED, can access https://static.siemens.com/btdownloads/
-		echo Connection Test PASSED, can access https://static.siemens.com/btdownloads/                                          >> !REPORT_LOGFILE! 2>&1
+		echo     Connection Test PASSED, can access !CHECKLMS_EXTERNAL_SHARE!
+		echo Connection Test PASSED, can access !CHECKLMS_EXTERNAL_SHARE!                                          >> !REPORT_LOGFILE! 2>&1
 		set ConnectionTestStatus=Passed
 	) else if !ERRORLEVEL!==1 (
 		rem Connection Test: FAILED
-		echo     Connection Test FAILED, cannot access https://static.siemens.com/btdownloads/
-		echo Connection Test FAILED, cannot access https://static.siemens.com/btdownloads/                                       >> !REPORT_LOGFILE! 2>&1
+		echo     Connection Test FAILED, cannot access !CHECKLMS_EXTERNAL_SHARE!
+		echo Connection Test FAILED, cannot access !CHECKLMS_EXTERNAL_SHARE!                                       >> !REPORT_LOGFILE! 2>&1
 		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_btdownloads.txt                                                          >> !REPORT_LOGFILE! 2>&1
 		set ConnectionTestStatus=Failed
 	)
+	echo ... download newer CheckLMS scripts ...
+	if "!ConnectionTestStatus!" == "Passed" (
+
+		if defined LMS_DOWNLOAD_PATH (
+
+			rem Check if newer CheckLMS.bat is available in !LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat
+			IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat" (
+				echo     Check script on '!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat' ... 
+				echo Check script on '!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat' ...                                                                                                           >> !REPORT_LOGFILE! 2>&1
+				for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD set LMS_SCRIPT_BUILD_DOWNLOAD=%%i
+			)	
+		
+			rem Download newest LMS check script from download share as 'CheckLMS.exe'
+			rem echo Skip download from download share, download of 'CheckLMS.exe' is no longer supported.                                                                                     >> !REPORT_LOGFILE! 2>&1
+			if not defined LMS_DONOTSTARTNEWERSCRIPT (
+			 	echo     Download newest LMS check script: !LMS_DOWNLOAD_PATH!\CheckLMS\exe\CheckLMS.exe
+			 	echo Download newest LMS check script: !LMS_DOWNLOAD_PATH!\CheckLMS\exe\CheckLMS.exe                                                                                           >> !REPORT_LOGFILE! 2>&1
+			 	del !LMS_DOWNLOAD_PATH!\CheckLMS.exe >nul 2>&1
+			 	del !LMS_DOWNLOAD_PATH!\CheckLMS\exe\CheckLMS.exe >nul 2>&1
+				set LMS_DOWNLOAD_LINK=!CHECKLMS_EXTERNAL_SHARE!lms/CheckLMS/CheckLMS.exe
+			 	powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\CheckLMS\exe\CheckLMS.exe')"                                          >> !REPORT_LOGFILE! 2>&1
+				if !ERRORLEVEL!==0 (
+					echo     Download PASSED, can access '!LMS_DOWNLOAD_LINK!'                                                                                                                 >> !REPORT_LOGFILE! 2>&1
+				) else if !ERRORLEVEL!==1 (
+					echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                                                                              >> !REPORT_LOGFILE! 2>&1
+				)
+			 	IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\exe\CheckLMS.exe" (
+			 		rem CheckLMS.exe has been downloaded from download share
+			 		del !LMS_DOWNLOAD_PATH!\CheckLMS\exe\CheckLMS.bat >nul 2>&1
+			 		echo     Extract LMS check script: !LMS_DOWNLOAD_PATH!\CheckLMS\exe\CheckLMS.exe                                                                                       >> !REPORT_LOGFILE! 2>&1
+			 		!LMS_DOWNLOAD_PATH!\CheckLMS\exe\CheckLMS.exe -y -o"!LMS_DOWNLOAD_PATH!\CheckLMS\exe\"                                                                                 >> !REPORT_LOGFILE! 2>&1
+			 		IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\exe\CheckLMS.bat" (
+			 			for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS\exe\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_EXE set LMS_SCRIPT_BUILD_DOWNLOAD_EXE=%%i
+			 			echo     Check script downloaded from download share. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_EXE!, Running script version: !LMS_SCRIPT_BUILD!.
+			 			echo     Check script downloaded from download share. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_EXE!, Running script version: !LMS_SCRIPT_BUILD!.        >> !REPORT_LOGFILE! 2>&1
+						IF defined LMS_SCRIPT_BUILD_DOWNLOAD (
+							if /I !LMS_SCRIPT_BUILD_DOWNLOAD_EXE! GTR !LMS_SCRIPT_BUILD_DOWNLOAD! (
+								echo Newer check script copied. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_EXE!, Previous script version: !LMS_SCRIPT_BUILD_DOWNLOAD!.            >> !REPORT_LOGFILE! 2>&1
+								copy /Y "!LMS_DOWNLOAD_PATH!\CheckLMS\exe\CheckLMS.bat" "!LMS_DOWNLOAD_PATH!\CheckLMS\"                                                                    >> !REPORT_LOGFILE! 2>&1
+								set LMS_SCRIPT_BUILD_DOWNLOAD=!LMS_SCRIPT_BUILD_DOWNLOAD_EXE!
+							)
+						) else (
+							copy /Y "!LMS_DOWNLOAD_PATH!\CheckLMS\exe\CheckLMS.bat" "!LMS_DOWNLOAD_PATH!\CheckLMS\"                                                                        >> !REPORT_LOGFILE! 2>&1
+							set LMS_SCRIPT_BUILD_DOWNLOAD=!LMS_SCRIPT_BUILD_DOWNLOAD_EXE!
+						)
+			 		)
+			 	)
+			) else (
+				echo Skip download of 'CheckLMS.exe' from download share,  because option 'donotstartnewerscript' is set. '%0'                                                             >> !REPORT_LOGFILE! 2>&1
+			) 
+
+			rem Download newest LMS check script from github 'CheckLMS.bat'
+			if not defined LMS_DONOTSTARTNEWERSCRIPT (
+				echo     Download newest LMS check script from github: !LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat
+				echo Download newest LMS check script: !LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat                                                                                       >> !REPORT_LOGFILE! 2>&1
+				del !LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat >nul 2>&1
+				set LMS_DOWNLOAD_LINK=https://raw.githubusercontent.com/ImfeldC/CheckLMS/master/CheckLMS.bat
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat')" > !CHECKLMS_REPORT_LOG_PATH!\download_checklms_git.txt 2>&1
+				if !ERRORLEVEL!==0 (
+					echo     Download PASSED, can access '!LMS_DOWNLOAD_LINK!'                                                                                                             >> !REPORT_LOGFILE! 2>&1
+				) else if !ERRORLEVEL!==1 (
+					echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                                                                          >> !REPORT_LOGFILE! 2>&1
+				)
+				IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat" (
+					rem CheckLMS.bat has been downloaded from github
+					for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_GIT set LMS_SCRIPT_BUILD_DOWNLOAD_GIT=%%i
+					echo     Check script downloaded from github. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_GIT!, Running script version: !LMS_SCRIPT_BUILD!.
+					echo     Check script downloaded from github. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_GIT!, Running script version: !LMS_SCRIPT_BUILD!.                    >> !REPORT_LOGFILE! 2>&1
+					IF defined LMS_SCRIPT_BUILD_DOWNLOAD (
+						if /I !LMS_SCRIPT_BUILD_DOWNLOAD_GIT! GTR !LMS_SCRIPT_BUILD_DOWNLOAD! (
+							echo Newer check script copied. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_GIT!, Previous script version: !LMS_SCRIPT_BUILD_DOWNLOAD!.                >> !REPORT_LOGFILE! 2>&1
+							copy /Y "!LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat" "!LMS_DOWNLOAD_PATH!\CheckLMS\"                                                                        >> !REPORT_LOGFILE! 2>&1
+							set LMS_SCRIPT_BUILD_DOWNLOAD=!LMS_SCRIPT_BUILD_DOWNLOAD_GIT!
+						)
+					) else (
+						copy /Y "!LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat" "!LMS_DOWNLOAD_PATH!\CheckLMS\"                                                                            >> !REPORT_LOGFILE! 2>&1
+						set LMS_SCRIPT_BUILD_DOWNLOAD=!LMS_SCRIPT_BUILD_DOWNLOAD_GIT!
+					)
+				)			
+			) else (
+				echo Skip download from github,  because option 'donotstartnewerscript' is set. '%0'                                                                                       >> !REPORT_LOGFILE! 2>&1
+			) 
+
+			rem Download newest LMS check script from download share as 'CheckLMS.bat'
+			if not defined LMS_DONOTSTARTNEWERSCRIPT (
+			 	echo     Download newest LMS check script: !LMS_DOWNLOAD_PATH!\CheckLMS\bat\CheckLMS.bat
+			 	echo Download newest LMS check script: !LMS_DOWNLOAD_PATH!\CheckLMS\bat\CheckLMS.bat                                                                                       >> !REPORT_LOGFILE! 2>&1
+			 	del !LMS_DOWNLOAD_PATH!\CheckLMS\bat\CheckLMS.bat >nul 2>&1
+				set LMS_DOWNLOAD_LINK=!CHECKLMS_EXTERNAL_SHARE!lms/CheckLMS/CheckLMS.bat
+			 	powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\CheckLMS\bat\CheckLMS.bat')"                                      >> !REPORT_LOGFILE! 2>&1
+				if !ERRORLEVEL!==0 (
+					echo     Download PASSED, can access '!LMS_DOWNLOAD_LINK!'                                                                                                             >> !REPORT_LOGFILE! 2>&1
+				) else if !ERRORLEVEL!==1 (
+					echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                                                                          >> !REPORT_LOGFILE! 2>&1
+				)
+			 	IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\bat\CheckLMS.bat" (
+					rem CheckLMS.bat has been downloaded from github
+					for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS\bat\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_BAT set LMS_SCRIPT_BUILD_DOWNLOAD_BAT=%%i
+					echo     Check script downloaded from download share. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_BAT!, Running script version: !LMS_SCRIPT_BUILD!.
+					echo     Check script downloaded from download share. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_BAT!, Running script version: !LMS_SCRIPT_BUILD!.            >> !REPORT_LOGFILE! 2>&1
+					IF defined LMS_SCRIPT_BUILD_DOWNLOAD (
+						if /I !LMS_SCRIPT_BUILD_DOWNLOAD_BAT! GTR !LMS_SCRIPT_BUILD_DOWNLOAD! (
+							echo Newer check script copied. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_BAT!, Previous script version: !LMS_SCRIPT_BUILD_DOWNLOAD!.                >> !REPORT_LOGFILE! 2>&1
+							copy /Y "!LMS_DOWNLOAD_PATH!\CheckLMS\bat\CheckLMS.bat" "!LMS_DOWNLOAD_PATH!\CheckLMS\"                                                                        >> !REPORT_LOGFILE! 2>&1
+							set LMS_SCRIPT_BUILD_DOWNLOAD=!LMS_SCRIPT_BUILD_DOWNLOAD_BAT!
+						)
+					) else (
+						copy /Y "!LMS_DOWNLOAD_PATH!\CheckLMS\bat\CheckLMS.bat" "!LMS_DOWNLOAD_PATH!\CheckLMS\"                                                                            >> !REPORT_LOGFILE! 2>&1
+						set LMS_SCRIPT_BUILD_DOWNLOAD=!LMS_SCRIPT_BUILD_DOWNLOAD_BAT!
+					)
+				)			
+			) else (
+				echo Skip download of 'CheckLMS.bat' from download share,  because option 'donotstartnewerscript' is set. '%0'                                                             >> !REPORT_LOGFILE! 2>&1
+			) 
+
+		)
+	)
+)
+
+if not defined LMS_DONOTSTARTNEWERSCRIPT (
+	set LMS_SCRIPT_BUILD_DOWNLOAD_TO_START=
+	rem Check if newer CheckLMS.bat is available in !LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat (even if connection test doesn't run succesful)
+	IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat" (
+		echo     Check script on '!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat' ... 
+		echo Check script on '!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat' ...                                                                                               >> !REPORT_LOGFILE! 2>&1
+		for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do set LMS_SCRIPT_BUILD_DOWNLOAD=%%i
+		if /I !LMS_SCRIPT_BUILD_DOWNLOAD! GTR !LMS_SCRIPT_BUILD! (
+			echo     Newer check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD!, Running script version: !LMS_SCRIPT_BUILD!.
+			echo Newer check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD!, Running script version: !LMS_SCRIPT_BUILD!.                          >> !REPORT_LOGFILE! 2>&1
+			set LMS_SCRIPT_BUILD_DOWNLOAD_TO_START=!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat
+		)
+	)	
+) else (
+	echo SKIPPED check for newer script. Command line option "Do not start new script" is set.                                                                             >> !REPORT_LOGFILE! 2>&1
+)
+
+if defined LMS_SCRIPT_BUILD_DOWNLOAD_TO_START (
+	if not defined LMS_DONOTSTARTNEWERSCRIPT (
+
+		rem Start newer script in an own command shell window
+		echo ==============================================================================                                                                                >> !REPORT_LOGFILE! 2>&1
+		echo ==                                                                                                                                                            >> !REPORT_LOGFILE! 2>&1
+		echo == Start newer script in an own command shell window.                                                                                                         >> !REPORT_LOGFILE! 2>&1
+		echo ==    command: start "Check LMS !LMS_SCRIPT_BUILD!" !LMS_SCRIPT_BUILD_DOWNLOAD_TO_START! %*                                                                   >> !REPORT_LOGFILE! 2>&1
+		echo ==                                                                                                                                                            >> !REPORT_LOGFILE! 2>&1
+		echo ==============================================================================                                                                                >> !REPORT_LOGFILE! 2>&1
+		echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                                                                        >> !REPORT_LOGFILE! 2>&1
+		if "!LMS_SCHEDTASK_PREV_STATUS!" == "Ready" (
+			rem enable scheduled task during execution of script; if it was enabled at script start ..
+			echo Re-enable scheduled task '!LMS_SCHEDTASK_CHECKID_FULLNAME!', previous state was '!LMS_SCHEDTASK_PREV_STATUS!'                                             >> !REPORT_LOGFILE! 2>&1
+			schtasks /change /TN !LMS_SCHEDTASK_CHECKID_FULLNAME! /ENABLE >nul 2>&1
+		)
+		rem save (single) report in full report file
+		Type !REPORT_LOGFILE! >> %REPORT_FULL_LOGFILE%
+		
+		start "Check LMS" !LMS_SCRIPT_BUILD_DOWNLOAD_TO_START! %* /donotstartnewerscript
+		exit
+		rem STOP EXECUTION HERE
+	
+	) else (
+		if defined SHOW_COLORED_OUTPUT (
+			echo [1;33m    SKIPPED start of newer script. Command line option "Do not start new script" is set. [1;37m
+		) else (
+			echo     SKIPPED start of newer script. Command line option "Do not start new script" is set.
+		)
+		echo SKIPPED start of newer script. Command line option "Do not start new script" is set.                                                                          >> !REPORT_LOGFILE! 2>&1
+	)
+)	
+
+if not defined LMS_SKIPDOWNLOAD (
+	echo ... Connection Test to BT download site ...
+	rem Connection Test to BT download site
+	set ConnectionTestStatus=Unknown
+	del !LMS_DOWNLOAD_PATH!\ReadMe.txt >nul 2>&1
+	powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/ReadMe.txt', '!LMS_DOWNLOAD_PATH!\ReadMe.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_btdownloads.txt 2>&1
+	if exist "!LMS_DOWNLOAD_PATH!\ReadMe.txt" (
+		rem Connection Test: PASSED
+		echo     Connection Test PASSED, can access !CHECKLMS_EXTERNAL_SHARE!
+		echo Connection Test PASSED, can access !CHECKLMS_EXTERNAL_SHARE!                                          >> !REPORT_LOGFILE! 2>&1
+		set ConnectionTestStatus=Passed
+	) else if !ERRORLEVEL!==1 (
+		rem Connection Test: FAILED
+		echo     Connection Test FAILED, cannot access !CHECKLMS_EXTERNAL_SHARE!
+		echo Connection Test FAILED, cannot access !CHECKLMS_EXTERNAL_SHARE!                                       >> !REPORT_LOGFILE! 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_btdownloads.txt                                                          >> !REPORT_LOGFILE! 2>&1
+		set ConnectionTestStatus=Failed
+	)
+	echo ... download additional tools and libraries ...
 	REM Download FNP Siemens Library
 	REM see https://stackoverflow.com/questions/4619088/windows-batch-file-file-download-from-a-url for more information
 	if "!ConnectionTestStatus!" == "Passed" (
@@ -1279,7 +1441,7 @@ if not defined LMS_SKIPDOWNLOAD (
 				IF NOT EXIST "!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.zip" (
 					echo     Download FNP Siemens Library: !LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.zip
 					echo Download FNP Siemens Library: !LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.zip                                                                                                           >> !REPORT_LOGFILE! 2>&1
-					powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/!LMS_SERVERTOOL_DW!.zip', '!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.zip')"   >> !REPORT_LOGFILE! 2>&1
+					powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/FNP/!LMS_SERVERTOOL_DW!.zip', '!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.zip')"   >> !REPORT_LOGFILE! 2>&1
 
 					REM Unzip FNP Siemens Library
 					REM See https://sourceforge.net/p/sevenzip/discussion/45798/thread/8cb61347/?limit=25
@@ -1300,7 +1462,7 @@ if not defined LMS_SKIPDOWNLOAD (
 				IF NOT EXIST "!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.exe" (
 					echo     Download FNP Siemens Library: !LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.exe
 					echo Download FNP Siemens Library: !LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.exe                                                                                                           >> !REPORT_LOGFILE! 2>&1
-					powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/!LMS_SERVERTOOL_DW!.exe', '!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.exe')"   >> !REPORT_LOGFILE! 2>&1
+					powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/FNP/!LMS_SERVERTOOL_DW!.exe', '!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.exe')"   >> !REPORT_LOGFILE! 2>&1
 
 					REM Unzip FNP Siemens Library
 					REM see https://stackoverflow.com/questions/17687390/how-do-i-silently-install-a-7-zip-self-extracting-archive-to-a-specific-director for more information
@@ -1317,66 +1479,15 @@ if not defined LMS_SKIPDOWNLOAD (
 		)	
 		if defined LMS_DOWNLOAD_PATH (
 		
-			rem Download newest LMS check script from akamai share
-			rem echo Skip download from akamai share, download of 'CheckLMS.ex' is no longer supported.                                                                                             >> !REPORT_LOGFILE! 2>&1
-			if not defined LMS_DONOTSTARTNEWERSCRIPT (
-			 	echo     Download newest LMS check script: !LMS_DOWNLOAD_PATH!\CheckLMS.exe
-			 	echo Download newest LMS check script: !LMS_DOWNLOAD_PATH!\CheckLMS.exe                                                                                                        >> !REPORT_LOGFILE! 2>&1
-			 	del !LMS_DOWNLOAD_PATH!\CheckLMS.exe >nul 2>&1
-				set LMS_DOWNLOAD_LINK=https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe
-			 	powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\CheckLMS.exe')"                                                       >> !REPORT_LOGFILE! 2>&1
-				if !ERRORLEVEL!==0 (
-					echo     Download PASSED, can access '!LMS_DOWNLOAD_LINK!'                                                                                                                 >> !REPORT_LOGFILE! 2>&1
-				) else if !ERRORLEVEL!==1 (
-					echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                                                                              >> !REPORT_LOGFILE! 2>&1
-				)
-			 	IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS.exe" (
-			 		rem CheckLMS.exe has been downloaded from akamai share
-			 		del !LMS_DOWNLOAD_PATH!\CheckLMS.bat >nul 2>&1
-			 		echo     Extract LMS check script: !LMS_DOWNLOAD_PATH!\CheckLMS.exe
-			 		echo     Extract LMS check script: !LMS_DOWNLOAD_PATH!\CheckLMS.exe                                                                                                        >> !REPORT_LOGFILE! 2>&1
-			 		!LMS_DOWNLOAD_PATH!\CheckLMS.exe -y -o"!LMS_DOWNLOAD_PATH!\"                                                                                                               >> !REPORT_LOGFILE! 2>&1
-			 		IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS.bat" (
-			 			for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_EXE set LMS_SCRIPT_BUILD_DOWNLOAD_EXE=%%i
-			 			echo     Check script downloaded from akamai share. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_EXE!, Running script version: !LMS_SCRIPT_BUILD!.
-			 			echo     Check script downloaded from akamai share. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_EXE!, Running script version: !LMS_SCRIPT_BUILD!.              >> !REPORT_LOGFILE! 2>&1
-			 		)
-			 	)
-			) else (
-			 	echo Skip download from akamai share, because option 'donotstartnewerscript' is set. '%0'                                                                                      >> !REPORT_LOGFILE! 2>&1
-			) 
-
-			rem Download newest LMS check script from github
-			if not defined LMS_DONOTSTARTNEWERSCRIPT (
-				echo     Download newest LMS check script from github: !LMS_DOWNLOAD_PATH!\git\CheckLMS.bat
-				echo Download newest LMS check script: !LMS_DOWNLOAD_PATH!\git\CheckLMS.bat                                                                                                     >> !REPORT_LOGFILE! 2>&1
-				del !LMS_DOWNLOAD_PATH!\git\CheckLMS.bat >nul 2>&1
-				set LMS_DOWNLOAD_LINK=https://raw.githubusercontent.com/ImfeldC/CheckLMS/master/CheckLMS.bat
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\git\CheckLMS.bat')" > !CHECKLMS_REPORT_LOG_PATH!\download_checklms_git.txt 2>&1
-				if !ERRORLEVEL!==0 (
-					echo     Download PASSED, can access '!LMS_DOWNLOAD_LINK!'                                                                                                                  >> !REPORT_LOGFILE! 2>&1
-				) else if !ERRORLEVEL!==1 (
-					echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                                                                               >> !REPORT_LOGFILE! 2>&1
-				)
-				IF EXIST "!LMS_DOWNLOAD_PATH!\git\CheckLMS.bat" (
-					rem CheckLMS.bat has been downloaded from github
-					for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\git\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_GIT set LMS_SCRIPT_BUILD_DOWNLOAD_GIT=%%i
-					echo     Check script downloaded from github. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_GIT!, Running script version: !LMS_SCRIPT_BUILD!.
-					echo     Check script downloaded from github. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_GIT!, Running script version: !LMS_SCRIPT_BUILD!.                         >> !REPORT_LOGFILE! 2>&1
-				)			
-			) else (
-				echo Skip download from github,  because option 'donotstartnewerscript' is set. '%0'                                                                                            >> !REPORT_LOGFILE! 2>&1
-			) 
-
 			if /I !LMS_BUILD_VERSION! NEQ !MOST_RECENT_LMS_BUILD! (
-				rem Not "most recent" [="released"] build installed, download latest released LMS client; e.g. from https://static.siemens.com/btdownloads/lms/LMSSetup2.6.826/x64/setup64.exe
+				rem Not "most recent" [="released"] build installed, download latest released LMS client; e.g. from !CHECKLMS_EXTERNAL_SHARE!lms/LMSSetup2.6.826/x64/setup64.exe
 				set LMS_SETUP_EXECUTABLE=!LMS_DOWNLOAD_PATH!\LMSSetup\!MOST_RECENT_LMS_VERSION!\setup64.exe
 				IF NOT EXIST "!LMS_SETUP_EXECUTABLE!" (
 					IF NOT EXIST "!LMS_DOWNLOAD_PATH!\LMSSetup\!MOST_RECENT_LMS_VERSION!" (
 						rem echo Create new folder: !LMS_DOWNLOAD_PATH!\LMSSetup\!MOST_RECENT_LMS_VERSION!
 						mkdir !LMS_DOWNLOAD_PATH!\LMSSetup\!MOST_RECENT_LMS_VERSION! >nul 2>&1
 					)
-					set LMS_SETUP_DOWNLOAD_LINK=https://static.siemens.com/btdownloads/lms/LMSSetup!MOST_RECENT_LMS_VERSION!/x64/setup64.exe
+					set LMS_SETUP_DOWNLOAD_LINK=!CHECKLMS_EXTERNAL_SHARE!lms/LMSSetup!MOST_RECENT_LMS_VERSION!/x64/setup64.exe
 					echo     Download latest released LMS setup [!MOST_RECENT_LMS_VERSION!]: !LMS_SETUP_EXECUTABLE!
 					echo Download latest released LMS setup [!MOST_RECENT_LMS_VERSION!]: !LMS_SETUP_EXECUTABLE!                                      >> !REPORT_LOGFILE! 2>&1
 					powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_SETUP_DOWNLOAD_LINK!', '!LMS_SETUP_EXECUTABLE!')"             >> !REPORT_LOGFILE! 2>&1
@@ -1388,14 +1499,14 @@ if not defined LMS_SKIPDOWNLOAD (
 			
 			if defined MOST_RECENT_FT_LMS_BUILD (
 				if /I !LMS_BUILD_VERSION! NEQ !MOST_RECENT_FT_LMS_BUILD! (
-					rem Not "most recent" field test build installed, download latest field test LMS client; e.g. from https://static.siemens.com/btdownloads/lms/LMSSetup2.6.826/x64/setup64.exe
+					rem Not "most recent" field test build installed, download latest field test LMS client; e.g. from !CHECKLMS_EXTERNAL_SHARE!lms/LMSSetup2.6.826/x64/setup64.exe
 					set LMS_FT_SETUP_EXECUTABLE=!LMS_DOWNLOAD_PATH!\LMSSetup\!MOST_RECENT_FT_LMS_VERSION!\setup64.exe
 					IF NOT EXIST "!LMS_FT_SETUP_EXECUTABLE!" (
 						IF NOT EXIST "!LMS_DOWNLOAD_PATH!\LMSSetup\!MOST_RECENT_FT_LMS_VERSION!" (
 							rem echo Create new folder: !LMS_DOWNLOAD_PATH!\LMSSetup\!MOST_RECENT_FT_LMS_VERSION!
 							mkdir !LMS_DOWNLOAD_PATH!\LMSSetup\!MOST_RECENT_FT_LMS_VERSION! >nul 2>&1
 						)
-						set LMS_FT_SETUP_DOWNLOAD_LINK=https://static.siemens.com/btdownloads/lms/LMSSetup!MOST_RECENT_FT_LMS_VERSION!/x64/setup64.exe
+						set LMS_FT_SETUP_DOWNLOAD_LINK=!CHECKLMS_EXTERNAL_SHARE!lms/LMSSetup!MOST_RECENT_FT_LMS_VERSION!/x64/setup64.exe
 						echo     Download latest field test LMS setup [!MOST_RECENT_FT_LMS_VERSION!]: !LMS_FT_SETUP_EXECUTABLE!
 						echo Download latest field test LMS setup [!MOST_RECENT_FT_LMS_VERSION!]: !LMS_FT_SETUP_EXECUTABLE!                                      >> !REPORT_LOGFILE! 2>&1
 						powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_FT_SETUP_DOWNLOAD_LINK!', '!LMS_FT_SETUP_EXECUTABLE!')"               >> !REPORT_LOGFILE! 2>&1
@@ -1413,34 +1524,34 @@ if not defined LMS_SKIPDOWNLOAD (
 			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\VMGENID.EXE" (
 				echo     Download VM GENID app [from Stratus]: !LMS_DOWNLOAD_PATH!\VMGENID.EXE
 				echo Download VM GENID app [from Stratus]: !LMS_DOWNLOAD_PATH!\VMGENID.EXE                                                                                         >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/tools/VMGENID.EXE', '!LMS_DOWNLOAD_PATH!\VMGENID.EXE')"   >> !REPORT_LOGFILE! 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/tools/VMGENID.EXE', '!LMS_DOWNLOAD_PATH!\VMGENID.EXE')"   >> !REPORT_LOGFILE! 2>&1
 			)
 			
 			rem Download tool "GetVMGenerationIdentifier.exe" to read-out generation id
 			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe" (
 				echo     Download VM GENID app: !LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe
 				echo Download VM GENID app: !LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe                                           >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/GetVMGenerationIdentifier.exe', '!LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe')"   >> !REPORT_LOGFILE! 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/FNP/GetVMGenerationIdentifier.exe', '!LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe')"   >> !REPORT_LOGFILE! 2>&1
 			)
 			
 			rem Download tool "ecmcommonutil.exe" (from Flexera) to read-out host id's
 			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe" (
 				echo     Download ecmcommonutil app: !LMS_DOWNLOAD_PATH!\ecmcommonutil.exe
 				echo Download ecmcommonutil app: !LMS_DOWNLOAD_PATH!\ecmcommonutil.exe                                                  >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/ecmcommonutil.exe', '!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe')"   >> !REPORT_LOGFILE! 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/FNP/ecmcommonutil.exe', '!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe')"   >> !REPORT_LOGFILE! 2>&1
 			)
 			
 			rem Download tool "ecmcommonutil.exe" V1.19 (=ecmcommonutil_1.19.exe) (from Flexera) to read-out host id's
 			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe" (
 				echo     Download ecmcommonutil app: !LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe
 				echo Download ecmcommonutil app: !LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe                                             >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/ecmcommonutil_1.19.exe', '!LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe')"   >> !REPORT_LOGFILE! 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/FNP/ecmcommonutil_1.19.exe', '!LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe')"   >> !REPORT_LOGFILE! 2>&1
 			)
 			
 			rem Download newest dongle driver always, to ensure that older driver get overwritten
 			echo     Download newest dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [%MOST_RECENT_DONGLE_DRIVER_VERSION%] ...
 			echo Download newest dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [%MOST_RECENT_DONGLE_DRIVER_VERSION%] ...             >> !REPORT_LOGFILE! 2>&1
-			powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/hasp/%MOST_RECENT_DONGLE_DRIVER_VERSION%/haspdinst.exe', '!LMS_DOWNLOAD_PATH!\haspdinst.exe')"   >> !REPORT_LOGFILE! 2>&1
+			powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/hasp/%MOST_RECENT_DONGLE_DRIVER_VERSION%/haspdinst.exe', '!LMS_DOWNLOAD_PATH!\haspdinst.exe')"   >> !REPORT_LOGFILE! 2>&1
 			if exist "!LMS_DOWNLOAD_PATH!\haspdinst.exe" (
 				set TARGETFILE=!LMS_DOWNLOAD_PATH!\haspdinst.exe
 				set TARGETFILE=!TARGETFILE:\=\\!
@@ -1475,7 +1586,7 @@ if not defined LMS_SKIPDOWNLOAD (
 			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\counted.lic" (
 				echo     Download 'counted.lic': !LMS_DOWNLOAD_PATH!\counted.lic
 				echo Download 'counted.lic': !LMS_DOWNLOAD_PATH!\counted.lic                                                            >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/FNP/counted.lic', '!LMS_DOWNLOAD_PATH!\counted.lic')"   >> !REPORT_LOGFILE! 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/FNP/counted.lic', '!LMS_DOWNLOAD_PATH!\counted.lic')"   >> !REPORT_LOGFILE! 2>&1
 			)
 			
 			rem Download BGInfo tool
@@ -1485,7 +1596,7 @@ if not defined LMS_SKIPDOWNLOAD (
 			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\BgInfo.zip" (
 				echo     Download BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip
 				echo Download BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip                                     >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://static.siemens.com/btdownloads/lms/BgInfo/BgInfo.zip', '!LMS_DOWNLOAD_PATH!\BgInfo.zip')"   >> !REPORT_LOGFILE! 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/BgInfo/BgInfo.zip', '!LMS_DOWNLOAD_PATH!\BgInfo.zip')"   >> !REPORT_LOGFILE! 2>&1
 				IF EXIST "!LMS_DOWNLOAD_PATH!\BgInfo.zip" (
 					echo     Extract BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip
 					echo Extract BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip                                  >> !REPORT_LOGFILE! 2>&1
@@ -1545,86 +1656,6 @@ if not defined LMS_SKIPDOWNLOAD (
 	)
 	echo SKIPPED download section. The script didn't execute the download commands.                                               >> !REPORT_LOGFILE! 2>&1
 )
-
-if not defined LMS_DONOTSTARTNEWERSCRIPT (
-	set LMS_SCRIPT_BUILD_DOWNLOAD_TO_START=
-	rem Check if newer CheckLMS.bat is available in !LMS_DOWNLOAD_PATH!\CheckLMS.bat (even if connection test doesn't run succesful)
-	IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS.bat" (
-		echo     Check script on '!LMS_DOWNLOAD_PATH!\CheckLMS.bat' ... 
-		echo Check script on '!LMS_DOWNLOAD_PATH!\CheckLMS.bat' ...                                                                                                                      >> !REPORT_LOGFILE! 2>&1
-		for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_1 set LMS_SCRIPT_BUILD_DOWNLOAD_1=%%i
-		if /I !LMS_SCRIPT_BUILD_DOWNLOAD_1! GTR !LMS_SCRIPT_BUILD! (
-			echo     Newer check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_1!, Running script version: !LMS_SCRIPT_BUILD!.
-			echo Newer check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_1!, Running script version: !LMS_SCRIPT_BUILD!.                                      >> !REPORT_LOGFILE! 2>&1
-			set LMS_SCRIPT_BUILD_DOWNLOAD_TO_START=!LMS_DOWNLOAD_PATH!\CheckLMS.bat
-		)
-	)	
-	rem Check if newer CheckLMS.bat is available in !LMS_DOWNLOAD_PATH!\git\CheckLMS.bat (even if connection test doesn't run succesful)
-	IF EXIST "!LMS_DOWNLOAD_PATH!\git\CheckLMS.bat" (
-		echo     Check script on '!LMS_DOWNLOAD_PATH!\git\CheckLMS.bat' ... 
-		echo Check script on '!LMS_DOWNLOAD_PATH!\git\CheckLMS.bat' ...                                                                                                                  >> !REPORT_LOGFILE! 2>&1
-		for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\git\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_2 set LMS_SCRIPT_BUILD_DOWNLOAD_2=%%i
-		if /I !LMS_SCRIPT_BUILD_DOWNLOAD_2! GTR !LMS_SCRIPT_BUILD! (
-			echo     Newer check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_2!, Running script version: !LMS_SCRIPT_BUILD!.
-			echo Newer check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_2!, Running script version: !LMS_SCRIPT_BUILD!.                                      >> !REPORT_LOGFILE! 2>&1
-			set LMS_SCRIPT_BUILD_DOWNLOAD_TO_START=!LMS_DOWNLOAD_PATH!\git\CheckLMS.bat
-		)
-	)	
-	if defined LMS_SCRIPT_BUILD_DOWNLOAD_1 (
-		if defined LMS_SCRIPT_BUILD_DOWNLOAD_2 (
-			rem From both servers have new CheckLMS.bat scripts been downloaded.
-			if /I !LMS_SCRIPT_BUILD_DOWNLOAD_1! GTR !LMS_SCRIPT_BUILD! (
-				if /I !LMS_SCRIPT_BUILD_DOWNLOAD_1! GTR !LMS_SCRIPT_BUILD_DOWNLOAD_2! (
-					rem The CheckLMS.bat script on github is older than the script downloaded from akamai share
-					echo Start script downloaded from akamai '!LMS_DOWNLOAD_PATH!\CheckLMS.bat'. Script version from github: !LMS_SCRIPT_BUILD_DOWNLOAD_2!, Script version from akamai: !LMS_SCRIPT_BUILD_DOWNLOAD_1!.  >> !REPORT_LOGFILE! 2>&1
-					set LMS_SCRIPT_BUILD_DOWNLOAD_TO_START=!LMS_DOWNLOAD_PATH!\CheckLMS.bat
-				)
-			)
-			if /I !LMS_SCRIPT_BUILD_DOWNLOAD_2! GTR !LMS_SCRIPT_BUILD! (
-				if /I !LMS_SCRIPT_BUILD_DOWNLOAD_2! GTR !LMS_SCRIPT_BUILD_DOWNLOAD_1! (
-					rem The CheckLMS.bat script on github is newer than the script downloaded from akamai share
-					echo Start script downloaded from github '!LMS_DOWNLOAD_PATH!\git\CheckLMS.bat'. Script version from github: !LMS_SCRIPT_BUILD_DOWNLOAD_2!, Script version from akamai: !LMS_SCRIPT_BUILD_DOWNLOAD_1!.  >> !REPORT_LOGFILE! 2>&1
-					set LMS_SCRIPT_BUILD_DOWNLOAD_TO_START=!LMS_DOWNLOAD_PATH!\git\CheckLMS.bat
-				)
-			)
-		)
-	)
-) else (
-	echo SKIPPED check for newer script. Command line option "Do not start new script" is set.                                                                             >> !REPORT_LOGFILE! 2>&1
-)
-
-if defined LMS_SCRIPT_BUILD_DOWNLOAD_TO_START (
-	if not defined LMS_DONOTSTARTNEWERSCRIPT (
-
-		rem Start newer script in an own command shell window
-		echo ==============================================================================                                                                                >> !REPORT_LOGFILE! 2>&1
-		echo ==                                                                                                                                                            >> !REPORT_LOGFILE! 2>&1
-		echo == Start newer script in an own command shell window.                                                                                                         >> !REPORT_LOGFILE! 2>&1
-		echo ==    command: start "Check LMS !LMS_SCRIPT_BUILD!" !LMS_SCRIPT_BUILD_DOWNLOAD_TO_START! %*                                                                   >> !REPORT_LOGFILE! 2>&1
-		echo ==                                                                                                                                                            >> !REPORT_LOGFILE! 2>&1
-		echo ==============================================================================                                                                                >> !REPORT_LOGFILE! 2>&1
-		echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                                                                        >> !REPORT_LOGFILE! 2>&1
-		if "!LMS_SCHEDTASK_PREV_STATUS!" == "Ready" (
-			rem enable scheduled task during execution of script; if it was enabled at script start ..
-			echo Re-enable scheduled task '!LMS_SCHEDTASK_CHECKID_FULLNAME!', previous state was '!LMS_SCHEDTASK_PREV_STATUS!'                                             >> !REPORT_LOGFILE! 2>&1
-			schtasks /change /TN !LMS_SCHEDTASK_CHECKID_FULLNAME! /ENABLE >nul 2>&1
-		)
-		rem save (single) report in full report file
-		Type !REPORT_LOGFILE! >> %REPORT_FULL_LOGFILE%
-		
-		start "Check LMS" !LMS_SCRIPT_BUILD_DOWNLOAD_TO_START! %* /donotstartnewerscript
-		exit
-		rem STOP EXECUTION HERE
-	
-	) else (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;33m    SKIPPED start of newer script. Command line option "Do not start new script" is set. [1;37m
-		) else (
-			echo     SKIPPED start of newer script. Command line option "Do not start new script" is set.
-		)
-		echo SKIPPED start of newer script. Command line option "Do not start new script" is set.                                                                          >> !REPORT_LOGFILE! 2>&1
-	)
-)	
 
 rem set background info
 if defined LMS_SET_BGINFO (
@@ -2000,6 +2031,58 @@ rem - Usage: /goto <gotolabel>:           jump to a dedicated part within script
 if defined LMS_GOTO (
 	echo Goto within check script to: !LMS_GOTO! ....                                                                        >> !REPORT_LOGFILE! 2>&1
 	goto !LMS_GOTO!
+)
+
+rem *
+rem * Siemens internal share, to upload logfile archive at the end of script execution
+rem *
+if not defined LMS_SKIPDOWNLOAD (
+	echo ... check Siemens internal resources ...
+	set LMS_CONTEST_SIEMENSINTERNAL=Unknown
+	rem retrieve CheckLMS configuration file
+	powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_CONFIG!', '!LMS_DOWNLOAD_PATH!\CheckLMS.config')"   > !CHECKLMS_REPORT_LOG_PATH!\connection_test_siemensinternal.txt 2>&1
+	if !ERRORLEVEL!==0 (
+		rem Connection Test: PASSED
+		echo     Connection Test PASSED, can access '!CHECKLMS_CONFIG!'
+		echo Connection Test PASSED, can access '!CHECKLMS_CONFIG!'                                                             >> !REPORT_LOGFILE! 2>&1
+		set LMS_CONTEST_SIEMENSINTERNAL=Passed
+		
+		rem read CheckLMS configuration file
+		IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS.config" (
+			for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS.config ^|find /I "CHECKLMS_PUBLIC_SHARE="') do if not defined CHECKLMS_PUBLIC_SHARE set CHECKLMS_PUBLIC_SHARE=%%i
+			echo     CheckLMS configuration downloaded. Public Share is '!CHECKLMS_PUBLIC_SHARE!'.
+			echo     CheckLMS configuration downloaded. Public Share is '!CHECKLMS_PUBLIC_SHARE!'.                              >> !REPORT_LOGFILE! 2>&1
+		) else (
+			rem Connection Test: FAILED
+			echo     Connection Test FAILED, cannot open '!LMS_DOWNLOAD_PATH!\CheckLMS.config'
+			echo Connection Test FAILED, cannot open '!LMS_DOWNLOAD_PATH!\CheckLMS.config'                                      >> !REPORT_LOGFILE! 2>&1
+			set LMS_CONTEST_SIEMENSINTERNAL=Failed
+		)
+		
+	) else if !ERRORLEVEL!==1 (
+		rem Connection Test: FAILED
+		echo     Connection Test FAILED, cannot access '!CHECKLMS_CONFIG!'
+		echo Connection Test FAILED, cannot access '!CHECKLMS_CONFIG!'                                                          >> !REPORT_LOGFILE! 2>&1
+		set LMS_CONTEST_SIEMENSINTERNAL=Failed
+	)
+
+	rem Connection Test to CheckLMS share
+	set SiemensConnectionTestStatus=Unknown
+	if defined CHECKLMS_PUBLIC_SHARE (
+		IF EXIST "!CHECKLMS_PUBLIC_SHARE!\!CHECKLMS_CONNECTION_TEST_FILE!" (
+			rem Connection Test: PASSED
+			echo     Connection Test to public share PASSED, can access '!CHECKLMS_CONNECTION_TEST_FILE!'
+			echo Connection Test to public share PASSED, can access !CHECKLMS_PUBLIC_SHARE!\!CHECKLMS_CONNECTION_TEST_FILE!     >> !REPORT_LOGFILE! 2>&1
+			set SiemensConnectionTestStatus=Passed
+		) else (
+			rem Connection Test: FAILED
+			echo     Connection Test to public share FAILED, cannot access '!CHECKLMS_CONNECTION_TEST_FILE!'
+			echo Connection Test to public share FAILED, cannot access !CHECKLMS_PUBLIC_SHARE!\!CHECKLMS_CONNECTION_TEST_FILE!  >> !REPORT_LOGFILE! 2>&1
+			set SiemensConnectionTestStatus=Failed
+		)
+	) else (
+		echo Connection Test to public share NOT POSSIBLE, no share name defined.                                               >> !REPORT_LOGFILE! 2>&1
+	)
 )
 
 echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
@@ -7525,7 +7608,7 @@ IF EXIST "!DOCUMENTATION_PATH!\\info.txt" (
 )
 echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_CHECK_ID (
-	echo Connection Test Status: !ConnectionTestStatus! [ https://static.siemens.com/btdownloads/ ]                      >> !REPORT_LOGFILE! 2>&1
+	echo Connection Test Status: !ConnectionTestStatus! [ !CHECKLMS_EXTERNAL_SHARE! ]                      >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_CON_TEST_FAILED (
 		if defined SHOW_COLORED_OUTPUT (
 			echo [1;31m    ATTENTION: Enhanced Connection Test Status: FAILED! [1;37m
