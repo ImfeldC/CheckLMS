@@ -276,6 +276,15 @@ rem        - move (internal) folder from !LMS_DOWNLOAD_PATH!\git to !LMS_DOWNLOA
 rem        - remove support to download 'CheckLMS.exe', 'CheckLMS.bat' instead
 rem        - add option to show CheckLMS script version: /showversion
 rem        - change script behavior for /showversion, /setbginfo and /clearbginfo; stop script execution after the command has been executed.
+rem     01-Sep-2021:
+rem        - clean-up files, which have been downloaded with previous scripts.
+rem     02-Sep-2021:
+rem        - adjust handling of bginfo download package(s)
+rem        - add otpions to set and delete scheduled task to set bginfo
+rem     06-Sep-2021:
+rem        - add support for "LmuTool.exe /SurEDateAll" (for LMS 2.6.839 or newer)
+rem        - add support for "Get-Lms -DefaultFamily" (for LMS 2.6.839 or newer)
+rem        - set 2.6.839 as field test version
 rem 
 rem
 rem     SCRIPT USAGE:
@@ -286,6 +295,7 @@ rem              "!ProgramFiles!\Siemens\LMS\bin\Launcher.exe" "!ProgramFiles!\S
 rem              NOTE: the /B option needs to be the last option, as it is used by launcher app.
 rem        - The following command line options are supported:
 rem              - /showversion                 shows the script version. NOTE: The download of newer scripts is executed.
+rem              - /info "Any text"             Adds this text to the output, e.g. reference to field issue /info "SR1-XXXX"
 rem              - /nouserinput                 supresses any user input (mainly the stop command at the end of the script)
 rem              - /nowait                      supresses any user input and any further "wait" commands 
 rem              - /logfilename <logfilename>   specifies the name and location of the logfile
@@ -294,33 +304,38 @@ rem              - /skipcontest                 skip section wich performs conne
 rem              - /extend                      run extended content, increases script running time!
 rem              - /donotstartnewerscript       don't start newer script even if available (mainly to ensure proper handling of command line options) 
 rem              - /checkdownload               perform downloads and print file versions.
+rem              - /setfirewall                 sets firewall for external access to LMS. 
+rem              - /startdemovd                 to start the demo vendor daemon provided by Flexera.
+rem              - /stopdemovd                  to stop the demo vendor daemon provided by Flexera.
+rem          CheckID Options:
 rem              - /checkid                     check machine identifiers, like UMN, VMGENID, ...
 rem              - /setcheckidtask              sets periodic task to run checklms.bat with /checkid option.
 rem              - /delcheckidtask              delete periodic checkid task, see option /setcheckidtask
-rem              - /setfirewall                 sets firewall for external access to LMS. 
+rem          LMS BgInfo Options:
 rem              - /setbginfo                   sets the background info (uisng lms.bgi)
 rem              - /clearbginfo                 clears the background info (uisng clean.bgi)
+rem              - /setbginfotask               sets periodic task to update bginfo automatically.
+rem              - /delbginfotask               delete periodic bginfo task, see option /setbginfotask
+rem          Install Options:
 rem              - /installlms                  installs (or udpates) LMS client, with newest available released client version
 rem              - /installftlms                installs (or udpates) LMS client, with newest available field test client version
 rem              - /removelms                   de-installs LMS client
 rem              - /installdongledriver         installs downloaded dongle driver.
 rem              - /removedongledriver          remove installed dongle driver.
-rem              - /startdemovd                 to start the demo vendor daemon provided by Flexera.
-rem              - /stopdemovd                  to stop the demo vendor daemon provided by Flexera.
-rem              - /info "Any text"             Adds this text to the output, e.g. reference to field issue /info "SR1-XXXX"
+rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 31-Aug-2021"
-set LMS_SCRIPT_BUILD=20210831
+set LMS_SCRIPT_VERSION="CheckLMS Script 06-Sep-2021"
+set LMS_SCRIPT_BUILD=20210906
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
 set MOST_RECENT_LMS_BUILD=824
-rem most recent lms field test version: 2.6.838 (per 19-Aug-2021)
+rem most recent lms field test version: 2.6.839 (per 07-Sep-2021)
 rem - if not set, it is not downloaded.
-set MOST_RECENT_FT_LMS_VERSION=2.6.838
-set MOST_RECENT_FT_LMS_BUILD=838
+set MOST_RECENT_FT_LMS_VERSION=2.6.839
+set MOST_RECENT_FT_LMS_BUILD=839
 rem most recent dongle driver version (per 12-Jul-2021, LMS 2.6)
 set MOST_RECENT_DONGLE_DRIVER_VERSION=8.21
 set MOST_RECENT_DONGLE_DRIVER_MAJ_VERSION=8
@@ -357,6 +372,10 @@ set CHECKLMS_CONNECTION_TEST_FILE=_CheckLMS_ReadMe_.txt
 rem settings for scheduled task: CheckID
 set LMS_SCHEDTASK_CHECKID_NAME=CheckLMS_CheckID
 set LMS_SCHEDTASK_CHECKID_FULLNAME=\Siemens\Lms\!LMS_SCHEDTASK_CHECKID_NAME!
+
+rem settings for scheduled task: BgInfo
+set LMS_SCHEDTASK_BGINFO_NAME=SetLMSBgInfo
+set LMS_SCHEDTASK_BGINFO_FULLNAME=\Siemens\Lms\!LMS_SCHEDTASK_BGINFO_NAME!
 
 set ProgramFiles_x86=!ProgramFiles(x86)!
 
@@ -428,6 +447,7 @@ IF NOT EXIST "!LMS_DOWNLOAD_PATH!\LMSSetup" (
 )
 
 rem clean-up files downloaded used with older CheckLMS script
+rmdir /S /Q !LMS_DOWNLOAD_PATH!\git >nul 2>&1
 del !LMS_DOWNLOAD_PATH!\CheckLMS.exe >nul 2>&1
 
 rem clean-up logfiles created with older CheckLMS script
@@ -621,6 +641,16 @@ FOR %%A IN (%*) DO (
 		)
 		if "!var!"=="clearbginfo" (
 			set LMS_CLEAR_BGINFO=1
+		)
+		if "!var!"=="setbginfotask" (
+			set LMS_SET_BGINFO_TASK=1
+			set LMS_SKIPDOWNLOAD=1
+			set LMS_SKIPUNZIP=1
+		)
+		if "!var!"=="delbginfotask" (
+			set LMS_DEL_BGINFO_TASK=1
+			set LMS_SKIPDOWNLOAD=1
+			set LMS_SKIPUNZIP=1
 		)
 		if "!var!"=="installlms" (
 			set LMS_INSTALL_LMS_CLIENT=1
@@ -1321,7 +1351,8 @@ if not defined LMS_DONOTSTARTNEWERSCRIPT (
 	IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat" (
 		echo     Check script on '!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat' ... 
 		echo Check script on '!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat' ...                                                                                               >> !REPORT_LOGFILE! 2>&1
-		for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do set LMS_SCRIPT_BUILD_DOWNLOAD=%%i
+		set LMS_SCRIPT_BUILD_DOWNLOAD=
+		for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD set LMS_SCRIPT_BUILD_DOWNLOAD=%%i
 		if /I !LMS_SCRIPT_BUILD_DOWNLOAD! GTR !LMS_SCRIPT_BUILD! (
 			echo     Newer check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD!, Running script version: !LMS_SCRIPT_BUILD!.
 			echo Newer check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD!, Running script version: !LMS_SCRIPT_BUILD!.                          >> !REPORT_LOGFILE! 2>&1
@@ -1592,13 +1623,20 @@ if not defined LMS_SKIPDOWNLOAD (
 			)
 			
 			rem Download BGInfo tool
-			rmdir /S /Q "!LMS_DOWNLOAD_PATH!\BgInfo\" >nul 2>&1
-			del !LMS_DOWNLOAD_PATH!\BgInfo.zip >nul 2>&1
+			rem rmdir /S /Q "!LMS_DOWNLOAD_PATH!\BgInfo\" >nul 2>&1
+			rem del !LMS_DOWNLOAD_PATH!\BgInfo.zip >nul 2>&1
 			rem Download and unzip BgInfo ZIP archive [as ZIP]
 			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\BgInfo.zip" (
 				echo     Download BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip
-				echo Download BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip                                     >> !REPORT_LOGFILE! 2>&1
+				echo Download BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip  from '!CHECKLMS_EXTERNAL_SHARE!lms/BgInfo/BgInfo.zip'                             >> !REPORT_LOGFILE! 2>&1
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/BgInfo/BgInfo.zip', '!LMS_DOWNLOAD_PATH!\BgInfo.zip')"   >> !REPORT_LOGFILE! 2>&1
+				IF EXIST "!LMS_DOWNLOAD_PATH!\BgInfo.zip" (
+					echo     Extract BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip
+					echo Extract BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip                                  >> !REPORT_LOGFILE! 2>&1
+					"!UNZIP_TOOL!" x -y -spe -o"!LMS_DOWNLOAD_PATH!\BgInfo\" "!LMS_DOWNLOAD_PATH!\BgInfo.zip" > !CHECKLMS_REPORT_LOG_PATH!\unzip_bginfo_zip.txt 2>&1
+				)
+			)
+			if not exist "!LMS_DOWNLOAD_PATH!\BgInfo\" (
 				IF EXIST "!LMS_DOWNLOAD_PATH!\BgInfo.zip" (
 					echo     Extract BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip
 					echo Extract BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip                                  >> !REPORT_LOGFILE! 2>&1
@@ -2406,6 +2444,37 @@ if defined LMS_DEL_CHECK_ID_TASK (
 	rem STOP EXECUTION HERE
 ) else (
 	echo Delete CheckId scheduled task ... NO                                                                                >> !REPORT_LOGFILE! 2>&1
+)
+
+if defined LMS_SET_BGINFO_TASK (
+	set taskname=!LMS_SCHEDTASK_BGINFO_FULLNAME!
+	if exist "!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat" (
+		set taskrun="%ProgramFiles%\Siemens\LMS\bin\Launcher.exe !LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat /B"
+	) else if exist "!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat" (
+		set taskrun="%ProgramFiles%\Siemens\LMS\bin\Launcher.exe !LMS_PROGRAMDATA!\BgInfo\setbginfo.bat /B"
+	) else (
+		echo CANNOT create BGInfo task, because 'setbginfo.bat' doesn't exist.                       >> !REPORT_LOGFILE! 2>&1
+	)
+	echo     set BgInfo scheduled task '!taskname!' ...
+	echo Set BgInfo scheduled task '!taskname!' with command !taskrun! ...                           >> !REPORT_LOGFILE! 2>&1
+	SCHTASKS /Create /TN !taskname! /TR !taskrun! /SC ONLOGON /F                                     >> !REPORT_LOGFILE! 2>&1
+	SCHTASKS /Run /TN !taskname!                                                                     >> !REPORT_LOGFILE! 2>&1
+
+	goto script_end
+	rem STOP EXECUTION HERE
+) else (
+	echo Set BgInfo scheduled task ... NO                                                           >> !REPORT_LOGFILE! 2>&1
+)
+if defined LMS_DEL_BGINFO_TASK (
+	set taskname=!LMS_SCHEDTASK_BGINFO_FULLNAME!
+	echo     delete BgInfo scheduled task '!taskname!' ...
+	echo Delete BgInfo scheduled task '!taskname!' ...                                               >> !REPORT_LOGFILE! 2>&1
+	SCHTASKS /Delete /TN !taskname! /F                                                               >> !REPORT_LOGFILE! 2>&1
+
+	goto script_end
+	rem STOP EXECUTION HERE
+) else (
+	echo Delete BgInfo scheduled task ... NO                                                        >> !REPORT_LOGFILE! 2>&1
 )
 
 rem Start Demo Vendor Daemon provided by Flexera; see also "1253827: CheckLMS: add support to run demo vendor daemon"
@@ -3520,24 +3589,24 @@ if not defined LMS_SKIPLMS (
 	echo -------------------------------------------------------                                                                                                           >> !REPORT_LOGFILE! 2>&1
 	echo ... retrieve LMS configuration [with LMU PowerShell command] ...
 	IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" (
-		echo LMS System ID: [read with LMU PowerShell command]                                                                                                             >> !REPORT_LOGFILE! 2>&1
-		echo     LMS System ID: [read with LMU PowerShell command]
+		echo LMS System ID: [read with LMU PowerShell command: get-lms -SystemId]                                                                                          >> !REPORT_LOGFILE! 2>&1
+		echo     LMS System ID: [read with LMU PowerShell command: get-lms -SystemId]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -SystemId}"                                                      >> !REPORT_LOGFILE! 2>&1
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -SystemId}"                                                           >> !REPORT_LOGFILE! 2>&1 
 		for /f %%i in ('powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -SystemId}"') do set LMS_PS_SYSTEMID=%%i              >> !REPORT_LOGFILE! 2>&1
 		if "!LMS_PS_SYSTEMID!" NEQ "" set LMS_PS_SYSTEMID=!LMS_PS_SYSTEMID: =!
 		echo LMS_PS_SYSTEMID=[!LMS_PS_SYSTEMID!]                                                                                                                           >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo LMS Version: [read with LMU PowerShell command]                                                                                                               >> !REPORT_LOGFILE! 2>&1
-		echo     LMS Version: [read with LMU PowerShell command]
+		echo LMS Version: [read with LMU PowerShell command: get-lms -LMSVersion]                                                                                          >> !REPORT_LOGFILE! 2>&1
+		echo     LMS Version: [read with LMU PowerShell command: get-lms -LMSVersion]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -LMSVersion}"                                                    >> !REPORT_LOGFILE! 2>&1
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -LMSVersion}"                                                         >> !REPORT_LOGFILE! 2>&1 
 		for /f %%i in ('powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -LMSVersion}"') do set LMS_PS_LMSVERSION=%%i          >> !REPORT_LOGFILE! 2>&1
 		if "!LMS_PS_LMSVERSION!" NEQ "" set LMS_PS_LMSVERSION=!LMS_PS_LMSVERSION: =!
 		echo LMS_PS_LMSVERSION=[!LMS_PS_LMSVERSION!]                                                                                                                       >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo Installing Product and Version: [read with LMU PowerShell command]                                                                                            >> !REPORT_LOGFILE! 2>&1
-		echo     Installing Product and Version: [read with LMU PowerShell command]
+		echo Installing Product and Version: [read with LMU PowerShell command: get-lms -ProductName]                                                                      >> !REPORT_LOGFILE! 2>&1
+		echo     Installing Product and Version: [read with LMU PowerShell command: get-lms -ProductName]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -ProductName}"                                                   >> !REPORT_LOGFILE! 2>&1
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -ProductName}"                                                        >> !REPORT_LOGFILE! 2>&1 
 		for /f %%i in ('powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -ProductName}"') do set LMS_PS_PRODUCTNAME=%%i        >> !REPORT_LOGFILE! 2>&1
@@ -3553,40 +3622,52 @@ if not defined LMS_SKIPLMS (
 			echo NOTE: The configured installing product name [!LMS_PS_PRODUCTNAME!][!LMS_PS_PRODUCTVERSION!] is set!                                                      >> !REPORT_LOGFILE! 2>&1
 		)
 		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo LMS Deployment: [read with LMU PowerShell command]                                                                                                            >> !REPORT_LOGFILE! 2>&1
-		echo     LMS Deployment: [read with LMU PowerShell command]
+		echo LMS Deployment: [read with LMU PowerShell command: get-lms -Deployment]                                                                                       >> !REPORT_LOGFILE! 2>&1
+		echo     LMS Deployment: [read with LMU PowerShell command: get-lms -Deployment]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -Deployment}"                                                    >> !REPORT_LOGFILE! 2>&1
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -Deployment}"                                                         >> !REPORT_LOGFILE! 2>&1 
 		for /f %%i in ('powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -Deployment}"') do set LMS_PS_DEPLOYMENT=%%i          >> !REPORT_LOGFILE! 2>&1
 		if "!LMS_PS_DEPLOYMENT!" NEQ "" set LMS_PS_DEPLOYMENT=!LMS_PS_DEPLOYMENT: =!
 		echo LMS_PS_DEPLOYMENT=[!LMS_PS_DEPLOYMENT!]                                                                                                                       >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo LMS Application Mode: [read with LMU PowerShell command]                                                                                                      >> !REPORT_LOGFILE! 2>&1
-		echo     LMS Application Mode: [read with LMU PowerShell command]
+		echo LMS Application Mode: [read with LMU PowerShell command: get-lms -AppMode]                                                                                    >> !REPORT_LOGFILE! 2>&1
+		echo     LMS Application Mode: [read with LMU PowerShell command: get-lms -AppMode]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -AppMode}"                                                       >> !REPORT_LOGFILE! 2>&1
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -AppMode}"                                                            >> !REPORT_LOGFILE! 2>&1 
 		for /f %%i in ('powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -AppMode}"') do set LMS_PS_APPMODE=%%i                >> !REPORT_LOGFILE! 2>&1
 		if "!LMS_PS_APPMODE!" NEQ "" set LMS_PS_APPMODE=!LMS_PS_APPMODE: =!
 		echo LMS_PS_APPMODE=[!LMS_PS_APPMODE!]                                                                                                                             >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo LMS Is Virtual Machine: [read with LMU PowerShell command]                                                                                                    >> !REPORT_LOGFILE! 2>&1
-		echo     LMS Is Virtual Machine: [read with LMU PowerShell command]
+		echo LMS Is Virtual Machine: [read with LMU PowerShell command: get-lms -IsVM]                                                                                     >> !REPORT_LOGFILE! 2>&1
+		echo     LMS Is Virtual Machine: [read with LMU PowerShell command: get-lms -IsVM]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -IsVM}"                                                          >> !REPORT_LOGFILE! 2>&1
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -IsVM}"                                                               >> !REPORT_LOGFILE! 2>&1 
 		for /f %%i in ('powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -IsVM}"') do set LMS_PS_ISVM=%%i                      >> !REPORT_LOGFILE! 2>&1
 		if "!LMS_PS_ISVM!" NEQ "" set LMS_PS_ISVM=!LMS_PS_ISVM: =!
 		echo LMS_PS_ISVM=[!LMS_PS_ISVM!]                                                                                                                                   >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo LMS CSID: [read with LMU PowerShell command]                                                                                                                  >> !REPORT_LOGFILE! 2>&1
-		echo     LMS CSID: [read with LMU PowerShell command]
+		echo LMS CSID: [read with LMU PowerShell command: get-lms -Csid]                                                                                                   >> !REPORT_LOGFILE! 2>&1
+		echo     LMS CSID: [read with LMU PowerShell command: get-lms -Csid]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -Csid}"                                                          >> !REPORT_LOGFILE! 2>&1
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -Csid}"                                                               >> !REPORT_LOGFILE! 2>&1 
 		for /f %%i in ('powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -Csid}"') do set LMS_PS_CSID=%%i                      >> !REPORT_LOGFILE! 2>&1
 		if "!LMS_PS_CSID!" NEQ "" set LMS_PS_CSID=!LMS_PS_CSID: =!
 		echo LMS_PS_CSID=[!LMS_PS_CSID!]                                                                                                                                   >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo LMS Culture Id: [read with LMU PowerShell command]                                                                                                            >> !REPORT_LOGFILE! 2>&1
-		echo     LMS Culture Id: [read with LMU PowerShell command]
+		echo LMS Default Family: [read with LMU PowerShell command: Get-Lms -DefaultFamily]                                                                                >> !REPORT_LOGFILE! 2>&1
+		echo     LMS Default Family: [read with LMU PowerShell command: Get-Lms -DefaultFamily]
+		if /I !LMS_BUILD_VERSION! GEQ 839 (
+			echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Get-Lms -DefaultFamily}"                                             >> !REPORT_LOGFILE! 2>&1
+			powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Get-Lms -DefaultFamily}"                                                  >> !REPORT_LOGFILE! 2>&1 
+			for /f %%i in ('powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Get-Lms -DefaultFamily}"') do set LMS_PS_DEFAULTFAMILY=%%i >> !REPORT_LOGFILE! 2>&1
+			if "!LMS_PS_DEFAULTFAMILY!" NEQ "" set LMS_PS_DEFAULTFAMILY=!LMS_PS_DEFAULTFAMILY: =!
+			echo LMS_PS_DEFAULTFAMILY=[!LMS_PS_DEFAULTFAMILY!]                                                                                                             >> !REPORT_LOGFILE! 2>&1
+		) else (
+			echo     This operation is not supported with LMS !LMS_VERSION!, cannot perform operation.                                                                     >> !REPORT_LOGFILE! 2>&1 
+		)
+		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
+		echo LMS Culture Id: [read with LMU PowerShell command: get-lms -CultureId]                                                                                        >> !REPORT_LOGFILE! 2>&1
+		echo     LMS Culture Id: [read with LMU PowerShell command: get-lms -CultureId]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -CultureId}"                                                     >> !REPORT_LOGFILE! 2>&1
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -CultureId}"                                                          >> !REPORT_LOGFILE! 2>&1 
 		for /f %%i in ('powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -CultureId}"') do set LMS_PS_CULTUREID=%%i            >> !REPORT_LOGFILE! 2>&1
@@ -3633,28 +3714,28 @@ if not defined LMS_SKIPLMS (
 			)
 		)
 		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo LMS Last Used Directory: [read with LMU PowerShell command]                                                                                                   >> !REPORT_LOGFILE! 2>&1
-		echo     LMS Last Used Directory: [read with LMU PowerShell command]
+		echo LMS Last Used Directory: [read with LMU PowerShell command: get-lms -LastDir]                                                                                 >> !REPORT_LOGFILE! 2>&1
+		echo     LMS Last Used Directory: [read with LMU PowerShell command: get-lms -LastDir]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -LastDir}"                                                       >> !REPORT_LOGFILE! 2>&1
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -LastDir}"                                                            >> !REPORT_LOGFILE! 2>&1 
 		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo LMS Data Storage Directory: [read with LMU PowerShell command]                                                                                                >> !REPORT_LOGFILE! 2>&1
-		echo     LMS Data Storage Directory: [read with LMU PowerShell command]
+		echo LMS Data Storage Directory: [read with LMU PowerShell command: get-lms -DsPath]                                                                               >> !REPORT_LOGFILE! 2>&1
+		echo     LMS Data Storage Directory: [read with LMU PowerShell command: get-lms -DsPath]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -DsPath}"                                                        >> !REPORT_LOGFILE! 2>&1
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -DsPath}"                                                             >> !REPORT_LOGFILE! 2>&1 
 		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo LMS Certificate Directory: [read with LMU PowerShell command]                                                                                                 >> !REPORT_LOGFILE! 2>&1
-		echo     LMS Certificate Directory: [read with LMU PowerShell command]
+		echo LMS Certificate Directory: [read with LMU PowerShell command: get-lms -CertPath]                                                                              >> !REPORT_LOGFILE! 2>&1
+		echo     LMS Certificate Directory: [read with LMU PowerShell command: get-lms -CertPath]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -CertPath}"                                                      >> !REPORT_LOGFILE! 2>&1
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -CertPath}"                                                           >> !REPORT_LOGFILE! 2>&1 
 		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo LMS Transfer Directory: [read with LMU PowerShell command]                                                                                                    >> !REPORT_LOGFILE! 2>&1
-		echo     LMS Transfer Directory: [read with LMU PowerShell command]
+		echo LMS Transfer Directory: [read with LMU PowerShell command: get-lms -TransferFolder]                                                                           >> !REPORT_LOGFILE! 2>&1
+		echo     LMS Transfer Directory: [read with LMU PowerShell command: get-lms -TransferFolder]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -TransferFolder}"                                                >> !REPORT_LOGFILE! 2>&1
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -TransferFolder}"                                                     >> !REPORT_LOGFILE! 2>&1 
 		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo LMS Token, used to authenticate at FNO server: [read with LMU PowerShell command]                                                                             >> !REPORT_LOGFILE! 2>&1
-		echo     LMS Token, used to authenticate at FNO server: [read with LMU PowerShell command]
+		echo LMS Token, used to authenticate at FNO server: [read with LMU PowerShell command: get-lms -Token]                                                             >> !REPORT_LOGFILE! 2>&1
+		echo     LMS Token, used to authenticate at FNO server: [read with LMU PowerShell command: get-lms -Token]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -Token}"                                                         >> !REPORT_LOGFILE! 2>&1
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -Token}"                                                              >> !REPORT_LOGFILE! 2>&1 
 		for /f %%i in ('powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -Token}"') do set LMS_PS_TOKEN=%%i                    >> !REPORT_LOGFILE! 2>&1
@@ -3691,23 +3772,23 @@ if not defined LMS_SKIPLMS (
 			echo NOTE: The configured access token [!LMS_PS_TOKEN!] is NOT the known default token!                                                                        >> !REPORT_LOGFILE! 2>&1
 		)
 		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo LMS "Can Notify": [read with LMU PowerShell command]                                                                                                          >> !REPORT_LOGFILE! 2>&1
-		echo     LMS "Can Notify": [read with LMU PowerShell command]
+		echo LMS "Can Notify": [read with LMU PowerShell command: get-lms -CanNotify]                                                                                      >> !REPORT_LOGFILE! 2>&1
+		echo     LMS "Can Notify": [read with LMU PowerShell command: get-lms -CanNotify]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -CanNotify}"                                                     >> !REPORT_LOGFILE! 2>&1
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -CanNotify}"                                                          >> !REPORT_LOGFILE! 2>&1 
 		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo LMS Notification Period: [read with LMU PowerShell command]                                                                                                   >> !REPORT_LOGFILE! 2>&1
-		echo     LMS Notification Period: [read with LMU PowerShell command]
+		echo LMS Notification Period: [read with LMU PowerShell command: get-lms -NotificationPeriod]                                                                      >> !REPORT_LOGFILE! 2>&1
+		echo     LMS Notification Period: [read with LMU PowerShell command: get-lms -NotificationPeriod]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -NotificationPeriod}"                                            >> !REPORT_LOGFILE! 2>&1
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -NotificationPeriod}"                                                 >> !REPORT_LOGFILE! 2>&1 
 		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo LMS Is SIEMBT Ready: [read with LMU PowerShell command]                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo     LMS Is SIEMBT Ready: [read with LMU PowerShell command]
+		echo LMS Is SIEMBT Ready: [read with LMU PowerShell command: get-lms -IsSiembtReady]                                                                               >> !REPORT_LOGFILE! 2>&1
+		echo     LMS Is SIEMBT Ready: [read with LMU PowerShell command: get-lms -IsSiembtReady]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -IsSiembtReady}"                                                 >> !REPORT_LOGFILE! 2>&1
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -IsSiembtReady}"                                                      >> !REPORT_LOGFILE! 2>&1 
 		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo Get LMS Application state: [read with LMU PowerShell command]                                                                                                 >> !REPORT_LOGFILE! 2>&1
-		echo     Get LMS Application state: [read with LMU PowerShell command]
+		echo Get LMS Application state: [read with LMU PowerShell command: get-lms -LMUWsState]                                                                            >> !REPORT_LOGFILE! 2>&1
+		echo     Get LMS Application state: [read with LMU PowerShell command: get-lms -LMUWsState]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -LMUWsState}"                                                    >> !REPORT_LOGFILE! 2>&1
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -LMUWsState}"                                                         >> !REPORT_LOGFILE! 2>&1 
 		for /f %%i in ('powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -LMUWsState}"') do set LMS_PS_LMUWSSTATE=%%i          >> !REPORT_LOGFILE! 2>&1
@@ -3715,14 +3796,14 @@ if not defined LMS_SKIPLMS (
 		echo LMS_PS_LMUWSSTATE=[!LMS_PS_LMUWSSTATE!]                                                                                                                       >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
 		echo Start at !DATE! !TIME! ....                                                                                                                                   >> !REPORT_LOGFILE! 2>&1
-		echo Get Product List: [read with LMU PowerShell command]                                                                                                          >> !REPORT_LOGFILE! 2>&1
-		echo     Get Product List: [read with LMU PowerShell command]
+		echo Get Product List: [read with LMU PowerShell command: Select-Product -report -all]                                                                             >> !REPORT_LOGFILE! 2>&1
+		echo     Get Product List: [read with LMU PowerShell command: Select-Product -report -all]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -all}"                                            >> !REPORT_LOGFILE! 2>&1
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -all}"                                                 >> !REPORT_LOGFILE! 2>&1 
 		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
 		echo Start at !DATE! !TIME! ....                                                                                                                                   >> !REPORT_LOGFILE! 2>&1
-		echo Get Product Upgrades: [read with LMU PowerShell command]                                                                                                      >> !REPORT_LOGFILE! 2>&1
-		echo     Get Product Upgrades: [read with LMU PowerShell command]
+		echo Get Product Upgrades: [read with LMU PowerShell command: Select-Product -report -upgrades]                                                                    >> !REPORT_LOGFILE! 2>&1
+		echo     Get Product Upgrades: [read with LMU PowerShell command: Select-Product -report -upgrades]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -upgrades}"                                       >> !REPORT_LOGFILE! 2>&1
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -upgrades}"                                            >> !REPORT_LOGFILE! 2>&1 
 		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
@@ -3740,6 +3821,18 @@ if not defined LMS_SKIPLMS (
 	)	
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Read-out "SUR expiration date" for this system, with LmuTool.exe /SurEDateAll                                           >> !REPORT_LOGFILE! 2>&1
+	echo     Read-out "SUR expiration date" for this system, with LmuTool.exe /SurEDateAll
+	if defined LMS_LMUTOOL (
+		if /I !LMS_BUILD_VERSION! GEQ 839 (
+			"!LMS_LMUTOOL!" /SurEDateAll                                                                                         >> !REPORT_LOGFILE! 2>&1
+		) else (
+			echo     This operation is not supported with LMS !LMS_VERSION!, cannot perform operation.                           >> !REPORT_LOGFILE! 2>&1 
+		)
+	) else (
+		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> !REPORT_LOGFILE! 2>&1 
+	)
+	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	echo Read-out "SUR expiration date" for this system, with LmuTool.exe /SUREDATE                                              >> !REPORT_LOGFILE! 2>&1
 	echo     Read-out "SUR expiration date" for this system, with LmuTool.exe /SUREDATE
 	if defined LMS_LMUTOOL (
