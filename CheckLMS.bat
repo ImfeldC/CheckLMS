@@ -285,7 +285,8 @@ rem     06-Sep-2021:
 rem        - add support for "LmuTool.exe /SurEDateAll" (for LMS 2.6.839 or newer)
 rem        - add support for "Get-Lms -DefaultFamily" (for LMS 2.6.839 or newer)
 rem        - set 2.6.839 as field test version
-rem 
+rem     07-Sep-2021:
+rem        - no chnage, same file as "06-Sep-2021"
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -326,8 +327,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 06-Sep-2021"
-set LMS_SCRIPT_BUILD=20210906
+set LMS_SCRIPT_VERSION="CheckLMS Script 07-Sep-2021"
+set LMS_SCRIPT_BUILD=20210907
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
