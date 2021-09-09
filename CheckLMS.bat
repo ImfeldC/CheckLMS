@@ -286,7 +286,15 @@ rem        - add support for "LmuTool.exe /SurEDateAll" (for LMS 2.6.839 or newe
 rem        - add support for "Get-Lms -DefaultFamily" (for LMS 2.6.839 or newer)
 rem        - set 2.6.839 as field test version
 rem     07-Sep-2021:
-rem        - no chnage, same file as "06-Sep-2021"
+rem        - no change, same file as "06-Sep-2021"
+rem     08-Sep-2021:
+rem        - adjust build number passed when startign newer checklms script.
+rem        - add missing powershell comandlets: https://wiki.siemens.com/display/en/LMS+-+Powershell+Commandlets+Reference+Guide
+rem             - added LMU PowerShell command: Get-Lms -Version
+rem             - added LMU PowerShell command: get-lms -DisableClientInfo
+rem             - added LMU PowerShell command: get-lms -BorrowDays
+rem             - added LMU PowerShell command: get-lms -ProductCode
+rem             - added LMU PowerShell command: Get-Lms -SurExpirationDate
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -327,8 +335,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 07-Sep-2021"
-set LMS_SCRIPT_BUILD=20210907
+set LMS_SCRIPT_VERSION="CheckLMS Script 08-Sep-2021"
+set LMS_SCRIPT_BUILD=20210908
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -1368,16 +1376,16 @@ if defined LMS_SCRIPT_BUILD_DOWNLOAD_TO_START (
 	if not defined LMS_DONOTSTARTNEWERSCRIPT (
 
 		rem Start newer script in an own command shell window
-		echo ==============================================================================                                                                                >> !REPORT_LOGFILE! 2>&1
-		echo ==                                                                                                                                                            >> !REPORT_LOGFILE! 2>&1
-		echo == Start newer script in an own command shell window.                                                                                                         >> !REPORT_LOGFILE! 2>&1
-		echo ==    command: start "Check LMS !LMS_SCRIPT_BUILD!" !LMS_SCRIPT_BUILD_DOWNLOAD_TO_START! %*                                                                   >> !REPORT_LOGFILE! 2>&1
-		echo ==                                                                                                                                                            >> !REPORT_LOGFILE! 2>&1
-		echo ==============================================================================                                                                                >> !REPORT_LOGFILE! 2>&1
-		echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                                                                        >> !REPORT_LOGFILE! 2>&1
+		echo ==============================================================================                                        >> !REPORT_LOGFILE! 2>&1
+		echo ==                                                                                                                    >> !REPORT_LOGFILE! 2>&1
+		echo == Start newer script in an own command shell window.                                                                 >> !REPORT_LOGFILE! 2>&1
+		echo ==    command: start "Check LMS !LMS_SCRIPT_BUILD_DOWNLOAD!" !LMS_SCRIPT_BUILD_DOWNLOAD_TO_START! %*                  >> !REPORT_LOGFILE! 2>&1
+		echo ==                                                                                                                    >> !REPORT_LOGFILE! 2>&1
+		echo ==============================================================================                                        >> !REPORT_LOGFILE! 2>&1
+		echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                                >> !REPORT_LOGFILE! 2>&1
 		if "!LMS_SCHEDTASK_PREV_STATUS!" == "Ready" (
 			rem enable scheduled task during execution of script; if it was enabled at script start ..
-			echo Re-enable scheduled task '!LMS_SCHEDTASK_CHECKID_FULLNAME!', previous state was '!LMS_SCHEDTASK_PREV_STATUS!'                                             >> !REPORT_LOGFILE! 2>&1
+			echo Re-enable scheduled task '!LMS_SCHEDTASK_CHECKID_FULLNAME!', previous state was '!LMS_SCHEDTASK_PREV_STATUS!'     >> !REPORT_LOGFILE! 2>&1
 			schtasks /change /TN !LMS_SCHEDTASK_CHECKID_FULLNAME! /ENABLE >nul 2>&1
 		)
 		rem save (single) report in full report file
@@ -1393,7 +1401,7 @@ if defined LMS_SCRIPT_BUILD_DOWNLOAD_TO_START (
 		) else (
 			echo     SKIPPED start of newer script. Command line option "Do not start new script" is set.
 		)
-		echo SKIPPED start of newer script. Command line option "Do not start new script" is set.                                                                          >> !REPORT_LOGFILE! 2>&1
+		echo SKIPPED start of newer script. Command line option "Do not start new script" is set.                                  >> !REPORT_LOGFILE! 2>&1
 	)
 )	
 
@@ -3606,6 +3614,11 @@ if not defined LMS_SKIPLMS (
 		if "!LMS_PS_LMSVERSION!" NEQ "" set LMS_PS_LMSVERSION=!LMS_PS_LMSVERSION: =!
 		echo LMS_PS_LMSVERSION=[!LMS_PS_LMSVERSION!]                                                                                                                       >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
+		echo LMS Product Code: [read with LMU PowerShell command: get-lms -ProductCode]                                                                                    >> !REPORT_LOGFILE! 2>&1
+		echo     LMS Product Code: [read with LMU PowerShell command: get-lms -ProductCode]
+		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -ProductCode}"                                                   >> !REPORT_LOGFILE! 2>&1
+		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -ProductCode}"                                                        >> !REPORT_LOGFILE! 2>&1 
+		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
 		echo Installing Product and Version: [read with LMU PowerShell command: get-lms -ProductName]                                                                      >> !REPORT_LOGFILE! 2>&1
 		echo     Installing Product and Version: [read with LMU PowerShell command: get-lms -ProductName]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -ProductName}"                                                   >> !REPORT_LOGFILE! 2>&1
@@ -3788,6 +3801,16 @@ if not defined LMS_SKIPLMS (
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -IsSiembtReady}"                                                 >> !REPORT_LOGFILE! 2>&1
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -IsSiembtReady}"                                                      >> !REPORT_LOGFILE! 2>&1 
 		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
+		echo Is transfer of client info at activation disabled: [read with LMU PowerShell command: get-lms -DisableClientInfo]                                             >> !REPORT_LOGFILE! 2>&1
+		echo     Is transfer of client info at activation disabled: [read with LMU PowerShell command: get-lms -DisableClientInfo]
+		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -DisableClientInfo}"                                             >> !REPORT_LOGFILE! 2>&1
+		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -DisableClientInfo}"                                                  >> !REPORT_LOGFILE! 2>&1 
+		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
+		echo Number of 'Borrow' days: [read with LMU PowerShell command: get-lms -BorrowDays]                                                                              >> !REPORT_LOGFILE! 2>&1
+		echo     Number of 'Borrow' days: [read with LMU PowerShell command: get-lms -BorrowDays]
+		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -BorrowDays}"                                                    >> !REPORT_LOGFILE! 2>&1
+		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -BorrowDays}"                                                         >> !REPORT_LOGFILE! 2>&1 
+		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
 		echo Get LMS Application state: [read with LMU PowerShell command: get-lms -LMUWsState]                                                                            >> !REPORT_LOGFILE! 2>&1
 		echo     Get LMS Application state: [read with LMU PowerShell command: get-lms -LMUWsState]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -LMUWsState}"                                                    >> !REPORT_LOGFILE! 2>&1
@@ -3849,6 +3872,11 @@ if not defined LMS_SKIPLMS (
 	) else (
 		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> !REPORT_LOGFILE! 2>&1 
 	)
+	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo Sur Expiry Date: [read with LMU PowerShell command: Get-Lms -SurExpirationDate]                                         >> !REPORT_LOGFILE! 2>&1
+	echo     Sur Expiry Date: [read with LMU PowerShell command: Get-Lms -SurExpirationDate]
+	echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Get-Lms -SurExpirationDate}"       >> !REPORT_LOGFILE! 2>&1
+	powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Get-Lms -SurExpirationDate}"            >> !REPORT_LOGFILE! 2>&1 
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 	echo Read-out "site value" for this system, with LmuTool.exe /SITEVALUE                                                      >> !REPORT_LOGFILE! 2>&1
@@ -5894,6 +5922,11 @@ if not defined LMS_CHECK_ID (
 	echo Configuration File: LMU PROFILE [!ProgramFiles!\Siemens\LMS\bin\LmuTool.profile]                                        >> !REPORT_LOGFILE! 2>&1
 	Type "!ProgramFiles!\Siemens\LMS\bin\LmuTool.profile"                                                                        >> !REPORT_LOGFILE! 2>&1
 	echo .                                                                                                                       >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo LMS Config Version: [read with LMU PowerShell command: Get-Lms -Version]                                                >> !REPORT_LOGFILE! 2>&1
+	echo     LMS Config Version: [read with LMU PowerShell command: Get-Lms -Version]
+	echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Get-Lms -Version}"                 >> !REPORT_LOGFILE! 2>&1
+	powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Get-Lms -Version}"                      >> !REPORT_LOGFILE! 2>&1 
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 	echo Configuration File: LMU SETTINGS [!LMS_PROGRAMDATA!\Config\LmuSettings]                                                 >> !REPORT_LOGFILE! 2>&1
