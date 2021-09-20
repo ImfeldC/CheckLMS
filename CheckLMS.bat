@@ -295,6 +295,8 @@ rem             - added LMU PowerShell command: get-lms -DisableClientInfo
 rem             - added LMU PowerShell command: get-lms -BorrowDays
 rem             - added LMU PowerShell command: get-lms -ProductCode
 rem             - added LMU PowerShell command: Get-Lms -SurExpirationDate
+rem     20-Sep-2021:
+rem        - support ecmcommonutil V1.23 (see 1605134: CheckLMS: Consider “ecmcommonutil.exe” (v:1.23.0.279766))
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -335,8 +337,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 08-Sep-2021"
-set LMS_SCRIPT_BUILD=20210908
+set LMS_SCRIPT_VERSION="CheckLMS Script 20-Sep-2021"
+set LMS_SCRIPT_BUILD=20210920
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -1576,18 +1578,25 @@ if not defined LMS_SKIPDOWNLOAD (
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/FNP/GetVMGenerationIdentifier.exe', '!LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe')"   >> !REPORT_LOGFILE! 2>&1
 			)
 			
-			rem Download tool "ecmcommonutil.exe" (from Flexera) to read-out host id's
+			rem Download tool "ecmcommonutil.exe" V1.19 (=ecmcommonutil_1.19.exe) (from Flexera) to read-out host id's
+			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe" (
+				echo     Download ecmcommonutil app: !LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe
+				echo Download ecmcommonutil app: !LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe                                             >> !REPORT_LOGFILE! 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/FNP/ecmcommonutil_1.19.exe', '!LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe')"   >> !REPORT_LOGFILE! 2>&1
+			)
+			
+			rem Download tool "ecmcommonutil.exe" V1.21 (from Flexera) to read-out host id's
 			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe" (
 				echo     Download ecmcommonutil app: !LMS_DOWNLOAD_PATH!\ecmcommonutil.exe
 				echo Download ecmcommonutil app: !LMS_DOWNLOAD_PATH!\ecmcommonutil.exe                                                  >> !REPORT_LOGFILE! 2>&1
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/FNP/ecmcommonutil.exe', '!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe')"   >> !REPORT_LOGFILE! 2>&1
 			)
 			
-			rem Download tool "ecmcommonutil.exe" V1.19 (=ecmcommonutil_1.19.exe) (from Flexera) to read-out host id's
-			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe" (
-				echo     Download ecmcommonutil app: !LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe
-				echo Download ecmcommonutil app: !LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe                                             >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/FNP/ecmcommonutil_1.19.exe', '!LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe')"   >> !REPORT_LOGFILE! 2>&1
+			rem Download tool "ecmcommonutil_x64_n6.exe" V1.23 (=ecmcommonutil_x64_n6_V1.23.exe) (from Flexera) to read-out host id's
+			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\ecmcommonutil_x64_n6_V1.23.exe" (
+				echo     Download ecmcommonutil app: !LMS_DOWNLOAD_PATH!\ecmcommonutil_x64_n6_V1.23.exe
+				echo Download ecmcommonutil app: !LMS_DOWNLOAD_PATH!\ecmcommonutil_x64_n6_V1.23.exe                                             >> !REPORT_LOGFILE! 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/FNP/ecmcommonutil_x64_n6_V1.23.exe', '!LMS_DOWNLOAD_PATH!\ecmcommonutil_x64_n6_V1.23.exe')"   >> !REPORT_LOGFILE! 2>&1
 			)
 			
 			rem Download newest dongle driver always, to ensure that older driver get overwritten
@@ -4795,17 +4804,61 @@ if exist "!REPORT_LOG_PATH!\VMECMID_Latest.txt" (
 	echo     ECM_VM_FAMILY=!ECM_VM_FAMILY_PREV! / ECM_VM_NAME=!ECM_VM_NAME_PREV! / ECM_VM_UUID=!ECM_VM_UUID_PREV! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID_PREV! / ECM_VM_GENID=!ECM_VM_GENID_PREV!  >> !REPORT_LOGFILE! 2>&1
 )
 
-echo ... read host id's [using ecmcommonutil.exe] ...
+echo -------------------------------------------------------                              >> !REPORT_LOGFILE! 2>&1
+echo ... read host id's [using ecmcommonutil_x64_n6_V1.23.exe] ...
+IF EXIST "!LMS_DOWNLOAD_PATH!\ecmcommonutil_x64_n6_V1.23.exe" (
+	rem log regular (non debug) output in general logfile
+	echo Read host id: device [using ecmcommonutil_x64_n6_V1.23.exe -l -f -d device]:      >> !REPORT_LOGFILE! 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil_x64_n6_V1.23.exe" -l -f device                      >> !REPORT_LOGFILE! 2>&1
+	echo Read host id: net [using ecmcommonutil_x64_n6_V1.23.exe -l -f -d net]:            >> !REPORT_LOGFILE! 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil_x64_n6_V1.23.exe" -l -f net                         >> !REPORT_LOGFILE! 2>&1
+	echo Read host id: smbios [using ecmcommonutil_x64_n6_V1.23.exe -l -f -d smbios]:      >> !REPORT_LOGFILE! 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil_x64_n6_V1.23.exe" -l -f smbios                      >> !REPORT_LOGFILE! 2>&1
+	echo Read host id: vm [using ecmcommonutil_x64_n6_V1.23.exe -l -f -d vm]:              >> !REPORT_LOGFILE! 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil_x64_n6_V1.23.exe" -l -f vm                          >> !REPORT_LOGFILE! 2>&1
+
+	rem log debug output in a separate file
+	echo -------------------------------------------------------                                             >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_x64_n6_1.23_device.txt 2>&1
+	echo Read host id: device [using ecmcommonutil_x64_n6_V1.23.exe -l -f -d device] at !DATE! !TIME! ....   >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_x64_n6_1.23_device.txt 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil_x64_n6_V1.23.exe" -l -f -d device                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_x64_n6_1.23_device.txt 2>&1
+	echo -------------------------------------------------------                                             >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_x64_n6_1.23_net.txt 2>&1
+	echo Read host id: net [using ecmcommonutil_x64_n6_V1.23.exe -l -f -d net] at !DATE! !TIME! ....         >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_x64_n6_1.23_net.txt 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil_x64_n6_V1.23.exe" -l -f -d net                                        >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_x64_n6_1.23_net.txt 2>&1
+	echo -------------------------------------------------------                                             >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_x64_n6_1.23_smbios.txt 2>&1
+	echo Read host id: smbios [using ecmcommonutil_x64_n6_V1.23.exe -l -f -d smbios] at !DATE! !TIME! ....   >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_x64_n6_1.23_smbios.txt 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil_x64_n6_V1.23.exe" -l -f -d smbios                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_x64_n6_1.23_smbios.txt 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil_x64_n6_V1.23.exe" -l -f -d smbios                                     >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_x64_n6_1.23_smbios_Latest.txt 2>&1
+	echo -------------------------------------------------------                                             >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_x64_n6_1.23_vm.txt 2>&1
+	echo Read host id: vm [using ecmcommonutil_x64_n6_V1.23.exe -l -f -d vm] at !DATE! !TIME! ....           >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_x64_n6_1.23_vm.txt 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil_x64_n6_V1.23.exe" -l -f -d vm                                         >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_x64_n6_1.23_vm.txt 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil_x64_n6_V1.23.exe" -l -f -d vm                                         >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_x64_n6_1.23_vm_Latest.txt 2>&1
+
+	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_x64_n6_1.23_smbios_Latest.txt" for /f "tokens=1,2 eol=@ delims==" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_x64_n6_1.23_smbios_Latest.txt ^|find /I "Smbios UUID"') do set "ECM_SMBIOS_UUID_3=%%B"
+	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_x64_n6_1.23_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_x64_n6_1.23_vm_Latest.txt ^|findstr /I /B "FAMILY"') do if not "%%B" == " ERROR - Unavailable." set "ECM_VM_FAMILY_3=%%B"
+	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_x64_n6_1.23_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_x64_n6_1.23_vm_Latest.txt ^|findstr /I /B "NAME"') do if not "%%B" == " ERROR - Unavailable." set "ECM_VM_NAME_3=%%B"
+	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_x64_n6_1.23_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_x64_n6_1.23_vm_Latest.txt ^|findstr /I /B "UUID"') do if not "%%B" == " ERROR - Unavailable." set "ECM_VM_UUID_3=%%B"
+	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_x64_n6_1.23_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_x64_n6_1.23_vm_Latest.txt ^|findstr /I /B "GENID"') do if not "%%B" == " ERROR - Unavailable." set "ECM_VM_GENID_3=%%B"
+	
+	echo Current ECM values, collected with ecmcommonutil ...                                                                                                                                       >> !REPORT_LOGFILE! 2>&1
+	echo     ECM_VM_FAMILY=!ECM_VM_FAMILY_3! / ECM_VM_NAME=!ECM_VM_NAME_3! / ECM_VM_UUID=!ECM_VM_UUID_3! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID_3! / ECM_VM_GENID=!ECM_VM_GENID_3!                      >> !REPORT_LOGFILE! 2>&1
+	echo     ECM_VM_FAMILY=!ECM_VM_FAMILY_3! / ECM_VM_NAME=!ECM_VM_NAME_3! / ECM_VM_UUID=!ECM_VM_UUID_3! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID_3! / ECM_VM_GENID=!ECM_VM_GENID_3!  at !DATE! / !TIME! / using ecmcommonutil.exe [V1.23] >> !REPORT_LOG_PATH!\VMECMID.txt 2>&1
+	echo     ECM_VM_FAMILY=!ECM_VM_FAMILY_3! / ECM_VM_NAME=!ECM_VM_NAME_3! / ECM_VM_UUID=!ECM_VM_UUID_3! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID_3! / ECM_VM_GENID=!ECM_VM_GENID_3!  at !DATE! / !TIME! / using ecmcommonutil.exe [V1.23] >  !REPORT_LOG_PATH!\VMECMID_Latest.txt 2>&1
+
+) else (
+	echo     ecmcommonutil_x64_n6_V1.23.exe doesn't exist, cannot perform operation.                 >> !REPORT_LOGFILE! 2>&1
+)
+echo -------------------------------------------------------                                         >> !REPORT_LOGFILE! 2>&1
+echo ... read host id's [using ecmcommonutil.exe V1.21] ...
 IF EXIST "!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe" (
 	rem log regular (non debug) output in general logfile
-	echo Read host id: device [using ecmcommonutil.exe -l -f -d device]:                                                     >> !REPORT_LOGFILE! 2>&1
-	"!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe" -l -f device                                                                     >> !REPORT_LOGFILE! 2>&1
-	echo Read host id: net [using ecmcommonutil.exe -l -f -d net]:                                                           >> !REPORT_LOGFILE! 2>&1
-	"!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe" -l -f net                                                                        >> !REPORT_LOGFILE! 2>&1
-	echo Read host id: smbios [using ecmcommonutil.exe -l -f -d smbios]:                                                     >> !REPORT_LOGFILE! 2>&1
-	"!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe" -l -f smbios                                                                     >> !REPORT_LOGFILE! 2>&1
-	echo Read host id: vm [using ecmcommonutil.exe -l -f -d vm]:                                                             >> !REPORT_LOGFILE! 2>&1
-	"!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe" -l -f vm                                                                         >> !REPORT_LOGFILE! 2>&1
+	echo Read host id: device [using ecmcommonutil.exe -l -f -d device]:                             >> !REPORT_LOGFILE! 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe" -l -f device                                             >> !REPORT_LOGFILE! 2>&1
+	echo Read host id: net [using ecmcommonutil.exe -l -f -d net]:                                   >> !REPORT_LOGFILE! 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe" -l -f net                                                >> !REPORT_LOGFILE! 2>&1
+	echo Read host id: smbios [using ecmcommonutil.exe -l -f -d smbios]:                             >> !REPORT_LOGFILE! 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe" -l -f smbios                                             >> !REPORT_LOGFILE! 2>&1
+	echo Read host id: vm [using ecmcommonutil.exe -l -f -d vm]:                                     >> !REPORT_LOGFILE! 2>&1
+	"!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe" -l -f vm                                                 >> !REPORT_LOGFILE! 2>&1
 
 	rem log debug output in a separate file
 	echo -------------------------------------------------------                                     >> !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_device.txt 2>&1
@@ -4835,7 +4888,7 @@ IF EXIST "!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe" (
 	echo Current ECM values, collected with ecmcommonutil ...                                                                                                                             >> !REPORT_LOGFILE! 2>&1
 	echo     ECM_VM_FAMILY=!ECM_VM_FAMILY! / ECM_VM_NAME=!ECM_VM_NAME! / ECM_VM_UUID=!ECM_VM_UUID! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID! / ECM_VM_GENID=!ECM_VM_GENID!                      >> !REPORT_LOGFILE! 2>&1
 	echo     ECM_VM_FAMILY=!ECM_VM_FAMILY! / ECM_VM_NAME=!ECM_VM_NAME! / ECM_VM_UUID=!ECM_VM_UUID! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID! / ECM_VM_GENID=!ECM_VM_GENID!  at !DATE! / !TIME! / using ecmcommonutil.exe [V1.21] >> !REPORT_LOG_PATH!\VMECMID.txt 2>&1
-	rem use latest values from ecmcommonutil V1.19 as they same more reliable on some virtual machines
+	rem use latest values from ecmcommonutil V1.19 as they seem more reliable on some virtual machines
 	rem echo     ECM_VM_FAMILY=!ECM_VM_FAMILY! / ECM_VM_NAME=!ECM_VM_NAME! / ECM_VM_UUID=!ECM_VM_UUID! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID! / ECM_VM_GENID=!ECM_VM_GENID!  at !DATE! / !TIME! / using ecmcommonutil.exe [V1.21] >  !REPORT_LOG_PATH!\VMECMID_Latest.txt 2>&1
 	
 ) else (
@@ -4880,7 +4933,9 @@ IF EXIST "!LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe" (
 	echo Current ECM values, collected with ecmcommonutil ...                                                                                                                             >> !REPORT_LOGFILE! 2>&1
 	echo     ECM_VM_FAMILY=!ECM_VM_FAMILY_2! / ECM_VM_NAME=!ECM_VM_NAME_2! / ECM_VM_UUID=!ECM_VM_UUID_2! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID_2! / ECM_VM_GENID=!ECM_VM_GENID_2!                      >> !REPORT_LOGFILE! 2>&1
 	echo     ECM_VM_FAMILY=!ECM_VM_FAMILY_2! / ECM_VM_NAME=!ECM_VM_NAME_2! / ECM_VM_UUID=!ECM_VM_UUID_2! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID_2! / ECM_VM_GENID=!ECM_VM_GENID_2!  at !DATE! / !TIME! / using ecmcommonutil.exe [V1.19] >> !REPORT_LOG_PATH!\VMECMID.txt 2>&1
-	echo     ECM_VM_FAMILY=!ECM_VM_FAMILY_2! / ECM_VM_NAME=!ECM_VM_NAME_2! / ECM_VM_UUID=!ECM_VM_UUID_2! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID_2! / ECM_VM_GENID=!ECM_VM_GENID_2!  at !DATE! / !TIME! / using ecmcommonutil.exe [V1.19] >  !REPORT_LOG_PATH!\VMECMID_Latest.txt 2>&1
+
+	rem use latest values from ecmcommonutil V1.23 as this tool is of newer version
+	rem echo     ECM_VM_FAMILY=!ECM_VM_FAMILY_2! / ECM_VM_NAME=!ECM_VM_NAME_2! / ECM_VM_UUID=!ECM_VM_UUID_2! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID_2! / ECM_VM_GENID=!ECM_VM_GENID_2!  at !DATE! / !TIME! / using ecmcommonutil.exe [V1.19] >  !REPORT_LOG_PATH!\VMECMID_Latest.txt 2>&1
 
 ) else (
 	echo     ecmcommonutil_1.19.exe doesn't exist, cannot perform operation.                                                 >> !REPORT_LOGFILE! 2>&1
