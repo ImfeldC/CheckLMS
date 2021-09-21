@@ -300,6 +300,8 @@ rem        - support ecmcommonutil V1.23 (see 1605134: CheckLMS: Consider “ecm
 rem        - retrieve further available information with ecmcommonutil V1.23: dongle, hostid, docker, tpm, wmi
 rem        - run full test, suing: ecmcommonutil_x64_n6_V1.23.exe" -t -f
 rem        - add summary section, with results of all three available ecmcommonutil tools (V1.19, V1.21 and V1.23)
+rem     21-Sep-2021:
+rem        - DO NOT DELETE, AS OLDER SCRIPTS STILL START THOSE FILES
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -340,8 +342,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 20-Sep-2021"
-set LMS_SCRIPT_BUILD=20210920
+set LMS_SCRIPT_VERSION="CheckLMS Script 21-Sep-2021"
+set LMS_SCRIPT_BUILD=20210921
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -461,8 +463,9 @@ IF NOT EXIST "!LMS_DOWNLOAD_PATH!\LMSSetup" (
 )
 
 rem clean-up files downloaded used with older CheckLMS script
-rmdir /S /Q !LMS_DOWNLOAD_PATH!\git >nul 2>&1
-del !LMS_DOWNLOAD_PATH!\CheckLMS.exe >nul 2>&1
+rem **** DO NOT DELETE, AS OLDER SCRIPTS STILL START THOSE FILES ****
+rem rmdir /S /Q !LMS_DOWNLOAD_PATH!\git >nul 2>&1
+rem del !LMS_DOWNLOAD_PATH!\CheckLMS.exe >nul 2>&1
 
 rem clean-up logfiles created with older CheckLMS script
 del !REPORT_LOG_PATH!\eventlog_*.txt >nul 2>&1
