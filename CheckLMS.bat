@@ -302,6 +302,8 @@ rem        - run full test, suing: ecmcommonutil_x64_n6_V1.23.exe" -t -f
 rem        - add summary section, with results of all three available ecmcommonutil tools (V1.19, V1.21 and V1.23)
 rem     21-Sep-2021:
 rem        - DO NOT DELETE, AS OLDER SCRIPTS STILL START THOSE FILES
+rem     22-Sep-2021:
+rem        - disable FT version, publish script for LMS 2.6.840
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -342,16 +344,16 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 21-Sep-2021"
-set LMS_SCRIPT_BUILD=20210921
+set LMS_SCRIPT_VERSION="CheckLMS Script 22-Sep-2021"
+set LMS_SCRIPT_BUILD=20210922
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
 set MOST_RECENT_LMS_BUILD=824
 rem most recent lms field test version: 2.6.839 (per 07-Sep-2021)
 rem - if not set, it is not downloaded.
-set MOST_RECENT_FT_LMS_VERSION=2.6.839
-set MOST_RECENT_FT_LMS_BUILD=839
+rem set MOST_RECENT_FT_LMS_VERSION=2.6.839
+rem set MOST_RECENT_FT_LMS_BUILD=839
 rem most recent dongle driver version (per 12-Jul-2021, LMS 2.6)
 set MOST_RECENT_DONGLE_DRIVER_VERSION=8.21
 set MOST_RECENT_DONGLE_DRIVER_MAJ_VERSION=8
