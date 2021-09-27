@@ -304,6 +304,9 @@ rem     21-Sep-2021:
 rem        - DO NOT DELETE, AS OLDER SCRIPTS STILL START THOSE FILES
 rem     22-Sep-2021:
 rem        - disable FT version, publish script for LMS 2.6.840
+rem     27-Sep-2021:
+rem        - fixed issue with '!ALLUSERSPROFILE!' term in for loops, replaced them with '%ALLUSERSPROFILE%'
+rem        - fixed issue with '!temp!' term in for loops, replaced them with '%temp%'
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -344,8 +347,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 22-Sep-2021"
-set LMS_SCRIPT_BUILD=20210922
+set LMS_SCRIPT_VERSION="CheckLMS Script 27-Sep-2021"
+set LMS_SCRIPT_BUILD=20210927
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -5106,7 +5109,7 @@ if not defined LMS_SKIPFNP (
 	if exist "!ALLUSERSPROFILE!\FLEXnet\" (
 		del !CHECKLMS_REPORT_LOG_PATH!\tfsFilesFound.txt >nul 2>&1
 		cd !ALLUSERSPROFILE!\FLEXnet\
-		FOR /r !ALLUSERSPROFILE!\FLEXnet\ %%X IN (*tsf.data) DO echo %%~dpnxX >> !CHECKLMS_REPORT_LOG_PATH!\tfsFilesFound.txt
+		FOR /r %ALLUSERSPROFILE%\FLEXnet\ %%X IN (*tsf.data) DO echo %%~dpnxX >> !CHECKLMS_REPORT_LOG_PATH!\tfsFilesFound.txt
 		Type !CHECKLMS_REPORT_LOG_PATH!\tfsFilesFound.txt                                                                        >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo     No files found, the directory '!ALLUSERSPROFILE!\FLEXnet\' doesn't exist.                                       >> !REPORT_LOGFILE! 2>&1
@@ -5316,7 +5319,7 @@ if not defined LMS_SKIPFNP (
 	if exist "!ALLUSERSPROFILE!\FLEXnet\" (
 		del !CHECKLMS_REPORT_LOG_PATH!\FlexeraLogFilesFound.txt >nul 2>&1
 		cd !ALLUSERSPROFILE!\FLEXnet\
-		FOR /r !ALLUSERSPROFILE!\FLEXnet\ %%X IN (*.log) DO echo %%~dpnxX >> !CHECKLMS_REPORT_LOG_PATH!\FlexeraLogFilesFound.txt
+		FOR /r %ALLUSERSPROFILE%\FLEXnet\ %%X IN (*.log) DO echo %%~dpnxX >> !CHECKLMS_REPORT_LOG_PATH!\FlexeraLogFilesFound.txt
 		Type !CHECKLMS_REPORT_LOG_PATH!\FlexeraLogFilesFound.txt                                                                 >> !REPORT_LOGFILE! 2>&1
 		FOR %%X IN (!ALLUSERSPROFILE!\FLEXnet\*.log) DO ( 
 			echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1 
@@ -6117,7 +6120,7 @@ if not defined LMS_SKIPSSU (
 	del !CHECKLMS_SSU_PATH!\MSISetupLogFilesFound.txt >nul 2>&1
 	del !CHECKLMS_SSU_PATH!\SSUSetupLogFilesFound.txt >nul 2>&1
 	cd !temp!
-	FOR /r !temp! %%X IN (MSI*.log) DO (
+	FOR /r %temp% %%X IN (MSI*.log) DO (
 		set SSU_SETUP_LOGFILE_FOUND=
 		echo %%~dpnxX >> !CHECKLMS_SSU_PATH!\MSISetupLogFilesFound.txt
 		for /f "tokens=1 delims= eol=@" %%i in ('type %%~dpnxX ^|find /I "******* Product:"') do echo %%i >> !CHECKLMS_SSU_PATH!\MSISetupLogFilesFound.txt
@@ -6130,6 +6133,8 @@ if not defined LMS_SKIPSSU (
 		echo MSI setup logfiles [MSI*.log] [on !temp!]:                                                                          >> !REPORT_LOGFILE! 2>&1
 		Type !CHECKLMS_SSU_PATH!\MSISetupLogFilesFound.txt                                                                       >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1 
+	) else (
+		echo     No MSI setup logfile [MSI*.log] found on !temp!.                                                                >> !REPORT_LOGFILE! 2>&1                                                                
 	)
 	IF EXIST "!CHECKLMS_SSU_PATH!\SSUSetupLogFilesFound.txt" (
 		echo SSU setup logfiles [MSI*.log] [on !temp!]:                                                                          >> !REPORT_LOGFILE! 2>&1
