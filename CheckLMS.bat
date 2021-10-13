@@ -307,6 +307,8 @@ rem        - disable FT version, publish script for LMS 2.6.840
 rem     27-Sep-2021:
 rem        - fixed issue with '!ALLUSERSPROFILE!' term in for loops, replaced them with '%ALLUSERSPROFILE%'
 rem        - fixed issue with '!temp!' term in for loops, replaced them with '%temp%'
+rem     13-Oct-2021:
+rem        - add command "Get-ComputerInfo -property 'HyperV*'"
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -347,8 +349,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 27-Sep-2021"
-set LMS_SCRIPT_BUILD=20210927
+set LMS_SCRIPT_VERSION="CheckLMS Script 13-Oct-2021"
+set LMS_SCRIPT_BUILD=20211013
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -3276,11 +3278,11 @@ echo ... read network settings ...
 if not defined LMS_SKIPNETSETTINGS (
 	echo ---------------- powershell -command "Get-NetAdapterBinding -ComponentID ms_tcpip"                                      >> !REPORT_LOGFILE! 2>&1
 	echo ... retrieve adapter bindings for IPv4 ...
-	echo Retrieve powershell version [using 'powershell -command "Get-NetAdapterBinding -ComponentID ms_tcpip"']:                >> !REPORT_LOGFILE! 2>&1
+	echo Retrieve adapter bindings for IPv4 [using 'powershell -command "Get-NetAdapterBinding -ComponentID ms_tcpip"']:         >> !REPORT_LOGFILE! 2>&1
 	powershell -command "Get-NetAdapterBinding -ComponentID ms_tcpip"                                                            >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- powershell -command "Get-NetAdapterBinding -ComponentID ms_tcpip6"                                     >> !REPORT_LOGFILE! 2>&1
 	echo ... retrieve adapter bindings for IPv6 ...
-	echo Retrieve powershell version [using 'powershell -command "Get-NetAdapterBinding -ComponentID ms_tcpip6"']:               >> !REPORT_LOGFILE! 2>&1
+	echo Retrieve adapter bindings for IPv6 [using 'powershell -command "Get-NetAdapterBinding -ComponentID ms_tcpip6"']:        >> !REPORT_LOGFILE! 2>&1
 	powershell -command "Get-NetAdapterBinding -ComponentID ms_tcpip6"                                                           >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- Displays the current ephemeral port range: netsh int ipv4 show dynamicport tcp                         >> !REPORT_LOGFILE! 2>&1
 	echo     Displays the current ephemeral port range: netsh int ipv4 show dynamicport tcp
@@ -3373,50 +3375,55 @@ if not defined LMS_CHECK_ID (
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 )
-echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-echo =   V I R T U A L   E N V I R O N M E N T                                    =                                          >> !REPORT_LOGFILE! 2>&1
-echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================                                   >> !REPORT_LOGFILE! 2>&1
+echo =   V I R T U A L   E N V I R O N M E N T                                    =                                   >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================                                   >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! ....                                                                                      >> !REPORT_LOGFILE! 2>&1
 echo ... get information of virtual environment ...
-echo Get information of virtual environment ...                                                                             >> !REPORT_LOGFILE! 2>&1
+echo Get information of virtual environment ...                                                                       >> !REPORT_LOGFILE! 2>&1
 if /I "!LMS_IS_VM!"=="true" (
 	echo     Running on a virtual machine.
-	echo Running on a virtual machine. LMS_IS_VM=!LMS_IS_VM!                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo Running on a virtual machine. LMS_IS_VM=!LMS_IS_VM!                                                          >> !REPORT_LOGFILE! 2>&1
 ) else if /I "!LMS_IS_VM!"=="false" (
 	echo     NOT running on a virtual machine.
-	echo NOT running on a virtual machine. LMS_IS_VM=!LMS_IS_VM!                                                             >> !REPORT_LOGFILE! 2>&1
+	echo NOT running on a virtual machine. LMS_IS_VM=!LMS_IS_VM!                                                      >> !REPORT_LOGFILE! 2>&1
 ) else (
 	echo     Not clear if running on a virtual machine or not. LMS_IS_VM=!LMS_IS_VM!
-	echo Not clear if running on a virtual machine or not. LMS_IS_VM=!LMS_IS_VM!                                             >> !REPORT_LOGFILE! 2>&1
+	echo Not clear if running on a virtual machine or not. LMS_IS_VM=!LMS_IS_VM!                                      >> !REPORT_LOGFILE! 2>&1
 )
-
+rem How to check if Intel Virtualization is enabled without going to BIOS in Windows 10
+rem https://stackoverflow.com/questions/49005791/how-to-check-if-intel-virtualization-is-enabled-without-going-to-bios-in-windows
+echo ---------------- powershell -command "Get-ComputerInfo -property 'HyperV*'"                                      >> !REPORT_LOGFILE! 2>&1
+echo ... retrieve virtualization settings (on Windows 10) ...
+echo Retrieve virtualization settings [using 'powershell -command "Get-ComputerInfo -property 'HyperV*'"']:           >> !REPORT_LOGFILE! 2>&1
+powershell -command "Get-ComputerInfo -property 'HyperV*'"                                                            >> !REPORT_LOGFILE! 2>&1
 if /I "!LMS_IS_VM!"=="true" (
 	rem call further commands only, when running on a virtual machine, wthin a hypervisor.
 
 	rem Read VM Generation Id
 	IF EXIST "!LMS_DOWNLOAD_PATH!\VMGENID.EXE" (
-		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
+		echo -------------------------------------------------------                                                  >> !REPORT_LOGFILE! 2>&1
 		echo ... read VM Generation Id [using VMGENID.EXE] ...
-		echo Read VM Generation Id [using VMGENID.EXE]:                                                                      >> !REPORT_LOGFILE! 2>&1
-		"!LMS_DOWNLOAD_PATH!\VMGENID.EXE"                                                                                    >> !REPORT_LOGFILE! 2>&1
-		echo .                                                                                                               >> !REPORT_LOGFILE! 2>&1
+		echo Read VM Generation Id [using VMGENID.EXE]:                                                               >> !REPORT_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\VMGENID.EXE"                                                                             >> !REPORT_LOGFILE! 2>&1
+		echo .                                                                                                        >> !REPORT_LOGFILE! 2>&1
 	)
 	IF EXIST "!LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe" (
-		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
+		echo -------------------------------------------------------                                                  >> !REPORT_LOGFILE! 2>&1
 		if exist "C:\WINDOWS\system32\MSVCR120.dll" (
 			echo ... read VM Generation Id [using GetVMGenerationIdentifier.exe] ...
-			echo Read VM Generation Id [using GetVMGenerationIdentifier.exe]:                                                >> !REPORT_LOGFILE! 2>&1
-			"!LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe"                                                              >> !REPORT_LOGFILE! 2>&1
-			echo .                                                                                                           >> !REPORT_LOGFILE! 2>&1
+			echo Read VM Generation Id [using GetVMGenerationIdentifier.exe]:                                         >> !REPORT_LOGFILE! 2>&1
+			"!LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe"                                                       >> !REPORT_LOGFILE! 2>&1
+			echo .                                                                                                    >> !REPORT_LOGFILE! 2>&1
 		) else (
 			echo ... read VM Generation Id [using GetVMGenerationIdentifier.exe], skipped because 'C:\WINDOWS\system32\MSVCR120.dll' doesn't exist.
 			echo Read VM Generation Id [using GetVMGenerationIdentifier.exe], skipped because 'C:\WINDOWS\system32\MSVCR120.dll' doesn't exist.      >> !REPORT_LOGFILE! 2>&1
 		)
 	)
 	
-	echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
+	echo ==============================================================================                               >> !REPORT_LOGFILE! 2>&1
 	echo ... read AWS instance identity document ...
-	echo Read AWS instance identity document:                                                                                >> !REPORT_LOGFILE! 2>&1
+	echo Read AWS instance identity document:                                                                         >> !REPORT_LOGFILE! 2>&1
 	if exist "!REPORT_LOG_PATH!\AWS_Latest.txt" (
 		for /f "tokens=1,2,3,4,* eol=@ delims=,/ " %%A in ('type !REPORT_LOG_PATH!\AWS_Latest.txt ^|find /I "AWS_ACCID"') do (
 			rem echo %%A / %%B / %%C // %%F
