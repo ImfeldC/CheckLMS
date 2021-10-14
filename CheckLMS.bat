@@ -309,6 +309,8 @@ rem        - fixed issue with '!ALLUSERSPROFILE!' term in for loops, replaced th
 rem        - fixed issue with '!temp!' term in for loops, replaced them with '%temp%'
 rem     13-Oct-2021:
 rem        - add command "Get-ComputerInfo -property 'HyperV*'"
+rem     14-Oct-2021:
+rem        - detect manufacturer of network adapter; this allows to determine the hypervisor
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -349,8 +351,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 13-Oct-2021"
-set LMS_SCRIPT_BUILD=20211013
+set LMS_SCRIPT_VERSION="CheckLMS Script 14-Oct-2021"
+set LMS_SCRIPT_BUILD=20211014
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -3397,6 +3399,11 @@ echo ---------------- powershell -command "Get-ComputerInfo -property 'HyperV*'"
 echo ... retrieve virtualization settings (on Windows 10) ...
 echo Retrieve virtualization settings [using 'powershell -command "Get-ComputerInfo -property 'HyperV*'"']:           >> !REPORT_LOGFILE! 2>&1
 powershell -command "Get-ComputerInfo -property 'HyperV*'"                                                            >> !REPORT_LOGFILE! 2>&1
+rem According to https://www.splunk.com/en_us/blog/tips-and-tricks/detecting-your-hypervisor-from-within-a-windows-guest-os.html
+echo ---------------- powershell -command "Get-NetIPAddress...."                                              >> !REPORT_LOGFILE! 2>&1
+echo ... retrieve Manufacturer of network adapters ...
+echo Retrieve Manufacturer of network adapters [using 'powershell -command "Get-NetIPAddress...."]:           >> !REPORT_LOGFILE! 2>&1
+powershell -command "Get-NetIPAddress | Where Prefix-Origin -ne 'WellKnown' | ` Select IPAddress,AddressFamily, ` @{n='MacAddress';e={(Get-NetAdapter -InterfaceIndex $_.ifIndex).MacAddress}}, ` @{n='Manufacturer';e={(Get-WmiObject -query 'SELECT * FROM Win32_ComputerSystem').Manufacturer}}"    >> !REPORT_LOGFILE! 2>&1
 if /I "!LMS_IS_VM!"=="true" (
 	rem call further commands only, when running on a virtual machine, wthin a hypervisor.
 
