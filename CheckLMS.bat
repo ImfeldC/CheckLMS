@@ -311,6 +311,11 @@ rem     13-Oct-2021:
 rem        - add command "Get-ComputerInfo -property 'HyperV*'"
 rem     14-Oct-2021:
 rem        - detect manufacturer of network adapter; this allows to determine the hypervisor
+rem     08-Nov-2021:
+rem        - add "WEVTUtil query-events Microsoft-Windows-Hyper-V-Compute-Operational /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Microsoft-Windows-Hyper-V-Compute']]]""
+rem        - add powershell -command "Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V"
+rem        - add powershell -command "Get-WindowsOptionalFeature -Online -FeatureName *Hyper-V*"
+rem        - add powershell -command "get-service | findstr vmcompute"
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -351,8 +356,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 14-Oct-2021"
-set LMS_SCRIPT_BUILD=20211014
+set LMS_SCRIPT_VERSION="CheckLMS Script 08-Nov-2021"
+set LMS_SCRIPT_BUILD=20211108
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -3393,14 +3398,44 @@ if /I "!LMS_IS_VM!"=="true" (
 	echo     Not clear if running on a virtual machine or not. LMS_IS_VM=!LMS_IS_VM!
 	echo Not clear if running on a virtual machine or not. LMS_IS_VM=!LMS_IS_VM!                                      >> !REPORT_LOGFILE! 2>&1
 )
+echo ... retrieve virtualization settings (on Windows 10) ...
+echo ---------------- powershell -command "Get-ComputerInfo -property 'HyperV*'"                                      >> !REPORT_LOGFILE! 2>&1
 rem How to check if Intel Virtualization is enabled without going to BIOS in Windows 10
 rem https://stackoverflow.com/questions/49005791/how-to-check-if-intel-virtualization-is-enabled-without-going-to-bios-in-windows
-echo ---------------- powershell -command "Get-ComputerInfo -property 'HyperV*'"                                      >> !REPORT_LOGFILE! 2>&1
-echo ... retrieve virtualization settings (on Windows 10) ...
 echo Retrieve virtualization settings [using 'powershell -command "Get-ComputerInfo -property 'HyperV*'"']:           >> !REPORT_LOGFILE! 2>&1
 powershell -command "Get-ComputerInfo -property 'HyperV*'"                                                            >> !REPORT_LOGFILE! 2>&1
-rem According to https://www.splunk.com/en_us/blog/tips-and-tricks/detecting-your-hypervisor-from-within-a-windows-guest-os.html
+echo ---------------- powershell -command "Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V"         >> !REPORT_LOGFILE! 2>&1
+if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
+	rem https://docs.microsoft.com/en-us/powershell/module/dism/get-windowsoptionalfeature?view=windowsserver2019-ps
+	rem https://superuser.com/questions/1026651/how-to-find-out-whether-hyper-v-is-currently-enabled-running
+	echo Retrieve virtualization settings [using 'powershell -command "Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V"']:   >> !REPORT_LOGFILE! 2>&1
+	powershell -command "Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V"                           >> !REPORT_LOGFILE! 2>&1
+) else (
+	echo WARNING: Cannot retrieve virtualization settings, start script with administrator priviledge.                >> !REPORT_LOGFILE! 2>&1
+)
+echo ---------------- powershell -command "Get-WindowsOptionalFeature -Online -FeatureName *Hyper-V*"                 >> !REPORT_LOGFILE! 2>&1
+if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
+	echo Retrieve virtualization settings [using 'powershell -command "Get-WindowsOptionalFeature -Online -FeatureName *Hyper-V*"']:   >> !REPORT_LOGFILE! 2>&1
+	powershell -command "Get-WindowsOptionalFeature -Online -FeatureName *Hyper-V*"                                   >> !REPORT_LOGFILE! 2>&1
+) else (
+	echo WARNING: Cannot retrieve virtualization settings, start script with administrator priviledge.                >> !REPORT_LOGFILE! 2>&1
+)
+echo ---------------- powershell -command "get-service | findstr vmcompute"                                           >> !REPORT_LOGFILE! 2>&1
+rem  https://superuser.com/questions/1026651/how-to-find-out-whether-hyper-v-is-currently-enabled-running
+echo Retrieve virtualization settings [using 'powershell -command "get-service | findstr vmcompute"']:                >> !REPORT_LOGFILE! 2>&1
+powershell -command "get-service | findstr vmcompute"                                                                 >> !REPORT_LOGFILE! 2>&1
+echo -------------------------------------------------------                                                          >> !REPORT_LOGFILE! 2>&1
+if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
+	rem  https://superuser.com/questions/1026651/how-to-find-out-whether-hyper-v-is-currently-enabled-running
+	echo Windows Event Log: Microsoft-Windows-Hyper-V-Compute-Operational                                             >> !REPORT_LOGFILE! 2>&1
+	echo     see !CHECKLMS_REPORT_LOG_PATH!\eventlog_hyperv_operational.txt                                           >> !REPORT_LOGFILE! 2>&1
+	WEVTUtil query-events Microsoft-Windows-Hyper-V-Compute-Operational /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Microsoft-Windows-Hyper-V-Compute']]]" > !CHECKLMS_REPORT_LOG_PATH!\eventlog_hyperv_operational.txt 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_hyperv_operational.txt' | Select-Object -first %LOG_FILE_LINES%}" >> !REPORT_LOGFILE! 2>&1
+) else (
+	echo WARNING: Windows Event Log: Microsoft-Windows-Hyper-V-Compute-Operational, start script with administrator priviledge. >> !REPORT_LOGFILE! 2>&1
+)
 echo ---------------- powershell -command "Get-NetIPAddress...."                                              >> !REPORT_LOGFILE! 2>&1
+rem According to https://www.splunk.com/en_us/blog/tips-and-tricks/detecting-your-hypervisor-from-within-a-windows-guest-os.html
 echo ... retrieve Manufacturer of network adapters ...
 echo Retrieve Manufacturer of network adapters [using 'powershell -command "Get-NetIPAddress...."]:           >> !REPORT_LOGFILE! 2>&1
 powershell -command "Get-NetIPAddress | Where Prefix-Origin -ne 'WellKnown' | ` Select IPAddress,AddressFamily, ` @{n='MacAddress';e={(Get-NetAdapter -InterfaceIndex $_.ifIndex).MacAddress}}, ` @{n='Manufacturer';e={(Get-WmiObject -query 'SELECT * FROM Win32_ComputerSystem').Manufacturer}}"    >> !REPORT_LOGFILE! 2>&1
