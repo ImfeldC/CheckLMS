@@ -316,6 +316,9 @@ rem        - add "WEVTUtil query-events Microsoft-Windows-Hyper-V-Compute-Operat
 rem        - add powershell -command "Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V"
 rem        - add powershell -command "Get-WindowsOptionalFeature -Online -FeatureName *Hyper-V*"
 rem        - add powershell -command "get-service | findstr vmcompute"
+rem     15-Nov-2021:
+rem        - adjust most recent BT ALM plugin version: 1.1.43.0
+rem        - adjust most recent dongle driver version: 8.31
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -356,8 +359,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 08-Nov-2021"
-set LMS_SCRIPT_BUILD=20211108
+set LMS_SCRIPT_VERSION="CheckLMS Script 15-Nov-2021"
+set LMS_SCRIPT_BUILD=20211115
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -366,12 +369,12 @@ rem most recent lms field test version: 2.6.839 (per 07-Sep-2021)
 rem - if not set, it is not downloaded.
 rem set MOST_RECENT_FT_LMS_VERSION=2.6.839
 rem set MOST_RECENT_FT_LMS_BUILD=839
-rem most recent dongle driver version (per 12-Jul-2021, LMS 2.6)
-set MOST_RECENT_DONGLE_DRIVER_VERSION=8.21
+rem most recent dongle driver version (per 15-Nov-2021, LMS 2.6)
+set MOST_RECENT_DONGLE_DRIVER_VERSION=8.31
 set MOST_RECENT_DONGLE_DRIVER_MAJ_VERSION=8
-set MOST_RECENT_DONGLE_DRIVER_MIN_VERSION=21
-rem most recent BT ALM plugin (per 15-Nov-2019)
-set MOST_RECENT_BT_ALM_PLUGIN=1.1.42.0
+set MOST_RECENT_DONGLE_DRIVER_MIN_VERSION=31
+rem most recent BT ALM plugin (per 15-Nov-2021, LMS 2.6)
+set MOST_RECENT_BT_ALM_PLUGIN=1.1.43.0
 
 rem Internal Settings
 set LOG_FILE_LINES=200
@@ -8042,13 +8045,19 @@ if defined ALM_VERSION_STRING (
 ) else (
 	echo No ALM installed.                                                                                               >> !REPORT_LOGFILE! 2>&1
 )
-if defined BTALMPLUGINVersion (
-	echo Installed BT ALM Plugin Version: !BTALMPLUGINVersion!                                                           >> !REPORT_LOGFILE! 2>&1
-	if "!BTALMPLUGINVersion!" == "!MOST_RECENT_BT_ALM_PLUGIN!" (
-		echo     Most recent BT ALM plugin !MOST_RECENT_BT_ALM_PLUGIN! installed on the system.                          >> !REPORT_LOGFILE! 2>&1
+if not defined LMS_SKIPBTALMPLUGIN (
+	if defined BTALMPLUGINVersion (
+		echo Installed BT ALM Plugin Version: !BTALMPLUGINVersion!                                                       >> !REPORT_LOGFILE! 2>&1
+		if "!BTALMPLUGINVersion!" == "!MOST_RECENT_BT_ALM_PLUGIN!" (
+			echo     Most recent BT ALM plugin !MOST_RECENT_BT_ALM_PLUGIN! installed on the system.                      >> !REPORT_LOGFILE! 2>&1
+		) else (
+			echo     There is not the most recent BT ALM plugin !MOST_RECENT_BT_ALM_PLUGIN! installed on the system.     >> !REPORT_LOGFILE! 2>&1
+		)
 	) else (
-		echo     There is not the most recent BT ALM plugin !MOST_RECENT_BT_ALM_PLUGIN! installed on the system.         >> !REPORT_LOGFILE! 2>&1
+		echo There is NO BT ALM plugin installed on the system.                                                          >> !REPORT_LOGFILE! 2>&1
 	)
+) else (
+	echo SKIPPED BT ALM plugin section. The script didn't execute the BT ALM plugin commands.                            >> !REPORT_LOGFILE! 2>&1
 )
 if not defined LMS_CHECK_ID (
 	if not defined backuppath (
