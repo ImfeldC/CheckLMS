@@ -319,6 +319,8 @@ rem        - add powershell -command "get-service | findstr vmcompute"
 rem     15-Nov-2021:
 rem        - adjust most recent BT ALM plugin version: 1.1.43.0
 rem        - adjust most recent dongle driver version: 8.31
+rem     30-Nov-2021:
+rem        - align bginfo, use dedicated bginfo config batch file (remove content from CheckLMS)
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -359,8 +361,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 15-Nov-2021"
-set LMS_SCRIPT_BUILD=20211115
+set LMS_SCRIPT_VERSION="CheckLMS Script 30-Nov-2021"
+set LMS_SCRIPT_BUILD=20211130
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -1745,13 +1747,7 @@ if defined LMS_SET_BGINFO (
 	echo This file is used to enable setbginfo at each run of CheckLMS > "!REPORT_LOG_PATH!\BgInfo\setbginfo.lock" 2>&1
 )
 if exist "!REPORT_LOG_PATH!\BgInfo\setbginfo.lock" (
-	if exist "!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat" (
-		rem execute BGInfo to udpate information displayed on desktop
-		echo Call '!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat' ...                               >> !REPORT_LOGFILE! 2>&1
-		call "!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat"                                        >> !REPORT_LOGFILE! 2>&1
-		echo     Updated BGInfo at !DATE! !TIME!
-		echo Updated BGInfo at !DATE! !TIME!                                                   >> !REPORT_LOGFILE! 2>&1
-	) else if exist "!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat" (
+	if exist "!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat" (
 		rem execute pre-installed BGInfo to udpate information displayed on desktop
 		echo Call '!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat' ...                                 >> !REPORT_LOGFILE! 2>&1
 		call "!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat"                                          >> !REPORT_LOGFILE! 2>&1
@@ -1769,13 +1765,7 @@ if defined LMS_SET_BGINFO (
 rem clear background info
 if defined LMS_CLEAR_BGINFO (
 	del !REPORT_LOG_PATH!\BgInfo\setbginfo.lock >nul 2>&1
-	if exist "!LMS_DOWNLOAD_PATH!\BgInfo\cleanbginfo.bat" (
-		rem execute BGInfo to udpate information displayed on desktop
-		echo Call '!LMS_DOWNLOAD_PATH!\BgInfo\cleanbginfo.bat' ...                             >> !REPORT_LOGFILE! 2>&1
-		call "!LMS_DOWNLOAD_PATH!\BgInfo\cleanbginfo.bat"                                      >> !REPORT_LOGFILE! 2>&1
-		echo     Removed BGInfo at !DATE! !TIME!
-		echo Removed BGInfo at !DATE! !TIME!                                                   >> !REPORT_LOGFILE! 2>&1
-	) else if exist "!LMS_PROGRAMDATA!\BgInfo\cleanbginfo.bat" (
+	if exist "!LMS_PROGRAMDATA!\BgInfo\cleanbginfo.bat" (
 		rem execute pre-installed BGInfo to udpate information displayed on desktop
 		echo Call '!LMS_PROGRAMDATA!\BgInfo\cleanbginfo.bat' ...                               >> !REPORT_LOGFILE! 2>&1
 		call "!LMS_PROGRAMDATA!\BgInfo\cleanbginfo.bat"                                        >> !REPORT_LOGFILE! 2>&1
@@ -2467,56 +2457,48 @@ if defined LMS_SET_CHECK_ID_TASK (
 	set taskname=!LMS_SCHEDTASK_CHECKID_FULLNAME!
 	set taskrun="%~dpnx0 /checkid"
 	echo     set CheckId scheduled task '!taskname!' ...
-	echo Set CheckId scheduled task '!taskname!' with command !taskrun! ...                                                  >> !REPORT_LOGFILE! 2>&1
-	SCHTASKS /Create /TN !taskname! /TR !taskrun! /SC MINUTE /MO 60 /F                                                       >> !REPORT_LOGFILE! 2>&1
-	SCHTASKS /Run /TN !taskname!                                                                                             >> !REPORT_LOGFILE! 2>&1
-
-	goto script_end
-	rem STOP EXECUTION HERE
-) else (
-	echo Set CheckId scheduled task ... NO                                                                                   >> !REPORT_LOGFILE! 2>&1
-)
-if defined LMS_DEL_CHECK_ID_TASK (
-	set taskname=!LMS_SCHEDTASK_CHECKID_FULLNAME!
-	echo     delete CheckId scheduled task '!taskname!' ...
-	echo Delete CheckId scheduled task '!taskname!' ...                                                                      >> !REPORT_LOGFILE! 2>&1
-	SCHTASKS /Delete /TN !taskname! /F                                                                                       >> !REPORT_LOGFILE! 2>&1
-
-	goto script_end
-	rem STOP EXECUTION HERE
-) else (
-	echo Delete CheckId scheduled task ... NO                                                                                >> !REPORT_LOGFILE! 2>&1
-)
-
-if defined LMS_SET_BGINFO_TASK (
-	set taskname=!LMS_SCHEDTASK_BGINFO_FULLNAME!
-	if exist "!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat" (
-		set taskrun="%ProgramFiles%\Siemens\LMS\bin\Launcher.exe !LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat /B"
-	) else if exist "!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat" (
-		set taskrun="%ProgramFiles%\Siemens\LMS\bin\Launcher.exe !LMS_PROGRAMDATA!\BgInfo\setbginfo.bat /B"
-	) else (
-		echo CANNOT create BGInfo task, because 'setbginfo.bat' doesn't exist.                       >> !REPORT_LOGFILE! 2>&1
-	)
-	echo     set BgInfo scheduled task '!taskname!' ...
-	echo Set BgInfo scheduled task '!taskname!' with command !taskrun! ...                           >> !REPORT_LOGFILE! 2>&1
-	SCHTASKS /Create /TN !taskname! /TR !taskrun! /SC ONLOGON /F                                     >> !REPORT_LOGFILE! 2>&1
+	echo Set CheckId scheduled task '!taskname!' with command !taskrun! ...                          >> !REPORT_LOGFILE! 2>&1
+	SCHTASKS /Create /TN !taskname! /TR !taskrun! /SC MINUTE /MO 60 /F                               >> !REPORT_LOGFILE! 2>&1
 	SCHTASKS /Run /TN !taskname!                                                                     >> !REPORT_LOGFILE! 2>&1
 
 	goto script_end
 	rem STOP EXECUTION HERE
 ) else (
-	echo Set BgInfo scheduled task ... NO                                                           >> !REPORT_LOGFILE! 2>&1
+	echo Set CheckId scheduled task ... NO                                                           >> !REPORT_LOGFILE! 2>&1
 )
-if defined LMS_DEL_BGINFO_TASK (
-	set taskname=!LMS_SCHEDTASK_BGINFO_FULLNAME!
-	echo     delete BgInfo scheduled task '!taskname!' ...
-	echo Delete BgInfo scheduled task '!taskname!' ...                                               >> !REPORT_LOGFILE! 2>&1
+if defined LMS_DEL_CHECK_ID_TASK (
+	set taskname=!LMS_SCHEDTASK_CHECKID_FULLNAME!
+	echo     delete CheckId scheduled task '!taskname!' ...
+	echo Delete CheckId scheduled task '!taskname!' ...                                              >> !REPORT_LOGFILE! 2>&1
 	SCHTASKS /Delete /TN !taskname! /F                                                               >> !REPORT_LOGFILE! 2>&1
 
 	goto script_end
 	rem STOP EXECUTION HERE
 ) else (
-	echo Delete BgInfo scheduled task ... NO                                                        >> !REPORT_LOGFILE! 2>&1
+	echo Delete CheckId scheduled task ... NO                                                        >> !REPORT_LOGFILE! 2>&1
+)
+
+if defined LMS_SET_BGINFO_TASK (
+	if exist "!LMS_PROGRAMDATA!\BgInfo\configbginfo.bat" (
+		call !LMS_PROGRAMDATA!\BgInfo\configbginfo.bat /setbginfotask                                >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo CANNOT create BGInfo task, because 'configbginfo.bat' doesn't exist.                    >> !REPORT_LOGFILE! 2>&1
+	)
+	goto script_end
+	rem STOP EXECUTION HERE
+) else (
+	echo Set BgInfo scheduled task ... NO                                                            >> !REPORT_LOGFILE! 2>&1
+)
+if defined LMS_DEL_BGINFO_TASK (
+	if exist "!LMS_PROGRAMDATA!\BgInfo\configbginfo.bat" (
+		call !LMS_PROGRAMDATA!\BgInfo\configbginfo.bat /delbginfotask                                >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo CANNOT delete BGInfo task, because 'configbginfo.bat' doesn't exist.                    >> !REPORT_LOGFILE! 2>&1
+	)
+	goto script_end
+	rem STOP EXECUTION HERE
+) else (
+	echo Delete BgInfo scheduled task ... NO                                                         >> !REPORT_LOGFILE! 2>&1
 )
 
 rem Start Demo Vendor Daemon provided by Flexera; see also "1253827: CheckLMS: add support to run demo vendor daemon"
