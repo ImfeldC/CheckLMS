@@ -323,6 +323,7 @@ rem     30-Nov-2021:
 rem        - align bginfo, use dedicated bginfo config batch file (remove content from CheckLMS)
 rem     07-Dec-2021:
 rem        - add Windows Event Log: Siemens ['LMS Setup'] (see 1644407)
+rem        - use correct path for eventlog_lms_setup.txt
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -6796,9 +6797,9 @@ echo ... read-out windows event log [first %LOG_EVENTLOG_EVENTS% lines] ...
 if not defined LMS_SKIPWINEVENT (
 	echo     Windows Event Log: Siemens ['LMS Setup']
 	echo Windows Event Log: Siemens ['LMS Setup']                                                                                                                                                               >> !REPORT_LOGFILE! 2>&1
-	echo     see !CHECKLMS_SSU_PATH!\eventlog_lms_setup.txt                                                                                                                                                     >> !REPORT_LOGFILE! 2>&1
-	WEVTUtil query-events Siemens /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='LMS Setup']]]" > !CHECKLMS_SSU_PATH!\eventlog_lms_setup.txt 2>&1
-	powershell -command "& {Get-Content '!CHECKLMS_SSU_PATH!\eventlog_lms_setup.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                  >> !REPORT_LOGFILE! 2>&1
+	echo     see !CHECKLMS_REPORT_LOG_PATH!\eventlog_lms_setup.txt                                                                                                                                              >> !REPORT_LOGFILE! 2>&1
+	WEVTUtil query-events Siemens /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='LMS Setup']]]" > !CHECKLMS_REPORT_LOG_PATH!\eventlog_lms_setup.txt 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_lms_setup.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                           >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     Windows Event Log: Application ['License Management Utility']
 	echo Windows Event Log: Application ['License Management Utility']                                                                                                                                          >> !REPORT_LOGFILE! 2>&1
