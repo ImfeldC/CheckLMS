@@ -321,6 +321,8 @@ rem        - adjust most recent BT ALM plugin version: 1.1.43.0
 rem        - adjust most recent dongle driver version: 8.31
 rem     30-Nov-2021:
 rem        - align bginfo, use dedicated bginfo config batch file (remove content from CheckLMS)
+rem     07-Dec-2021:
+rem        - add Windows Event Log: Siemens ['LMS Setup'] (see 1644407)
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -361,8 +363,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 30-Nov-2021"
-set LMS_SCRIPT_BUILD=20211130
+set LMS_SCRIPT_VERSION="CheckLMS Script 07-Dec-2021"
+set LMS_SCRIPT_BUILD=20211207
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -6792,101 +6794,107 @@ echo ===========================================================================
 echo Start at !DATE! !TIME! ....                                                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 echo ... read-out windows event log [first %LOG_EVENTLOG_EVENTS% lines] ...
 if not defined LMS_SKIPWINEVENT (
+	echo     Windows Event Log: Siemens ['LMS Setup']
+	echo Windows Event Log: Siemens ['LMS Setup']                                                                                                                                                               >> !REPORT_LOGFILE! 2>&1
+	echo     see !CHECKLMS_SSU_PATH!\eventlog_lms_setup.txt                                                                                                                                                     >> !REPORT_LOGFILE! 2>&1
+	WEVTUtil query-events Siemens /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='LMS Setup']]]" > !CHECKLMS_SSU_PATH!\eventlog_lms_setup.txt 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_SSU_PATH!\eventlog_lms_setup.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                  >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     Windows Event Log: Application ['License Management Utility']
-	echo Windows Event Log: Application ['License Management Utility']                                                                                                                                              >> !REPORT_LOGFILE! 2>&1
-	echo     see !CHECKLMS_REPORT_LOG_PATH!\eventlog_lms.txt                                                                                                                                                        >> !REPORT_LOGFILE! 2>&1
+	echo Windows Event Log: Application ['License Management Utility']                                                                                                                                          >> !REPORT_LOGFILE! 2>&1
+	echo     see !CHECKLMS_REPORT_LOG_PATH!\eventlog_lms.txt                                                                                                                                                    >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='License Management Utility']]]" > !CHECKLMS_REPORT_LOG_PATH!\eventlog_lms.txt 2>&1
-	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_lms.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                     >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                                                                                                    >> !REPORT_LOGFILE! 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_lms.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     Windows Event Log: Application Errors
-	echo Windows Event Log: Application Errors                                                                                                                                                                      >> !REPORT_LOGFILE! 2>&1
-	echo     see !CHECKLMS_REPORT_LOG_PATH!\eventlog_app_errors.txt                                                                                                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo Windows Event Log: Application Errors                                                                                                                                                                  >> !REPORT_LOGFILE! 2>&1
+	echo     see !CHECKLMS_REPORT_LOG_PATH!\eventlog_app_errors.txt                                                                                                                                             >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[(Level=1  or Level=2)]]" > !CHECKLMS_REPORT_LOG_PATH!\eventlog_app_errors.txt 2>&1
-	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_app_errors.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                              >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                                                                                                    >> !REPORT_LOGFILE! 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_app_errors.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                          >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     Windows Event Log: System Errors
-	echo Windows Event Log: System Errors                                                                                                                                                                           >> !REPORT_LOGFILE! 2>&1
-	echo     see !CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_errors.txt                                                                                                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo Windows Event Log: System Errors                                                                                                                                                                       >> !REPORT_LOGFILE! 2>&1
+	echo     see !CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_errors.txt                                                                                                                                             >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events System /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[(Level=1  or Level=2)]]" > !CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_errors.txt 2>&1
-	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_errors.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                              >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                                                                                                    >> !REPORT_LOGFILE! 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_errors.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                          >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     Windows Event Log: Application ['Siemens Software Updater']
-	echo Windows Event Log: Application ['Siemens Software Updater']                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
-	echo     see !CHECKLMS_SSU_PATH!\eventlog_app_ssu.txt                                                                                                                                                           >> !REPORT_LOGFILE! 2>&1
+	echo Windows Event Log: Application ['Siemens Software Updater']                                                                                                                                            >> !REPORT_LOGFILE! 2>&1
+	echo     see !CHECKLMS_SSU_PATH!\eventlog_app_ssu.txt                                                                                                                                                       >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Siemens Software Updater']]]" > !CHECKLMS_SSU_PATH!\eventlog_app_ssu.txt 2>&1
-	powershell -command "& {Get-Content '!CHECKLMS_SSU_PATH!\eventlog_app_ssu.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                        >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                                                                                                    >> !REPORT_LOGFILE! 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_SSU_PATH!\eventlog_app_ssu.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                    >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     Windows Event Log: Siemens ['SiemensSoftwareUpdater']
-	echo Windows Event Log: Siemens ['SiemensSoftwareUpdater']                                                                                                                                                      >> !REPORT_LOGFILE! 2>&1
-	echo     see !CHECKLMS_SSU_PATH!\eventlog_ssu.txt                                                                                                                                                               >> !REPORT_LOGFILE! 2>&1
+	echo Windows Event Log: Siemens ['SiemensSoftwareUpdater']                                                                                                                                                  >> !REPORT_LOGFILE! 2>&1
+	echo     see !CHECKLMS_SSU_PATH!\eventlog_ssu.txt                                                                                                                                                           >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events Siemens /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='SiemensSoftwareUpdater']]]" > !CHECKLMS_SSU_PATH!\eventlog_ssu.txt 2>&1
-	powershell -command "& {Get-Content '!CHECKLMS_SSU_PATH!\eventlog_ssu.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                            >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                                                                                                    >> !REPORT_LOGFILE! 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_SSU_PATH!\eventlog_ssu.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                        >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     Windows Event Log: Microsoft-Windows-Bits-Client/Operational ['Microsoft-Windows-Bits-Client']
-	echo Windows Event Log: Microsoft-Windows-Bits-Client/Operational ['Microsoft-Windows-Bits-Client']                                                                                                             >> !REPORT_LOGFILE! 2>&1
-	echo     see !CHECKLMS_SSU_PATH!\eventlog_bitsclient.txt                                                                                                                                                        >> !REPORT_LOGFILE! 2>&1
+	echo Windows Event Log: Microsoft-Windows-Bits-Client/Operational ['Microsoft-Windows-Bits-Client']                                                                                                         >> !REPORT_LOGFILE! 2>&1
+	echo     see !CHECKLMS_SSU_PATH!\eventlog_bitsclient.txt                                                                                                                                                    >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events Microsoft-Windows-Bits-Client/Operational /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Microsoft-Windows-Bits-Client']]]" > !CHECKLMS_SSU_PATH!\eventlog_bitsclient.txt 2>&1
-	powershell -command "& {Get-Content '!CHECKLMS_SSU_PATH!\eventlog_bitsclient.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                     >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                                                                                                    >> !REPORT_LOGFILE! 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_SSU_PATH!\eventlog_bitsclient.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     Windows Event Log: Microsoft-Windows-NetworkProfile/Operational ['Microsoft-Windows-NetworkProfile']
-	echo Windows Event Log: Microsoft-Windows-NetworkProfile/Operational ['Microsoft-Windows-NetworkProfile']                                                                                                       >> !REPORT_LOGFILE! 2>&1
-	echo     see !CHECKLMS_SSU_PATH!\eventlog_networkprofile.txt                                                                                                                                                    >> !REPORT_LOGFILE! 2>&1
+	echo Windows Event Log: Microsoft-Windows-NetworkProfile/Operational ['Microsoft-Windows-NetworkProfile']                                                                                                   >> !REPORT_LOGFILE! 2>&1
+	echo     see !CHECKLMS_SSU_PATH!\eventlog_networkprofile.txt                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events Microsoft-Windows-NetworkProfile/Operational /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Microsoft-Windows-NetworkProfile']]]" > !CHECKLMS_SSU_PATH!\eventlog_networkprofile.txt 2>&1
-	powershell -command "& {Get-Content '!CHECKLMS_SSU_PATH!\eventlog_networkprofile.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                 >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                                                                                                    >> !REPORT_LOGFILE! 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_SSU_PATH!\eventlog_networkprofile.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     Windows Event Log: Application ['Automation License Manager API']
-	echo Windows Event Log: Application ['Automation License Manager API']                                                                                                                                          >> !REPORT_LOGFILE! 2>&1
-	echo     see %CHECKLMS_ALM_PATH%\eventlog_app_alm_api.txt                                                                                                                                                       >> !REPORT_LOGFILE! 2>&1
+	echo Windows Event Log: Application ['Automation License Manager API']                                                                                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo     see %CHECKLMS_ALM_PATH%\eventlog_app_alm_api.txt                                                                                                                                                   >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Automation License Manager API']]]" > %CHECKLMS_ALM_PATH%\eventlog_app_alm_api.txt 2>&1
-	powershell -command "& {Get-Content '%CHECKLMS_ALM_PATH%\eventlog_app_alm_api.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                    >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                                                                                                    >> !REPORT_LOGFILE! 2>&1
+	powershell -command "& {Get-Content '%CHECKLMS_ALM_PATH%\eventlog_app_alm_api.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     Windows Event Log: Application ['Automation License Manager Service']
-	echo Windows Event Log: Application ['Automation License Manager Service']                                                                                                                                      >> !REPORT_LOGFILE! 2>&1
-	echo     see %CHECKLMS_ALM_PATH%\eventlog_app_alm_service.txt                                                                                                                                                   >> !REPORT_LOGFILE! 2>&1
+	echo Windows Event Log: Application ['Automation License Manager Service']                                                                                                                                  >> !REPORT_LOGFILE! 2>&1
+	echo     see %CHECKLMS_ALM_PATH%\eventlog_app_alm_service.txt                                                                                                                                               >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Automation License Manager Service']]]" > %CHECKLMS_ALM_PATH%\eventlog_app_alm_service.txt 2>&1
-	powershell -command "& {Get-Content '%CHECKLMS_ALM_PATH%\eventlog_app_alm_service.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                                                                                                    >> !REPORT_LOGFILE! 2>&1
+	powershell -command "& {Get-Content '%CHECKLMS_ALM_PATH%\eventlog_app_alm_service.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                            >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     Windows Event Log: System ['Service Control Manager']
-	echo Windows Event Log: System ['Service Control Manager']                                                                                                                                                      >> !REPORT_LOGFILE! 2>&1
-	echo     see !CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_scm.txt                                                                                                                                                    >> !REPORT_LOGFILE! 2>&1
+	echo Windows Event Log: System ['Service Control Manager']                                                                                                                                                  >> !REPORT_LOGFILE! 2>&1
+	echo     see !CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_scm.txt                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events System /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Service Control Manager']]]" > !CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_scm.txt 2>&1
-	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_scm.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                 >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                                                                                                    >> !REPORT_LOGFILE! 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_scm.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     Windows Event Log: System ['hasplms']
-	echo Windows Event Log: System ['hasplms']                                                                                                                                                                      >> !REPORT_LOGFILE! 2>&1
-	echo     see !CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_hasplms.txt                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
+	echo Windows Event Log: System ['hasplms']                                                                                                                                                                  >> !REPORT_LOGFILE! 2>&1
+	echo     see !CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_hasplms.txt                                                                                                                                            >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events System /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='hasplms']]]" > !CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_hasplms.txt 2>&1
-	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_hasplms.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                             >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                                                                                                    >> !REPORT_LOGFILE! 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_hasplms.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                         >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     Windows Event Log: Application ['MsiInstaller']
-	echo Windows Event Log: Application ['MsiInstaller']                                                                                                                                                            >> !REPORT_LOGFILE! 2>&1
-	echo     see !CHECKLMS_REPORT_LOG_PATH!\eventlog_app_MsiInstaller.txt                                                                                                                                           >> !REPORT_LOGFILE! 2>&1
+	echo Windows Event Log: Application ['MsiInstaller']                                                                                                                                                        >> !REPORT_LOGFILE! 2>&1
+	echo     see !CHECKLMS_REPORT_LOG_PATH!\eventlog_app_MsiInstaller.txt                                                                                                                                       >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='MsiInstaller']]]" > !CHECKLMS_REPORT_LOG_PATH!\eventlog_app_MsiInstaller.txt 2>&1
-	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_app_MsiInstaller.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                        >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                                                                                                    >> !REPORT_LOGFILE! 2>&1
-	echo ... at !DATE! !TIME! ....                                                                                                                                                                                  >> !REPORT_LOGFILE! 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_app_MsiInstaller.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                    >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
+	echo ... at !DATE! !TIME! ....                                                                                                                                                                              >> !REPORT_LOGFILE! 2>&1
 	echo ... read-out full windows event log [first %LOG_EVENTLOG_FULL_EVENTS% lines] ...
 	echo     Windows Event Log: Application
-	echo Windows Event Log: Application                                                                                                                                                                             >> !REPORT_LOGFILE! 2>&1
-	echo     see !CHECKLMS_REPORT_LOG_PATH!\eventlog_app_full.txt                                                                                                                                                   >> !REPORT_LOGFILE! 2>&1
+	echo Windows Event Log: Application                                                                                                                                                                         >> !REPORT_LOGFILE! 2>&1
+	echo     see !CHECKLMS_REPORT_LOG_PATH!\eventlog_app_full.txt                                                                                                                                               >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events Application /count:%LOG_EVENTLOG_FULL_EVENTS% /rd:true /format:text > !CHECKLMS_REPORT_LOG_PATH!\eventlog_app_full.txt 2>&1
 	echo     Windows Event Log: System
-	echo Windows Event Log: System                                                                                                                                                                                  >> !REPORT_LOGFILE! 2>&1
-	echo     see !CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_full.txt                                                                                                                                                   >> !REPORT_LOGFILE! 2>&1
+	echo Windows Event Log: System                                                                                                                                                                              >> !REPORT_LOGFILE! 2>&1
+	echo     see !CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_full.txt                                                                                                                                               >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events System /count:%LOG_EVENTLOG_FULL_EVENTS% /rd:true /format:text > !CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_full.txt 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                                                                                                    >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                                                                                                            >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	rem copied from UCMS-LogcollectorDWP.ini
-	echo Several event viewer exports made [based on UCMS-LogcollectorDWP.ini] ...                                                                                                                                  >> !REPORT_LOGFILE! 2>&1
-	wevtutil epl System         "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_System.evtx"      /ow:true /q:"*[System[TimeCreated[timediff(@SystemTime) <= 1296000000]]]"                                         >> !REPORT_LOGFILE! 2>&1
-	wevtutil epl Application    "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_Application.evtx" /ow:true /q:"*[System[TimeCreated[timediff(@SystemTime) <= 1296000000]]]"                                         >> !REPORT_LOGFILE! 2>&1
-	wevtutil epl Microsoft-Windows-NetworkProfile/Operational       "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_NetworkProfile.evtx" /ow:true                                                                   >> !REPORT_LOGFILE! 2>&1
-	wevtutil epl Microsoft-Windows-NTLM/Operational                 "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_NTLM.evtx" /ow:true                                                                             >> !REPORT_LOGFILE! 2>&1
-	wevtutil epl Microsoft-Windows-WindowsUpdateClient/Operational  "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_WindowsUpdateClient.evtx" /ow:true                                                              >> !REPORT_LOGFILE! 2>&1
-	wevtutil epl Microsoft-Windows-Wired-AutoConfig/Operational     "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_Wired-AutoConfig.evtx" /ow:true                                                                 >> !REPORT_LOGFILE! 2>&1
-	wevtutil epl Microsoft-Windows-WLAN-AutoConfig/Operational      "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_WLAN-AutoConfig.evtx" /ow:true                                                                  >> !REPORT_LOGFILE! 2>&1
-	wevtutil epl "Microsoft-Windows-Folder Redirection/Operational" "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_FolderRedirection.evtx" /ow:true                                                                >> !REPORT_LOGFILE! 2>&1
-	echo     see folder '!CHECKLMS_REPORT_LOG_PATH!\UCMS\' for more details.                                                                                                                                        >> !REPORT_LOGFILE! 2>&1
+	echo Several event viewer exports made [based on UCMS-LogcollectorDWP.ini] ...                                                                                             >> !REPORT_LOGFILE! 2>&1
+	wevtutil epl System         "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_System.evtx"      /ow:true /q:"*[System[TimeCreated[timediff(@SystemTime) <= 1296000000]]]"    >> !REPORT_LOGFILE! 2>&1
+	wevtutil epl Application    "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_Application.evtx" /ow:true /q:"*[System[TimeCreated[timediff(@SystemTime) <= 1296000000]]]"    >> !REPORT_LOGFILE! 2>&1
+	wevtutil epl Microsoft-Windows-NetworkProfile/Operational       "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_NetworkProfile.evtx" /ow:true                              >> !REPORT_LOGFILE! 2>&1
+	wevtutil epl Microsoft-Windows-NTLM/Operational                 "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_NTLM.evtx" /ow:true                                        >> !REPORT_LOGFILE! 2>&1
+	wevtutil epl Microsoft-Windows-WindowsUpdateClient/Operational  "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_WindowsUpdateClient.evtx" /ow:true                         >> !REPORT_LOGFILE! 2>&1
+	wevtutil epl Microsoft-Windows-Wired-AutoConfig/Operational     "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_Wired-AutoConfig.evtx" /ow:true                            >> !REPORT_LOGFILE! 2>&1
+	wevtutil epl Microsoft-Windows-WLAN-AutoConfig/Operational      "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_WLAN-AutoConfig.evtx" /ow:true                             >> !REPORT_LOGFILE! 2>&1
+	wevtutil epl "Microsoft-Windows-Folder Redirection/Operational" "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_FolderRedirection.evtx" /ow:true                           >> !REPORT_LOGFILE! 2>&1
+	echo     see folder '!CHECKLMS_REPORT_LOG_PATH!\UCMS\' for more details.                                                                                                   >> !REPORT_LOGFILE! 2>&1
 ) else (
 	rem LMS_SKIPWINEVENT
 	if defined SHOW_COLORED_OUTPUT (
