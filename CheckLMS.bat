@@ -326,6 +326,7 @@ rem        - add Windows Event Log: Siemens ['LMS Setup'] (see 1644407)
 rem        - use correct path for eventlog_lms_setup.txt
 rem     09-Dec-2021:
 rem        - adjust handling of bginfo download package(s)
+rem        - clean-up bginfo before unzipping new downloaded package
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -1679,16 +1680,24 @@ if not defined LMS_SKIPDOWNLOAD (
 			powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/BgInfo/BgInfo.zip', '!LMS_DOWNLOAD_PATH!\BgInfo.zip')"   >> !REPORT_LOGFILE! 2>&1
 			rem Unzip BgInfo ZIP archive [as ZIP]
 			IF EXIST "!LMS_DOWNLOAD_PATH!\BgInfo.zip" (
+				rem clean first existing bginfo
+				IF EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\cleanbginfo.bat" (
+					call "!LMS_DOWNLOAD_PATH!\BgInfo\cleanbginfo.bat"                                      >> !REPORT_LOGFILE! 2>&1
+				) else (
+					if exist "!LMS_PROGRAMDATA!\BgInfo\cleanbginfo.bat" (
+						call "!LMS_PROGRAMDATA!\BgInfo\cleanbginfo.bat"                                    >> !REPORT_LOGFILE! 2>&1
+					)
+				)
 				rmdir /S /Q "!LMS_DOWNLOAD_PATH!\BgInfo\" >nul 2>&1
 				echo     Extract BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip
-				echo Extract BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip                                  >> !REPORT_LOGFILE! 2>&1
+				echo Extract BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip                            >> !REPORT_LOGFILE! 2>&1
 				"!UNZIP_TOOL!" x -y -spe -o"!LMS_DOWNLOAD_PATH!\BgInfo\" "!LMS_DOWNLOAD_PATH!\BgInfo.zip" > !CHECKLMS_REPORT_LOG_PATH!\unzip_bginfo_zip.txt 2>&1
 			)
 
 		)
 	) else (
 		echo     Don't download additional libraries and files, because no internet connection available.
-		echo Don't download additional libraries and files, because no internet connection available.                                   >> !REPORT_LOGFILE! 2>&1
+		echo Don't download additional libraries and files, because no internet connection available.      >> !REPORT_LOGFILE! 2>&1
 		
 		rem in case no connection is available, check local folder for a "download" zip archive
 		dir /S /A /B "!LMS_PROGRAMDATA!\LMSDownloadArchive_*.zip" > "!CHECKLMS_REPORT_LOG_PATH!\LMSDownloadArchivesFound.txt"  
