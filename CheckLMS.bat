@@ -324,6 +324,8 @@ rem        - align bginfo, use dedicated bginfo config batch file (remove conten
 rem     07-Dec-2021:
 rem        - add Windows Event Log: Siemens ['LMS Setup'] (see 1644407)
 rem        - use correct path for eventlog_lms_setup.txt
+rem     09-Dec-2021:
+rem        - adjust handling of bginfo download package(s)
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -364,8 +366,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 07-Dec-2021"
-set LMS_SCRIPT_BUILD=20211207
+set LMS_SCRIPT_VERSION="CheckLMS Script 09-Dec-2021"
+set LMS_SCRIPT_BUILD=20211209
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -1670,25 +1672,17 @@ if not defined LMS_SKIPDOWNLOAD (
 			)
 			
 			rem Download BGInfo tool
-			rem rmdir /S /Q "!LMS_DOWNLOAD_PATH!\BgInfo\" >nul 2>&1
 			rem del !LMS_DOWNLOAD_PATH!\BgInfo.zip >nul 2>&1
-			rem Download and unzip BgInfo ZIP archive [as ZIP]
-			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\BgInfo.zip" (
-				echo     Download BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip
-				echo Download BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip  from '!CHECKLMS_EXTERNAL_SHARE!lms/BgInfo/BgInfo.zip'                             >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/BgInfo/BgInfo.zip', '!LMS_DOWNLOAD_PATH!\BgInfo.zip')"   >> !REPORT_LOGFILE! 2>&1
-				IF EXIST "!LMS_DOWNLOAD_PATH!\BgInfo.zip" (
-					echo     Extract BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip
-					echo Extract BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip                                  >> !REPORT_LOGFILE! 2>&1
-					"!UNZIP_TOOL!" x -y -spe -o"!LMS_DOWNLOAD_PATH!\BgInfo\" "!LMS_DOWNLOAD_PATH!\BgInfo.zip" > !CHECKLMS_REPORT_LOG_PATH!\unzip_bginfo_zip.txt 2>&1
-				)
-			)
-			if not exist "!LMS_DOWNLOAD_PATH!\BgInfo\" (
-				IF EXIST "!LMS_DOWNLOAD_PATH!\BgInfo.zip" (
-					echo     Extract BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip
-					echo Extract BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip                                  >> !REPORT_LOGFILE! 2>&1
-					"!UNZIP_TOOL!" x -y -spe -o"!LMS_DOWNLOAD_PATH!\BgInfo\" "!LMS_DOWNLOAD_PATH!\BgInfo.zip" > !CHECKLMS_REPORT_LOG_PATH!\unzip_bginfo_zip.txt 2>&1
-				)
+			rem Download BgInfo ZIP archive [as ZIP]
+			echo     Download BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip
+			echo Download BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip  from '!CHECKLMS_EXTERNAL_SHARE!lms/BgInfo/BgInfo.zip'                             >> !REPORT_LOGFILE! 2>&1
+			powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/BgInfo/BgInfo.zip', '!LMS_DOWNLOAD_PATH!\BgInfo.zip')"   >> !REPORT_LOGFILE! 2>&1
+			rem Unzip BgInfo ZIP archive [as ZIP]
+			IF EXIST "!LMS_DOWNLOAD_PATH!\BgInfo.zip" (
+				rmdir /S /Q "!LMS_DOWNLOAD_PATH!\BgInfo\" >nul 2>&1
+				echo     Extract BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip
+				echo Extract BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip                                  >> !REPORT_LOGFILE! 2>&1
+				"!UNZIP_TOOL!" x -y -spe -o"!LMS_DOWNLOAD_PATH!\BgInfo\" "!LMS_DOWNLOAD_PATH!\BgInfo.zip" > !CHECKLMS_REPORT_LOG_PATH!\unzip_bginfo_zip.txt 2>&1
 			)
 
 		)
