@@ -327,6 +327,9 @@ rem        - use correct path for eventlog_lms_setup.txt
 rem     09-Dec-2021:
 rem        - adjust handling of bginfo download package(s)
 rem        - clean-up bginfo before unzipping new downloaded package
+rem     10-Dec-2021:
+rem        - Add console output: Analyze 'SIEMBT.log'
+rem        - Adjust 'Host Info' extraction from SIEMBT.log; imporve them in regards of speed.
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -367,8 +370,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 09-Dec-2021"
-set LMS_SCRIPT_BUILD=20211209
+set LMS_SCRIPT_VERSION="CheckLMS Script 10-Dec-2021"
+set LMS_SCRIPT_BUILD=20211210
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -5381,6 +5384,7 @@ if not defined LMS_SKIPFNP (
 rem Run *always* even if LMS_SKIPFNP is set
 echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+echo     Analyze 'SIEMBT.log' ...
 echo Analyze 'SIEMBT.log' ...                                                                                                >> !REPORT_LOGFILE! 2>&1
 IF EXIST "!REPORT_LOG_PATH!\SIEMBT.log" (
 	FOR /F "usebackq" %%A IN ('!REPORT_LOG_PATH!\SIEMBT.log') DO set SIEMBTLOG_FILESIZE=%%~zA
@@ -5412,23 +5416,29 @@ IF EXIST "!REPORT_LOG_PATH!\SIEMBT.log" (
 
 		if not defined LMS_CHECK_ID (
 			rem Extract "Host Info"
+			echo     Extract 'Host Info' ...
+			echo Extract 'Host Info' ...                                                                                     >> !REPORT_LOGFILE! 2>&1
 			rem NOTE: The implementation below is VERY slow, we should move this part into /extend mode :-)
 			Set LMS_START_LOG=0
 			del "!CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt" >nul 2>&1
+			Set LMS_HOSTINFO_FOUND=
 			FOR /F "eol=@ delims=" %%i IN ('type !REPORT_LOG_PATH!\SIEMBT.log') DO ( 
-				ECHO "%%i" | FINDSTR /C:"=== Host Info ===" 1>nul 
-				if !ERRORLEVEL!==0 (
-					echo Start of 'Host Info' section found ... > !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt 2>&1
-					Set LMS_START_LOG=1
-				)
-				if !LMS_START_LOG!==1 (
-					echo %%i                                    >> !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt 2>&1
-					
-					rem check for end of 'Host Info' block
-					ECHO "%%i" | FINDSTR /C:"===============================================" 1>nul 
+				if not defined LMS_HOSTINFO_FOUND (
+					ECHO "%%i" | FINDSTR /C:"=== Host Info ===" 1>nul 
 					if !ERRORLEVEL!==0 (
-						echo End of 'Host Info' section found ...   >> !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt 2>&1
-						Set LMS_START_LOG=0
+						echo Start of 'Host Info' section found ... > !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt 2>&1
+						Set LMS_START_LOG=1
+					)
+					if !LMS_START_LOG!==1 (
+						echo %%i                                    >> !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt 2>&1
+						
+						rem check for end of 'Host Info' block
+						ECHO "%%i" | FINDSTR /C:"===============================================" 1>nul 
+						if !ERRORLEVEL!==0 (
+							echo End of 'Host Info' section found ...   >> !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt 2>&1
+							Set LMS_START_LOG=0
+							Set LMS_HOSTINFO_FOUND=1
+						)
 					)
 				)
 			)
