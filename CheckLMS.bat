@@ -1696,6 +1696,7 @@ if not defined LMS_SKIPDOWNLOAD (
 			powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/BgInfo/BgInfo.zip', '!LMS_DOWNLOAD_PATH!\BgInfo.zip')"   >> !REPORT_LOGFILE! 2>&1
 			rem Unzip BgInfo ZIP archive [as ZIP]
 			IF EXIST "!LMS_DOWNLOAD_PATH!\BgInfo.zip" (
+				if exist "!LMS_PROGRAMDATA!\BgInfo\setbginfo.lock" ( set LMS_UPDATE_BGINFO=1 )
 				rem clean first existing bginfo
 				IF EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\cleanbginfo.bat" (
 					call "!LMS_DOWNLOAD_PATH!\BgInfo\cleanbginfo.bat"                                      >> !REPORT_LOGFILE! 2>&1
@@ -1765,7 +1766,8 @@ if not defined LMS_SKIPDOWNLOAD (
 
 rem set background info; when ...
 rem [1] either /setbginfo option is set [-> LMS_SET_BGINFO]
-rem [2] or setbginfo.lock exists [=setbginfo.bat has been executed befoew]
+rem [2] or setbginfo.lock exists [=setbginfo.bat has been executed before]
+rem [3] or LMS_UPDATE_BGINFO has been set; because setbginfo.lock existed before clean-up (see above)
 if defined LMS_SET_BGINFO ( set LMS_UPDATE_BGINFO=1 )
 if exist "!LMS_PROGRAMDATA!\BgInfo\setbginfo.lock" ( set LMS_UPDATE_BGINFO=1 )
 if defined LMS_UPDATE_BGINFO (
