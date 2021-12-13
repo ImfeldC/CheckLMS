@@ -330,6 +330,8 @@ rem        - clean-up bginfo before unzipping new downloaded package
 rem     10-Dec-2021:
 rem        - Add console output: Analyze 'SIEMBT.log'
 rem        - Adjust 'Host Info' extraction from SIEMBT.log; imporve them in regards of speed.
+rem        - support ifconfig.io
+rem        - add further connection tests, using e.g. powershell -Command "Test-NetConnection www.automation.siemens.com -port 443"
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -3163,48 +3165,91 @@ if not defined LMS_SKIPWINDOWS (
 	) else (
 		echo Creation of 'GpResultUser.html' skipped, start script with option '/extend' to enable extended content.             >> !REPORT_LOGFILE! 2>&1
 	)
-	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo ==============================================================================            >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                               >> !REPORT_LOGFILE! 2>&1
 	echo ... collect task list [process information] ...
-	echo Task List [Process Infromation]                                                                                         >> !REPORT_LOGFILE! 2>&1
-	echo ---------------- Displays task list: for specific LMS processes                                                         >> !REPORT_LOGFILE! 2>&1
-	echo ----- lmgrd*                                                                                                            >> !REPORT_LOGFILE! 2>&1
-	tasklist /FI "IMAGENAME eq lmgrd*"                                                                                           >> !REPORT_LOGFILE! 2>&1
-	echo ----- SIEMBT*                                                                                                           >> !REPORT_LOGFILE! 2>&1
-	tasklist /FI "IMAGENAME eq SIEMBT*"                                                                                          >> !REPORT_LOGFILE! 2>&1
-	echo ----- SIEMENS*                                                                                                          >> !REPORT_LOGFILE! 2>&1
-	tasklist /FI "IMAGENAME eq SIEMENS*"                                                                                         >> !REPORT_LOGFILE! 2>&1
-	echo ----- hasp*                                                                                                             >> !REPORT_LOGFILE! 2>&1
-	tasklist /FI "IMAGENAME eq hasp*"                                                                                            >> !REPORT_LOGFILE! 2>&1
-	echo ---------------- Displays task list: tasklist                                                                           >> !REPORT_LOGFILE! 2>&1
-	tasklist                                                                                                                     >> !REPORT_LOGFILE! 2>&1
-	echo ---------------- Displays services hosted in each process: tasklist /SVC                                                >> !REPORT_LOGFILE! 2>&1
-	tasklist /SVC                                                                                                                >> !REPORT_LOGFILE! 2>&1
-	echo ---------------- Lists all tasks currently using the given exe/dll name: tasklist /M                                    >> !REPORT_LOGFILE! 2>&1
+	echo Task List [Process Infromation]                                                           >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- Displays task list: for specific LMS processes                           >> !REPORT_LOGFILE! 2>&1
+	echo ----- lmgrd*                                                                              >> !REPORT_LOGFILE! 2>&1
+	tasklist /FI "IMAGENAME eq lmgrd*"                                                             >> !REPORT_LOGFILE! 2>&1
+	echo ----- SIEMBT*                                                                             >> !REPORT_LOGFILE! 2>&1
+	tasklist /FI "IMAGENAME eq SIEMBT*"                                                            >> !REPORT_LOGFILE! 2>&1
+	echo ----- SIEMENS*                                                                            >> !REPORT_LOGFILE! 2>&1
+	tasklist /FI "IMAGENAME eq SIEMENS*"                                                           >> !REPORT_LOGFILE! 2>&1
+	echo ----- hasp*                                                                               >> !REPORT_LOGFILE! 2>&1
+	tasklist /FI "IMAGENAME eq hasp*"                                                              >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- Displays task list: tasklist                                             >> !REPORT_LOGFILE! 2>&1
+	tasklist                                                                                       >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- Displays services hosted in each process: tasklist /SVC                  >> !REPORT_LOGFILE! 2>&1
+	tasklist /SVC                                                                                  >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- Lists all tasks currently using the given exe/dll name: tasklist /M      >> !REPORT_LOGFILE! 2>&1
 	tasklist /M > !CHECKLMS_REPORT_LOG_PATH!\tasklist_currentlyUsed.txt 2>&1 
-	echo     See !CHECKLMS_REPORT_LOG_PATH!\tasklist_currentlyUsed.txt                                                           >> !REPORT_LOGFILE! 2>&1
-	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo     See !CHECKLMS_REPORT_LOG_PATH!\tasklist_currentlyUsed.txt                             >> !REPORT_LOGFILE! 2>&1
+	echo ==============================================================================            >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                               >> !REPORT_LOGFILE! 2>&1
 	echo ... read network statistics ...
-	echo Displays Windows IP Configuration [ipconfig]                                                                            >> !REPORT_LOGFILE! 2>&1
-	echo ---------------- Displays Windows IP Configuration: ipconfig /all                                                       >> !REPORT_LOGFILE! 2>&1
+	echo Displays Windows IP Configuration [ipconfig]                                              >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- Displays Windows IP Configuration: ipconfig /all                         >> !REPORT_LOGFILE! 2>&1
 	echo     Displays Windows IP Configuration: ipconfig /all
-	ipconfig /all                                                                                                                >> !REPORT_LOGFILE! 2>&1
-	echo ---------------- Retrieve public IP address: from http://ip4only.me/api/                                                >> !REPORT_LOGFILE! 2>&1
+	ipconfig /all                                                                                  >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- Retrieve public IP address: from http://ip4only.me/api/                  >> !REPORT_LOGFILE! 2>&1
 	rem Connection Test to http://ip4only.me/api/
-	powershell -Command "(New-Object Net.WebClient).DownloadFile('http://ip4only.me/api/', '!CHECKLMS_REPORT_LOG_PATH!\ip_address.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_ip4only.txt 2>&1
+	powershell -Command "(New-Object Net.WebClient).DownloadFile('http://ip4only.me/api/', '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ip4only.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_ip4only_log.txt 2>&1
 	if !ERRORLEVEL!==0 (
 		rem Connection Test: PASSED
 		echo     Connection Test PASSED, can access http://ip4only.me/api/
-		echo Connection Test PASSED, can access http://ip4only.me/api/                                                           >> !REPORT_LOGFILE! 2>&1
-		Type "!CHECKLMS_REPORT_LOG_PATH!\ip_address.txt"                                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Connection Test PASSED, can access http://ip4only.me/api/                             >> !REPORT_LOGFILE! 2>&1
+		Type "!CHECKLMS_REPORT_LOG_PATH!\connection_test_ip4only.txt"                              >> !REPORT_LOGFILE! 2>&1
 	) else if !ERRORLEVEL!==1 (
 		rem Connection Test: FAILED
 		echo     Connection Test FAILED, cannot access http://ip4only.me/api/
-		echo Connection Test FAILED, cannot access http://ip4only.me/api/                                                        >> !REPORT_LOGFILE! 2>&1
-		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_ip4only.txt                                                              >> !REPORT_LOGFILE! 2>&1
+		echo Connection Test FAILED, cannot access http://ip4only.me/api/                          >> !REPORT_LOGFILE! 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_ip4only_log.txt                            >> !REPORT_LOGFILE! 2>&1
 	)
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- Retrieve public IP address: from https://api.ipify.org                   >> !REPORT_LOGFILE! 2>&1
+	rem Connection Test to https://api.ipify.org  
+	powershell -Command "(New-Object Net.WebClient).DownloadFile('https://api.ipify.org', '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ipify.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_ipify_log.txt 2>&1
+	if !ERRORLEVEL!==0 (
+		rem Connection Test: PASSED
+		echo     Connection Test PASSED, can access https://api.ipify.org
+		echo Connection Test PASSED, can access https://api.ipify.org                              >> !REPORT_LOGFILE! 2>&1
+		Type "!CHECKLMS_REPORT_LOG_PATH!\connection_test_ipify.txt"                                >> !REPORT_LOGFILE! 2>&1
+		echo .                                                                                     >> !REPORT_LOGFILE! 2>&1
+	) else if !ERRORLEVEL!==1 (
+		rem Connection Test: FAILED
+		echo     Connection Test FAILED, cannot access https://api.ipify.org
+		echo Connection Test FAILED, cannot access https://api.ipify.org                           >> !REPORT_LOGFILE! 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_ipify_log.txt                              >> !REPORT_LOGFILE! 2>&1
+	)
+	echo ---------------- Retrieve public IP address: from http://www.ifconfig.io/                 >> !REPORT_LOGFILE! 2>&1
+	rem Connection Test to http://www.ifconfig.io/
+	powershell -Command "(New-Object Net.WebClient).DownloadFile('http://www.ifconfig.io/', '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ifconfig.html')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_ifconfig_log.txt 2>&1
+	if !ERRORLEVEL!==0 (
+		rem Connection Test: PASSED
+		echo     Connection Test PASSED, can access http://www.ifconfig.io/
+		echo Connection Test PASSED, can access http://www.ifconfig.io/                            >> !REPORT_LOGFILE! 2>&1
+		echo     Details, see '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ifconfig.html'           >> !REPORT_LOGFILE! 2>&1
+	) else if !ERRORLEVEL!==1 (
+		rem Connection Test: FAILED
+		echo     Connection Test FAILED, cannot access http://www.ifconfig.io/
+		echo Connection Test FAILED, cannot access http://www.ifconfig.io/                         >> !REPORT_LOGFILE! 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_ifconfig_log.txt                           >> !REPORT_LOGFILE! 2>&1
+	)
+	echo ---------------- Retrieve public IP address: from https://www.whoismyisp.org/             >> !REPORT_LOGFILE! 2>&1
+	rem Connection Test to http://www.ifconfig.io/
+	powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.whoismyisp.org/', '!CHECKLMS_REPORT_LOG_PATH!\connection_test_whoismyisp.html')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_whoismyisp_log.txt 2>&1
+	if !ERRORLEVEL!==0 (
+		rem Connection Test: PASSED
+		echo     Connection Test PASSED, can access https://www.whoismyisp.org/
+		echo Connection Test PASSED, can access https://www.whoismyisp.org/                        >> !REPORT_LOGFILE! 2>&1
+		echo     Details, see '!CHECKLMS_REPORT_LOG_PATH!\connection_test_whoismyisp.html'         >> !REPORT_LOGFILE! 2>&1
+	) else if !ERRORLEVEL!==1 (
+		rem Connection Test: FAILED
+		echo     Connection Test FAILED, cannot access https://www.whoismyisp.org/
+		echo Connection Test FAILED, cannot access https://www.whoismyisp.org/                     >> !REPORT_LOGFILE! 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_whoismyisp_log.txt                         >> !REPORT_LOGFILE! 2>&1
+	)
+	echo Start at !DATE! !TIME! ....                                                               >> !REPORT_LOGFILE! 2>&1
 ) else (
 	rem LMS_SKIPWINDOWS
 	if defined SHOW_COLORED_OUTPUT (
@@ -3212,7 +3257,7 @@ if not defined LMS_SKIPWINDOWS (
 	) else (
 		echo     SKIPPED windows section. The script didn't execute the windows specific commands.
 	)
-	echo SKIPPED windows section. The script didn't execute the windows specific commands.                                       >> !REPORT_LOGFILE! 2>&1
+	echo SKIPPED windows section. The script didn't execute the windows specific commands.         >> !REPORT_LOGFILE! 2>&1
 )
 echo Read network statistics [netstat reports]                                                                                   >> !REPORT_LOGFILE! 2>&1
 echo ... read network statistics [netstat reports] ...
@@ -6215,9 +6260,25 @@ if not defined LMS_SKIPSSU (
 	Powershell -command "Get-ItemProperty 'HKCU:\SOFTWARE\Siemens\SSU' | Format-List" > !CHECKLMS_SSU_PATH!\ssu_hkcu_registry.txt 2>&1
 	echo Content of registry key: "HKCU:\SOFTWARE\Siemens\SSU" ...                                                               >> !REPORT_LOGFILE! 2>&1
 	type !CHECKLMS_SSU_PATH!\ssu_hkcu_registry.txt                                                                               >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	echo ... test connection to OSD server ...
-	echo Test connection to OSD server                                                                                           >> !REPORT_LOGFILE! 2>&1 
+	echo -------------------------------------------------------                                  >> !REPORT_LOGFILE! 2>&1
+	echo ... test connection to OSD server [using https/443 port] ...
+	echo Test connection to OSD server  [using https/443 port]                                    >> !REPORT_LOGFILE! 2>&1 
+	rem Connection Test to OSD server
+	powershell -Command "Test-NetConnection www.automation.siemens.com -port 443" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_port.txt 2>&1
+	if !ERRORLEVEL!==0 (
+		rem Connection Test: PASSED
+		echo     Connection Test PASSED, can access port 443 on www.automation.siemens.com
+		echo Connection Test PASSED, can access port 443 on www.automation.siemens.com            >> !REPORT_LOGFILE! 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_port.txt                              >> !REPORT_LOGFILE! 2>&1
+	) else if !ERRORLEVEL!==1 (
+		rem Connection Test: FAILED
+		echo     Connection Test FAILED, cannot access port 443 on www.automation.siemens.com
+		echo Connection Test FAILED, cannot access port 443 on www.automation.siemens.com         >> !REPORT_LOGFILE! 2>&1            
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_port.txt                              >> !REPORT_LOGFILE! 2>&1
+	)
+	echo -------------------------------------------------------                                  >> !REPORT_LOGFILE! 2>&1
+	echo ... test connection to OSD server [using http request] ...
+	echo Test connection to OSD server  [using http request]                                                                     >> !REPORT_LOGFILE! 2>&1 
 	rem Connection Test to OSD server
 	powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.automation.siemens.com/swdl/servertest/', '!temp!\OSD_servertest.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_swdl.txt 2>&1
 	if !ERRORLEVEL!==0 (
@@ -6235,8 +6296,8 @@ if not defined LMS_SKIPSSU (
 		set OSDServerConnectionTestStatus=Failed
 	)
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1 
-	echo ... test connection to OSD software udpate server ...
-	echo Test connection to OSD software udpate server                                                                           >> !REPORT_LOGFILE! 2>&1                                                                                            
+	echo ... test connection to OSD software udpate server  [using http request] ...
+	echo Test connection to OSD software udpate server  [using http request]                                                     >> !REPORT_LOGFILE! 2>&1                                                                                            
 	rem Connection Test to OSD software udpate server
 	powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.automation.siemens.com/softwareupdater/servertest.aspx', '!temp!\OSD_softwareudpateservertest.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_softwareupdate.txt 2>&1
 	if !ERRORLEVEL!==0 (
@@ -6961,6 +7022,22 @@ if not defined LMS_SKIPCONTEST (
 		echo Connection Test FAILED, cannot access !CONNECTION_TEST_URL!                                                                      >> !REPORT_LOGFILE! 2>&1
 		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_siemens.txt                                                                           >> !REPORT_LOGFILE! 2>&1
 	)
+	echo -------------------------------------------------------                          >> !REPORT_LOGFILE! 2>&1
+	echo ... test connection to LMS server: lms.bt.siemens.com [using https/443 port] ...
+	echo Test connection to LMS server: lms.bt.siemens.com  [using https/443 port]        >> !REPORT_LOGFILE! 2>&1 
+	rem Connection Test to LMS server
+	powershell -Command "Test-NetConnection lms.bt.siemens.com -port 443" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_lms_prod_server.txt 2>&1
+	if !ERRORLEVEL!==0 (
+		rem Connection Test: PASSED
+		echo     Connection Test PASSED, can access port 443 on lms.bt.siemens.com
+		echo Connection Test PASSED, can access port 443 on lms.bt.siemens.com            >> !REPORT_LOGFILE! 2>&1                
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_lms_prod_server.txt               >> !REPORT_LOGFILE! 2>&1
+	) else if !ERRORLEVEL!==1 (
+		rem Connection Test: FAILED
+		echo     Connection Test FAILED, cannot access port 443 on lms.bt.siemens.com
+		echo Connection Test FAILED, cannot access port 443 on lms.bt.siemens.com         >> !REPORT_LOGFILE! 2>&1            
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_lms_prod_server.txt               >> !REPORT_LOGFILE! 2>&1
+	)
 	echo -------------------------------------------------------                                                                              >> !REPORT_LOGFILE! 2>&1
 	set CONNECTION_TEST_URL=https://lms.bt.siemens.com/flexnet/services/ActivationService
 	powershell -Command "(New-Object Net.WebClient).DownloadFile('!CONNECTION_TEST_URL!', '!temp!\downloadtest.txt')"  >!CHECKLMS_REPORT_LOG_PATH!\connection_test_btlms_activationservice.txt 2>&1
@@ -6976,6 +7053,22 @@ if not defined LMS_SKIPCONTEST (
 	)
 	echo -------------------------------------------------------                                                                              >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_EXTENDED_CONTENT (
+		echo ... test connection to LMS server: lms-quality.bt.siemens.com [using https/443 port] ...
+		echo Test connection to LMS server: lms-quality.bt.siemens.com  [using https/443 port]        >> !REPORT_LOGFILE! 2>&1 
+		rem Connection Test to LMS server
+		powershell -Command "Test-NetConnection lms-quality.bt.siemens.com -port 443" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_lms_qual_server.txt 2>&1
+		if !ERRORLEVEL!==0 (
+			rem Connection Test: PASSED
+			echo     Connection Test PASSED, can access port 443 on lms-quality.bt.siemens.com
+			echo Connection Test PASSED, can access port 443 on lms-quality.bt.siemens.com            >> !REPORT_LOGFILE! 2>&1                
+			type !CHECKLMS_REPORT_LOG_PATH!\connection_test_lms_qual_server.txt                       >> !REPORT_LOGFILE! 2>&1
+		) else if !ERRORLEVEL!==1 (
+			rem Connection Test: FAILED
+			echo     Connection Test FAILED, cannot access port 443 on lms-quality.bt.siemens.com
+			echo Connection Test FAILED, cannot access port 443 on lms-quality.bt.siemens.com         >> !REPORT_LOGFILE! 2>&1            
+			type !CHECKLMS_REPORT_LOG_PATH!\connection_test_lms_qual_server.txt                       >> !REPORT_LOGFILE! 2>&1
+		)
+		echo -------------------------------------------------------                                  >> !REPORT_LOGFILE! 2>&1
 		set CONNECTION_TEST_URL=https://lms-quality.bt.siemens.com/flexnet/services/ActivationService
 		powershell -Command "(New-Object Net.WebClient).DownloadFile('!CONNECTION_TEST_URL!', '!temp!\downloadtest.txt')"  >!CHECKLMS_REPORT_LOG_PATH!\connection_test_btqual_activationservice.txt 2>&1
 		if !ERRORLEVEL!==0 (
