@@ -336,6 +336,7 @@ rem     13-Dec-2021:
 rem        - leave host-info foor loop "faster"
 rem        - change handling of 'setbginfo.lock' (requires bginfo package V0.96 of 12-Dec-2021, or newer)
 rem        - use S3 bucket direct download (from https://licensemanagementsystem.s3.eu-west-1.amazonaws.com/) instead of CloudFront (via https://d32nyvdepsrb0n.cloudfront.net/)
+rem        - extend .NET detection; added "528449"; see https://docs.microsoft.com/en-us/dotnet/framework/migration-guide/how-to-determine-which-versions-are-installed
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -765,7 +766,7 @@ echo.> !REPORT_LOGFILE! 2>&1
 REM -- .NET Framework Version
 REM see https://docs.microsoft.com/en-us/dotnet/framework/migration-guide/how-to-determine-which-versions-are-installed
 REM Decimal values in hex:
-rem -- .NET Framework 4.8  : 528049, 528040, 528372
+rem -- .NET Framework 4.8  : 528449, 528049, 528040, 528372
 rem -- .NET Framework 4.7.2: 461814->70BF6, 461808->70BF0, 
 rem -- .NET Framework 4.7.1: 461310->709FE, 461308->709FC
 rem -- .NET Framework 4.7  : 460805->70805, 460798->707FE
@@ -786,16 +787,20 @@ for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>
 	rem convert hex in decimal (see https://stackoverflow.com/questions/9453246/reg-query-returning-hexadecimal-value)
 	set /A NETVersionDec=%%A
 )
+if "!NETVersionDec!" == "528449" (
+	rem On Windows 11 and Windows Server 2022: 528449
+	set NETVersion=4.8
+)
 if "!NETVersionDec!" == "528049" (
 	rem On all others Windows operating systems (including other Windows 10 operating systems): 528049
 	set NETVersion=4.8
 )
 if "!NETVersionDec!" == "528040" (
-	rem On Windows 10 May 2019 Update: 528040
+	rem On Windows 10 May 2019 Update and Windows 10 November 2019 Update: 528040
 	set NETVersion=4.8
 )
 if "!NETVersionDec!" == "528372" (
-	rem On Windows 10 May 2020 Update: 528372
+	rem On Windows 10 May 2020 Update and Windows 10 October 2020 Update and Windows 10 May 2021 Update: 528372
 	set NETVersion=4.8
 )
 if "!NETVersionDec!" == "461814" (
