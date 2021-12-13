@@ -335,6 +335,7 @@ rem        - add further connection tests, using e.g. powershell -Command "Test-
 rem     13-Dec-2021:
 rem        - leave host-info foor loop "faster"
 rem        - change handling of 'setbginfo.lock' (requires bginfo package V0.96 of 12-Dec-2021, or newer)
+rem        - use S3 bucket direct download (from https://licensemanagementsystem.s3.eu-west-1.amazonaws.com/) instead of CloudFront (via https://d32nyvdepsrb0n.cloudfront.net/)
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -406,12 +407,14 @@ setlocal ENABLEEXTENSIONS
 
 rem External public download location
 rem set CHECKLMS_EXTERNAL_SHARE=https://static.siemens.com/btdownloads/
-set CHECKLMS_EXTERNAL_SHARE=https://d32nyvdepsrb0n.cloudfront.net/
+rem set CHECKLMS_EXTERNAL_SHARE=https://d32nyvdepsrb0n.cloudfront.net/
+set CHECKLMS_EXTERNAL_SHARE=https://licensemanagementsystem.s3.eu-west-1.amazonaws.com/
 
 rem CheckLMS configuration (Siemens internal only)
 rem set CHECKLMS_CONFIG=https://wiki.siemens.com/download/attachments/313230891/CheckLMS.config
 rem set CHECKLMS_CONFIG=https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.config
-set CHECKLMS_CONFIG=https://d32nyvdepsrb0n.cloudfront.net/lms/CheckLMS/CheckLMS.config
+rem set CHECKLMS_CONFIG=https://d32nyvdepsrb0n.cloudfront.net/lms/CheckLMS/CheckLMS.config
+set CHECKLMS_CONFIG=https://licensemanagementsystem.s3.eu-west-1.amazonaws.com/lms/CheckLMS/CheckLMS.config
 
 rem Connection Test to CheckLMS share
 rem Internal share names are retrieved from CheckLMS.config
