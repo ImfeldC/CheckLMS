@@ -332,6 +332,9 @@ rem        - Add console output: Analyze 'SIEMBT.log'
 rem        - Adjust 'Host Info' extraction from SIEMBT.log; imporve them in regards of speed.
 rem        - support ifconfig.io
 rem        - add further connection tests, using e.g. powershell -Command "Test-NetConnection www.automation.siemens.com -port 443"
+rem     13-Dec-2021:
+rem        - leave host-info foor loop "faster"
+rem        - change handling of 'setbginfo.lock' (requires bginfo package V0.96 of 12-Dec-2021, or newer)
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -372,8 +375,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 10-Dec-2021"
-set LMS_SCRIPT_BUILD=20211210
+set LMS_SCRIPT_VERSION="CheckLMS Script 13-Dec-2021"
+set LMS_SCRIPT_BUILD=20211213
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -1752,21 +1755,23 @@ if not defined LMS_SKIPDOWNLOAD (
 	echo SKIPPED download section. The script didn't execute the download commands.                                               >> !REPORT_LOGFILE! 2>&1
 )
 
-rem set background info
-if defined LMS_SET_BGINFO (
-	mkdir !REPORT_LOG_PATH!\BgInfo\  >nul 2>&1
-	echo This file is used to enable setbginfo at each run of CheckLMS > "!REPORT_LOG_PATH!\BgInfo\setbginfo.lock" 2>&1
-)
-if exist "!REPORT_LOG_PATH!\BgInfo\setbginfo.lock" (
-	if exist "!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat" (
-		rem execute pre-installed BGInfo to udpate information displayed on desktop
-		echo Call '!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat' ...                                 >> !REPORT_LOGFILE! 2>&1
-		call "!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat"                                          >> !REPORT_LOGFILE! 2>&1
+rem set background info; when ...
+rem [1] either /setbginfo option is set [-> LMS_SET_BGINFO]
+rem [2] or setbginfo.lock exists [=setbginfo.bat has been executed befoew]
+if defined LMS_SET_BGINFO ( set LMS_UPDATE_BGINFO=1 )
+if exist "!LMS_PROGRAMDATA!\BgInfo\setbginfo.lock" ( set LMS_UPDATE_BGINFO=1 )
+if defined LMS_UPDATE_BGINFO (
+	IF EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat" (
+		call "!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat"                                            >> !REPORT_LOGFILE! 2>&1
 		echo     Updated BGInfo at !DATE! !TIME!
-		echo Updated BGInfo at !DATE! !TIME!                                                   >> !REPORT_LOGFILE! 2>&1
+		echo Updated BGInfo at !DATE! !TIME! [with '!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat']     >> !REPORT_LOGFILE! 2>&1
+	) else if exist "!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat" (
+		call "!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat"                                              >> !REPORT_LOGFILE! 2>&1
+		echo     Updated BGInfo at !DATE! !TIME!
+		echo Updated BGInfo at !DATE! !TIME! [with '!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat']       >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo     CANNOT update BGInfo because 'setbginfo.bat' doesn't exist.
-		echo CANNOT update BGInfo because 'setbginfo.bat' doesn't exist.                       >> !REPORT_LOGFILE! 2>&1
+		echo CANNOT update BGInfo because 'setbginfo.bat' doesn't exist.                           >> !REPORT_LOGFILE! 2>&1
 	)
 )
 if defined LMS_SET_BGINFO (
@@ -1775,16 +1780,17 @@ if defined LMS_SET_BGINFO (
 )
 rem clear background info
 if defined LMS_CLEAR_BGINFO (
-	del !REPORT_LOG_PATH!\BgInfo\setbginfo.lock >nul 2>&1
-	if exist "!LMS_PROGRAMDATA!\BgInfo\cleanbginfo.bat" (
-		rem execute pre-installed BGInfo to udpate information displayed on desktop
-		echo Call '!LMS_PROGRAMDATA!\BgInfo\cleanbginfo.bat' ...                               >> !REPORT_LOGFILE! 2>&1
-		call "!LMS_PROGRAMDATA!\BgInfo\cleanbginfo.bat"                                        >> !REPORT_LOGFILE! 2>&1
+	IF EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\cleanbginfo.bat" (
+		call "!LMS_DOWNLOAD_PATH!\BgInfo\cleanbginfo.bat"                                          >> !REPORT_LOGFILE! 2>&1
 		echo     Removed BGInfo at !DATE! !TIME!
-		echo Removed BGInfo at !DATE! !TIME!                                                   >> !REPORT_LOGFILE! 2>&1
+		echo Removed BGInfo at !DATE! !TIME! [with '!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat']     >> !REPORT_LOGFILE! 2>&1
+	) else if exist "!LMS_PROGRAMDATA!\BgInfo\cleanbginfo.bat" (
+		call "!LMS_PROGRAMDATA!\BgInfo\cleanbginfo.bat"                                            >> !REPORT_LOGFILE! 2>&1
+		echo     Removed BGInfo at !DATE! !TIME!
+		echo Removed BGInfo at !DATE! !TIME! [with '!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat']       >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo     CANNOT remove BGInfo because 'cleanbginfo.bat' doesn't exist.
-		echo CANNOT remove BGInfo because 'cleanbginfo.bat' doesn't exist.                     >> !REPORT_LOGFILE! 2>&1
+		echo CANNOT remove BGInfo because 'cleanbginfo.bat' doesn't exist.                         >> !REPORT_LOGFILE! 2>&1
 	)
 
 	goto script_end
@@ -5483,10 +5489,12 @@ IF EXIST "!REPORT_LOG_PATH!\SIEMBT.log" (
 							echo End of 'Host Info' section found ...   >> !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt 2>&1
 							Set LMS_START_LOG=0
 							Set LMS_HOSTINFO_FOUND=1
+							goto break_hostinfo_for_loop
 						)
 					)
 				)
 			)
+			:break_hostinfo_for_loop
 			IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt" (
 				type "!CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt"                                                        >> !REPORT_LOGFILE! 2>&1
 			) else (
