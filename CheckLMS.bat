@@ -337,6 +337,8 @@ rem        - leave host-info foor loop "faster"
 rem        - change handling of 'setbginfo.lock' (requires bginfo package V0.96 of 12-Dec-2021, or newer)
 rem        - use S3 bucket direct download (from https://licensemanagementsystem.s3.eu-west-1.amazonaws.com/) instead of CloudFront (via https://d32nyvdepsrb0n.cloudfront.net/)
 rem        - extend .NET detection; added "528449"; see https://docs.microsoft.com/en-us/dotnet/framework/migration-guide/how-to-determine-which-versions-are-installed
+rem     14-Dec-2021:
+rem        - Publish and integrate into LMS 2.6.847 (Sprint 46)
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -377,8 +379,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 13-Dec-2021"
-set LMS_SCRIPT_BUILD=20211213
+set LMS_SCRIPT_VERSION="CheckLMS Script 14-Dec-2021"
+set LMS_SCRIPT_BUILD=20211214
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
