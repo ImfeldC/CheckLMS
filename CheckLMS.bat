@@ -339,6 +339,10 @@ rem        - use S3 bucket direct download (from https://licensemanagementsystem
 rem        - extend .NET detection; added "528449"; see https://docs.microsoft.com/en-us/dotnet/framework/migration-guide/how-to-determine-which-versions-are-installed
 rem     14-Dec-2021:
 rem        - Publish and integrate into LMS 2.6.847 (Sprint 46)
+rem     12-Jan-2022:
+rem        - Analyze the ALM version, inform about no longer supported ALM versions. See "1680356: CheckLMS: Check installed ALM version and announce incompatibility"
+rem        - remove leading zeroes: https://stackoverflow.com/questions/14762813/remove-leading-zeros-in-batch-file
+rem
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -379,8 +383,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 14-Dec-2021"
-set LMS_SCRIPT_BUILD=20211214
+set LMS_SCRIPT_VERSION="CheckLMS Script 12-Jan-2022"
+set LMS_SCRIPT_BUILD=20220112
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -988,6 +992,13 @@ set KEY_NAME=HKLM\SOFTWARE\Siemens\AUTSW\LicenseManager
 set VALUE_NAME=Release
 for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
 	set ALM_RELEASE=%%A
+	for /f "tokens=1 delims=." %%a in ("!ALM_RELEASE!") do set ALM_MAJ_VERSION=%%a
+	for /f "tokens=2 delims=." %%a in ("!ALM_RELEASE!") do set ALM_MIN_VERSION=%%a
+	for /f "tokens=3 delims=." %%a in ("!ALM_RELEASE!") do set ALM_PATCH_VERSION=%%a
+	rem remove leading zeroes: https://stackoverflow.com/questions/14762813/remove-leading-zeros-in-batch-file
+	for /f "tokens=* delims=0" %%a in ("!ALM_MAJ_VERSION!") do set ALM_MAJ_VERSION=%%a
+	for /f "tokens=* delims=0" %%a in ("!ALM_MIN_VERSION!") do set ALM_MIN_VERSION=%%a
+	for /f "tokens=* delims=0" %%a in ("!ALM_PATCH_VERSION!") do set ALM_PATCH_VERSION=%%a
 )
 set VALUE_NAME=TechnVersion
 for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
@@ -998,8 +1009,9 @@ for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>
 	set ALM_VERSION=%%A
 )
 set VALUE_NAME=VersionString
-for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
-	set ALM_VERSION_STRING=%%A
+for /F "usebackq tokens=3*" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
+	rem fixed 12-Jan-2022: Include also 'spaces' in result
+	set ALM_VERSION_STRING=%%A %%B
 )
 REM -- Check FIPS mode
 REM HKLM\System\CurrentControlSet\Control\Lsa\FIPSAlgorithmPolicy\Enabled
@@ -4182,7 +4194,43 @@ if not defined LMS_SKIPLMS (
 :alm_section
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPBTALMPLUGIN (
-	echo ALM: %ALM_VERSION_STRING% [%ALM_VERSION%] -- %ALM_RELEASE% [%ALM_TECH_VERSION%]                                     >> !REPORT_LOGFILE! 2>&1
+	echo Automation License Manager [ALM]                                                                                    >> !REPORT_LOGFILE! 2>&1
+	if defined ALM_VERSION_STRING (
+		echo     ALM: !ALM_VERSION_STRING! [!ALM_VERSION!] - !ALM_RELEASE! [!ALM_TECH_VERSION!]  [!ALM_MAJ_VERSION!/!ALM_MIN_VERSION!/!ALM_PATCH_VERSION!]  >> !REPORT_LOGFILE! 2>&1
+		if /I !ALM_MAJ_VERSION! LSS 6 (
+			rem ALM is below V6.x ... it is NOT supported!
+			echo     Installed ALM [!ALM_RELEASE!] is below V6.x ... it is NOT supported!                                    >> !REPORT_LOGFILE! 2>&1
+			set ALM_IS_SUPPORTED=No
+		) else (
+			if /I !ALM_MIN_VERSION! GEQ 1 (
+				rem ALM is equal or above V6.1 ... it is supported!
+				echo     Installed ALM [!ALM_RELEASE!] is equal or above V6.1 ... it is supported!                           >> !REPORT_LOGFILE! 2>&1
+				set ALM_IS_SUPPORTED=Yes
+			) else (
+				if /I !ALM_PATCH_VERSION! GEQ 8 (
+					rem ALM is V6.0.8.x or above ... it is supported!
+					echo     Installed ALM [!ALM_RELEASE!] is V6.0.8.x or above ... it is supported!                         >> !REPORT_LOGFILE! 2>&1
+					set ALM_IS_SUPPORTED=Yes
+				) else (
+					echo     Installed ALM [!ALM_RELEASE!] is below V6.0.8.x ... it is NOT supported!                        >> !REPORT_LOGFILE! 2>&1
+					set ALM_IS_SUPPORTED=No
+				)
+			)
+		)
+	) else (
+		echo     No ALM installed.                                                                                           >> !REPORT_LOGFILE! 2>&1
+	)
+	if defined ALM_IS_SUPPORTED (
+		echo     Installed ALM [!ALM_RELEASE!] is supported: !ALM_IS_SUPPORTED!                                              >> !REPORT_LOGFILE! 2>&1
+		if "!ALM_IS_SUPPORTED!" NEQ "Yes" (
+			if defined SHOW_COLORED_OUTPUT (
+				echo [1;31m    ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please udpate to newer version. [1;37m
+			) else (
+				echo     ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please udpate to newer version.
+			)
+			echo ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please udpate to newer version.                      >> !REPORT_LOGFILE! 2>&1
+		)
+	)
 	if defined LMS_SKIP_ALM_BT_PUGIN_INSTALLATION (
 		echo     BT ALM Plugin is NOT handled/installed by LMS client!                                                       >> !REPORT_LOGFILE! 2>&1
 	)
@@ -8158,7 +8206,19 @@ if not defined LMS_CHECK_ID (
 	)
 )
 if defined ALM_VERSION_STRING (
-	echo ALM: %ALM_VERSION_STRING% [%ALM_VERSION%] - %ALM_RELEASE% [%ALM_TECH_VERSION%]                                  >> !REPORT_LOGFILE! 2>&1
+	echo Automation License Manager [ALM]                                                                                    >> !REPORT_LOGFILE! 2>&1
+	echo     ALM: !ALM_VERSION_STRING! [!ALM_VERSION!] - !ALM_RELEASE! [!ALM_TECH_VERSION!]  [!ALM_MAJ_VERSION!/!ALM_MIN_VERSION!/!ALM_PATCH_VERSION!]  >> !REPORT_LOGFILE! 2>&1
+	if defined ALM_IS_SUPPORTED (
+		echo     Installed ALM [!ALM_RELEASE!] is supported: !ALM_IS_SUPPORTED!                                              >> !REPORT_LOGFILE! 2>&1
+		if "!ALM_IS_SUPPORTED!" NEQ "Yes" (
+			if defined SHOW_COLORED_OUTPUT (
+				echo [1;31m    ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please udpate to newer version. [1;37m
+			) else (
+				echo     ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please udpate to newer version.
+			)
+			echo ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please udpate to newer version.                      >> !REPORT_LOGFILE! 2>&1
+		)
+	)
 ) else (
 	echo No ALM installed.                                                                                               >> !REPORT_LOGFILE! 2>&1
 )
