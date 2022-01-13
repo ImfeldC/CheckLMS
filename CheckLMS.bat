@@ -342,6 +342,8 @@ rem        - Publish and integrate into LMS 2.6.847 (Sprint 46)
 rem     12-Jan-2022:
 rem        - Analyze the ALM version, inform about no longer supported ALM versions. See "1680356: CheckLMS: Check installed ALM version and announce incompatibility"
 rem        - remove leading zeroes: https://stackoverflow.com/questions/14762813/remove-leading-zeros-in-batch-file
+rem     13-Jan-2022:
+rem        - Add "Get-ExecutionPolicy -List" to script
 rem
 rem
 rem     SCRIPT USAGE:
@@ -383,8 +385,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 12-Jan-2022"
-set LMS_SCRIPT_BUILD=20220112
+set LMS_SCRIPT_VERSION="CheckLMS Script 13-Jan-2022"
+set LMS_SCRIPT_BUILD=20220113
 
 rem most recent lms build: 2.5.824 (per 07-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.5.824
@@ -3029,6 +3031,8 @@ if not defined LMS_SKIPWINDOWS (
 	echo ... retrieve powershell execution policy ...
 	echo Retrieve powershell execution policy [using 'powershell -command "Get-ExecutionPolicy"']:                               >> !REPORT_LOGFILE! 2>&1
 	powershell -command "Get-ExecutionPolicy"                                                                                    >> !REPORT_LOGFILE! 2>&1
+	echo Retrieve powershell execution policy [using 'powershell -command "Get-ExecutionPolicy -List"']:                         >> !REPORT_LOGFILE! 2>&1
+	powershell -command "Get-ExecutionPolicy -List"                                                                              >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- powershell -command "Get-TimeZone"                                                                     >> !REPORT_LOGFILE! 2>&1
 	echo ... retrieve time zone information ...
 	echo Retrieve time zone information [using 'powershell -command "Get-TimeZone"']:                                            >> !REPORT_LOGFILE! 2>&1
