@@ -826,4 +826,345 @@ rem        - Check: not 2.4.815 AND not 2.3.745 AND less or equal than 2.3.744  
 rem     16-Dec-2020:
 rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
 rem        - Requested to integrate into LMS 2.5.823 build (Sprint 21)
+rem
+rem     07-Jan-2021:
+rem        - Adjust LMS version check, consider LMS 2.5 (2.5.824)
+rem        - corrected small typo "Measure exection"
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem        - Upload CheckLMS.bat to https://wiki.siemens.com/display/en/LMS%3A+How+to+check+LMS+installation
+rem        - Requested to integrate into LMS 2.5.824 build (Sprint 21)
+rem        - Move CheckLMS script (Version: 07-Jan-2021) under source control: https://github.com/ImfeldC/CheckLMS
+rem     11-Jan-2021:
+rem        - Check if newer CheckLMS.bat is available in C:\ProgramData\Siemens\LMS\Download (see task 1046557)
+rem        - Create new download folder for download from github: !LMS_DOWNLOAD_PATH!\git\
+rem     12-Jan-2021:
+rem        - Support USBDeview tool (see task 1198261)
+rem     13-Jan-2021: (see also 09-Nov-2020)
+rem        - Consider “ecmcommonutil.exe” (V1.19) (see task 1200154)
+rem        - Download "ecmcommonutil_1.19.exe" (similar to "GetVMGenerationIdentifier.exe") from 'https://static.siemens.com/btdownloads/lms/FNP/ecmcommonutil_1.19.exe'
+rem        - Execute in script the commands: ecmcommonutil_1.19.exe -l -f -d device; ecmcommonutil_1.19.exe -l -f -d net; ecmcommonutil_1.19.exe -l -f -d smbios; ecmcommonutil_1.19.exe -l -f -d vm
+rem     14-Jan-2021:
+rem        - show message at file upload
+rem        - add 'ping !COMPUTERNAME!' to connection test section
+rem        - Retrieve content of %WinDir%\System32\Drivers\Etc folder (see task 1202358)
+rem     15-Jan-2021:
+rem        - investigate some suspect crash of CheckLMS.bat in case newer script is downloaded (seen on Christian's laptop)
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem     16-Jan-2021:
+rem        - rename "servercomptranutil_listRequests.xml" to "servercomptranutil_listRequests_XML.xml"
+rem        - store information retrieved with -listrequests in separate files: servercomptranutil_listRequests_simple.xml and servercomptranutil_listRequests_long.xml
+rem        - retrieve pending requests and store them in separate files; e.g. pending_req_41272.xml
+rem     18-Jan-2021:
+rem        - add script name and path to header output
+rem        - consider script name (%0) when newer script is downloaded; do not replace script itself
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem     19-Jan-2021:
+rem        - add option "checkdownload"
+rem        - Create download archive
+rem        - retrieve adapter bidnings for TCP/IP: Get-NetAdapterBinding -ComponentID ms_tcpip / Get-NetAdapterBinding -ComponentID ms_tcpip6 
+rem          (see also https://www.majorgeeks.com/content/page/how_to_enable_or_disable_ipv6_in_windows.html#:~:text=Windows%20offers%20a%20few%20ways,Get%2DNetAdapterBinding%20%2DComponentID%20ms_tcpip6. )
+rem        - call "netstat -a -f" only when extended mode is enabled
+rem     25-Jan-2021:
+rem        - Retrieve installed security protocols [using 'powershell -command "[Net.ServicePointManager]::SecurityProtocol"']
+rem        - Retreive registry key: powershell -Command "Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\.NetFramework\v4.0.30319' -Name 'SchUseStrongCrypto'" 
+rem          (see https://trailheadtechnology.com/solving-could-not-create-ssl-tls-secure-channel-error-in-net-4-6-x/)
+rem     27-Jan-2021:
+rem        - store results of connection tests in separate files: !CHECKLMS_REPORT_LOG_PATH!\connection_test_XXXX.txt
+rem     28-Jan-2021:
+rem        - add also result of conection test to akamai download share
+rem     02-Feb-2021:
+rem        - support VMGENID.EXE from Stratus to read-out geneartion id
+rem        - remove hint, that GetVMGenerationIdentifier.exe is from Flexera; it seems this tool is NOT from Flexera.
+rem     04-Feb-2021:
+rem        - introduce !LMS_PROGRAMDATA! as root path for LMS program data.
+rem        - In case internet connection is not possible, search for download zip archive - created on another machine - and prcoess them on this machine.
+rem     05-Feb-2021:
+rem        - Improve unzip; as 7zr.exe seems not working on windows 2019 server. Use "Expand-Archive" of PowerShell V5.
+rem          See also https://ridicurious.com/2019/07/29/3-ways-to-unzip-compressed-files-using-powershell/
+rem        - to access desktop, use also %userprofile%\desktop, as %desktop% is not available on all windows systems 
+rem          See also https://stackoverflow.com/questions/18629768/path-of-user-desktop-in-batch-files
+rem     09-Feb-2021:
+rem        - Extract 'Host Info' from SIEMBT.log
+rem        - adjust parsing of 'servercomptranutil_listRequests_XML.xml' and 'fake_id_request_file.xml' to avoid duplicate lines (using 'LMS_START_LOG' pattern).
+rem        - adjust logic for 'LMS_START_LOG' pattern, to find end of section/block.
+rem     10-Feb-2021:
+rem        - Extract important identifiers from SIEMBT.log: LMS_SIEMBT_HOSTNAME, LMS_SIEMBT_HYPERVISOR and LMS_SIEMBT_HOSTIDS
+rem        - Add values retrived from SIMEBT to summary at end of logfile. Display error message in case of "suspect" values.
+rem     11-Feb-2021:
+rem        - adjust format of LMS_REPORT_START to be more "humable" readable
+rem     16-Feb-2021:
+rem        - add option: /setfirewall; see also https://wiki.siemens.com/display/en/LMS+VMware+configuration
+rem        - change firewall settings analyze part, to use extract of 'Powershell -command "Show-NetFirewallRule"' instead of 'netsh advfirewall firewall show rule name=all verbose';
+rem          because the ouptut of netsh is language specific and the further pasring doesn't work correct on "non-English" systems.
+rem     17-Feb-2021:
+rem        - correct typo (Anaylze)
+rem        - change type of download archive from 7zip to zip, to make it independent of target system.
+rem          Because: Expand-Archive : .7z is not a supported archive file format. .zip is the only supported archive file format.
+rem     18-Feb-2021:
+rem        - add option /info, to allow user to pass addtional information to be tracked in logfile (e.g. )
+rem        - replace 'find' with 'find /I' to make comparisions independent of uppercase/lowercase
+rem        - correct typo: desigcc_reistry.txt -> desigocc_registry.txt
+rem        - use own subfolder for GMS (CHECKLMS_GMS_PATH=!CHECKLMS_REPORT_LOG_PATH!\GMS)
+rem        - make sure that project-specific subfolders are only created when the product is installed (otherwise empty folders have been created).
+rem        - Search for desigo cc logfiles [PVSS_II.*, WCCOActrl253.*] and copy them into CheckLMS logfolder.
+rem     19-Feb-2021:
+rem        - Adjust search algorithm for Desigo CC logfiles, somehow "for /r" doesn't work as expected :-(
+rem        - Adjust search for TS files, serach only for '*tsf.data' instead '*tsf*'
+rem     22-Feb-2021:
+rem        - in case command 'powershell -command "Get-WindowsUpdateLog"' fails, print output of command execution in this logfile.
+rem        - retrieve DESKTOP_FOLDER (mainly used in case desktop folder has been moved to another location)
+rem        - check ERRORLEVEL when executing 'dotnet --info'
+rem     23-Feb-2021:
+rem        - Download "AccessCHK" from https://download.sysinternals.com/files/AccessChk.zip
+rem     24-Feb-2021:
+rem        - download latest released LMS client; e.g. from https://static.siemens.com/btdownloads/lms/LMSSetup2.6.826/x64/setup64.exe
+rem        - disable one of two TS backups; execute second backup only with /extend option
+rem        - skip GetVMGenerationIdentifier.exe execution, in case MSVCR120.dll doesn't exists.
+rem        - improved output on clean/new machines, check existence of '!ALLUSERSPROFILE!\FLEXnet\'
+rem     26-Feb-2021:
+rem        - disable connection test against quality system, run them only when /extend option is set.
+rem     02-Mar-2021:
+rem        - support FNP 11.18.0.0 (or newer) used in LMS 2.6 (or newer), create donwload path with general rule (doesn't require update of script for future FNP versions)
+rem     10-Mar-2021:
+rem        - set field test version to LMS 2.6.828
+rem     15-Mar-2021:
+rem        - add: wmic path win32_computersystemproduct get uuid [similar to 'wmic csproduct get *']                (see https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/identify_ec2_instances.html)
+rem        - add: powershell -c "Get-WmiObject -query 'select uuid from Win32_ComputerSystemProduct' | Select UUID" (see https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/identify_ec2_instances.html)
+rem        - add: powershell -c (gcim Win32_ComputerSystem).HypervisorPresent                                       (see https://devblogs.microsoft.com/scripting/use-powershell-to-detect-if-hypervisor-is-present/)
+rem        - added new section "V I R T U A L   E N V I R O N M E N T", to collect information about hypervisior, when running in a virtual machine.
+rem        - retrieve "Instance identity documents" for AWS (see https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/instance-identity-documents.html)
+rem     16-Mar-2021:
+rem        - add VMID.txt to track changes in virtual ids, like VMGENID, etc.
+rem        - reduce output in general logfile for unzip operations (keep them in own files, do not add them to general logfile)
+rem        - remove log entry "Run CheckLMS.bat 64-Bit" and "Run CheckLMS.bat 32-Bit"
+rem     17-Mar-2021:
+rem        - add option /checkid (incl. LMS_SKIPDOWNLOAD, LMS_SKIPTSBACKUP, LMS_SKIPBTALMPLUGIN, LMS_SKIPSIGCHECK, LMS_SKIPWMIC, LMS_SKIPFIREWALL, LMS_SKIPSCHEDTASK, LMS_SKIPWER, LMS_SKIPFNP)
+rem        - content of "%WinDir%\System32\Drivers\Etc" is only copied, no longer addded to general logfile.
+rem        - add further: LMS_SKIPSSU, LMS_SKIPLMS, LMS_SKIPSETUP, LMS_SKIPWINEVENT
+rem        - move VMGENID.exe and GetVMGenerationIdentifier.exe into new section for virtual environments
+rem        - add further: LMS_SKIPLICSERV, LMS_SKIPLOCLICSERV, LMS_SKIPREMLICSERV, LMS_SKIPPRODUCTS, LMS_SKIPWINDOWS
+rem        - replace at several places %-characters with !-charaters; as they would not work within IF expression
+rem        - rename fnpversion to fnpversionFromLogFile, to avoid name colision with FNPVersion
+rem        - add further: LMS_SKIPUNZIP, LMS_SKIPNETSETTINGS, LMS_SKIPLOGS, LMS_SKIPDDSETUP, LMS_SKIPUCMS
+rem        - create UMN_Latest.txt which contains always the latest (most recent) values; previous values are not kept like in UMN.txt
+rem        - create VMID_Latest.txt which contains always the latest (most recent) values; previous values are not kept like in VMID.txt
+rem        - This script implementes /checkid correct; the processing and ouptut is minimized to a minimum; this allows repetative exection of the script!
+rem     18-Mar-2021:
+rem        - split output of ecmcommonutil into debug (with separate logfile) and regular ouput kept in general logfile
+rem        - add VMECMID.txt (and VMECMID_Latest.txt) which contains results of ecmcommonutil (received from Flexera)
+rem        - add AWS.txt (and AWS_Latest.txt) which contains specific AWS information
+rem        - add /setcheckidtask option, to setup periodic task to run checklms.bat with /checkid option.
+rem        - add /delcheckidtask to delete periodic checkid task, see option /setcheckidtask
+rem     19-Mar-2021:
+rem        - added new section "C H E C K - I D"
+rem        - moved several existing checks into this new section
+rem        - added further checks, to compare values from previous run with values of current run.
+rem     20-Mar-2021:
+rem        - add output of ecmcommonutil V1.19 to the common output, as it seems more reliable on some virtual machines.
+rem     22-Mar-2021:
+rem        - retrieve version of downloaded dongle driver and print them out.
+rem        - use "!ProgramFiles_x86!" instead of "%ProgramFiles(x86)%"
+rem        - add option /installdongledriver and /removedongledriver
+rem     23-Mar-2021:
+rem        - copy "config" folder and add them to the logfile archive
+rem        - add '!LMS_PROGRAMDATA!\Config\SurHistory', try to decrypt them and show content
+rem        - set field test version to LMS 2.6.829
+rem     24-Mar-2021:
+rem        - download "counted.lic" from https://static.siemens.com/btdownloads/lms/FNP/counted.lic (as part of demo vendor daemon)
+rem        - add option /startdemovd to start the demo vendor daemon provided by Flexera.
+rem        - add option /stopdemovd to stop the demo vendor daemon provided by Flexera.
+rem     25-Mar-2021:
+rem        - delete demo vendor daemon when calling /stopdemovd
+rem        - Analyze 'demo_debuglog.txt' similar like 'SIEMBT.log'
+rem     26-Mar-2021:
+rem        - read-out LmsConfigVersion and CsidConfigVersion
+rem        - fix output of lmvminfo
+rem     29-Mar-2021:
+rem        - fix issue with TS backup, introduced with LMS_SKIPTSBACKUP (at 17-Mar-2021)
+rem        - use separate logfile for checkid: LMSStatusReport_!COMPUTERNAME!_checkid
+rem     30-Mar-2021:
+rem        - execute 'LmuTool.exe /MULTICSID' if LMS 2.5.816 or newer
+rem     06-Apr-2021:
+rem        - Skip download from akamai share, download of 'CheckLMS.exe' is no longer supported.
+rem        - add output of registry key: 'HKLM:\SOFTWARE\Siemens\LMS'
+rem        - add content of the three services (fnls, fnls64 and vd) of 'HKLM:\SYSTEM\CurrentControlSet\Services\'
+rem        - collect vendor daemon specific values from SIEMBT in 'SIEMBTID.txt'
+rem        - re-enable download from akamai share, download of 'CheckLMS.exe' is again supported.
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem     07-Apr-2021:
+rem        - add 'HKLM:\SYSTEM\CurrentControlSet\Services\hasplms'
+rem     08-Apr-2021:
+rem        - disable and re-enable scheduled tasks CheckID during normal script execution
+rem        - add some enviornment variables to the output of Desigo CC section
+rem        - reset installation counter of hasp driver, to make sure that dongle driver get removed, when using /removedongledriver option
+rem        - Upload CheckLMS.exe on <internalshare>\bt\lms\CheckLMS public available on https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.exe 
+rem     09-Apr-2021:
+rem        - change exit behavior of several command line options, instead of exit goto end of script :script_end 
+rem          (/checkdownload, /setfirewall, /installdongledriver, /removedongledriver, /setcheckidtask, /delcheckidtask, /startdemovd, /stopdemovd)
+rem     12-Apr-2021:
+rem        - check errorcode afetr download checklms from github, show approbiate message instead of real error code.
+rem        - remove name of internal share name
+rem        - added additional output to analyze issue during creation of offline activation request file
+rem     14-Apr-2021:
+rem        - retrieve content of !ProgramFiles!\Siemens\SSU\bin\
+rem     15-Apr-2021:
+rem        - add 'Start-Date' of SIEMBT.log to log-files
+rem     16-Apr-2021:
+rem        - add 'Start-Date' of demo VD to log-files
+rem     20-Apr-2021:
+rem        - set 2.6.830 as field test version
+rem     23-Apr-2021:
+rem        - retrieve listening ports from SIEMBT.log
+rem     05-May-2021:
+rem        - add support for Desigo Insight, read-out licenses registry key: HKLM\SOFTWARE\Landis & Staefa\Licenses
+rem     18-May-2021:
+rem        - remove temporary created powershell scripts (Task 1289686)
+rem        - Store status of "CheckLMS_CheckID" scheduled task (Task 1294691)
+rem        - replace at several places %-characters with !-charaters; as they would not work within IF expression (Task 1294840)
+rem     19-May-2021:
+rem        - set most recent lms field test version: 2.6.831 (per 20-May-2021)
+rem     20-May-2021:
+rem        - replace at further places %-characters with !-charaters; as they would not work within IF expression
+rem     26-May-2021:
+rem        - set most recent lms field test version: 2.6.832 (per 21-May-2021)
+rem     28-May-2021:
+rem        - re-arrange script start; check first for newer script and - in case avaiulable them - start the before running unzip commands.
+rem        - adjust "reg query" command for products to avoid error message in windows command shell, if regitsr entry doesn't exist
+rem     02-Jun-2021:
+rem        - replace at further places %-characters with !-charaters; as they would not work within IF expression
+rem        - check for presence of "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" before executing powershell command
+rem        - suppress any error during unzip, write them into specific logfile (add 2>&1 to command output)
+rem     07-Jun-2021:
+rem        - read AZURE identify information document (see https://docs.microsoft.com/en-us/azure/virtual-machines/windows/instance-metadata-service?tabs=windows )
+rem     09-Jul-2021:
+rem        - set 2.6.834 as field test version
+rem     12-Jul-2021:
+rem        - set most recent drongle driver to 8.21
+rem     14-Jul-2021:
+rem        - Add support to install and remove LMS client; ... 
+rem        - use /installlms to install or udpate LMS client to most recent released client version.
+rem        - use /installftlms to install or udpate LMS client to newest field test client version.
+rem        - use /removelms to remove/uninstall installed LMS client
+rem        - remove !-sign at the end of console ouput, it causes problems, when colored output follows.
+rem     20-Jul-2021:
+rem        - set 2.6.835 as field test version
+rem     05-Aug-2021:
+rem        - retrieve metadata for VMs running on Google Cloud Platform (GCP)
+rem     06-Aug-2021:
+rem        - suppress error output on conosle during retreieving GCP metadata.
+rem     10-Aug-2021:
+rem        - set 2.6.836 as field test version
+rem     11-Aug-2021:
+rem        - add message in case field test version is already installed.
+rem        - replace %certfeature% with !certfeature!; fixes LmuTool.exe /CHECK  and LmuTool.exe /FC
+rem        - replace %servercertfeature% with !servercertfeature!; fixes LmuTool.exe /CHECK  and LmuTool.exe /FC
+rem        - replace %tsfeature% with !tsfeature!; fixes LmuTool.exe /CHECK  and LmuTool.exe /FC
+rem     12-Aug-2021:
+rem        - add '!LMS_PROGRAMDATA!\Config\LELCfg' and show content
+rem     16-Aug-2021:
+rem        - download BGInfo.exe from https://live.sysinternals.com/Bginfo.exe into C:\ProgramData\Siemens\LMS\Download\BgInfo
+rem        - support option: setbginfo & clearbginfo
+rem     17-Aug-2021:
+rem        - keep setbginfo; once set, udpate bginfo at each run; till clearbginfo is called
+rem     18-Aug-2021:
+rem        - adjust download check, check for "!LMS_DOWNLOAD_PATH!\ReadMe.txt"
+rem        - change download folder for background info from "lms\CheckLMS" to "lms\BgInfo"
+rem        - download further VBS scripts for bginfo
+rem        - delete local bginfo vbs scripts (temporary, to clean-up all test sites)
+rem        - pack all vbs scripts into a zip archive, download and unzip them into C:\ProgramData\Siemens\LMS\Download\BgInfo
+rem     19-Aug-2021:
+rem        - set 2.6.838 as field test version
+rem     20-Aug-2021:
+rem        - adjust download messages, remove messages in case nothing is downloaded because it exists already
+rem        - do not download single vbs scripts anymore, downlaod zipped archive (BgInfo_vbs_scripts.zip) and unzip them.
+rem     23-Aug-2021:
+rem        - set LMS_DATA_PATH - if not set - to C:\ProgramData\Siemens\LMS\
+rem     26-Aug-2021:
+rem        - align CheckLMS script, to support bginfo introdusced with LMS 2.6 (located in C:\ProgramData\Siemens\LMS\BgInfo)
+rem        - Download bginfo.zip and unzip into C:\ProgramData\Siemens\LMS\BgInfo
+rem        - Store info about "setbginfo" mode new in file !REPORT_LOG_PATH!\BgInfo\setbginfo.lock
+rem        - adjust command line options setbginfo & clearbginfo, first try to start downloaded bginfo, if not available start pre-installed bginfo.
+rem     27-Aug-2021:
+rem        - use 'call' command to execute (sub-)batch files, see https://stackoverflow.com/questions/1103994/how-to-run-multiple-bat-files-within-a-bat-file
+rem     31-Aug-2021:
+rem        - start support for CloudFront: https://d32nyvdepsrb0n.cloudfront.net/lms/ ( https://licensemanagementsystem.s3.eu-west-1.amazonaws.com/lms/ )
+rem        - replace 'https://static.siemens.com/btdownloads/' with 'https://d32nyvdepsrb0n.cloudfront.net/'
+rem        - replace 'akamai' with 'download share'
+rem        - adjust the donwload section, check for newer script version BEFORE downloading further libraries.
+rem        - move (internal) folder from !LMS_DOWNLOAD_PATH!\git to !LMS_DOWNLOAD_PATH!\CheckLMS\git
+rem        - remove support to download 'CheckLMS.exe', 'CheckLMS.bat' instead
+rem        - add option to show CheckLMS script version: /showversion
+rem        - change script behavior for /showversion, /setbginfo and /clearbginfo; stop script execution after the command has been executed.
+rem     01-Sep-2021:
+rem        - clean-up files, which have been downloaded with previous scripts.
+rem     02-Sep-2021:
+rem        - adjust handling of bginfo download package(s)
+rem        - add otpions to set and delete scheduled task to set bginfo
+rem     06-Sep-2021:
+rem        - add support for "LmuTool.exe /SurEDateAll" (for LMS 2.6.839 or newer)
+rem        - add support for "Get-Lms -DefaultFamily" (for LMS 2.6.839 or newer)
+rem        - set 2.6.839 as field test version
+rem     07-Sep-2021:
+rem        - no change, same file as "06-Sep-2021"
+rem     08-Sep-2021:
+rem        - adjust build number passed when startign newer checklms script.
+rem        - add missing powershell comandlets: https://wiki.siemens.com/display/en/LMS+-+Powershell+Commandlets+Reference+Guide
+rem             - added LMU PowerShell command: Get-Lms -Version
+rem             - added LMU PowerShell command: get-lms -DisableClientInfo
+rem             - added LMU PowerShell command: get-lms -BorrowDays
+rem             - added LMU PowerShell command: get-lms -ProductCode
+rem             - added LMU PowerShell command: Get-Lms -SurExpirationDate
+rem     20-Sep-2021:
+rem        - support ecmcommonutil V1.23 (see 1605134: CheckLMS: Consider “ecmcommonutil.exe” (v:1.23.0.279766))
+rem        - retrieve further available information with ecmcommonutil V1.23: dongle, hostid, docker, tpm, wmi
+rem        - run full test, suing: ecmcommonutil_x64_n6_V1.23.exe" -t -f
+rem        - add summary section, with results of all three available ecmcommonutil tools (V1.19, V1.21 and V1.23)
+rem     21-Sep-2021:
+rem        - DO NOT DELETE, AS OLDER SCRIPTS STILL START THOSE FILES
+rem     22-Sep-2021:
+rem        - disable FT version, publish script for LMS 2.6.840
+rem     27-Sep-2021:
+rem        - fixed issue with '!ALLUSERSPROFILE!' term in for loops, replaced them with '%ALLUSERSPROFILE%'
+rem        - fixed issue with '!temp!' term in for loops, replaced them with '%temp%'
+rem     13-Oct-2021:
+rem        - add command "Get-ComputerInfo -property 'HyperV*'"
+rem     14-Oct-2021:
+rem        - detect manufacturer of network adapter; this allows to determine the hypervisor
+rem     08-Nov-2021:
+rem        - add "WEVTUtil query-events Microsoft-Windows-Hyper-V-Compute-Operational /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Microsoft-Windows-Hyper-V-Compute']]]""
+rem        - add powershell -command "Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V"
+rem        - add powershell -command "Get-WindowsOptionalFeature -Online -FeatureName *Hyper-V*"
+rem        - add powershell -command "get-service | findstr vmcompute"
+rem     15-Nov-2021:
+rem        - adjust most recent BT ALM plugin version: 1.1.43.0
+rem        - adjust most recent dongle driver version: 8.31
+rem     30-Nov-2021:
+rem        - align bginfo, use dedicated bginfo config batch file (remove content from CheckLMS)
+rem     07-Dec-2021:
+rem        - add Windows Event Log: Siemens ['LMS Setup'] (see 1644407)
+rem        - use correct path for eventlog_lms_setup.txt
+rem     09-Dec-2021:
+rem        - adjust handling of bginfo download package(s)
+rem        - clean-up bginfo before unzipping new downloaded package
+rem     10-Dec-2021:
+rem        - Add console output: Analyze 'SIEMBT.log'
+rem        - Adjust 'Host Info' extraction from SIEMBT.log; imporve them in regards of speed.
+rem        - support ifconfig.io
+rem        - add further connection tests, using e.g. powershell -Command "Test-NetConnection www.automation.siemens.com -port 443"
+rem     13-Dec-2021:
+rem        - leave host-info foor loop "faster"
+rem        - change handling of 'setbginfo.lock' (requires bginfo package V0.96 of 12-Dec-2021, or newer)
+rem        - use S3 bucket direct download (from https://licensemanagementsystem.s3.eu-west-1.amazonaws.com/) instead of CloudFront (via https://d32nyvdepsrb0n.cloudfront.net/)
+rem        - extend .NET detection; added "528449"; see https://docs.microsoft.com/en-us/dotnet/framework/migration-guide/how-to-determine-which-versions-are-installed
+rem     14-Dec-2021:
+rem        - Publish and integrate into LMS 2.6.847 (Sprint 46)
+rem     12-Jan-2022:
+rem        - Analyze the ALM version, inform about no longer supported ALM versions. See "1680356: CheckLMS: Check installed ALM version and announce incompatibility"
+rem        - remove leading zeroes: https://stackoverflow.com/questions/14762813/remove-leading-zeros-in-batch-file
+rem     13-Jan-2022:
+rem        - Add "Get-ExecutionPolicy -List" to script
+rem     21-Jan-2022:
+rem        - Publish and integrate into LMS 2.6.849 (Sprint 48)
+rem        - Final script, released for LMS 2.6
+rem 
 ```
