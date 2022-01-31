@@ -5,14 +5,10 @@ rem
 rem Changelog:
 rem     24-Jul-2018: 
 rem        - Initial version
-rem     21-Jan-2022:
-rem        - Publish and integrate into LMS 2.6.849 (Sprint 48)
-rem        - Final script, released for LMS 2.6
-rem     
 rem     24-Jan-2022:
-rem        - Support ecmcommonutil_V1.25.exe from Flexera (see Task 1693224)
-rem        - Move output of ecmcommonutil -t -f into separate debug logfile
-rem        - adjust and streamline handling of ecmcommonutil
+rem        - Final script, released for LMS 2.6
+rem     31-Jan-2022:
+rem        - Adjusted check of supported LMS versions, added LMS 2.5.824
 rem     
 rem     Full details ses changelog.md
 rem
@@ -56,8 +52,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 24-Jan-2022"
-set LMS_SCRIPT_BUILD=20220124
+set LMS_SCRIPT_VERSION="CheckLMS Script 31-Jan-2022"
+set LMS_SCRIPT_BUILD=20220131
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -912,35 +908,40 @@ if NOT defined UNZIP_TOOL (
 )
 
 if "!LMS_BUILD_VERSION!" NEQ "N/A" (
-	REM Check: not 2.4.815 AND not 2.3.745 AND less or equal than 2.3.744  --> DEPRECATED (per Oct-2020)
+	REM Check: not 2.5.824 AND not 2.4.815 AND not 2.3.745 AND less or equal than 2.3.744  --> DEPRECATED (per Jan-2022)
 	REM See https://support.industry.siemens.com/cs/document/109738214/
-	if /I !LMS_BUILD_VERSION! NEQ 815 (
-		if /I !LMS_BUILD_VERSION! NEQ 745 (
-			if /I !LMS_BUILD_VERSION! LEQ 744 (
-				REM LMS Version 2.3.744 or older (lower build number)
-				if defined SHOW_COLORED_OUTPUT (
-					echo [1;31m    NOTE: The LMS version !LMS_VERSION! which you are using is DEPRECATED, pls update your system. [1;37m
-				) else (
-					echo     NOTE: The LMS version !LMS_VERSION! which you are using is DEPRECATED, pls update your system.
-				)
-				echo NOTE: The LMS version !LMS_VERSION! which you are using is DEPRECATED, pls update your system.              >> !REPORT_LOGFILE! 2>&1
-			) else (
-				REM Check: ... less than MOST_RECENT_LMS_BUILD --> IN TEST
-				if /I !LMS_BUILD_VERSION! LSS !MOST_RECENT_LMS_BUILD! (
+	if /I !LMS_BUILD_VERSION! NEQ 824 (
+		if /I !LMS_BUILD_VERSION! NEQ 815 (
+			if /I !LMS_BUILD_VERSION! NEQ 745 (
+				if /I !LMS_BUILD_VERSION! LEQ 744 (
+					REM LMS Version 2.3.744 or older (lower build number)
 					if defined SHOW_COLORED_OUTPUT (
-						echo [1;33m    WARNING: The LMS version !LMS_VERSION! which you are using is a field test version, pls update your system as soon final version is available. [1;37m
+						echo [1;31m    NOTE: The LMS version !LMS_VERSION! which you are using is DEPRECATED, pls update your system. [1;37m
 					) else (
-						echo     WARNING: The LMS version !LMS_VERSION! which you are using is a field test version, pls update your system as soon final version is available.
+						echo     NOTE: The LMS version !LMS_VERSION! which you are using is DEPRECATED, pls update your system.
 					)
-					echo WARNING: The LMS version !LMS_VERSION! which you are using is a field test version, pls update your system as soon final version is available. >> !REPORT_LOGFILE! 2>&1
+					echo NOTE: The LMS version !LMS_VERSION! which you are using is DEPRECATED, pls update your system.      >> !REPORT_LOGFILE! 2>&1
+				) else (
+					REM Check: ... less than MOST_RECENT_LMS_BUILD --> IN TEST
+					if /I !LMS_BUILD_VERSION! LSS !MOST_RECENT_LMS_BUILD! (
+						if defined SHOW_COLORED_OUTPUT (
+							echo [1;33m    WARNING: The LMS version !LMS_VERSION! which you are using is a field test version, pls update your system as soon final version is available. [1;37m
+						) else (
+							echo     WARNING: The LMS version !LMS_VERSION! which you are using is a field test version, pls update your system as soon final version is available.
+						)
+						echo WARNING: The LMS version !LMS_VERSION! which you are using is a field test version, pls update your system as soon final version is available. >> !REPORT_LOGFILE! 2>&1
+					)
 				)
+			) else (
+				REM LMS Version 2.3.745
+				echo NOTE: The LMS version !LMS_VERSION! which you are using is officially supported. 						 >> !REPORT_LOGFILE! 2>&1
 			)
 		) else (
-			REM LMS Version 2.3.745
-			echo NOTE: The LMS version !LMS_VERSION! which you are using is officially supported. 								 >> !REPORT_LOGFILE! 2>&1
+			REM LMS Version 2.4.815
+			echo NOTE: The LMS version !LMS_VERSION! which you are using is officially supported. 							 >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
-		REM LMS Version 2.4.815
+		REM LMS Version 2.5.824
 		echo NOTE: The LMS version !LMS_VERSION! which you are using is officially supported. 								 >> !REPORT_LOGFILE! 2>&1
 	)
 ) else (

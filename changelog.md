@@ -1166,5 +1166,11 @@ rem        - Add "Get-ExecutionPolicy -List" to script
 rem     21-Jan-2022:
 rem        - Publish and integrate into LMS 2.6.849 (Sprint 48)
 rem        - Final script, released for LMS 2.6
+rem     24-Jan-2022:
+rem        - Support ecmcommonutil_V1.25.exe from Flexera (see Task 1693224)
+rem        - Move output of ecmcommonutil -t -f into separate debug logfile
+rem        - adjust and streamline handling of ecmcommonutil
+rem        - Publish and integrate into LMS 2.6.849 (Sprint 48)
+rem        - Final script, released for LMS 2.6
 rem 
 ```
