@@ -9,6 +9,10 @@ rem     24-Jan-2022:
 rem        - Final script, released for LMS 2.6
 rem     31-Jan-2022:
 rem        - Adjusted check of supported LMS versions, added LMS 2.5.824
+rem        - Adjusted error message in case dongle driver hasn't been downloaded
+rem     01-Feb-2022:
+rem        - fix typo 'udpate' to 'update' (credit to Konrad)
+rem        - Check ALM version only for LMS 2.6.xxx [>LMS 2.5.824]
 rem     
 rem     Full details ses changelog.md
 rem
@@ -43,8 +47,8 @@ rem              - /clearbginfo                 clears the background info (uisn
 rem              - /setbginfotask               sets periodic task to update bginfo automatically.
 rem              - /delbginfotask               delete periodic bginfo task, see option /setbginfotask
 rem          Install Options:
-rem              - /installlms                  installs (or udpates) LMS client, with newest available released client version
-rem              - /installftlms                installs (or udpates) LMS client, with newest available field test client version
+rem              - /installlms                  installs (or updates) LMS client, with newest available released client version
+rem              - /installftlms                installs (or updates) LMS client, with newest available field test client version
 rem              - /removelms                   de-installs LMS client
 rem              - /installdongledriver         installs downloaded dongle driver.
 rem              - /removedongledriver          remove installed dongle driver.
@@ -52,8 +56,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 31-Jan-2022"
-set LMS_SCRIPT_BUILD=20220131
+set LMS_SCRIPT_VERSION="CheckLMS Script 01-Feb-2022"
+set LMS_SCRIPT_BUILD=20220201
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -1353,6 +1357,8 @@ if not defined LMS_SKIPDOWNLOAD (
 				IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "haspdinstVersion=%%i"
 				echo     Newest dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] downloaded!
 				echo     Newest dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] downloaded!                       >> !REPORT_LOGFILE! 2>&1
+			) else (
+				echo     Download of dongle driver: '!CHECKLMS_EXTERNAL_SHARE!lms/hasp/%MOST_RECENT_DONGLE_DRIVER_VERSION%/haspdinst.exe' [!haspdinstVersion!] FAILED!   >> !REPORT_LOGFILE! 2>&1
 			)
 						
 			rem Download AccessChk tool
@@ -2053,7 +2059,7 @@ if defined LMS_INSTALL_VERSION (
 	goto script_end
 	rem STOP EXECUTION HERE
 ) else (
-	echo Install or udpate LMS Client ... NO                                                                                     >> !REPORT_LOGFILE! 2>&1
+	echo Install or update LMS Client ... NO                                                                                     >> !REPORT_LOGFILE! 2>&1
 )
 
 if defined LMS_REMOVE_LMS_CLIENT (
@@ -3875,56 +3881,60 @@ if not defined LMS_SKIPLMS (
 	echo SKIPPED LMS section. The script didn't execute the LMS commands.                                                    >> !REPORT_LOGFILE! 2>&1
 )
 :alm_section
-echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================                      >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPBTALMPLUGIN (
-	echo Automation License Manager [ALM]                                                                                    >> !REPORT_LOGFILE! 2>&1
+	echo Automation License Manager [ALM]                                                                >> !REPORT_LOGFILE! 2>&1
 	if defined ALM_VERSION_STRING (
 		echo     ALM: !ALM_VERSION_STRING! [!ALM_VERSION!] - !ALM_RELEASE! [!ALM_TECH_VERSION!]  [!ALM_MAJ_VERSION!/!ALM_MIN_VERSION!/!ALM_PATCH_VERSION!]  >> !REPORT_LOGFILE! 2>&1
-		if /I !ALM_MAJ_VERSION! LSS 6 (
-			rem ALM is below V6.x ... it is NOT supported!
-			echo     Installed ALM [!ALM_RELEASE!] is below V6.x ... it is NOT supported!                                    >> !REPORT_LOGFILE! 2>&1
-			set ALM_IS_SUPPORTED=No
-		) else (
-			if /I !ALM_MIN_VERSION! GEQ 1 (
-				rem ALM is equal or above V6.1 ... it is supported!
-				echo     Installed ALM [!ALM_RELEASE!] is equal or above V6.1 ... it is supported!                           >> !REPORT_LOGFILE! 2>&1
-				set ALM_IS_SUPPORTED=Yes
+		if /I !LMS_BUILD_VERSION! GEQ 825 (
+			echo     LMS 2.6.xxx [!LMS_VERSION!], check installed ALM ...                                >> !REPORT_LOGFILE! 2>&1
+			rem Check for LMS 2.6.xxx [>LMS 2.5.824] ...
+			if /I !ALM_MAJ_VERSION! LSS 6 (
+				rem ALM is below V6.x ... it is NOT supported!
+				echo     Installed ALM [!ALM_RELEASE!] is below V6.x ...                                 >> !REPORT_LOGFILE! 2>&1
+				set ALM_IS_SUPPORTED=No
 			) else (
-				if /I !ALM_PATCH_VERSION! GEQ 8 (
-					rem ALM is V6.0.8.x or above ... it is supported!
-					echo     Installed ALM [!ALM_RELEASE!] is V6.0.8.x or above ... it is supported!                         >> !REPORT_LOGFILE! 2>&1
+				if /I !ALM_MIN_VERSION! GEQ 1 (
+					rem ALM is equal or above V6.1 ... it is supported!
+					echo     Installed ALM [!ALM_RELEASE!] is equal or above V6.1 ...                    >> !REPORT_LOGFILE! 2>&1
 					set ALM_IS_SUPPORTED=Yes
 				) else (
-					echo     Installed ALM [!ALM_RELEASE!] is below V6.0.8.x ... it is NOT supported!                        >> !REPORT_LOGFILE! 2>&1
-					set ALM_IS_SUPPORTED=No
+					if /I !ALM_PATCH_VERSION! GEQ 8 (
+						rem ALM is V6.0.8.x or above ... it is supported!
+						echo     Installed ALM [!ALM_RELEASE!] is V6.0.8.x or above ...                  >> !REPORT_LOGFILE! 2>&1
+						set ALM_IS_SUPPORTED=Yes
+					) else (
+						echo     Installed ALM [!ALM_RELEASE!] is below V6.0.8.x ...                     >> !REPORT_LOGFILE! 2>&1
+						set ALM_IS_SUPPORTED=No
+					)
 				)
 			)
 		)
 	) else (
-		echo     No ALM installed.                                                                                           >> !REPORT_LOGFILE! 2>&1
+		echo     No ALM installed.                                                                       >> !REPORT_LOGFILE! 2>&1
 	)
 	if defined ALM_IS_SUPPORTED (
-		echo     Installed ALM [!ALM_RELEASE!] is supported: !ALM_IS_SUPPORTED!                                              >> !REPORT_LOGFILE! 2>&1
+		echo     Installed ALM [!ALM_RELEASE!] is supported: !ALM_IS_SUPPORTED!                          >> !REPORT_LOGFILE! 2>&1
 		if "!ALM_IS_SUPPORTED!" NEQ "Yes" (
 			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please udpate to newer version. [1;37m
+				echo [1;31m    ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please update to newer version. [1;37m
 			) else (
-				echo     ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please udpate to newer version.
+				echo     ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please update to newer version.
 			)
-			echo ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please udpate to newer version.                      >> !REPORT_LOGFILE! 2>&1
+			echo ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please update to newer version.  >> !REPORT_LOGFILE! 2>&1
 		)
 	)
 	if defined LMS_SKIP_ALM_BT_PUGIN_INSTALLATION (
-		echo     BT ALM Plugin is NOT handled/installed by LMS client!                                                       >> !REPORT_LOGFILE! 2>&1
+		echo     BT ALM Plugin is NOT handled/installed by LMS client!                                   >> !REPORT_LOGFILE! 2>&1
 	)
-	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-	echo Retrieve list of installed ALM plugins                                                                              >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                         >> !REPORT_LOGFILE! 2>&1
+	echo Retrieve list of installed ALM plugins                                                          >> !REPORT_LOGFILE! 2>&1
 	echo ... retrieve list of installed ALM plugins ...
 	if exist "!ProgramFiles!\Common Files\Siemens\SWS\plugins\bt" (
-		echo Content of folder: "!ProgramFiles!\Common Files\Siemens\SWS\plugins\bt"                                         >> !REPORT_LOGFILE! 2>&1
-		dir /S /A /X /4 /W "!ProgramFiles!\Common Files\Siemens\SWS\plugins\bt"                                              >> !REPORT_LOGFILE! 2>&1
+		echo Content of folder: "!ProgramFiles!\Common Files\Siemens\SWS\plugins\bt"                     >> !REPORT_LOGFILE! 2>&1
+		dir /S /A /X /4 /W "!ProgramFiles!\Common Files\Siemens\SWS\plugins\bt"                          >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo     No BT ALM Plugin installed at: !ProgramFiles!\Common Files\Siemens\SWS\plugins\bt                           >> !REPORT_LOGFILE! 2>&1
+		echo     No BT ALM Plugin installed at: !ProgramFiles!\Common Files\Siemens\SWS\plugins\bt       >> !REPORT_LOGFILE! 2>&1
 	)
 	set BTALMPLUGINVersion=
 	IF EXIST "%LMS_ALMBTPLUGIN_FOLDER%\\AlmBtPg.dll" (
@@ -6157,16 +6167,16 @@ if not defined LMS_SKIPSSU (
 		set OSDServerConnectionTestStatus=Failed
 	)
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1 
-	echo ... test connection to OSD software udpate server  [using http request] ...
-	echo Test connection to OSD software udpate server  [using http request]                                                     >> !REPORT_LOGFILE! 2>&1                                                                                            
-	rem Connection Test to OSD software udpate server
-	powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.automation.siemens.com/softwareupdater/servertest.aspx', '!temp!\OSD_softwareudpateservertest.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_softwareupdate.txt 2>&1
+	echo ... test connection to OSD software update server  [using http request] ...
+	echo Test connection to OSD software update server  [using http request]                                                     >> !REPORT_LOGFILE! 2>&1                                                                                            
+	rem Connection Test to OSD software update server
+	powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.automation.siemens.com/softwareupdater/servertest.aspx', '!temp!\OSD_softwareupdateservertest.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_softwareupdate.txt 2>&1
 	if !ERRORLEVEL!==0 (
 		rem Connection Test: PASSED
 		echo     Connection Test PASSED, can access https://www.automation.siemens.com/softwareupdater/servertest.aspx
 		echo Connection Test PASSED, can access https://www.automation.siemens.com/softwareupdater/servertest.aspx               >> !REPORT_LOGFILE! 2>&1                           
 		set OSDSoftwareUpdateServerConnectionTestStatus=Passed
-		rem type !temp!\OSD_softwareudpateservertest.txt
+		rem type !temp!\OSD_softwareupdateservertest.txt
 		rem echo .
 	) else if !ERRORLEVEL!==1 (
 		rem Connection Test: FAILED
@@ -8005,11 +8015,11 @@ if defined ALM_VERSION_STRING (
 		echo     Installed ALM [!ALM_RELEASE!] is supported: !ALM_IS_SUPPORTED!                                              >> !REPORT_LOGFILE! 2>&1
 		if "!ALM_IS_SUPPORTED!" NEQ "Yes" (
 			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please udpate to newer version. [1;37m
+				echo [1;31m    ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please update to newer version. [1;37m
 			) else (
-				echo     ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please udpate to newer version.
+				echo     ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please update to newer version.
 			)
-			echo ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please udpate to newer version.                      >> !REPORT_LOGFILE! 2>&1
+			echo ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please update to newer version.                      >> !REPORT_LOGFILE! 2>&1
 		)
 	)
 ) else (
