@@ -13,6 +13,8 @@ rem        - Adjusted error message in case dongle driver hasn't been downloaded
 rem     01-Feb-2022:
 rem        - fix typo 'udpate' to 'update' (credit to Konrad)
 rem        - Check ALM version only for LMS 2.6.xxx [>LMS 2.5.824]
+rem     02-Feb-2022:
+rem        - download and execute WmiRead.exe
 rem     
 rem     Full details ses changelog.md
 rem
@@ -1307,8 +1309,15 @@ if not defined LMS_SKIPDOWNLOAD (
 			rem Download tool "VMGENID.EXE" (from Stratus) to read-out generation id
 			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\VMGENID.EXE" (
 				echo     Download VM GENID app [from Stratus]: !LMS_DOWNLOAD_PATH!\VMGENID.EXE
-				echo Download VM GENID app [from Stratus]: !LMS_DOWNLOAD_PATH!\VMGENID.EXE                                                                                         >> !REPORT_LOGFILE! 2>&1
+				echo Download VM GENID app [from Stratus]: !LMS_DOWNLOAD_PATH!\VMGENID.EXE                                                                           >> !REPORT_LOGFILE! 2>&1
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/tools/VMGENID.EXE', '!LMS_DOWNLOAD_PATH!\VMGENID.EXE')"   >> !REPORT_LOGFILE! 2>&1
+			)
+			
+			rem Download tool "WmiRead.exe" to read-out wmi information
+			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\WmiRead.exe" (
+				echo     Download WmiRead app: !LMS_DOWNLOAD_PATH!\WmiRead.exe
+				echo Download WmiRead app: !LMS_DOWNLOAD_PATH!\WmiRead.exe                                                                                           >> !REPORT_LOGFILE! 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/tools/WmiRead.exe', '!LMS_DOWNLOAD_PATH!\WmiRead.exe')"   >> !REPORT_LOGFILE! 2>&1
 			)
 			
 			rem Download tool "GetVMGenerationIdentifier.exe" to read-out generation id
@@ -2455,6 +2464,13 @@ rem )
 echo Collect information from windows [wmic] ...                                                                                 >> !REPORT_LOGFILE! 2>&1
 echo ... collect information from windows [wmic] ...
 if not defined LMS_SKIPWMIC (
+	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo Read-out wmic information with WmiRead.exe:                                                                             >> !REPORT_LOGFILE! 2>&1
+	if exist "!LMS_DOWNLOAD_PATH!\WmiRead.exe" (
+		!LMS_DOWNLOAD_PATH!\WmiRead.exe                                                                                          >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo     '!LMS_DOWNLOAD_PATH!\WmiRead.exe' doesn't exist! Cannot read-out wmic information.                              >> !REPORT_LOGFILE! 2>&1
+	)
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1 
 	echo     Read installed products and version [with wmic /format:csv product get name, version, InstallDate, vendor]
 	echo Read installed products and version [with wmic product get name, version, InstallDate, vendor /format:csv]              >> !REPORT_LOGFILE! 2>&1
