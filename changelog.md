@@ -1173,4 +1173,11 @@ rem        - adjust and streamline handling of ecmcommonutil
 rem        - Publish and integrate into LMS 2.6.849 (Sprint 48)
 rem        - Final script, released for LMS 2.6
 rem 
+rem     31-Jan-2022:
+rem        - Adjusted check of supported LMS versions, added LMS 2.5.824
+rem        - Adjusted error message in case dongle driver hasn't been downloaded
+rem     01-Feb-2022:
+rem        - fix typo 'udpate' to 'update' (credit to Konrad)
+rem        - Check ALM version only for LMS 2.6.xxx [>LMS 2.5.824]
+rem 
 ```

@@ -7,14 +7,9 @@ rem     24-Jul-2018:
 rem        - Initial version
 rem     24-Jan-2022:
 rem        - Final script, released for LMS 2.6
-rem     31-Jan-2022:
-rem        - Adjusted check of supported LMS versions, added LMS 2.5.824
-rem        - Adjusted error message in case dongle driver hasn't been downloaded
-rem     01-Feb-2022:
-rem        - fix typo 'udpate' to 'update' (credit to Konrad)
-rem        - Check ALM version only for LMS 2.6.xxx [>LMS 2.5.824]
 rem     02-Feb-2022:
 rem        - download and execute WmiRead.exe
+rem        - adjust ordering in wmic section. Add more explanation output.
 rem     
 rem     Full details ses changelog.md
 rem
@@ -2464,6 +2459,7 @@ rem )
 echo Collect information from windows [wmic] ...                                                                                 >> !REPORT_LOGFILE! 2>&1
 echo ... collect information from windows [wmic] ...
 if not defined LMS_SKIPWMIC (
+	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	echo Read-out wmic information with WmiRead.exe:                                                                             >> !REPORT_LOGFILE! 2>&1
 	if exist "!LMS_DOWNLOAD_PATH!\WmiRead.exe" (
@@ -2471,10 +2467,6 @@ if not defined LMS_SKIPWMIC (
 	) else (
 		echo     '!LMS_DOWNLOAD_PATH!\WmiRead.exe' doesn't exist! Cannot read-out wmic information.                              >> !REPORT_LOGFILE! 2>&1
 	)
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1 
-	echo     Read installed products and version [with wmic /format:csv product get name, version, InstallDate, vendor]
-	echo Read installed products and version [with wmic product get name, version, InstallDate, vendor /format:csv]              >> !REPORT_LOGFILE! 2>&1
-	wmic /output:%REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV% product get name, version, InstallDate, vendor /format:csv               >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	echo WMIC Report [using PowerShell: Get-WmiObject -class Win32_BIOS]:                                                        >> !REPORT_LOGFILE! 2>&1
 	powershell -c Get-WmiObject -class Win32_BIOS                                                                                >> !REPORT_LOGFILE! 2>&1
@@ -2482,6 +2474,11 @@ if not defined LMS_SKIPWMIC (
 	rem see https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/identify_ec2_instances.html
 	echo WMIC Report [using PowerShell: Get-WmiObject -query 'select uuid from Win32_ComputerSystemProduct']:                    >> !REPORT_LOGFILE! 2>&1
 	powershell -c "Get-WmiObject -query 'select uuid from Win32_ComputerSystemProduct' | Select UUID"                            >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1 
+	echo     Read installed products and version [with wmic /format:csv product get name, version, InstallDate, vendor]
+	echo Read installed products and version [with wmic product get name, version, InstallDate, vendor /format:csv]              >> !REPORT_LOGFILE! 2>&1
+	wmic /output:!REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV! product get name, version, InstallDate, vendor /format:csv               >> !REPORT_LOGFILE! 2>&1
+	echo     See '!REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV!' for full details.                                                      >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 	rem see https://www.lisenet.com/2014/get-windows-system-information-via-wmi-command-line-wmic/
@@ -2560,12 +2557,12 @@ if not defined LMS_SKIPWMIC (
 	echo Read installed products and version [with wmic, for vendor=Siemens]                                                     >> !REPORT_LOGFILE! 2>&1
 	wmic /output:!REPORT_WMIC_LOGFILE! product where "Vendor like '%%Siemens%%'" get name, version, InstallDate, vendor          >> !REPORT_LOGFILE! 2>&1
 	type !REPORT_WMIC_LOGFILE!                                                                                                   >> !REPORT_LOGFILE! 2>&1
-	echo ---------------- analyze installed software [%REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV%]                                    >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- analyze installed software [!REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV!]                                    >> !REPORT_LOGFILE! 2>&1
 	set DONGLE_DRIVER_INSTALL_DATE=N/A
 	set SSU_INSTALL_DATE=N/A
 	set LMS_INSTALL_DATE=N/A
 	IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=1 eol=@ delims=<> " %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Siemens License Management"') do set LMS_INSTALL_DATE=%%i
-	IF EXIST "%REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV%" for /f "tokens=1,2,3,4,5 eol=@ delims=," %%A in ('type %REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV%') do (
+	IF EXIST "!REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV!" for /f "tokens=1,2,3,4,5 eol=@ delims=," %%A in ('type !REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV!') do (
 		if "%%C" == "Sentinel Runtime" (
 			set DONGLE_DRIVER_INSTALL_DATE=%%B
 			echo 'Dongle Driver' [Version=%%E] installation date: !DONGLE_DRIVER_INSTALL_DATE!                                   >> !REPORT_LOGFILE! 2>&1
