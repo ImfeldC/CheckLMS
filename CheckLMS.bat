@@ -10,6 +10,8 @@ rem        - Final script, released for LMS 2.6
 rem     02-Feb-2022:
 rem        - download and execute WmiRead.exe
 rem        - adjust ordering in wmic section. Add more explanation output.
+rem     04-Feb-2022:
+rem        - Download LMS SDK (for installed LMS version)
 rem     
 rem     Full details ses changelog.md
 rem
@@ -53,8 +55,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 01-Feb-2022"
-set LMS_SCRIPT_BUILD=20220201
+set LMS_SCRIPT_VERSION="CheckLMS Script 04-Feb-2022"
+set LMS_SCRIPT_BUILD=20220204
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -173,6 +175,9 @@ IF NOT EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\exe" (
 IF NOT EXIST "!LMS_DOWNLOAD_PATH!\LMSSetup" (
 	rem echo Create new folder: !LMS_DOWNLOAD_PATH!\LMSSetup\
 	mkdir !LMS_DOWNLOAD_PATH!\LMSSetup\ >nul 2>&1
+)
+IF NOT EXIST "!LMS_DOWNLOAD_PATH!\SDK" (
+	mkdir !LMS_DOWNLOAD_PATH!\SDK\ >nul 2>&1
 )
 
 rem clean-up files downloaded used with older CheckLMS script
@@ -1278,6 +1283,22 @@ if not defined LMS_SKIPDOWNLOAD (
 				)
 			)
 			
+			rem Download LMS SDK
+			set LMS_SDK_ZIP=!LMS_DOWNLOAD_PATH!\SDK\!LMS_VERSION!\LMS_Enforcement_SDK_.zip
+			IF NOT EXIST "!LMS_SDK_ZIP!" (
+				IF NOT EXIST "!LMS_DOWNLOAD_PATH!\SDK\!LMS_VERSION!" (
+					rem echo Create new folder: !LMS_DOWNLOAD_PATH!\SDK\!MOST_RECENT_LMS_VERSION!
+					mkdir !LMS_DOWNLOAD_PATH!\SDK\!LMS_VERSION! >nul 2>&1
+				)
+				set LMS_SDK_DOWNLOAD_LINK=!CHECKLMS_EXTERNAL_SHARE!lms/LMSSetup!LMS_VERSION!/LMS_Enforcement_SDK_.zip
+				echo     Download latest released LMS SDK [!LMS_VERSION!]: !LMS_SDK_ZIP!
+				echo Download latest released LMS SDK [!LMS_VERSION!]: !LMS_SDK_ZIP!                                      >> !REPORT_LOGFILE! 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_SDK_DOWNLOAD_LINK!', '!LMS_SDK_ZIP!')" >> !REPORT_LOGFILE! 2>&1
+			) else (
+				echo     Don't download latest released LMS SDK [!LMS_VERSION!], because it exist already: !LMS_SDK_ZIP!
+				echo Don't download latest released LMS SDK [!LMS_VERSION!], because it exist already: !LMS_SDK_ZIP!      >> !REPORT_LOGFILE! 2>&1
+			)
+			
 			if defined MOST_RECENT_FT_LMS_BUILD (
 				if /I !LMS_BUILD_VERSION! NEQ !MOST_RECENT_FT_LMS_BUILD! (
 					rem Not "most recent" field test build installed, download latest field test LMS client; e.g. from !CHECKLMS_EXTERNAL_SHARE!lms/LMSSetup2.6.826/x64/setup64.exe
@@ -1351,9 +1372,9 @@ if not defined LMS_SKIPDOWNLOAD (
 			)
 			
 			rem Download newest dongle driver always, to ensure that older driver get overwritten
-			echo     Download newest dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [%MOST_RECENT_DONGLE_DRIVER_VERSION%] ...
-			echo Download newest dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [%MOST_RECENT_DONGLE_DRIVER_VERSION%] ...             >> !REPORT_LOGFILE! 2>&1
-			powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/hasp/%MOST_RECENT_DONGLE_DRIVER_VERSION%/haspdinst.exe', '!LMS_DOWNLOAD_PATH!\haspdinst.exe')"   >> !REPORT_LOGFILE! 2>&1
+			echo     Download newest dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!MOST_RECENT_DONGLE_DRIVER_VERSION!] ...
+			echo Download newest dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!MOST_RECENT_DONGLE_DRIVER_VERSION!] ...             >> !REPORT_LOGFILE! 2>&1
+			powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/hasp/!MOST_RECENT_DONGLE_DRIVER_VERSION!/haspdinst.exe', '!LMS_DOWNLOAD_PATH!\haspdinst.exe')"   >> !REPORT_LOGFILE! 2>&1
 			if exist "!LMS_DOWNLOAD_PATH!\haspdinst.exe" (
 				set TARGETFILE=!LMS_DOWNLOAD_PATH!\haspdinst.exe
 				set TARGETFILE=!TARGETFILE:\=\\!
@@ -1362,7 +1383,7 @@ if not defined LMS_SKIPDOWNLOAD (
 				echo     Newest dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] downloaded!
 				echo     Newest dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] downloaded!                       >> !REPORT_LOGFILE! 2>&1
 			) else (
-				echo     Download of dongle driver: '!CHECKLMS_EXTERNAL_SHARE!lms/hasp/%MOST_RECENT_DONGLE_DRIVER_VERSION%/haspdinst.exe' [!haspdinstVersion!] FAILED!   >> !REPORT_LOGFILE! 2>&1
+				echo     Download of dongle driver: '!CHECKLMS_EXTERNAL_SHARE!lms/hasp/!MOST_RECENT_DONGLE_DRIVER_VERSION!/haspdinst.exe' [!haspdinstVersion!] FAILED!   >> !REPORT_LOGFILE! 2>&1
 			)
 						
 			rem Download AccessChk tool
