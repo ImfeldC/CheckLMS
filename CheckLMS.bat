@@ -12,8 +12,10 @@ rem        - download and execute WmiRead.exe
 rem        - adjust ordering in wmic section. Add more explanation output.
 rem     04-Feb-2022:
 rem        - Download LMS SDK (for installed LMS version)
+rem     10-Feb-2022:
+rem        - replace %-sign with !-sign
 rem     
-rem     Full details ses changelog.md
+rem     Full details see changelog.md
 rem
 rem
 rem     SCRIPT USAGE:
@@ -55,8 +57,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 04-Feb-2022"
-set LMS_SCRIPT_BUILD=20220204
+set LMS_SCRIPT_VERSION="CheckLMS Script 10-Feb-2022"
+set LMS_SCRIPT_BUILD=20220210
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -3971,10 +3973,10 @@ if not defined LMS_SKIPBTALMPLUGIN (
 		echo     No BT ALM Plugin installed at: !ProgramFiles!\Common Files\Siemens\SWS\plugins\bt       >> !REPORT_LOGFILE! 2>&1
 	)
 	set BTALMPLUGINVersion=
-	IF EXIST "%LMS_ALMBTPLUGIN_FOLDER%\\AlmBtPg.dll" (
+	IF EXIST "!LMS_ALMBTPLUGIN_FOLDER!\\AlmBtPg.dll" (
 		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
-		echo wmic datafile where Name="%LMS_ALMBTPLUGIN_FOLDER%\\AlmBtPg.dll" get Manufacturer,Name,Version  /format:list    >> !REPORT_LOGFILE! 2>&1
-		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="%LMS_ALMBTPLUGIN_FOLDER%\\AlmBtPg.dll" get Manufacturer,Name,Version  /format:list
+		echo wmic datafile where Name="!LMS_ALMBTPLUGIN_FOLDER!\\AlmBtPg.dll" get Manufacturer,Name,Version  /format:list    >> !REPORT_LOGFILE! 2>&1
+		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!LMS_ALMBTPLUGIN_FOLDER!\\AlmBtPg.dll" get Manufacturer,Name,Version  /format:list
 		type !REPORT_WMIC_LOGFILE! >> !REPORT_LOGFILE! 2>&1
 		IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "BTALMPLUGINVersion=%%i"
 		echo     Installed BT ALM Plugin Version: !BTALMPLUGINVersion!
@@ -3983,8 +3985,8 @@ if not defined LMS_SKIPBTALMPLUGIN (
 		reg query HKCR\CLSID /s /f "{F9D9C9A4-7729-4EC8-82E8-67898FCCF2DF}"                                                  >> !REPORT_LOGFILE! 2>&1
 		if errorlevel 1 (
 			echo --- BT ALM plugin is not registered!                                                                        >> !REPORT_LOGFILE! 2>&1
-			regsvr32 /s "%LMS_ALMBTPLUGIN_FOLDER%\AlmBtPg.dll"                                                               >> !REPORT_LOGFILE! 2>&1
-			echo --- Registration for "%LMS_ALMBTPLUGIN_FOLDER%\AlmBtPg.dll" done ...                                        >> !REPORT_LOGFILE! 2>&1
+			regsvr32 /s "!LMS_ALMBTPLUGIN_FOLDER!\AlmBtPg.dll"                                                               >> !REPORT_LOGFILE! 2>&1
+			echo --- Registration for "!LMS_ALMBTPLUGIN_FOLDER!\AlmBtPg.dll" done ...                                        >> !REPORT_LOGFILE! 2>&1
 			reg query HKCR\CLSID /s /f "{F9D9C9A4-7729-4EC8-82E8-67898FCCF2DF}"                                              >> !REPORT_LOGFILE! 2>&1
 			if errorlevel 1 (
 				echo --- BT ALM plugin is STILL not registered!                                                              >> !REPORT_LOGFILE! 2>&1
@@ -3997,15 +3999,15 @@ if not defined LMS_SKIPBTALMPLUGIN (
 			echo --- BT ALM plugin is correct registered!                                                                    >> !REPORT_LOGFILE! 2>&1
 		)
 	)
-	IF EXIST "%LMS_ALMBTPLUGIN_FOLDER%\\AlmBtPg.xml" (
+	IF EXIST "!LMS_ALMBTPLUGIN_FOLDER!\\AlmBtPg.xml" (
 		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
-		echo "%LMS_ALMBTPLUGIN_FOLDER%\\AlmBtPg.xml":                                                                        >> !REPORT_LOGFILE! 2>&1
-		type "%LMS_ALMBTPLUGIN_FOLDER%\\AlmBtPg.xml"                                                                         >> !REPORT_LOGFILE! 2>&1
+		echo "!LMS_ALMBTPLUGIN_FOLDER!\\AlmBtPg.xml":                                                                        >> !REPORT_LOGFILE! 2>&1
+		type "!LMS_ALMBTPLUGIN_FOLDER!\\AlmBtPg.xml"                                                                         >> !REPORT_LOGFILE! 2>&1
 	)
-	IF EXIST "%LMS_ALMBTPLUGIN_FOLDER_X86%\\AlmBtPg.dll" (
+	IF EXIST "!LMS_ALMBTPLUGIN_FOLDER_X86!\\AlmBtPg.dll" (
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-		echo wmic datafile where Name="%LMS_ALMBTPLUGIN_FOLDER_X86%\\AlmBtPg.dll" get Manufacturer,Name,Version  /format:list    >> !REPORT_LOGFILE! 2>&1
-		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="%LMS_ALMBTPLUGIN_FOLDER_X86%\\AlmBtPg.dll" get Manufacturer,Name,Version  /format:list
+		echo wmic datafile where Name="!LMS_ALMBTPLUGIN_FOLDER_X86!\\AlmBtPg.dll" get Manufacturer,Name,Version  /format:list    >> !REPORT_LOGFILE! 2>&1
+		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!LMS_ALMBTPLUGIN_FOLDER_X86!\\AlmBtPg.dll" get Manufacturer,Name,Version  /format:list
 		type !REPORT_WMIC_LOGFILE! >> !REPORT_LOGFILE! 2>&1
 		IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "BTALMPLUGINVersion=%%i"
 		echo     Installed BT ALM Plugin Version: !BTALMPLUGINVersion!
@@ -4014,8 +4016,8 @@ if not defined LMS_SKIPBTALMPLUGIN (
 		reg query HKCR\CLSID /s /f "{F9D9C9A4-7729-4EC8-82E8-67898FCCF2DF}"                                                  >> !REPORT_LOGFILE! 2>&1
 		if errorlevel 1 (
 			echo --- BT ALM plugin is not registered!                                                                        >> !REPORT_LOGFILE! 2>&1
-			regsvr32 /s "%LMS_ALMBTPLUGIN_FOLDER_X86%\AlmBtPg.dll"                                                           >> !REPORT_LOGFILE! 2>&1
-			echo --- Registration for "%LMS_ALMBTPLUGIN_FOLDER_X86%\AlmBtPg.dll" done ...                                    >> !REPORT_LOGFILE! 2>&1
+			regsvr32 /s "!LMS_ALMBTPLUGIN_FOLDER_X86!\AlmBtPg.dll"                                                           >> !REPORT_LOGFILE! 2>&1
+			echo --- Registration for "!LMS_ALMBTPLUGIN_FOLDER_X86!\AlmBtPg.dll" done ...                                    >> !REPORT_LOGFILE! 2>&1
 			reg query HKCR\CLSID /s /f "{F9D9C9A4-7729-4EC8-82E8-67898FCCF2DF}"                                              >> !REPORT_LOGFILE! 2>&1
 			if errorlevel 1 (
 				echo --- BT ALM plugin is STILL not registered!                                                              >> !REPORT_LOGFILE! 2>&1
@@ -4028,10 +4030,10 @@ if not defined LMS_SKIPBTALMPLUGIN (
 			echo --- BT ALM plugin is correct registered!                                                                    >> !REPORT_LOGFILE! 2>&1
 		)
 	)
-	IF EXIST "%LMS_ALMBTPLUGIN_FOLDER_X86%\\AlmBtPg.xml" (
+	IF EXIST "!LMS_ALMBTPLUGIN_FOLDER_X86!\\AlmBtPg.xml" (
 		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
-		echo "%LMS_ALMBTPLUGIN_FOLDER_X86%\\AlmBtPg.xml":                                                                    >> !REPORT_LOGFILE! 2>&1
-		type "%LMS_ALMBTPLUGIN_FOLDER_X86%\\AlmBtPg.xml"                                                                     >> !REPORT_LOGFILE! 2>&1
+		echo "!LMS_ALMBTPLUGIN_FOLDER_X86!\\AlmBtPg.xml":                                                                    >> !REPORT_LOGFILE! 2>&1
+		type "!LMS_ALMBTPLUGIN_FOLDER_X86!\\AlmBtPg.xml"                                                                     >> !REPORT_LOGFILE! 2>&1
 	)
 ) else (
 	if defined SHOW_COLORED_OUTPUT (
