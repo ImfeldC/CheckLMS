@@ -19,6 +19,8 @@ rem        - replace !CHECKLMS_ALM_PATH!\ALM\ with !CHECKLMS_ALM_PATH!\Automatio
 rem        - replace %CHECKLMS_ALM_PATH% with !CHECKLMS_ALM_PATH!
 rem     12-Feb-2022:
 rem        - replace %CHECKLMS_SETUP_LOG_PATH% with !CHECKLMS_SETUP_LOG_PATH!
+rem     13-Feb-2022:
+rem        - The script copies 'C:\ProgramData\Siemens\Automation\Logfiles\*' to 'C:\ProgramData\Siemens\LMS\Logs\CheckLMSLogs\Automation\Logfiles\*'
 rem     
 rem     Full details see changelog.md
 rem
@@ -62,8 +64,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 12-Feb-2022"
-set LMS_SCRIPT_BUILD=20220212
+set LMS_SCRIPT_VERSION="CheckLMS Script 13-Feb-2022"
+set LMS_SCRIPT_BUILD=20220213
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
