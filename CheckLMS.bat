@@ -23,6 +23,7 @@ rem     13-Feb-2022:
 rem        - The script copies 'C:\ProgramData\Siemens\Automation\Logfiles\*' to 'C:\ProgramData\Siemens\LMS\Logs\CheckLMSLogs\Automation\Logfiles\*'
 rem     14-Feb-2022:
 rem        - check installed VC++ runtime, before calling WmiRead.exe
+rem        - read «PendingFileRenameOperations» registry key (under Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager)
 rem     
 rem     Full details see changelog.md
 rem
@@ -719,6 +720,16 @@ for /F "usebackq tokens=3*" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^
 	rem fixed 12-Jan-2022: Include also 'spaces' in result
 	set ALM_VERSION_STRING=%%A %%B
 )
+rem extract 'PendingFileRenameOperations' from \HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager
+set KEY_NAME=HKLM\SYSTEM\CurrentControlSet\Control\Session Manager
+set VALUE_NAME=PendingFileRenameOperations
+set ALM_REG_PendingFileRenameOperations=
+for /F "usebackq tokens=3*" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
+	rem Include also 'spaces' in result
+	set ALM_REG_PendingFileRenameOperations=%%A %%B
+)
+
+
 REM -- Check FIPS mode
 REM HKLM\System\CurrentControlSet\Control\Lsa\FIPSAlgorithmPolicy\Enabled
 set KEY_NAME=HKLM\System\CurrentControlSet\Control\Lsa\FIPSAlgorithmPolicy
@@ -4003,6 +4014,9 @@ if not defined LMS_SKIPBTALMPLUGIN (
 	)
 	if defined LMS_SKIP_ALM_BT_PUGIN_INSTALLATION (
 		echo     BT ALM Plugin is NOT handled/installed by LMS client!                                   >> !REPORT_LOGFILE! 2>&1
+	)
+	if defined ALM_REG_PendingFileRenameOperations (
+		echo     'PendingFileRenameOperations' registry key: !ALM_REG_PendingFileRenameOperations!       >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                         >> !REPORT_LOGFILE! 2>&1
 	echo Retrieve list of installed ALM plugins                                                          >> !REPORT_LOGFILE! 2>&1
