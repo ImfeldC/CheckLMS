@@ -1024,7 +1024,7 @@ if defined NETVersion (
 )
 if defined VC_REDIST_VERSION (
 	echo     Installed VC++ redistributable package: !VC_REDIST_VERSION!
-	echo Installed VC++ redistributable package: !VC_REDIST_VERSION! [!VC_REDIST_MAJ_VERSION!/!VC_REDIST_MIN_VERSION!/!VC_REDIST_BUILD_VERSION!]  >> !REPORT_LOGFILE! 2>&1
+	echo Installed VC++ redistributable package: !VC_REDIST_VERSION! [!VC_REDIST_MAJ_VERSION!.!VC_REDIST_MIN_VERSION!.!VC_REDIST_BUILD_VERSION!]  >> !REPORT_LOGFILE! 2>&1
 ) else (
 	echo     Installed VC++ redistributable package: was not able to determine installed version.
 	echo Installed VC++ redistributable package: was not able to determine installed version.                                >> !REPORT_LOGFILE! 2>&1
