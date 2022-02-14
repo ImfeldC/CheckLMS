@@ -21,6 +21,8 @@ rem     12-Feb-2022:
 rem        - replace %CHECKLMS_SETUP_LOG_PATH% with !CHECKLMS_SETUP_LOG_PATH!
 rem     13-Feb-2022:
 rem        - The script copies 'C:\ProgramData\Siemens\Automation\Logfiles\*' to 'C:\ProgramData\Siemens\LMS\Logs\CheckLMSLogs\Automation\Logfiles\*'
+rem     14-Feb-2022:
+rem        - check installed VC++ runtime, before calling WmiRead.exe
 rem     
 rem     Full details see changelog.md
 rem
@@ -64,8 +66,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 13-Feb-2022"
-set LMS_SCRIPT_BUILD=20220213
+set LMS_SCRIPT_VERSION="CheckLMS Script 14-Feb-2022"
+set LMS_SCRIPT_BUILD=20220214
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -564,6 +566,7 @@ if not defined NETVersion (
 
 REM -- VC++ redistributable package
 rem see https://stackoverflow.com/questions/46178559/how-to-detect-if-visual-c-2017-redistributable-is-installed
+rem see https://en.wikipedia.org/wiki/Microsoft_Visual_C%2B%2B
 if "!PROCESSOR_ARCHITECTURE!" == "x86" (
 	set KEY_NAME=HKLM\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x86
 ) else (
@@ -573,6 +576,24 @@ set VALUE_NAME=Version
 set VC_REDIST_VERSION=
 for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
 	set VC_REDIST_VERSION=%%A
+)
+set VALUE_NAME=Major
+set VC_REDIST_MAJ_VERSION=
+for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
+	rem convert hex in decimal (see https://stackoverflow.com/questions/9453246/reg-query-returning-hexadecimal-value)
+	set /A VC_REDIST_MAJ_VERSION=%%A
+)
+set VALUE_NAME=Minor
+set VC_REDIST_MIN_VERSION=
+for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
+	rem convert hex in decimal (see https://stackoverflow.com/questions/9453246/reg-query-returning-hexadecimal-value)
+	set /A VC_REDIST_MIN_VERSION=%%A
+)
+set VALUE_NAME=Bld
+set VC_REDIST_BUILD_VERSION=
+for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
+	rem convert hex in decimal (see https://stackoverflow.com/questions/9453246/reg-query-returning-hexadecimal-value)
+	set /A VC_REDIST_BUILD_VERSION=%%A
 )
 
 
@@ -1003,7 +1024,7 @@ if defined NETVersion (
 )
 if defined VC_REDIST_VERSION (
 	echo     Installed VC++ redistributable package: !VC_REDIST_VERSION!
-	echo Installed VC++ redistributable package: !VC_REDIST_VERSION!                                                         >> !REPORT_LOGFILE! 2>&1
+	echo Installed VC++ redistributable package: !VC_REDIST_VERSION! [!VC_REDIST_MAJ_VERSION!/!VC_REDIST_MIN_VERSION!/!VC_REDIST_BUILD_VERSION!]  >> !REPORT_LOGFILE! 2>&1
 ) else (
 	echo     Installed VC++ redistributable package: was not able to determine installed version.
 	echo Installed VC++ redistributable package: was not able to determine installed version.                                >> !REPORT_LOGFILE! 2>&1
@@ -2494,7 +2515,19 @@ if not defined LMS_SKIPWMIC (
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	echo Read-out wmic information with WmiRead.exe:                                                                             >> !REPORT_LOGFILE! 2>&1
 	if exist "!LMS_DOWNLOAD_PATH!\WmiRead.exe" (
-		!LMS_DOWNLOAD_PATH!\WmiRead.exe                                                                                          >> !REPORT_LOGFILE! 2>&1
+		if /I !VC_REDIST_MAJ_VERSION! GTR 14 (
+			!LMS_DOWNLOAD_PATH!\WmiRead.exe                                                                                      >> !REPORT_LOGFILE! 2>&1
+		) else (
+			if /I !VC_REDIST_MAJ_VERSION! EQU 14 (
+				if /I !VC_REDIST_MIN_VERSION! GEQ 29 (
+					!LMS_DOWNLOAD_PATH!\WmiRead.exe                                                                              >> !REPORT_LOGFILE! 2>&1
+				) else (
+					echo     Installed VC++ runtime [!VC_REDIST_VERSION!] is too old, cannot read-out wmic information with WmiRead.exe.   >> !REPORT_LOGFILE! 2>&1
+				)
+			) else (
+				echo     Installed VC++ runtime [!VC_REDIST_VERSION!] is too old, cannot read-out wmic information with WmiRead.exe.   >> !REPORT_LOGFILE! 2>&1
+			)
+		)
 	) else (
 		echo     '!LMS_DOWNLOAD_PATH!\WmiRead.exe' doesn't exist! Cannot read-out wmic information.                              >> !REPORT_LOGFILE! 2>&1
 	)
