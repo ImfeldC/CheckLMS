@@ -6561,7 +6561,7 @@ if not defined LMS_SKIPSETUP (
 	)
 	echo SKIPPED LMS Setup Files section. The script didn't execute the LMS Setup Files commands.                                                                                       >> !REPORT_LOGFILE! 2>&1
 )
-echo ==============================================================================                                                                                                 >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================                                                                                                     >> !REPORT_LOGFILE! 2>&1
 echo ... read LMS logfiles [last %LOG_FILE_LINES% lines] ...
 if not defined LMS_SKIPLOGS (
 	echo LOG FILE: LMU.log [last %LOG_FILE_LINES% lines]                                                                                                                                >> !REPORT_LOGFILE! 2>&1
@@ -6623,21 +6623,21 @@ if not defined LMS_SKIPLOGS (
 		echo     !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\logging\alm_service_log not found.                                                                     >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
-	echo LOG FILE: Copy all files from !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\*  to  !CHECKLMS_ALM_PATH!\Automation License Manager\                                                  >> !REPORT_LOGFILE! 2>&1
+	echo LOG FILE: Copy all files from !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\*  to  !CHECKLMS_ALM_PATH!\Automation License Manager\                           >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\" (
 		mkdir "!CHECKLMS_ALM_PATH!\Automation License Manager\"  >nul 2>&1
-		xcopy "!ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\*" "!CHECKLMS_ALM_PATH!\Automation License Manager\" /E /Y /H /I                                                                  >> !REPORT_LOGFILE! 2>&1 
+		xcopy "!ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\*" "!CHECKLMS_ALM_PATH!\Automation License Manager\" /E /Y /H /I                                         >> !REPORT_LOGFILE! 2>&1 
 		echo --- Files automatically copied from !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\* to !CHECKLMS_ALM_PATH!\Automation License Manager\ --- > "!CHECKLMS_ALM_PATH!\Automation License Manager\__README.txt" 2>&1
 	) else (
 		echo     !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\ folder not found.                                                                                     >> !REPORT_LOGFILE! 2>&1
 	)
-	echo LOG FILE: Copy all files from !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\*  to  !CHECKLMS_ALM_PATH!\Logfiles\                                                  >> !REPORT_LOGFILE! 2>&1
+	echo LOG FILE: Copy all files from !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\*  to  !CHECKLMS_ALM_PATH!\Logfiles\                                                               >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\" (
 		mkdir "!CHECKLMS_ALM_PATH!\Logfiles\"  >nul 2>&1
-		xcopy "!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\*" "!CHECKLMS_ALM_PATH!\Logfiles\" /E /Y /H /I                                                                  >> !REPORT_LOGFILE! 2>&1 
+		xcopy "!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\*" "!CHECKLMS_ALM_PATH!\Logfiles\" /E /Y /H /I                                                                             >> !REPORT_LOGFILE! 2>&1 
 		echo --- Files automatically copied from !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\* to !CHECKLMS_ALM_PATH!\Logfiles\ --- > "!CHECKLMS_ALM_PATH!\Logfiles\__README.txt" 2>&1
 	) else (
-		echo     !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\ folder not found.                                                                                     >> !REPORT_LOGFILE! 2>&1
+		echo     !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\ folder not found.                                                                                                       >> !REPORT_LOGFILE! 2>&1
 	)
 	echo LOG FILE: Copy all files from !ALLUSERSPROFILE!\Siemens\Automation\sws\*  to  !CHECKLMS_ALM_PATH!\sws\                                                                         >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!ALLUSERSPROFILE!\Siemens\Automation\sws\" (
@@ -6659,7 +6659,7 @@ if not defined LMS_SKIPLOGS (
 echo ==============================================================================                                                                                                 >> !REPORT_LOGFILE! 2>&1
 rem NOTE: the ccmcache (incl. ManagedPC folder) has an overall size of xx GB. If this size is full, oldest downloaded packages will be erased automatically
 echo ... search dongle driver setup logfiles [*SentinelLicenseManager*.log] [on C:\Windows\Logs\ManagedPC\Applications] ...
-echo Search dongle driver setup logfiles [*SentinelLicenseManager*.log] [on C:\Windows\Logs\ManagedPC\Applications]:                                                              >> !REPORT_LOGFILE! 2>&1
+echo Search dongle driver setup logfiles [*SentinelLicenseManager*.log] [on C:\Windows\Logs\ManagedPC\Applications]:                                                                >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPDDSETUP (
 	del !CHECKLMS_REPORT_LOG_PATH!\DongleDriverSetupLogFilesFound.txt >nul 2>&1
 	FOR /r C:\Windows\Logs\ManagedPC\Applications\ %%X IN (*SentinelLicenseManager*.log) DO echo %%~dpnxX >> !CHECKLMS_REPORT_LOG_PATH!\DongleDriverSetupLogFilesFound.txt
