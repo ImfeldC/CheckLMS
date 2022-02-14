@@ -14,6 +14,11 @@ rem     04-Feb-2022:
 rem        - Download LMS SDK (for installed LMS version)
 rem     10-Feb-2022:
 rem        - replace %-sign with !-sign
+rem     11-Feb-2022:
+rem        - replace !CHECKLMS_ALM_PATH!\ALM\ with !CHECKLMS_ALM_PATH!\Automation License Manager\
+rem        - replace %CHECKLMS_ALM_PATH% with !CHECKLMS_ALM_PATH!
+rem     12-Feb-2022:
+rem        - replace %CHECKLMS_SETUP_LOG_PATH% with !CHECKLMS_SETUP_LOG_PATH!
 rem     
 rem     Full details see changelog.md
 rem
@@ -57,8 +62,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 10-Feb-2022"
-set LMS_SCRIPT_BUILD=20220210
+set LMS_SCRIPT_VERSION="CheckLMS Script 12-Feb-2022"
+set LMS_SCRIPT_BUILD=20220212
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -211,6 +216,7 @@ del !REPORT_LOG_PATH!\SIEMBT_*_event.log >nul 2>&1
 del !REPORT_LOG_PATH!\yes.txt >nul 2>&1
 del !CHECKLMS_REPORT_LOG_PATH!\desigcc_reistry.txt >nul 2>&1
 del !CHECKLMS_REPORT_LOG_PATH!\desigocc_installed_EM.txt >nul 2>&1
+del !CHECKLMS_ALM_PATH!\ALM\ >nul 2>&1
 
 rem remove former used local path (clean-up no longer used data)
 rmdir /S /Q !REPORT_LOG_PATH!\CrashDumps >nul 2>&1
@@ -224,9 +230,9 @@ IF NOT EXIST "%CHECKLMS_CRASH_DUMP_PATH%\" (
 )
 set CHECKLMS_SETUP_LOG_PATH=!CHECKLMS_REPORT_LOG_PATH!\LMSSetupLogs
 rmdir /S /Q !CHECKLMS_SETUP_LOG_PATH!\ >nul 2>&1
-IF NOT EXIST "%CHECKLMS_SETUP_LOG_PATH%\" (
-	rem echo Create new folder: %CHECKLMS_SETUP_LOG_PATH%\
-    mkdir %CHECKLMS_SETUP_LOG_PATH%\ >nul 2>&1
+IF NOT EXIST "!CHECKLMS_SETUP_LOG_PATH!\" (
+	rem echo Create new folder: !CHECKLMS_SETUP_LOG_PATH!\
+    mkdir !CHECKLMS_SETUP_LOG_PATH!\ >nul 2>&1
 )
 set CHECKLMS_SSU_PATH=!CHECKLMS_REPORT_LOG_PATH!\SSU
 rem rmdir /S /Q !CHECKLMS_SSU_PATH!\ >nul 2>&1
@@ -236,9 +242,9 @@ IF NOT EXIST "!CHECKLMS_SSU_PATH!\" (
 )
 set CHECKLMS_ALM_PATH=!CHECKLMS_REPORT_LOG_PATH!\Automation
 rmdir /S /Q !CHECKLMS_ALM_PATH!\ >nul 2>&1
-IF NOT EXIST "%CHECKLMS_ALM_PATH%\" (
-	rem echo Create new folder: %CHECKLMS_ALM_PATH%\
-    mkdir %CHECKLMS_ALM_PATH%\ >nul 2>&1
+IF NOT EXIST "!CHECKLMS_ALM_PATH!\" (
+	rem echo Create new folder: !CHECKLMS_ALM_PATH!\
+    mkdir !CHECKLMS_ALM_PATH!\ >nul 2>&1
 )
 
 rem Check flexera command line tools path 
@@ -6467,15 +6473,15 @@ if not defined LMS_SKIPSETUP (
 	rem NOTE: the ccmcache (incl. ManagedPC folder) has an overall size of xx GB. If this size is full, oldest downloaded packages will be erased automatically
 	echo ... search LMS setup logfiles [*LicenseManagementSystem*.log]  [on C:\Windows\Logs\ManagedPC\Applications] ...
 	echo Search LMS setup logfiles [*LicenseManagementSystem*.log] [on C:\Windows\Logs\ManagedPC\Applications]:                  >> !REPORT_LOGFILE! 2>&1
-	del %CHECKLMS_SETUP_LOG_PATH%\LicenseManagementSystemSetupLogFilesFound.txt >nul 2>&1
-	FOR /r C:\Windows\Logs\ManagedPC\Applications\ %%X IN (*LicenseManagementSystem*.log) DO echo %%~dpnxX >> %CHECKLMS_SETUP_LOG_PATH%\LicenseManagementSystemSetupLogFilesFound.txt
-	IF EXIST "%CHECKLMS_SETUP_LOG_PATH%\LicenseManagementSystemSetupLogFilesFound.txt" (
-		Type %CHECKLMS_SETUP_LOG_PATH%\LicenseManagementSystemSetupLogFilesFound.txt                                             >> !REPORT_LOGFILE! 2>&1
+	del !CHECKLMS_SETUP_LOG_PATH!\LicenseManagementSystemSetupLogFilesFound.txt >nul 2>&1
+	FOR /r C:\Windows\Logs\ManagedPC\Applications\ %%X IN (*LicenseManagementSystem*.log) DO echo %%~dpnxX >> !CHECKLMS_SETUP_LOG_PATH!\LicenseManagementSystemSetupLogFilesFound.txt
+	IF EXIST "!CHECKLMS_SETUP_LOG_PATH!\LicenseManagementSystemSetupLogFilesFound.txt" (
+		Type !CHECKLMS_SETUP_LOG_PATH!\LicenseManagementSystemSetupLogFilesFound.txt                                             >> !REPORT_LOGFILE! 2>&1
 		FOR /r C:\Windows\Logs\ManagedPC\Applications\ %%X IN (*LicenseManagementSystem*.log) DO (
 		  set myline=%%~dpX
 		  for /f "delims=" %%y in ("!myline:\=.!") do set folder=%%~xy
-		  echo %%~dpX* copy to %CHECKLMS_SETUP_LOG_PATH%\ManagedPC\!folder:~1!\ ...                                              >> !REPORT_LOGFILE! 2>&1
-		  xcopy %%~dpX*  %CHECKLMS_SETUP_LOG_PATH%\ManagedPC\!folder:~1!\ /E /Y /H /I                                            >> !REPORT_LOGFILE! 2>&1
+		  echo %%~dpX* copy to !CHECKLMS_SETUP_LOG_PATH!\ManagedPC\!folder:~1!\ ...                                              >> !REPORT_LOGFILE! 2>&1
+		  xcopy %%~dpX*  !CHECKLMS_SETUP_LOG_PATH!\ManagedPC\!folder:~1!\ /E /Y /H /I                                            >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
 		echo     No LMS setup logfile [*LicenseManagementSystem*.log] found.                                                     >> !REPORT_LOGFILE! 2>&1
@@ -6487,16 +6493,16 @@ if not defined LMS_SKIPSETUP (
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!temp!\setup_LMS_IS_x64.log" (
 		echo !temp!\setup_LMS_IS_x64.log found.                                                                                  >> !REPORT_LOGFILE! 2>&1
-		copy !temp!\setup_LMS_IS_x64.log %CHECKLMS_SETUP_LOG_PATH%\                                                              >> !REPORT_LOGFILE! 2>&1
-		echo --- File automatically copied from !temp!\setup_LMS_IS_x64.log to %CHECKLMS_SETUP_LOG_PATH%\ ---  >> %CHECKLMS_SETUP_LOG_PATH%\setup_LMS_IS_x64.log 2>&1
+		copy !temp!\setup_LMS_IS_x64.log !CHECKLMS_SETUP_LOG_PATH!\                                                              >> !REPORT_LOGFILE! 2>&1
+		echo --- File automatically copied from !temp!\setup_LMS_IS_x64.log to !CHECKLMS_SETUP_LOG_PATH!\ ---  >> !CHECKLMS_SETUP_LOG_PATH!\setup_LMS_IS_x64.log 2>&1
 	) else (
 		echo     !temp!\setup_LMS_IS_x64.log not found.                                                                          >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!temp!\setup_LMS_x64.log" (
 		echo !temp!\setup_LMS_x64.log found.                                                                                     >> !REPORT_LOGFILE! 2>&1
-		copy !temp!\setup_LMS_x64.log %CHECKLMS_SETUP_LOG_PATH%\                                                                 >> !REPORT_LOGFILE! 2>&1
-		echo --- File automatically copied from !temp!\setup_LMS_x64.log to %CHECKLMS_SETUP_LOG_PATH%\ ---  >> %CHECKLMS_SETUP_LOG_PATH%\setup_LMS_x64.log 2>&1
+		copy !temp!\setup_LMS_x64.log !CHECKLMS_SETUP_LOG_PATH!\                                                                 >> !REPORT_LOGFILE! 2>&1
+		echo --- File automatically copied from !temp!\setup_LMS_x64.log to !CHECKLMS_SETUP_LOG_PATH!\ ---  >> !CHECKLMS_SETUP_LOG_PATH!\setup_LMS_x64.log 2>&1
 	) else (
 		echo     !temp!\setup_LMS_x64.log not found.                                                                             >> !REPORT_LOGFILE! 2>&1
 	)
@@ -6504,16 +6510,16 @@ if not defined LMS_SKIPSETUP (
 	IF EXIST "!ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\" (
 		IF EXIST "!ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log" (
 			echo !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log found.                                                                   >> !REPORT_LOGFILE! 2>&1
-			copy !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log %CHECKLMS_SETUP_LOG_PATH%\                                               >> !REPORT_LOGFILE! 2>&1
-			echo --- File automatically copied from !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log to %CHECKLMS_SETUP_LOG_PATH%\ ---  >> %CHECKLMS_SETUP_LOG_PATH%\LMSSetupIS.log 2>&1
+			copy !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log !CHECKLMS_SETUP_LOG_PATH!\                                               >> !REPORT_LOGFILE! 2>&1
+			echo --- File automatically copied from !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log to !CHECKLMS_SETUP_LOG_PATH!\ ---  >> !CHECKLMS_SETUP_LOG_PATH!\LMSSetupIS.log 2>&1
 		) else (
 			echo     !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log not found.                                                           >> !REPORT_LOGFILE! 2>&1
 		)
 		echo -------------------------------------------------------                                                                                                                    >> !REPORT_LOGFILE! 2>&1
 		IF EXIST "!ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log" (
 			echo !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log found.                                                                  >> !REPORT_LOGFILE! 2>&1
-			copy !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log %CHECKLMS_SETUP_LOG_PATH%\                                              >> !REPORT_LOGFILE! 2>&1
-			echo --- File automatically copied from !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log to %CHECKLMS_SETUP_LOG_PATH%\ ---  >> %CHECKLMS_SETUP_LOG_PATH%\LMSSetupMSI.log 2>&1
+			copy !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log !CHECKLMS_SETUP_LOG_PATH!\                                              >> !REPORT_LOGFILE! 2>&1
+			echo --- File automatically copied from !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log to !CHECKLMS_SETUP_LOG_PATH!\ ---  >> !CHECKLMS_SETUP_LOG_PATH!\LMSSetupMSI.log 2>&1
 		) else (
 			echo      !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log not found.                                                         >> !REPORT_LOGFILE! 2>&1
 		)
@@ -6524,16 +6530,16 @@ if not defined LMS_SKIPSETUP (
 	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log" (
 		echo !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log found.                                                                                                  >> !REPORT_LOGFILE! 2>&1
-		copy !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log %CHECKLMS_SETUP_LOG_PATH%\                                                                              >> !REPORT_LOGFILE! 2>&1
-		echo --- File automatically copied from !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log to %CHECKLMS_SETUP_LOG_PATH%\ ---   >> %CHECKLMS_SETUP_LOG_PATH%\LMSSetupIS.log 2>&1
+		copy !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log !CHECKLMS_SETUP_LOG_PATH!\                                                                              >> !REPORT_LOGFILE! 2>&1
+		echo --- File automatically copied from !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log to !CHECKLMS_SETUP_LOG_PATH!\ ---   >> !CHECKLMS_SETUP_LOG_PATH!\LMSSetupIS.log 2>&1
 	) else (
 		echo     !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log not found.                                                                                          >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log" (
 		echo !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log found.                                                                                                 >> !REPORT_LOGFILE! 2>&1
-		copy !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log %CHECKLMS_SETUP_LOG_PATH%\                                                                             >> !REPORT_LOGFILE! 2>&1
-		echo --- File automatically copied from !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log to %CHECKLMS_SETUP_LOG_PATH%\ ---  >> %CHECKLMS_SETUP_LOG_PATH%\LMSSetupMSI.log 2>&1
+		copy !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log !CHECKLMS_SETUP_LOG_PATH!\                                                                             >> !REPORT_LOGFILE! 2>&1
+		echo --- File automatically copied from !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log to !CHECKLMS_SETUP_LOG_PATH!\ ---  >> !CHECKLMS_SETUP_LOG_PATH!\LMSSetupMSI.log 2>&1
 	) else (
 		echo     !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log not found.                                                                                         >> !REPORT_LOGFILE! 2>&1
 	)
@@ -6615,19 +6621,27 @@ if not defined LMS_SKIPLOGS (
 		echo     !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\logging\alm_service_log not found.                                                                     >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
-	echo LOG FILE: Copy all files from !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\*  to  !CHECKLMS_ALM_PATH!\ALM\                                                  >> !REPORT_LOGFILE! 2>&1
+	echo LOG FILE: Copy all files from !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\*  to  !CHECKLMS_ALM_PATH!\Automation License Manager\                                                  >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\" (
-		mkdir !CHECKLMS_ALM_PATH!\ALM\  >nul 2>&1
-		xcopy "!ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\*" !CHECKLMS_ALM_PATH!\ALM\ /E /Y /H /I                                                                  >> !REPORT_LOGFILE! 2>&1 
-		echo --- Files automatically copied from !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\* to !CHECKLMS_ALM_PATH!\ALM\ --- > !CHECKLMS_ALM_PATH!\ALM\__README.txt 2>&1
+		mkdir "!CHECKLMS_ALM_PATH!\Automation License Manager\"  >nul 2>&1
+		xcopy "!ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\*" "!CHECKLMS_ALM_PATH!\Automation License Manager\" /E /Y /H /I                                                                  >> !REPORT_LOGFILE! 2>&1 
+		echo --- Files automatically copied from !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\* to !CHECKLMS_ALM_PATH!\Automation License Manager\ --- > "!CHECKLMS_ALM_PATH!\Automation License Manager\__README.txt" 2>&1
 	) else (
 		echo     !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\ folder not found.                                                                                     >> !REPORT_LOGFILE! 2>&1
+	)
+	echo LOG FILE: Copy all files from !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\*  to  !CHECKLMS_ALM_PATH!\Logfiles\                                                  >> !REPORT_LOGFILE! 2>&1
+	IF EXIST "!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\" (
+		mkdir "!CHECKLMS_ALM_PATH!\Logfiles\"  >nul 2>&1
+		xcopy "!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\*" "!CHECKLMS_ALM_PATH!\Logfiles\" /E /Y /H /I                                                                  >> !REPORT_LOGFILE! 2>&1 
+		echo --- Files automatically copied from !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\* to !CHECKLMS_ALM_PATH!\Logfiles\ --- > "!CHECKLMS_ALM_PATH!\Logfiles\__README.txt" 2>&1
+	) else (
+		echo     !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\ folder not found.                                                                                     >> !REPORT_LOGFILE! 2>&1
 	)
 	echo LOG FILE: Copy all files from !ALLUSERSPROFILE!\Siemens\Automation\sws\*  to  !CHECKLMS_ALM_PATH!\sws\                                                                         >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!ALLUSERSPROFILE!\Siemens\Automation\sws\" (
 		mkdir !CHECKLMS_ALM_PATH!\sws\  >nul 2>&1
 		xcopy "!ALLUSERSPROFILE!\Siemens\Automation\sws\*" !CHECKLMS_ALM_PATH!\sws\ /E /Y /H /I                                                                                         >> !REPORT_LOGFILE! 2>&1 
-		echo --- Files automatically copied from !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\* to !CHECKLMS_ALM_PATH!\sws\ --- > !CHECKLMS_ALM_PATH!\sws\__README.txt 2>&1
+		echo --- Files automatically copied from !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\sws\* to !CHECKLMS_ALM_PATH!\sws\ --- > !CHECKLMS_ALM_PATH!\sws\__README.txt 2>&1
 	) else (
 		echo     !ALLUSERSPROFILE!\Siemens\Automation\sws\ folder not found.                                                                                                            >> !REPORT_LOGFILE! 2>&1
 	)
@@ -6826,15 +6840,15 @@ if not defined LMS_SKIPWINEVENT (
 	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     Windows Event Log: Application ['Automation License Manager API']
 	echo Windows Event Log: Application ['Automation License Manager API']                                                                                                                                      >> !REPORT_LOGFILE! 2>&1
-	echo     see %CHECKLMS_ALM_PATH%\eventlog_app_alm_api.txt                                                                                                                                                   >> !REPORT_LOGFILE! 2>&1
-	WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Automation License Manager API']]]" > %CHECKLMS_ALM_PATH%\eventlog_app_alm_api.txt 2>&1
-	powershell -command "& {Get-Content '%CHECKLMS_ALM_PATH%\eventlog_app_alm_api.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                >> !REPORT_LOGFILE! 2>&1
+	echo     see !CHECKLMS_ALM_PATH!\eventlog_app_alm_api.txt                                                                                                                                                   >> !REPORT_LOGFILE! 2>&1
+	WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Automation License Manager API']]]" > !CHECKLMS_ALM_PATH!\eventlog_app_alm_api.txt 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_ALM_PATH!\eventlog_app_alm_api.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     Windows Event Log: Application ['Automation License Manager Service']
 	echo Windows Event Log: Application ['Automation License Manager Service']                                                                                                                                  >> !REPORT_LOGFILE! 2>&1
-	echo     see %CHECKLMS_ALM_PATH%\eventlog_app_alm_service.txt                                                                                                                                               >> !REPORT_LOGFILE! 2>&1
-	WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Automation License Manager Service']]]" > %CHECKLMS_ALM_PATH%\eventlog_app_alm_service.txt 2>&1
-	powershell -command "& {Get-Content '%CHECKLMS_ALM_PATH%\eventlog_app_alm_service.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                            >> !REPORT_LOGFILE! 2>&1
+	echo     see !CHECKLMS_ALM_PATH!\eventlog_app_alm_service.txt                                                                                                                                               >> !REPORT_LOGFILE! 2>&1
+	WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Automation License Manager Service']]]" > !CHECKLMS_ALM_PATH!\eventlog_app_alm_service.txt 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_ALM_PATH!\eventlog_app_alm_service.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                            >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     Windows Event Log: System ['Service Control Manager']
 	echo Windows Event Log: System ['Service Control Manager']                                                                                                                                                  >> !REPORT_LOGFILE! 2>&1
