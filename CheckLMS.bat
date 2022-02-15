@@ -24,6 +24,10 @@ rem        - The script copies 'C:\ProgramData\Siemens\Automation\Logfiles\*' to
 rem     14-Feb-2022:
 rem        - check installed VC++ runtime, before calling WmiRead.exe
 rem        - read «PendingFileRenameOperations» registry key (under Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager)
+rem     15-Feb-2022:
+rem        - do no longer type 200 [=LOG_FILE_LINES] lines of Desigo CC logfiles within main logfile [will shorten main logfile]; just 20 [=LOG_FILE_SNIPPET]
+rem        - list content of three additional logfile folder: [1] !GMS_InstallDir!\!GMS_ActiveProject!\log\* / [2] !GMS_InstallDir!\Log\* / [3] !GMS_PVSSInstallLocation!\log\*
+rem        - replace %LOG_FILE_LINES% with !LOG_FILE_LINES!
 rem     
 rem     Full details see changelog.md
 rem
@@ -67,8 +71,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 14-Feb-2022"
-set LMS_SCRIPT_BUILD=20220214
+set LMS_SCRIPT_VERSION="CheckLMS Script 15-Feb-2022"
+set LMS_SCRIPT_BUILD=20220215
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -85,6 +89,7 @@ rem most recent BT ALM plugin (per 15-Nov-2021, LMS 2.6)
 set MOST_RECENT_BT_ALM_PLUGIN=1.1.43.0
 
 rem Internal Settings
+set LOG_FILE_SNIPPET=20
 set LOG_FILE_LINES=200
 set LOG_EVENTLOG_EVENTS=5000
 set LOG_EVENTLOG_FULL_EVENTS=20000
@@ -2328,8 +2333,8 @@ if defined LMS_START_DEMO_VD (
 	)
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	if exist "!REPORT_LOG_PATH!\demo_debuglog.txt" (
-		echo LOG FILE: demo_debuglog.txt [last %LOG_FILE_LINES% lines]                                                       >> !REPORT_LOGFILE! 2>&1
-		powershell -command "& {Get-Content '!REPORT_LOG_PATH!\demo_debuglog.txt' | Select-Object -last %LOG_FILE_LINES%}"   >> !REPORT_LOGFILE! 2>&1
+		echo LOG FILE: demo_debuglog.txt [last !LOG_FILE_LINES! lines]                                                       >> !REPORT_LOGFILE! 2>&1
+		powershell -command "& {Get-Content '!REPORT_LOG_PATH!\demo_debuglog.txt' | Select-Object -last !LOG_FILE_LINES!}"   >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo LOG FILE: !REPORT_LOG_PATH!\demo_debuglog.txt not found!                                                        >> !REPORT_LOGFILE! 2>&1
 	)
@@ -2382,8 +2387,8 @@ if defined LMS_STOP_DEMO_VD (
 	)
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	if exist "!REPORT_LOG_PATH!\demo_debuglog.txt" (
-		echo LOG FILE: demo_debuglog.txt [last %LOG_FILE_LINES% lines]                                                       >> !REPORT_LOGFILE! 2>&1
-		powershell -command "& {Get-Content '!REPORT_LOG_PATH!\demo_debuglog.txt' | Select-Object -last %LOG_FILE_LINES%}"   >> !REPORT_LOGFILE! 2>&1
+		echo LOG FILE: demo_debuglog.txt [last !LOG_FILE_LINES! lines]                                                       >> !REPORT_LOGFILE! 2>&1
+		powershell -command "& {Get-Content '!REPORT_LOG_PATH!\demo_debuglog.txt' | Select-Object -last !LOG_FILE_LINES!}"   >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo LOG FILE: !REPORT_LOG_PATH!\demo_debuglog.txt not found!                                                        >> !REPORT_LOGFILE! 2>&1
 	)
@@ -3276,7 +3281,7 @@ if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
 	echo Windows Event Log: Microsoft-Windows-Hyper-V-Compute-Operational                                             >> !REPORT_LOGFILE! 2>&1
 	echo     see !CHECKLMS_REPORT_LOG_PATH!\eventlog_hyperv_operational.txt                                           >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events Microsoft-Windows-Hyper-V-Compute-Operational /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Microsoft-Windows-Hyper-V-Compute']]]" > !CHECKLMS_REPORT_LOG_PATH!\eventlog_hyperv_operational.txt 2>&1
-	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_hyperv_operational.txt' | Select-Object -first %LOG_FILE_LINES%}" >> !REPORT_LOGFILE! 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_hyperv_operational.txt' | Select-Object -first !LOG_FILE_LINES!}" >> !REPORT_LOGFILE! 2>&1
 ) else (
 	echo WARNING: Windows Event Log: Microsoft-Windows-Hyper-V-Compute-Operational, start script with administrator priviledge. >> !REPORT_LOGFILE! 2>&1
 )
@@ -5312,8 +5317,8 @@ if not defined LMS_SKIPFNP (
 		)	
 
 		echo FlexeraDecryptedEventlog.log contains data from start date: !TS_LOG_START_DATE! till end date: !TS_LOG_END_DATE!              >> !REPORT_LOGFILE! 2>&1
-		echo !REPORT_LOG_PATH!\FlexeraDecryptedEventlog.log: only last %LOG_FILE_LINES% lines                                              >> !REPORT_LOGFILE! 2>&1 
-		powershell -command "& {Get-Content '!REPORT_LOG_PATH!\FlexeraDecryptedEventlog.log' | Select-Object -last %LOG_FILE_LINES%}"      >> !REPORT_LOGFILE! 2>&1
+		echo !REPORT_LOG_PATH!\FlexeraDecryptedEventlog.log: only last !LOG_FILE_LINES! lines                                              >> !REPORT_LOGFILE! 2>&1 
+		powershell -command "& {Get-Content '!REPORT_LOG_PATH!\FlexeraDecryptedEventlog.log' | Select-Object -last !LOG_FILE_LINES!}"      >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo     tsactdiags_SIEMBT_svr.exe doesn't exist, cannot perform operation to create decrypted logfile!                            >> !REPORT_LOGFILE! 2>&1
 	)
@@ -5372,7 +5377,7 @@ if not defined LMS_SKIPFNP (
 		FOR %%X IN (!ALLUSERSPROFILE!\FLEXnet\*.log) DO ( 
 			echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1 
 			echo %%X                                                                                                             >> !REPORT_LOGFILE! 2>&1 
-			powershell -command "& {Get-Content '%%X' | Select-Object -last %LOG_FILE_LINES%}"                                   >> !REPORT_LOGFILE! 2>&1 
+			powershell -command "& {Get-Content '%%X' | Select-Object -last !LOG_FILE_LINES!}"                                   >> !REPORT_LOGFILE! 2>&1 
 			copy %%X !CHECKLMS_REPORT_LOG_PATH!\                                                                                 >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
@@ -5457,8 +5462,8 @@ IF EXIST "!REPORT_LOG_PATH!\SIEMBT.log" (
 
 			rem SIEMBT.log
 			echo Start at !DATE! !TIME! ....                                                                                 >> !REPORT_LOGFILE! 2>&1
-			echo LOG FILE: SIEMBT.log [last %LOG_FILE_LINES% lines]                                                          >> !REPORT_LOGFILE! 2>&1
-			powershell -command "& {Get-Content '!REPORT_LOG_PATH!\SIEMBT.log' | Select-Object -last %LOG_FILE_LINES%}"      >> !REPORT_LOGFILE! 2>&1
+			echo LOG FILE: SIEMBT.log [last !LOG_FILE_LINES! lines]                                                          >> !REPORT_LOGFILE! 2>&1
+			powershell -command "& {Get-Content '!REPORT_LOG_PATH!\SIEMBT.log' | Select-Object -last !LOG_FILE_LINES!}"      >> !REPORT_LOGFILE! 2>&1
 		)
 	)
 
@@ -5521,8 +5526,8 @@ IF EXIST "!REPORT_LOG_PATH!\demo_debuglog.txt" (
 
 			rem demo_debuglog.txt
 			echo Start at !DATE! !TIME! ....                                                                                 >> !REPORT_LOGFILE! 2>&1
-			echo LOG FILE: demo_debuglog.txt [last %LOG_FILE_LINES% lines]                                                          >> !REPORT_LOGFILE! 2>&1
-			powershell -command "& {Get-Content '!REPORT_LOG_PATH!\demo_debuglog.txt' | Select-Object -last %LOG_FILE_LINES%}"      >> !REPORT_LOGFILE! 2>&1
+			echo LOG FILE: demo_debuglog.txt [last !LOG_FILE_LINES! lines]                                                          >> !REPORT_LOGFILE! 2>&1
+			powershell -command "& {Get-Content '!REPORT_LOG_PATH!\demo_debuglog.txt' | Select-Object -last !LOG_FILE_LINES!}"      >> !REPORT_LOGFILE! 2>&1
 		)
 	)
 
@@ -6202,7 +6207,7 @@ if not defined LMS_SKIPSSU (
 			set /A LOG_FILE_COUNT += 1
 			echo %%i copy to !CHECKLMS_SSU_PATH!\%%~nxi                                                                          >> !REPORT_LOGFILE! 2>&1   
 			copy /Y "%%i" !CHECKLMS_SSU_PATH!\%%~nxi                                                                             >> !REPORT_LOGFILE! 2>&1
-			rem powershell -command "& {Get-Content '%%i' | Select-Object -last %LOG_FILE_LINES%}"                                   >> !REPORT_LOGFILE! 2>&1 
+			rem powershell -command "& {Get-Content '%%i' | Select-Object -last !LOG_FILE_LINES!}"                                   >> !REPORT_LOGFILE! 2>&1 
 			Type "%%i"                                                                                                           >> !REPORT_LOGFILE! 2>&1 
 			echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1 
 		)
@@ -6343,8 +6348,8 @@ if not defined LMS_SKIPSSU (
 			echo -------------------------------------------------------                                                                            >> !REPORT_LOGFILE! 2>&1
 			echo SSU - CRASH FILE debug.log found in '!ProgramFiles!\Siemens\SSU\bin\'                                                              >> !REPORT_LOGFILE! 2>&1
 			rem Type "!ProgramFiles!\Siemens\SSU\bin\debug.log"                                                                                     >> !REPORT_LOGFILE! 2>&1
-			echo LOG FILE: debug.log [last %LOG_FILE_LINES% lines]                                                                                  >> !REPORT_LOGFILE! 2>&1
-			powershell -command "& {Get-Content '!ProgramFiles!\Siemens\SSU\bin\debug.log' | Select-Object -last %LOG_FILE_LINES%}"                 >> !REPORT_LOGFILE! 2>&1
+			echo LOG FILE: debug.log [last !LOG_FILE_LINES! lines]                                                                                  >> !REPORT_LOGFILE! 2>&1
+			powershell -command "& {Get-Content '!ProgramFiles!\Siemens\SSU\bin\debug.log' | Select-Object -last !LOG_FILE_LINES!}"                 >> !REPORT_LOGFILE! 2>&1
 
 			copy "!ProgramFiles!\Siemens\SSU\bin\debug.log" !CHECKLMS_SSU_PATH!\ssu_debug.log                                                       >> !REPORT_LOGFILE! 2>&1
 			echo --- File automatically copied from !ProgramFiles!\Siemens\SSU\bin\debug.log to !CHECKLMS_SSU_PATH!\ssu_debug.log ---               >> !CHECKLMS_SSU_PATH!\ssu_debug.log 2>&1
@@ -6472,7 +6477,7 @@ if not defined LMS_SKIPSETUP (
 			set /A LOG_FILE_COUNT += 1
 			echo %%i copy to !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                             >> !REPORT_LOGFILE! 2>&1   
 			copy /Y "%%i" !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                                >> !REPORT_LOGFILE! 2>&1
-			powershell -command "& {Get-Content '%%i' | Select-Object -last %LOG_FILE_LINES%}"                                   >> !REPORT_LOGFILE! 2>&1 
+			powershell -command "& {Get-Content '%%i' | Select-Object -last !LOG_FILE_LINES!}"                                   >> !REPORT_LOGFILE! 2>&1 
 			echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1 
 		)
 	) else (
@@ -6492,7 +6497,7 @@ if not defined LMS_SKIPSETUP (
 			set /A LOG_FILE_COUNT += 1
 			echo %%i copy to !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                             >> !REPORT_LOGFILE! 2>&1   
 			copy /Y "%%i" !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                                >> !REPORT_LOGFILE! 2>&1
-			powershell -command "& {Get-Content '%%i' | Select-Object -last %LOG_FILE_LINES%}"                                   >> !REPORT_LOGFILE! 2>&1 
+			powershell -command "& {Get-Content '%%i' | Select-Object -last !LOG_FILE_LINES!}"                                   >> !REPORT_LOGFILE! 2>&1 
 			echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1 
 		)
 	) else (
@@ -6512,7 +6517,7 @@ if not defined LMS_SKIPSETUP (
 			set /A LOG_FILE_COUNT += 1
 			echo %%i copy to !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                             >> !REPORT_LOGFILE! 2>&1   
 			copy /Y "%%i" !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                                >> !REPORT_LOGFILE! 2>&1
-			powershell -command "& {Get-Content '%%i' | Select-Object -last %LOG_FILE_LINES%}"                                   >> !REPORT_LOGFILE! 2>&1 
+			powershell -command "& {Get-Content '%%i' | Select-Object -last !LOG_FILE_LINES!}"                                   >> !REPORT_LOGFILE! 2>&1 
 			echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1 
 		)
 	) else (
@@ -6609,61 +6614,61 @@ if not defined LMS_SKIPSETUP (
 	echo SKIPPED LMS Setup Files section. The script didn't execute the LMS Setup Files commands.                                                                                       >> !REPORT_LOGFILE! 2>&1
 )
 echo ==============================================================================                                                                                                     >> !REPORT_LOGFILE! 2>&1
-echo ... read LMS logfiles [last %LOG_FILE_LINES% lines] ...
+echo ... read LMS logfiles [last !LOG_FILE_LINES! lines] ...
 if not defined LMS_SKIPLOGS (
-	echo LOG FILE: LMU.log [last %LOG_FILE_LINES% lines]                                                                                                                                >> !REPORT_LOGFILE! 2>&1
+	echo LOG FILE: LMU.log [last !LOG_FILE_LINES! lines]                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!REPORT_LOG_PATH!\LMU.log" (
 		FOR /F "usebackq" %%A IN ('!REPORT_LOG_PATH!\LMU.log') DO set LMULOG_FILESIZE=%%~zA
 		if /I !LMULOG_FILESIZE! GEQ !LOG_FILESIZE_LIMIT! (
 			echo     ATTENTION: Filesize of LMU.log with !LMULOG_FILESIZE! bytes, is exceeding critical limit of !LOG_FILESIZE_LIMIT! bytes!                                            >> !REPORT_LOGFILE! 2>&1
 			echo     ATTENTION: Filesize of LMU.log with !LMULOG_FILESIZE! bytes, is exceeding critical limit of !LOG_FILESIZE_LIMIT! bytes!
 		)
-		powershell -command "& {Get-Content '!REPORT_LOG_PATH!\LMU.log' | Select-Object -last %LOG_FILE_LINES%}"                                                                        >> !REPORT_LOGFILE! 2>&1
+		powershell -command "& {Get-Content '!REPORT_LOG_PATH!\LMU.log' | Select-Object -last !LOG_FILE_LINES!}"                                                                        >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo     !REPORT_LOG_PATH!\LMU.log not found.                                                                                                                                   >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
-	echo LOG FILE: licenf.log [last %LOG_FILE_LINES% lines]                                                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo LOG FILE: licenf.log [last !LOG_FILE_LINES! lines]                                                                                                                             >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!REPORT_LOG_PATH!\licenf.log" (
-		powershell -command "& {Get-Content '!REPORT_LOG_PATH!\licenf.log' | Select-Object -last %LOG_FILE_LINES%}"                                                                     >> !REPORT_LOGFILE! 2>&1
+		powershell -command "& {Get-Content '!REPORT_LOG_PATH!\licenf.log' | Select-Object -last !LOG_FILE_LINES!}"                                                                     >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo     !REPORT_LOG_PATH!\licenf.log not found.                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
-	echo LOG FILE: LMUTool.log [last %LOG_FILE_LINES% lines]                                                                                                                            >> !REPORT_LOGFILE! 2>&1
+	echo LOG FILE: LMUTool.log [last !LOG_FILE_LINES! lines]                                                                                                                            >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!REPORT_LOG_PATH!\LMUTool.log" (
-		powershell -command "& {Get-Content '!REPORT_LOG_PATH!\LMUTool.log' | Select-Object -last %LOG_FILE_LINES%}"                                                                    >> !REPORT_LOGFILE! 2>&1
+		powershell -command "& {Get-Content '!REPORT_LOG_PATH!\LMUTool.log' | Select-Object -last !LOG_FILE_LINES!}"                                                                    >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo     !REPORT_LOG_PATH!\LMUTool.log not found.                                                                                                                               >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
-	echo LOG FILE: LMUPowerShell.log [last %LOG_FILE_LINES% lines]                                                                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo LOG FILE: LMUPowerShell.log [last !LOG_FILE_LINES! lines]                                                                                                                      >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!REPORT_LOG_PATH!\LMUPowerShell.log" (
-		powershell -command "& {Get-Content '!REPORT_LOG_PATH!\LMUPowerShell.log' | Select-Object -last %LOG_FILE_LINES%}"                                                              >> !REPORT_LOGFILE! 2>&1
+		powershell -command "& {Get-Content '!REPORT_LOG_PATH!\LMUPowerShell.log' | Select-Object -last !LOG_FILE_LINES!}"                                                              >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo     !REPORT_LOG_PATH!\LMUPowerShell.log not found.                                                                                                                         >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
-	echo ... read further logfiles [last %LOG_FILE_LINES% lines] ...
-	echo LOG FILE: AlmBt.log [last %LOG_FILE_LINES% lines]                                                                                                                              >> !REPORT_LOGFILE! 2>&1
+	echo ... read further logfiles [last !LOG_FILE_LINES! lines] ...
+	echo LOG FILE: AlmBt.log [last !LOG_FILE_LINES! lines]                                                                                                                              >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!REPORT_LOG_PATH!\AlmBt.log" (
-		powershell -command "& {Get-Content '!REPORT_LOG_PATH!\AlmBt.log' | Select-Object -last %LOG_FILE_LINES%}"                                                                      >> !REPORT_LOGFILE! 2>&1
+		powershell -command "& {Get-Content '!REPORT_LOG_PATH!\AlmBt.log' | Select-Object -last !LOG_FILE_LINES!}"                                                                      >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo     !REPORT_LOG_PATH!\AlmBt.log not found.                                                                                                                                 >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
-	echo LOG FILE: !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\ALM64_LOG.TXT [last %LOG_FILE_LINES% lines]                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo LOG FILE: !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\ALM64_LOG.TXT [last !LOG_FILE_LINES! lines]                                                                      >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\ALM64_LOG.TXT" (
-		powershell -command "& {Get-Content '!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\ALM64_LOG.TXT' | Select-Object -last %LOG_FILE_LINES%}"                                >> !REPORT_LOGFILE! 2>&1
+		powershell -command "& {Get-Content '!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\ALM64_LOG.TXT' | Select-Object -last !LOG_FILE_LINES!}"                                >> !REPORT_LOGFILE! 2>&1
 		copy !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\ALM64_LOG.TXT !CHECKLMS_ALM_PATH!\                                                                                     >> !REPORT_LOGFILE! 2>&1
 		echo --- File automatically copied from !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\ALM64_LOG.TXT to !CHECKLMS_ALM_PATH!\ --- >> !CHECKLMS_ALM_PATH!\ALM64_LOG.TXT 2>&1
 	) else (
 		echo     !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\ALM64_LOG.TXT not found.                                                                                           >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
-	echo LOG FILE: !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\logging\alm_service_log [last %LOG_FILE_LINES% lines]                                                >> !REPORT_LOGFILE! 2>&1
+	echo LOG FILE: !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\logging\alm_service_log [last !LOG_FILE_LINES! lines]                                                >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\logging\alm_service_log" (
-		powershell -command "& {Get-Content '!ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\logging\alm_service_log' | Select-Object -last %LOG_FILE_LINES%}"          >> !REPORT_LOGFILE! 2>&1
+		powershell -command "& {Get-Content '!ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\logging\alm_service_log' | Select-Object -last !LOG_FILE_LINES!}"          >> !REPORT_LOGFILE! 2>&1
 		copy "!ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\logging\alm_service_log" !CHECKLMS_ALM_PATH!\                                                             >> !REPORT_LOGFILE! 2>&1
 		echo --- File automatically copied from !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\logging\alm_service_log to !CHECKLMS_ALM_PATH!\ --- >> !CHECKLMS_ALM_PATH!\alm_service_log 2>&1
 	) else (
@@ -6718,7 +6723,7 @@ if not defined LMS_SKIPDDSETUP (
 			set /A LOG_FILE_COUNT += 1
 			echo %%i copy to !CHECKLMS_REPORT_LOG_PATH!\%%~nxi                                                                                                                          >> !REPORT_LOGFILE! 2>&1   
 			copy /Y "%%i" !CHECKLMS_REPORT_LOG_PATH!\%%~nxi                                                                                                                             >> !REPORT_LOGFILE! 2>&1
-			powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\%%~nxi' | Select-Object -last %LOG_FILE_LINES%}"                                                            >> !REPORT_LOGFILE! 2>&1 
+			powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\%%~nxi' | Select-Object -last !LOG_FILE_LINES!}"                                                            >> !REPORT_LOGFILE! 2>&1 
 			echo -------------------------------------------------------                                                                                                                >> !REPORT_LOGFILE! 2>&1 
 		)
 	) else (
@@ -6726,16 +6731,16 @@ if not defined LMS_SKIPDDSETUP (
 	)
 	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
 	rem aksdrvsetup.log is the dongle driver setup/installation logfile
-	echo LOG FILE: %windir%\aksdrvsetup.log [last %LOG_FILE_LINES% lines]                                                                                                               >> !REPORT_LOGFILE! 2>&1
+	echo LOG FILE: %windir%\aksdrvsetup.log [last !LOG_FILE_LINES! lines]                                                                                                               >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "%windir%\aksdrvsetup.log" (
-		powershell -command "& {Get-Content '%windir%\aksdrvsetup.log' | Select-Object -last %LOG_FILE_LINES%}"                                                                         >> !REPORT_LOGFILE! 2>&1
+		powershell -command "& {Get-Content '%windir%\aksdrvsetup.log' | Select-Object -last !LOG_FILE_LINES!}"                                                                         >> !REPORT_LOGFILE! 2>&1
 		copy %windir%\aksdrvsetup.log !CHECKLMS_REPORT_LOG_PATH!\                                                                                                                       >> !REPORT_LOGFILE! 2>&1
 		echo --- File automatically copied from %windir%\aksdrvsetup.log to !CHECKLMS_REPORT_LOG_PATH!\ --- >> !CHECKLMS_REPORT_LOG_PATH!\aksdrvsetup.log 2>&1
 	) else (
 		echo     No dongle driver setup logfile [%windir%\aksdrvsetup.log] found.                                                                                                       >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
-	echo LOG FILE: !CHECKLMS_REPORT_LOG_PATH!\aksdrvsetup_extract.log [last %LOG_FILE_LINES% lines]                                                                                     >> !REPORT_LOGFILE! 2>&1
+	echo LOG FILE: !CHECKLMS_REPORT_LOG_PATH!\aksdrvsetup_extract.log [last !LOG_FILE_LINES! lines]                                                                                     >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "%windir%\aksdrvsetup.log" (
 		rem Extract dongle driver logfile, for specific entries
 		del !CHECKLMS_REPORT_LOG_PATH!\aksdrvsetup_extract.log >nul 2>&1
@@ -6801,7 +6806,7 @@ if not defined LMS_SKIPDDSETUP (
 			)
 		)
 		echo     Extract of dongle driver setup logfile done. [see !CHECKLMS_REPORT_LOG_PATH!\aksdrvsetup_extract.log]                                                              >> !REPORT_LOGFILE! 2>&1
-		powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\aksdrvsetup_extract.log' | Select-Object -last %LOG_FILE_LINES%}"                                           >> !REPORT_LOGFILE! 2>&1
+		powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\aksdrvsetup_extract.log' | Select-Object -last !LOG_FILE_LINES!}"                                           >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo     No dongle driver setup logfile [%windir%\aksdrvsetup.log] found.                                                                                                   >> !REPORT_LOGFILE! 2>&1
 	)
@@ -6843,79 +6848,79 @@ if not defined LMS_SKIPWINEVENT (
 	echo Windows Event Log: Siemens ['LMS Setup']                                                                                                                                                               >> !REPORT_LOGFILE! 2>&1
 	echo     see !CHECKLMS_REPORT_LOG_PATH!\eventlog_lms_setup.txt                                                                                                                                              >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events Siemens /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='LMS Setup']]]" > !CHECKLMS_REPORT_LOG_PATH!\eventlog_lms_setup.txt 2>&1
-	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_lms_setup.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                           >> !REPORT_LOGFILE! 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_lms_setup.txt' | Select-Object -first !LOG_FILE_LINES!}"                                                                           >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     Windows Event Log: Application ['License Management Utility']
 	echo Windows Event Log: Application ['License Management Utility']                                                                                                                                          >> !REPORT_LOGFILE! 2>&1
 	echo     see !CHECKLMS_REPORT_LOG_PATH!\eventlog_lms.txt                                                                                                                                                    >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='License Management Utility']]]" > !CHECKLMS_REPORT_LOG_PATH!\eventlog_lms.txt 2>&1
-	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_lms.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                 >> !REPORT_LOGFILE! 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_lms.txt' | Select-Object -first !LOG_FILE_LINES!}"                                                                                 >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     Windows Event Log: Application Errors
 	echo Windows Event Log: Application Errors                                                                                                                                                                  >> !REPORT_LOGFILE! 2>&1
 	echo     see !CHECKLMS_REPORT_LOG_PATH!\eventlog_app_errors.txt                                                                                                                                             >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[(Level=1  or Level=2)]]" > !CHECKLMS_REPORT_LOG_PATH!\eventlog_app_errors.txt 2>&1
-	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_app_errors.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                          >> !REPORT_LOGFILE! 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_app_errors.txt' | Select-Object -first !LOG_FILE_LINES!}"                                                                          >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     Windows Event Log: System Errors
 	echo Windows Event Log: System Errors                                                                                                                                                                       >> !REPORT_LOGFILE! 2>&1
 	echo     see !CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_errors.txt                                                                                                                                             >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events System /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[(Level=1  or Level=2)]]" > !CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_errors.txt 2>&1
-	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_errors.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                          >> !REPORT_LOGFILE! 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_errors.txt' | Select-Object -first !LOG_FILE_LINES!}"                                                                          >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     Windows Event Log: Application ['Siemens Software Updater']
 	echo Windows Event Log: Application ['Siemens Software Updater']                                                                                                                                            >> !REPORT_LOGFILE! 2>&1
 	echo     see !CHECKLMS_SSU_PATH!\eventlog_app_ssu.txt                                                                                                                                                       >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Siemens Software Updater']]]" > !CHECKLMS_SSU_PATH!\eventlog_app_ssu.txt 2>&1
-	powershell -command "& {Get-Content '!CHECKLMS_SSU_PATH!\eventlog_app_ssu.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                    >> !REPORT_LOGFILE! 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_SSU_PATH!\eventlog_app_ssu.txt' | Select-Object -first !LOG_FILE_LINES!}"                                                                                    >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     Windows Event Log: Siemens ['SiemensSoftwareUpdater']
 	echo Windows Event Log: Siemens ['SiemensSoftwareUpdater']                                                                                                                                                  >> !REPORT_LOGFILE! 2>&1
 	echo     see !CHECKLMS_SSU_PATH!\eventlog_ssu.txt                                                                                                                                                           >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events Siemens /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='SiemensSoftwareUpdater']]]" > !CHECKLMS_SSU_PATH!\eventlog_ssu.txt 2>&1
-	powershell -command "& {Get-Content '!CHECKLMS_SSU_PATH!\eventlog_ssu.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                        >> !REPORT_LOGFILE! 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_SSU_PATH!\eventlog_ssu.txt' | Select-Object -first !LOG_FILE_LINES!}"                                                                                        >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     Windows Event Log: Microsoft-Windows-Bits-Client/Operational ['Microsoft-Windows-Bits-Client']
 	echo Windows Event Log: Microsoft-Windows-Bits-Client/Operational ['Microsoft-Windows-Bits-Client']                                                                                                         >> !REPORT_LOGFILE! 2>&1
 	echo     see !CHECKLMS_SSU_PATH!\eventlog_bitsclient.txt                                                                                                                                                    >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events Microsoft-Windows-Bits-Client/Operational /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Microsoft-Windows-Bits-Client']]]" > !CHECKLMS_SSU_PATH!\eventlog_bitsclient.txt 2>&1
-	powershell -command "& {Get-Content '!CHECKLMS_SSU_PATH!\eventlog_bitsclient.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                 >> !REPORT_LOGFILE! 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_SSU_PATH!\eventlog_bitsclient.txt' | Select-Object -first !LOG_FILE_LINES!}"                                                                                 >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     Windows Event Log: Microsoft-Windows-NetworkProfile/Operational ['Microsoft-Windows-NetworkProfile']
 	echo Windows Event Log: Microsoft-Windows-NetworkProfile/Operational ['Microsoft-Windows-NetworkProfile']                                                                                                   >> !REPORT_LOGFILE! 2>&1
 	echo     see !CHECKLMS_SSU_PATH!\eventlog_networkprofile.txt                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events Microsoft-Windows-NetworkProfile/Operational /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Microsoft-Windows-NetworkProfile']]]" > !CHECKLMS_SSU_PATH!\eventlog_networkprofile.txt 2>&1
-	powershell -command "& {Get-Content '!CHECKLMS_SSU_PATH!\eventlog_networkprofile.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                             >> !REPORT_LOGFILE! 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_SSU_PATH!\eventlog_networkprofile.txt' | Select-Object -first !LOG_FILE_LINES!}"                                                                             >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     Windows Event Log: Application ['Automation License Manager API']
 	echo Windows Event Log: Application ['Automation License Manager API']                                                                                                                                      >> !REPORT_LOGFILE! 2>&1
 	echo     see !CHECKLMS_ALM_PATH!\eventlog_app_alm_api.txt                                                                                                                                                   >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Automation License Manager API']]]" > !CHECKLMS_ALM_PATH!\eventlog_app_alm_api.txt 2>&1
-	powershell -command "& {Get-Content '!CHECKLMS_ALM_PATH!\eventlog_app_alm_api.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                                >> !REPORT_LOGFILE! 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_ALM_PATH!\eventlog_app_alm_api.txt' | Select-Object -first !LOG_FILE_LINES!}"                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     Windows Event Log: Application ['Automation License Manager Service']
 	echo Windows Event Log: Application ['Automation License Manager Service']                                                                                                                                  >> !REPORT_LOGFILE! 2>&1
 	echo     see !CHECKLMS_ALM_PATH!\eventlog_app_alm_service.txt                                                                                                                                               >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Automation License Manager Service']]]" > !CHECKLMS_ALM_PATH!\eventlog_app_alm_service.txt 2>&1
-	powershell -command "& {Get-Content '!CHECKLMS_ALM_PATH!\eventlog_app_alm_service.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                            >> !REPORT_LOGFILE! 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_ALM_PATH!\eventlog_app_alm_service.txt' | Select-Object -first !LOG_FILE_LINES!}"                                                                            >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     Windows Event Log: System ['Service Control Manager']
 	echo Windows Event Log: System ['Service Control Manager']                                                                                                                                                  >> !REPORT_LOGFILE! 2>&1
 	echo     see !CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_scm.txt                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events System /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Service Control Manager']]]" > !CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_scm.txt 2>&1
-	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_scm.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                             >> !REPORT_LOGFILE! 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_scm.txt' | Select-Object -first !LOG_FILE_LINES!}"                                                                             >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     Windows Event Log: System ['hasplms']
 	echo Windows Event Log: System ['hasplms']                                                                                                                                                                  >> !REPORT_LOGFILE! 2>&1
 	echo     see !CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_hasplms.txt                                                                                                                                            >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events System /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='hasplms']]]" > !CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_hasplms.txt 2>&1
-	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_hasplms.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                         >> !REPORT_LOGFILE! 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_hasplms.txt' | Select-Object -first !LOG_FILE_LINES!}"                                                                         >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     Windows Event Log: Application ['MsiInstaller']
 	echo Windows Event Log: Application ['MsiInstaller']                                                                                                                                                        >> !REPORT_LOGFILE! 2>&1
 	echo     see !CHECKLMS_REPORT_LOG_PATH!\eventlog_app_MsiInstaller.txt                                                                                                                                       >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events Application /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='MsiInstaller']]]" > !CHECKLMS_REPORT_LOG_PATH!\eventlog_app_MsiInstaller.txt 2>&1
-	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_app_MsiInstaller.txt' | Select-Object -first %LOG_FILE_LINES%}"                                                                    >> !REPORT_LOGFILE! 2>&1
+	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_app_MsiInstaller.txt' | Select-Object -first !LOG_FILE_LINES!}"                                                                    >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo ... at !DATE! !TIME! ....                                                                                                                                                                              >> !REPORT_LOGFILE! 2>&1
 	echo ... read-out full windows event log [first %LOG_EVENTLOG_FULL_EVENTS% lines] ...
@@ -7256,29 +7261,31 @@ if not defined LMS_SKIPPRODUCTS (
 		set GMS_VERSION=%%A
 	)
 	if defined GMS_VERSION (
-		echo Start at !DATE! !TIME! ....                                                                                     >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! ....                         >> !REPORT_LOGFILE! 2>&1
 		echo     Desigo CC [!GMS_VERSION!] found ...
-		echo Desigo CC [!GMS_VERSION!] found ...                                                                             >> !REPORT_LOGFILE! 2>&1
+		echo Desigo CC [!GMS_VERSION!] found ...                 >> !REPORT_LOGFILE! 2>&1
 		set CHECKLMS_GMS_PATH=!CHECKLMS_REPORT_LOG_PATH!\GMS
 		rmdir /S /Q "!CHECKLMS_GMS_PATH!\" >nul 2>&1
 		IF NOT EXIST "!CHECKLMS_GMS_PATH!\" (
-			echo Create folder: '!CHECKLMS_GMS_PATH!\'                                                                      >> !REPORT_LOGFILE! 2>&1
-			mkdir "!CHECKLMS_GMS_PATH!\"                                                                                    >> !REPORT_LOGFILE! 2>&1
+			echo Create folder: '!CHECKLMS_GMS_PATH!\'           >> !REPORT_LOGFILE! 2>&1
+			mkdir "!CHECKLMS_GMS_PATH!\"                         >> !REPORT_LOGFILE! 2>&1
 		)
 		Powershell -command "Get-ItemProperty HKLM:\SOFTWARE\Siemens\Siemens_GMS | Format-List" > !CHECKLMS_GMS_PATH!\desigocc_registry.txt 2>&1
 		IF EXIST "!CHECKLMS_GMS_PATH!\desigocc_registry.txt" (
 			for /f "tokens=1* eol=@ delims=<>: " %%A in ('type !CHECKLMS_GMS_PATH!\desigocc_registry.txt ^|find /I "GMSActiveProject"') do set GMS_ActiveProject=%%B
 			for /f "tokens=1* eol=@ delims=<>: " %%A in ('type !CHECKLMS_GMS_PATH!\desigocc_registry.txt ^|find /I "InstallDir"') do set GMS_InstallDir=%%B
 			for /f "tokens=1* eol=@ delims=<>: " %%A in ('type !CHECKLMS_GMS_PATH!\desigocc_registry.txt ^|find /I "InstallDir"') do set GMS_InstallDrive=%%~dB
+			for /f "tokens=1* eol=@ delims=<>: " %%A in ('type !CHECKLMS_GMS_PATH!\desigocc_registry.txt ^|find /I "PVSSInstallLocation"') do set GMS_PVSSInstallLocation=%%B
 		)
-		echo Desigo CC Product Name           : !GmsProductName!                                                             >> !REPORT_LOGFILE! 2>&1
-		echo Desigo CC Version                : !GMS_VERSION!                                                                >> !REPORT_LOGFILE! 2>&1
-		echo Desigo CC Installation drive     : !GMS_InstallDrive!                                                           >> !REPORT_LOGFILE! 2>&1
-		echo Desigo CC Installation directory : !GMS_InstallDir!  [GMSProjects_Root=!GMSProjects_Root!]                      >> !REPORT_LOGFILE! 2>&1
-		echo Desigo CC Active Project         : !GMS_ActiveProject!                                                          >> !REPORT_LOGFILE! 2>&1
-		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Desigo CC Product Name               : !GmsProductName!                                            >> !REPORT_LOGFILE! 2>&1
+		echo Desigo CC Version                    : !GMS_VERSION!                                               >> !REPORT_LOGFILE! 2>&1
+		echo Desigo CC Installation drive         : !GMS_InstallDrive!                                          >> !REPORT_LOGFILE! 2>&1
+		echo Desigo CC Installation directory     : !GMS_InstallDir!  [GMSProjects_Root=!GMSProjects_Root!]     >> !REPORT_LOGFILE! 2>&1
+		echo Desigo CC PVSS Installation Location : !GMS_PVSSInstallLocation!                                   >> !REPORT_LOGFILE! 2>&1
+		echo Desigo CC Active Project             : !GMS_ActiveProject!                                         >> !REPORT_LOGFILE! 2>&1
+		echo -------------------------------------------------------                                            >> !REPORT_LOGFILE! 2>&1
 		type !CHECKLMS_GMS_PATH!\desigocc_registry.txt >> !REPORT_LOGFILE! 2>&1
-		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
+		echo -------------------------------------------------------                                            >> !REPORT_LOGFILE! 2>&1
 		echo     Read list of installed Extensions Modules of Desigo CC from registry ...
 		echo Read list of installed Extensions Modules of Desigo CC from registry                                            >> !REPORT_LOGFILE! 2>&1
 		Powershell -command "Get-ItemProperty HKLM:\Software\Siemens\Siemens_GMS\EM\* | Select-Object DisplayName, DisplayVersion, ExtensionSuite, InstallationMode, IsEMWithoutMsi | Format-List" > !CHECKLMS_GMS_PATH!\desigocc_installed_EM.txt 2>&1
@@ -7289,7 +7296,7 @@ if not defined LMS_SKIPPRODUCTS (
 		del !CHECKLMS_GMS_PATH!\DesigoCCLogFilesFound.txt >nul 2>&1
 		rem NOTE: The term 'PVSS_II.log' within IN doesn't work, make sure to have at least one * in it; e.g. 'PVSS_II.*'
 		rem NOTE: If the [drive:]path are not specified they will default to the current drive:path.
-		rem Somehow strange for /r "!GMS_InstallDir!" didn't work, because of that I use the workaound to search in current path nad change path before
+		rem Somehow strange for /r "!GMS_InstallDir!" didn't work, because of that I use the workaound to search in current path and change path before
 		!GMS_InstallDrive!       >> !REPORT_LOGFILE! 2>&1
 		cd !GMS_InstallDrive!    >> !REPORT_LOGFILE! 2>&1
 		cd !GMS_InstallDir!      >> !REPORT_LOGFILE! 2>&1
@@ -7304,12 +7311,21 @@ if not defined LMS_SKIPPRODUCTS (
 				set /A LOG_FILE_COUNT += 1
 				echo %%i copy to !CHECKLMS_GMS_PATH!\%%~ni.!LOG_FILE_COUNT!%%~xi                                             >> !REPORT_LOGFILE! 2>&1                                                                                           
 				copy /Y "%%i" "!CHECKLMS_GMS_PATH!\%%~ni.!LOG_FILE_COUNT!%%~xi"                                              >> !REPORT_LOGFILE! 2>&1                                                                                        
-				powershell -command "& {Get-Content '!CHECKLMS_GMS_PATH!\%%~ni.!LOG_FILE_COUNT!%%~xi' | Select-Object -last %LOG_FILE_LINES%}"  >> !REPORT_LOGFILE! 2>&1                                  
+				powershell -command "& {Get-Content '!CHECKLMS_GMS_PATH!\%%~ni.!LOG_FILE_COUNT!%%~xi' | Select-Object -last !LOG_FILE_SNIPPET!}"  >> !REPORT_LOGFILE! 2>&1                                  
 				echo -------------------------------------------------------                                                 >> !REPORT_LOGFILE! 2>&1                                                                
 			)
 		) else (
 			echo     No desigo cc logfiles [PVSS_II.log, WCCOActrl253.log] on '!GMS_InstallDir!' found.                      >> !REPORT_LOGFILE! 2>&1                                                                             
 		)
+		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Content of folder: "!GMS_InstallDir!\!GMS_ActiveProject!\log\" incl. sub-folders                                >> !REPORT_LOGFILE! 2>&1
+		dir /S /A /X /4 /W "!GMS_InstallDir!\!GMS_ActiveProject!\log\"                                                       >> !REPORT_LOGFILE! 2>&1
+		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Content of folder: "!GMS_InstallDir!\Log\" incl. sub-folders                                                    >> !REPORT_LOGFILE! 2>&1
+		dir /S /A /X /4 /W "!GMS_InstallDir!\Log\"                                                                           >> !REPORT_LOGFILE! 2>&1
+		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Content of folder: "!GMS_PVSSInstallLocation!\log\" incl. sub-folders                                           >> !REPORT_LOGFILE! 2>&1
+		dir /S /A /X /4 /W "!GMS_PVSSInstallLocation!\log\\"                                                                 >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
 		echo Start at !DATE! !TIME! ....                                                                                     >> !REPORT_LOGFILE! 2>&1
 	) else (
@@ -7463,8 +7479,8 @@ if not defined LMS_SKIPPRODUCTS (
 		type !CHECKLMS_SIPASS_PATH!\sipass_configuration_registry.txt                                                        >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
 		IF EXIST "!SIPASS_DIRECTORY!\SiServer-log-file.txt" (
-			echo LOG FILE: SiServer-log-file.txt [last %LOG_FILE_LINES% lines]                                               >> !REPORT_LOGFILE! 2>&1
-			powershell -command "& {Get-Content '!SIPASS_DIRECTORY!\SiServer-log-file.txt' | Select-Object -last %LOG_FILE_LINES%}"  >> !REPORT_LOGFILE! 2>&1
+			echo LOG FILE: SiServer-log-file.txt [last !LOG_FILE_LINES! lines]                                               >> !REPORT_LOGFILE! 2>&1
+			powershell -command "& {Get-Content '!SIPASS_DIRECTORY!\SiServer-log-file.txt' | Select-Object -last !LOG_FILE_LINES!}"  >> !REPORT_LOGFILE! 2>&1
 			echo -------------------------------------------------------                                                     >> !REPORT_LOGFILE! 2>&1
 			echo copy !SIPASS_DIRECTORY!\SiServer-log-file.txt.* to !CHECKLMS_SIPASS_PATH!\                                  >> !REPORT_LOGFILE! 2>&1   
 			copy /Y "!SIPASS_DIRECTORY!\SiServer-log-file.txt.*" !CHECKLMS_SIPASS_PATH!\                                     >> !REPORT_LOGFILE! 2>&1
