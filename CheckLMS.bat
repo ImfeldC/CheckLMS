@@ -28,6 +28,10 @@ rem     15-Feb-2022:
 rem        - do no longer type 200 [=LOG_FILE_LINES] lines of Desigo CC logfiles within main logfile [will shorten main logfile]; just 20 [=LOG_FILE_SNIPPET]
 rem        - list content of three additional logfile folder: [1] !GMS_InstallDir!\!GMS_ActiveProject!\log\* / [2] !GMS_InstallDir!\Log\* / [3] !GMS_PVSSInstallLocation!\log\*
 rem        - replace %LOG_FILE_LINES% with !LOG_FILE_LINES!
+rem     17-Feb-2022:
+rem        - shorten output of SSU setup logfile [MSI*.log], do no longer list whole file(s), list just 20 [=LOG_FILE_SNIPPET] lines [this will shorten main logfile]
+rem        - adjust output of echo, in case a file has been copied.
+rem        - fixed issue, when collecting Desigo CC logfiles (see 1707310)
 rem     
 rem     Full details see changelog.md
 rem
@@ -71,8 +75,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 15-Feb-2022"
-set LMS_SCRIPT_BUILD=20220215
+set LMS_SCRIPT_VERSION="CheckLMS Script 17-Feb-2022"
+set LMS_SCRIPT_BUILD=20220217
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -3467,25 +3471,25 @@ if not defined LMS_SKIPWER (
 			set "first=!name:~0,3!"
 			if /I "!first!" EQU "alm" (
 				set /A CRASHDUMP_FILE_COUNT += 1
-				echo %%i copy to !CHECKLMS_CRASH_DUMP_PATH!\            >> !REPORT_LOGFILE! 2>&1   
+				echo copy '%%i' to '!CHECKLMS_CRASH_DUMP_PATH!\' ...    >> !REPORT_LOGFILE! 2>&1   
 				copy /Y "%%i" !CHECKLMS_CRASH_DUMP_PATH!\               >> !REPORT_LOGFILE! 2>&1
 			)
 			set "first=!name:~0,7!"
 			if /I "!first!" EQU "Siemens" (
 				set /A CRASHDUMP_FILE_COUNT += 1
-				echo %%i copy to !CHECKLMS_CRASH_DUMP_PATH!\            >> !REPORT_LOGFILE! 2>&1   
+				echo copy '%%i' to '!CHECKLMS_CRASH_DUMP_PATH!\' ...    >> !REPORT_LOGFILE! 2>&1   
 				copy /Y "%%i" !CHECKLMS_CRASH_DUMP_PATH!\               >> !REPORT_LOGFILE! 2>&1
 			)
 			set "first=!name:~0,6!"
 			if /I "!first!" EQU "SIEMBT" (
 				set /A CRASHDUMP_FILE_COUNT += 1
-				echo %%i copy to !CHECKLMS_CRASH_DUMP_PATH!\            >> !REPORT_LOGFILE! 2>&1   
+				echo copy '%%i' to '!CHECKLMS_CRASH_DUMP_PATH!\' ...    >> !REPORT_LOGFILE! 2>&1   
 				copy /Y "%%i" !CHECKLMS_CRASH_DUMP_PATH!\               >> !REPORT_LOGFILE! 2>&1
 			)
 			set "first=!name:~0,10!"
 			if /I "!first!" EQU "SSUManager" (
 				set /A CRASHDUMP_FILE_COUNT += 1
-				echo %%i copy to !CHECKLMS_CRASH_DUMP_PATH!\            >> !REPORT_LOGFILE! 2>&1   
+				echo copy '%%i' to '!CHECKLMS_CRASH_DUMP_PATH!\' ...    >> !REPORT_LOGFILE! 2>&1   
 				copy /Y "%%i" !CHECKLMS_CRASH_DUMP_PATH!\               >> !REPORT_LOGFILE! 2>&1
 			)
 		)
@@ -6205,10 +6209,11 @@ if not defined LMS_SKIPSSU (
 		set LOG_FILE_COUNT=0
 		FOR /F "eol=@ delims=@" %%i IN (!CHECKLMS_SSU_PATH!\SSUSetupLogFilesFound.txt) DO ( 
 			set /A LOG_FILE_COUNT += 1
-			echo %%i copy to !CHECKLMS_SSU_PATH!\%%~nxi                                                                          >> !REPORT_LOGFILE! 2>&1   
+			echo copy '%%i' to '!CHECKLMS_SSU_PATH!\%%~nxi' ...                                                                  >> !REPORT_LOGFILE! 2>&1   
 			copy /Y "%%i" !CHECKLMS_SSU_PATH!\%%~nxi                                                                             >> !REPORT_LOGFILE! 2>&1
 			rem powershell -command "& {Get-Content '%%i' | Select-Object -last !LOG_FILE_LINES!}"                                   >> !REPORT_LOGFILE! 2>&1 
-			Type "%%i"                                                                                                           >> !REPORT_LOGFILE! 2>&1 
+			rem Type "%%i"                                                                                                           >> !REPORT_LOGFILE! 2>&1 
+			powershell -command "& {Get-Content '%%i' | Select-Object -last !LOG_FILE_SNIPPET!}"                                 >> !REPORT_LOGFILE! 2>&1 
 			echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1 
 		)
 		echo     !LOG_FILE_COUNT! SSU setup logfile [MSI*.log] found on !temp!.                                                  >> !REPORT_LOGFILE! 2>&1
@@ -6475,9 +6480,9 @@ if not defined LMS_SKIPSETUP (
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1 
 		FOR /F "eol=@ delims=@" %%i IN (!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt) DO ( 
 			set /A LOG_FILE_COUNT += 1
-			echo %%i copy to !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                             >> !REPORT_LOGFILE! 2>&1   
+			echo copy '%%i' to '!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log' ...                     >> !REPORT_LOGFILE! 2>&1   
 			copy /Y "%%i" !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                                >> !REPORT_LOGFILE! 2>&1
-			powershell -command "& {Get-Content '%%i' | Select-Object -last !LOG_FILE_LINES!}"                                   >> !REPORT_LOGFILE! 2>&1 
+			powershell -command "& {Get-Content '%%i' | Select-Object -last !LOG_FILE_SNIPPET!}"                                 >> !REPORT_LOGFILE! 2>&1 
 			echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1 
 		)
 	) else (
@@ -6495,9 +6500,9 @@ if not defined LMS_SKIPSETUP (
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1 
 		FOR /F "eol=@ delims=@" %%i IN (!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt) DO ( 
 			set /A LOG_FILE_COUNT += 1
-			echo %%i copy to !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                             >> !REPORT_LOGFILE! 2>&1   
+			echo copy '%%i' to '!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log' ...                     >> !REPORT_LOGFILE! 2>&1   
 			copy /Y "%%i" !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                                >> !REPORT_LOGFILE! 2>&1
-			powershell -command "& {Get-Content '%%i' | Select-Object -last !LOG_FILE_LINES!}"                                   >> !REPORT_LOGFILE! 2>&1 
+			powershell -command "& {Get-Content '%%i' | Select-Object -last !LOG_FILE_SNIPPET!}"                                 >> !REPORT_LOGFILE! 2>&1 
 			echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1 
 		)
 	) else (
@@ -6515,9 +6520,9 @@ if not defined LMS_SKIPSETUP (
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1 
 		FOR /F "eol=@ delims=@" %%i IN (!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt) DO ( 
 			set /A LOG_FILE_COUNT += 1
-			echo %%i copy to !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                             >> !REPORT_LOGFILE! 2>&1   
+			echo copy '%%i' to '!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log' ...                     >> !REPORT_LOGFILE! 2>&1   
 			copy /Y "%%i" !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                                >> !REPORT_LOGFILE! 2>&1
-			powershell -command "& {Get-Content '%%i' | Select-Object -last !LOG_FILE_LINES!}"                                   >> !REPORT_LOGFILE! 2>&1 
+			powershell -command "& {Get-Content '%%i' | Select-Object -last !LOG_FILE_SNIPPET!}"                                 >> !REPORT_LOGFILE! 2>&1 
 			echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1 
 		)
 	) else (
@@ -6706,41 +6711,41 @@ if not defined LMS_SKIPLOGS (
 	) else (
 		echo     SKIPPED logfile section. The script didn't execute the logfile commands.
 	)
-	echo SKIPPED logfile section. The script didn't execute the logfile commands.                                            >> !REPORT_LOGFILE! 2>&1
+	echo SKIPPED logfile section. The script didn't execute the logfile commands.                                               >> !REPORT_LOGFILE! 2>&1
 )
-echo ==============================================================================                                                                                                 >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================                                             >> !REPORT_LOGFILE! 2>&1
 rem NOTE: the ccmcache (incl. ManagedPC folder) has an overall size of xx GB. If this size is full, oldest downloaded packages will be erased automatically
 echo ... search dongle driver setup logfiles [*SentinelLicenseManager*.log] [on C:\Windows\Logs\ManagedPC\Applications] ...
-echo Search dongle driver setup logfiles [*SentinelLicenseManager*.log] [on C:\Windows\Logs\ManagedPC\Applications]:                                                                >> !REPORT_LOGFILE! 2>&1
+echo Search dongle driver setup logfiles [*SentinelLicenseManager*.log] [on C:\Windows\Logs\ManagedPC\Applications]:            >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPDDSETUP (
 	del !CHECKLMS_REPORT_LOG_PATH!\DongleDriverSetupLogFilesFound.txt >nul 2>&1
 	FOR /r C:\Windows\Logs\ManagedPC\Applications\ %%X IN (*SentinelLicenseManager*.log) DO echo %%~dpnxX >> !CHECKLMS_REPORT_LOG_PATH!\DongleDriverSetupLogFilesFound.txt
 	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\DongleDriverSetupLogFilesFound.txt" (
-		Type !CHECKLMS_REPORT_LOG_PATH!\DongleDriverSetupLogFilesFound.txt                                                                                                              >> !REPORT_LOGFILE! 2>&1
+		Type !CHECKLMS_REPORT_LOG_PATH!\DongleDriverSetupLogFilesFound.txt                                                      >> !REPORT_LOGFILE! 2>&1
 		set LOG_FILE_COUNT=0
-		echo -------------------------------------------------------                                                                                                                    >> !REPORT_LOGFILE! 2>&1 
+		echo -------------------------------------------------------                                                            >> !REPORT_LOGFILE! 2>&1 
 		FOR /F "eol=@ delims=@" %%i IN (!CHECKLMS_REPORT_LOG_PATH!\DongleDriverSetupLogFilesFound.txt) DO ( 
 			set /A LOG_FILE_COUNT += 1
-			echo %%i copy to !CHECKLMS_REPORT_LOG_PATH!\%%~nxi                                                                                                                          >> !REPORT_LOGFILE! 2>&1   
-			copy /Y "%%i" !CHECKLMS_REPORT_LOG_PATH!\%%~nxi                                                                                                                             >> !REPORT_LOGFILE! 2>&1
-			powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\%%~nxi' | Select-Object -last !LOG_FILE_LINES!}"                                                            >> !REPORT_LOGFILE! 2>&1 
-			echo -------------------------------------------------------                                                                                                                >> !REPORT_LOGFILE! 2>&1 
+			echo copy '%%i' to '!CHECKLMS_REPORT_LOG_PATH!\%%~nxi' ...                                                          >> !REPORT_LOGFILE! 2>&1   
+			copy /Y "%%i" !CHECKLMS_REPORT_LOG_PATH!\%%~nxi                                                                     >> !REPORT_LOGFILE! 2>&1
+			powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\%%~nxi' | Select-Object -last !LOG_FILE_SNIPPET!}"  >> !REPORT_LOGFILE! 2>&1 
+			echo -------------------------------------------------------                                                        >> !REPORT_LOGFILE! 2>&1 
 		)
 	) else (
-		echo     No dongle driver setup logfile [*SentinelLicenseManager*.log] found.                                                                                                   >> !REPORT_LOGFILE! 2>&1
+		echo     No dongle driver setup logfile [*SentinelLicenseManager*.log] found.                                           >> !REPORT_LOGFILE! 2>&1
 	)
-	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                                >> !REPORT_LOGFILE! 2>&1
 	rem aksdrvsetup.log is the dongle driver setup/installation logfile
-	echo LOG FILE: %windir%\aksdrvsetup.log [last !LOG_FILE_LINES! lines]                                                                                                               >> !REPORT_LOGFILE! 2>&1
+	echo LOG FILE: %windir%\aksdrvsetup.log [last !LOG_FILE_LINES! lines]                                                       >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "%windir%\aksdrvsetup.log" (
-		powershell -command "& {Get-Content '%windir%\aksdrvsetup.log' | Select-Object -last !LOG_FILE_LINES!}"                                                                         >> !REPORT_LOGFILE! 2>&1
-		copy %windir%\aksdrvsetup.log !CHECKLMS_REPORT_LOG_PATH!\                                                                                                                       >> !REPORT_LOGFILE! 2>&1
+		powershell -command "& {Get-Content '%windir%\aksdrvsetup.log' | Select-Object -last !LOG_FILE_LINES!}"                 >> !REPORT_LOGFILE! 2>&1
+		copy %windir%\aksdrvsetup.log !CHECKLMS_REPORT_LOG_PATH!\                                                               >> !REPORT_LOGFILE! 2>&1
 		echo --- File automatically copied from %windir%\aksdrvsetup.log to !CHECKLMS_REPORT_LOG_PATH!\ --- >> !CHECKLMS_REPORT_LOG_PATH!\aksdrvsetup.log 2>&1
 	) else (
-		echo     No dongle driver setup logfile [%windir%\aksdrvsetup.log] found.                                                                                                       >> !REPORT_LOGFILE! 2>&1
+		echo     No dongle driver setup logfile [%windir%\aksdrvsetup.log] found.                                               >> !REPORT_LOGFILE! 2>&1
 	)
-	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
-	echo LOG FILE: !CHECKLMS_REPORT_LOG_PATH!\aksdrvsetup_extract.log [last !LOG_FILE_LINES! lines]                                                                                     >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                                >> !REPORT_LOGFILE! 2>&1
+	echo LOG FILE: !CHECKLMS_REPORT_LOG_PATH!\aksdrvsetup_extract.log [last !LOG_FILE_LINES! lines]                             >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "%windir%\aksdrvsetup.log" (
 		rem Extract dongle driver logfile, for specific entries
 		del !CHECKLMS_REPORT_LOG_PATH!\aksdrvsetup_extract.log >nul 2>&1
@@ -7309,7 +7314,7 @@ if not defined LMS_SKIPPRODUCTS (
 			echo -------------------------------------------------------                                                     >> !REPORT_LOGFILE! 2>&1                                                                
 			FOR /F "eol=@ delims=@" %%i IN (!CHECKLMS_GMS_PATH!\DesigoCCLogFilesFound.txt) DO ( 
 				set /A LOG_FILE_COUNT += 1
-				echo %%i copy to !CHECKLMS_GMS_PATH!\%%~ni.!LOG_FILE_COUNT!%%~xi                                             >> !REPORT_LOGFILE! 2>&1                                                                                           
+				echo copy '%%i' to '!CHECKLMS_GMS_PATH!\%%~ni.!LOG_FILE_COUNT!%%~xi' ...                                     >> !REPORT_LOGFILE! 2>&1                                                                                           
 				copy /Y "%%i" "!CHECKLMS_GMS_PATH!\%%~ni.!LOG_FILE_COUNT!%%~xi"                                              >> !REPORT_LOGFILE! 2>&1                                                                                        
 				powershell -command "& {Get-Content '!CHECKLMS_GMS_PATH!\%%~ni.!LOG_FILE_COUNT!%%~xi' | Select-Object -last !LOG_FILE_SNIPPET!}"  >> !REPORT_LOGFILE! 2>&1                                  
 				echo -------------------------------------------------------                                                 >> !REPORT_LOGFILE! 2>&1                                                                
@@ -7318,11 +7323,11 @@ if not defined LMS_SKIPPRODUCTS (
 			echo     No desigo cc logfiles [PVSS_II.log, WCCOActrl253.log] on '!GMS_InstallDir!' found.                      >> !REPORT_LOGFILE! 2>&1                                                                             
 		)
 		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
-		echo Content of folder: "!GMS_InstallDir!\!GMS_ActiveProject!\log\" incl. sub-folders                                >> !REPORT_LOGFILE! 2>&1
-		dir /S /A /X /4 /W "!GMS_InstallDir!\!GMS_ActiveProject!\log\"                                                       >> !REPORT_LOGFILE! 2>&1
+		echo Content of folder: "!GMS_ActiveProject!\log\" incl. sub-folders                                                 >> !REPORT_LOGFILE! 2>&1
+		dir /S /A /X /4 /W "!GMS_ActiveProject!\log\"                                                                        >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
-		echo Content of folder: "!GMS_InstallDir!\Log\" incl. sub-folders                                                    >> !REPORT_LOGFILE! 2>&1
-		dir /S /A /X /4 /W "!GMS_InstallDir!\Log\"                                                                           >> !REPORT_LOGFILE! 2>&1
+		echo Content of folder: "!GMS_InstallDir!\GMSMainProject\log\" incl. sub-folders                                     >> !REPORT_LOGFILE! 2>&1
+		dir /S /A /X /4 /W "!GMS_InstallDir!\GMSMainProject\log\"                                                            >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
 		echo Content of folder: "!GMS_PVSSInstallLocation!\log\" incl. sub-folders                                           >> !REPORT_LOGFILE! 2>&1
 		dir /S /A /X /4 /W "!GMS_PVSSInstallLocation!\log\\"                                                                 >> !REPORT_LOGFILE! 2>&1
