@@ -282,6 +282,7 @@ set LMS_V2C_FOLDER=!CommonProgramFiles(x86)!\SafeNet Sentinel\Sentinel LDK\insta
 if "!PROCESSOR_ARCHITECTURE!" == "x86" (
 	set LMS_V2C_FOLDER=!CommonProgramFiles!\SafeNet Sentinel\Sentinel LDK\installed\111812
 )
+set LMS_V2C_FILE=*_provisional.v2c
 
 rem Application settings
 if exist "!ProgramFiles!\Siemens\LMS\bin\LmuTool.exe" (
@@ -3907,21 +3908,21 @@ if not defined LMS_SKIPLMS (
 		rem type "!LMS_HASPDRIVER_FOLDER!\\error.log"                                                                                >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	echo LMS_V2C_FOLDER='!LMS_V2C_FOLDER!'                                                                                       >> !REPORT_LOGFILE! 2>&1
-	IF EXIST "!LMS_V2C_FOLDER!\1093651362751090061_provisional.v2c" (
+	echo LMS_V2C_FOLDER='!LMS_V2C_FOLDER!' / LMS_V2C_FILE='!LMS_V2C_FILE!'                                                       >> !REPORT_LOGFILE! 2>&1
+	IF EXIST "!LMS_V2C_FOLDER!\!LMS_V2C_FILE!" (
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-		echo !LMS_V2C_FOLDER!\1093651362751090061_provisional.v2c:                                                               >> !REPORT_LOGFILE! 2>&1
-		type "!LMS_V2C_FOLDER!\\1093651362751090061_provisional.v2c"                                                             >> !REPORT_LOGFILE! 2>&1
+		echo !LMS_V2C_FOLDER!\!LMS_V2C_FILE!:                                                                                    >> !REPORT_LOGFILE! 2>&1
+		type "!LMS_V2C_FOLDER!\\!LMS_V2C_FILE!"                                                                                  >> !REPORT_LOGFILE! 2>&1
 		echo .                                                                                                                   >> !REPORT_LOGFILE! 2>&1
 	) else (
 		set LMS_V2C_FILE_NOT_INSTALLED=1
 		if defined LMS_V2C_FILE_NOT_INSTALLED (
 			if defined SHOW_COLORED_OUTPUT (
-				echo [1;33m    WARNING: There is NO vendor file '1093651362751090061_provisional.v2c' installed on the system. Pls install correct dongle driver. [1;37m
+				echo [1;33m    WARNING: There is NO vendor file '!LMS_V2C_FILE!' installed on the system. Pls install correct dongle driver. [1;37m
 			) else (
-				echo     WARNING: There is NO vendor file '1093651362751090061_provisional.v2c' installed on the system. Pls install correct dongle driver.
+				echo     WARNING: There is NO vendor file '!LMS_V2C_FILE!' installed on the system. Pls install correct dongle driver.
 			)
-			echo     WARNING: There is NO vendor file '1093651362751090061_provisional.v2c' installed on the system. Pls install correct dongle driver.     >> !REPORT_LOGFILE! 2>&1
+			echo     WARNING: There is NO vendor file '!LMS_V2C_FILE! installed on the system. Pls install correct dongle driver.  >> !REPORT_LOGFILE! 2>&1
 		)
 	)
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
