@@ -10,7 +10,7 @@ rem        - Final script, released for LMS 2.6
 rem 
 rem     21-Feb-2022:
 rem        - check V2C file in !LMS_V2C_FOLDER!
-rem        - show warning message when V2C is not available.
+rem        - show error message when V2C is not available.
 rem        - copy/analyze HASP error.log located in C:\Program Files (x86)\Common Files\Aladdin Shared\HASP\*
 rem     
 rem     Full details see changelog.md
