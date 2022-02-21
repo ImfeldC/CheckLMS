@@ -3918,11 +3918,11 @@ if not defined LMS_SKIPLMS (
 		set LMS_V2C_FILE_NOT_INSTALLED=1
 		if defined LMS_V2C_FILE_NOT_INSTALLED (
 			if defined SHOW_COLORED_OUTPUT (
-				echo [1;33m    WARNING: There is NO vendor file '!LMS_V2C_FILE!' installed on the system. Pls install correct dongle driver. [1;37m
+				echo [1;31m    ERROR: There is NO vendor file '!LMS_V2C_FILE!' installed on the system. Pls install correct dongle driver. [1;37m
 			) else (
-				echo     WARNING: There is NO vendor file '!LMS_V2C_FILE!' installed on the system. Pls install correct dongle driver.
+				echo     ERROR: There is NO vendor file '!LMS_V2C_FILE!' installed on the system. Pls install correct dongle driver.
 			)
-			echo     WARNING: There is NO vendor file '!LMS_V2C_FILE! installed on the system. Pls install correct dongle driver.  >> !REPORT_LOGFILE! 2>&1
+			echo     ERROR: There is NO vendor file '!LMS_V2C_FILE! installed on the system. Pls install correct dongle driver.  >> !REPORT_LOGFILE! 2>&1
 		)
 	)
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
@@ -8095,11 +8095,11 @@ if not defined LMS_CHECK_ID (
 		)
 		if defined LMS_V2C_FILE_NOT_INSTALLED (
 			if defined SHOW_COLORED_OUTPUT (
-				echo [1;33m    WARNING: There is NO vendor file '1093651362751090061_provisional.v2c' installed on the system. Pls install correct dongle driver. [1;37m
+				echo [1;31m    ERROR: There is NO vendor file '!LMS_V2C_FILE!' installed on the system. Pls install correct dongle driver. [1;37m
 			) else (
-				echo     WARNING: There is NO vendor file '1093651362751090061_provisional.v2c' installed on the system. Pls install correct dongle driver.
+				echo     ERROR: There is NO vendor file '!LMS_V2C_FILE!' installed on the system. Pls install correct dongle driver.
 			)
-			echo     WARNING: There is NO vendor file '1093651362751090061_provisional.v2c' installed on the system. Pls install correct dongle driver.     >> !REPORT_LOGFILE! 2>&1
+			echo     ERROR: There is NO vendor file '!LMS_V2C_FILE! installed on the system. Pls install correct dongle driver.  >> !REPORT_LOGFILE! 2>&1
 		)
 		if defined DONGLE_DRIVER_UPDATE_TO781_BY_ATOS (
 			echo     NOTE: There was a dongle driver update to version V7.81 at %DONGLE_DRIVER_UPDATE_TO781_BY_ATOS% provided by ATOS.  >> !REPORT_LOGFILE! 2>&1
