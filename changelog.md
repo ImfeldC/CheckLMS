@@ -1179,5 +1179,34 @@ rem        - Adjusted error message in case dongle driver hasn't been downloaded
 rem     01-Feb-2022:
 rem        - fix typo 'udpate' to 'update' (credit to Konrad)
 rem        - Check ALM version only for LMS 2.6.xxx [>LMS 2.5.824]
+rem     02-Feb-2022:
+rem        - download and execute WmiRead.exe
+rem        - adjust ordering in wmic section. Add more explanation output.
+rem     04-Feb-2022:
+rem        - Download LMS SDK (for installed LMS version)
+rem     10-Feb-2022:
+rem        - replace %-sign with !-sign
+rem     11-Feb-2022:
+rem        - replace !CHECKLMS_ALM_PATH!\ALM\ with !CHECKLMS_ALM_PATH!\Automation License Manager\
+rem        - replace %CHECKLMS_ALM_PATH% with !CHECKLMS_ALM_PATH!
+rem     12-Feb-2022:
+rem        - replace %CHECKLMS_SETUP_LOG_PATH% with !CHECKLMS_SETUP_LOG_PATH!
+rem     13-Feb-2022:
+rem        - The script copies 'C:\ProgramData\Siemens\Automation\Logfiles\*' to 'C:\ProgramData\Siemens\LMS\Logs\CheckLMSLogs\Automation\Logfiles\*'
+rem     14-Feb-2022:
+rem        - check installed VC++ runtime, before calling WmiRead.exe
+rem        - read «PendingFileRenameOperations» registry key (under Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager)
+rem     15-Feb-2022:
+rem        - do no longer type 200 [=LOG_FILE_LINES] lines of Desigo CC logfiles within main logfile [will shorten main logfile]; just 20 [=LOG_FILE_SNIPPET]
+rem        - list content of three additional logfile folder: [1] !GMS_InstallDir!\!GMS_ActiveProject!\log\* / [2] !GMS_InstallDir!\Log\* / [3] !GMS_PVSSInstallLocation!\log\*
+rem        - replace %LOG_FILE_LINES% with !LOG_FILE_LINES!
+rem     17-Feb-2022:
+rem        - shorten output of SSU setup logfile [MSI*.log], do no longer list whole file(s), list just 20 [=LOG_FILE_SNIPPET] lines [this will shorten main logfile]
+rem        - adjust output of echo, in case a file has been copied.
+rem        - fixed issue, when collecting Desigo CC logfiles (see 1707310)
+rem     21-Feb-2022:
+rem        - check V2C file in !LMS_V2C_FOLDER!
+rem        - show warning message when V2C is not available.
+rem        - copy/analyze HASP error.log located in C:\Program Files (x86)\Common Files\Aladdin Shared\HASP\*
 rem 
 ```

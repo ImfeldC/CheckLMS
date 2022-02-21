@@ -7,31 +7,11 @@ rem     24-Jul-2018:
 rem        - Initial version
 rem     24-Jan-2022:
 rem        - Final script, released for LMS 2.6
-rem     02-Feb-2022:
-rem        - download and execute WmiRead.exe
-rem        - adjust ordering in wmic section. Add more explanation output.
-rem     04-Feb-2022:
-rem        - Download LMS SDK (for installed LMS version)
-rem     10-Feb-2022:
-rem        - replace %-sign with !-sign
-rem     11-Feb-2022:
-rem        - replace !CHECKLMS_ALM_PATH!\ALM\ with !CHECKLMS_ALM_PATH!\Automation License Manager\
-rem        - replace %CHECKLMS_ALM_PATH% with !CHECKLMS_ALM_PATH!
-rem     12-Feb-2022:
-rem        - replace %CHECKLMS_SETUP_LOG_PATH% with !CHECKLMS_SETUP_LOG_PATH!
-rem     13-Feb-2022:
-rem        - The script copies 'C:\ProgramData\Siemens\Automation\Logfiles\*' to 'C:\ProgramData\Siemens\LMS\Logs\CheckLMSLogs\Automation\Logfiles\*'
-rem     14-Feb-2022:
-rem        - check installed VC++ runtime, before calling WmiRead.exe
-rem        - read «PendingFileRenameOperations» registry key (under Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager)
-rem     15-Feb-2022:
-rem        - do no longer type 200 [=LOG_FILE_LINES] lines of Desigo CC logfiles within main logfile [will shorten main logfile]; just 20 [=LOG_FILE_SNIPPET]
-rem        - list content of three additional logfile folder: [1] !GMS_InstallDir!\!GMS_ActiveProject!\log\* / [2] !GMS_InstallDir!\Log\* / [3] !GMS_PVSSInstallLocation!\log\*
-rem        - replace %LOG_FILE_LINES% with !LOG_FILE_LINES!
-rem     17-Feb-2022:
-rem        - shorten output of SSU setup logfile [MSI*.log], do no longer list whole file(s), list just 20 [=LOG_FILE_SNIPPET] lines [this will shorten main logfile]
-rem        - adjust output of echo, in case a file has been copied.
-rem        - fixed issue, when collecting Desigo CC logfiles (see 1707310)
+rem 
+rem     21-Feb-2022:
+rem        - check V2C file in !LMS_V2C_FOLDER!
+rem        - show warning message when V2C is not available.
+rem        - copy/analyze HASP error.log located in C:\Program Files (x86)\Common Files\Aladdin Shared\HASP\*
 rem     
 rem     Full details see changelog.md
 rem
@@ -75,8 +55,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 17-Feb-2022"
-set LMS_SCRIPT_BUILD=20220217
+set LMS_SCRIPT_VERSION="CheckLMS Script 21-Feb-2022"
+set LMS_SCRIPT_BUILD=20220221
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -293,10 +273,14 @@ set LMS_ALMBTPLUGIN_FOLDER_X86=C:\\Program Files (x86)\\Common Files\\Siemens\\S
 set LMS_ALMBTPLUGIN_FOLDER=C:\\Program Files\\Common Files\\Siemens\\SWS\\plugins\\bt
 
 rem Local path for HASP dongle driver
-rem see https://www.rocscience.com/support/sentinel
 set LMS_HASPDRIVER_FOLDER=!CommonProgramFiles(x86)!\Aladdin Shared\HASP
 if "!PROCESSOR_ARCHITECTURE!" == "x86" (
 	set LMS_HASPDRIVER_FOLDER=!CommonProgramFiles!\Aladdin Shared\HASP
+)
+rem Local path for V2C vendor file
+set LMS_V2C_FOLDER=!CommonProgramFiles(x86)!\SafeNet Sentinel\Sentinel LDK\installed\111812
+if "!PROCESSOR_ARCHITECTURE!" == "x86" (
+	set LMS_V2C_FOLDER=!CommonProgramFiles!\SafeNet Sentinel\Sentinel LDK\installed\111812
 )
 
 rem Application settings
@@ -3904,15 +3888,41 @@ if not defined LMS_SKIPLMS (
 	)
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	echo LMS_HASPDRIVER_FOLDER='!LMS_HASPDRIVER_FOLDER!'                                                                         >> !REPORT_LOGFILE! 2>&1
-	IF EXIST "%LMS_HASPDRIVER_FOLDER%\lic_names.dat" (
+	IF EXIST "!LMS_HASPDRIVER_FOLDER!\lic_names.dat" (
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-		echo lic_names.dat:                                                                                                      >> !REPORT_LOGFILE! 2>&1
-		type "%LMS_HASPDRIVER_FOLDER%\\lic_names.dat"                                                                            >> !REPORT_LOGFILE! 2>&1
+		echo !LMS_HASPDRIVER_FOLDER!\lic_names.dat:                                                                              >> !REPORT_LOGFILE! 2>&1
+		type "!LMS_HASPDRIVER_FOLDER!\\lic_names.dat"                                                                            >> !REPORT_LOGFILE! 2>&1
 	)
-	IF EXIST "%LMS_HASPDRIVER_FOLDER%\hasplm.ini" (
+	IF EXIST "!LMS_HASPDRIVER_FOLDER!\hasplm.ini" (
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-		echo hasplm.ini:                                                                                                         >> !REPORT_LOGFILE! 2>&1
-		type "%LMS_HASPDRIVER_FOLDER%\\hasplm.ini"                                                                               >> !REPORT_LOGFILE! 2>&1
+		echo !LMS_HASPDRIVER_FOLDER!\hasplm.ini:                                                                                 >> !REPORT_LOGFILE! 2>&1
+		type "!LMS_HASPDRIVER_FOLDER!\\hasplm.ini"                                                                               >> !REPORT_LOGFILE! 2>&1
+	)
+	IF EXIST "!LMS_HASPDRIVER_FOLDER!\error.log" (
+		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+		echo '!LMS_HASPDRIVER_FOLDER!\error.log', copied to '!CHECKLMS_REPORT_LOG_PATH!\hasp_error.log':                         >> !REPORT_LOGFILE! 2>&1
+		copy /Y "!LMS_HASPDRIVER_FOLDER!\error.log" "!CHECKLMS_REPORT_LOG_PATH!\hasp_error.log"                                  >> !REPORT_LOGFILE! 2>&1
+		echo --- File automatically copied from !LMS_HASPDRIVER_FOLDER!\error.log to !CHECKLMS_REPORT_LOG_PATH!\hasp_error.log --- >> !CHECKLMS_REPORT_LOG_PATH!\hasp_error.log 2>&1
+		powershell -command "& {Get-Content '!LMS_HASPDRIVER_FOLDER!\error.log' | Select-Object -last !LOG_FILE_SNIPPET!}"       >> !REPORT_LOGFILE! 2>&1
+		rem type "!LMS_HASPDRIVER_FOLDER!\\error.log"                                                                                >> !REPORT_LOGFILE! 2>&1
+	)
+	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo LMS_V2C_FOLDER='!LMS_V2C_FOLDER!'                                                                                       >> !REPORT_LOGFILE! 2>&1
+	IF EXIST "!LMS_V2C_FOLDER!\1093651362751090061_provisional.v2c" (
+		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+		echo !LMS_V2C_FOLDER!\1093651362751090061_provisional.v2c:                                                               >> !REPORT_LOGFILE! 2>&1
+		type "!LMS_V2C_FOLDER!\\1093651362751090061_provisional.v2c"                                                             >> !REPORT_LOGFILE! 2>&1
+		echo .                                                                                                                   >> !REPORT_LOGFILE! 2>&1
+	) else (
+		set LMS_V2C_FILE_NOT_INSTALLED=1
+		if defined LMS_V2C_FILE_NOT_INSTALLED (
+			if defined SHOW_COLORED_OUTPUT (
+				echo [1;33m    WARNING: There is NO vendor file '1093651362751090061_provisional.v2c' installed on the system. Pls install correct dongle driver. [1;37m
+			) else (
+				echo     WARNING: There is NO vendor file '1093651362751090061_provisional.v2c' installed on the system. Pls install correct dongle driver.
+			)
+			echo     WARNING: There is NO vendor file '1093651362751090061_provisional.v2c' installed on the system. Pls install correct dongle driver.     >> !REPORT_LOGFILE! 2>&1
+		)
 	)
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	echo Display the connected dongles, with LmuTool.exe /DONGLES                                                                >> !REPORT_LOGFILE! 2>&1
@@ -8081,6 +8091,14 @@ if not defined LMS_CHECK_ID (
 				echo     WARNING: There is not the most recent dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! installed on the system. Installed driver is !DONGLE_DRIVER_PKG_VERSION!.
 			)
 			echo     WARNING: There is not the most recent dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! installed on the system. Installed driver is !DONGLE_DRIVER_PKG_VERSION!.   >> !REPORT_LOGFILE! 2>&1
+		)
+		if defined LMS_V2C_FILE_NOT_INSTALLED (
+			if defined SHOW_COLORED_OUTPUT (
+				echo [1;33m    WARNING: There is NO vendor file '1093651362751090061_provisional.v2c' installed on the system. Pls install correct dongle driver. [1;37m
+			) else (
+				echo     WARNING: There is NO vendor file '1093651362751090061_provisional.v2c' installed on the system. Pls install correct dongle driver.
+			)
+			echo     WARNING: There is NO vendor file '1093651362751090061_provisional.v2c' installed on the system. Pls install correct dongle driver.     >> !REPORT_LOGFILE! 2>&1
 		)
 		if defined DONGLE_DRIVER_UPDATE_TO781_BY_ATOS (
 			echo     NOTE: There was a dongle driver update to version V7.81 at %DONGLE_DRIVER_UPDATE_TO781_BY_ATOS% provided by ATOS.  >> !REPORT_LOGFILE! 2>&1
