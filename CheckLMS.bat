@@ -12,6 +12,8 @@ rem     21-Feb-2022:
 rem        - check V2C file in !LMS_V2C_FOLDER!
 rem        - show error message when V2C is not available.
 rem        - copy/analyze HASP error.log located in C:\Program Files (x86)\Common Files\Aladdin Shared\HASP\*
+rem     23-Feb-2022:
+rem        - add further external URL to perform a connection test; use https://webhook.site/54ced032-9f1a-427a-8eab-24e2329cb8cc
 rem     
 rem     Full details see changelog.md
 rem
@@ -55,8 +57,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 21-Feb-2022"
-set LMS_SCRIPT_BUILD=20220221
+set LMS_SCRIPT_VERSION="CheckLMS Script 23-Feb-2022"
+set LMS_SCRIPT_BUILD=20220223
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -6998,20 +7000,34 @@ echo ===========================================================================
 echo =   C O N N E C T I O N   T E S T                                            =                                                       >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                                       >> !REPORT_LOGFILE! 2>&1
 echo ... start connection test at !DATE! !TIME! ...
-echo Start at !DATE! !TIME! ....                                                                                                              >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! ....                                                                                                          >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPCONTEST (
+	rem Connection Test to external site
+	set CONNECTION_TEST_EXT_URL=https://webhook.site/54ced032-9f1a-427a-8eab-24e2329cb8cc?LMS_VERSION=!LMS_VERSION!^&COMPUTERNAME=!COMPUTERNAME!
+	powershell -Command "(New-Object Net.WebClient).DownloadFile('!CONNECTION_TEST_EXT_URL!', '!temp!\downloadtest.txt')"  >!CHECKLMS_REPORT_LOG_PATH!\connection_test_ext.txt 2>&1
+	if !ERRORLEVEL!==0 (
+		rem Connection Test: PASSED
+		echo     Connection Test PASSED, can access !CONNECTION_TEST_EXT_URL!
+		echo Connection Test PASSED, can access !CONNECTION_TEST_EXT_URL!                                                                 >> !REPORT_LOGFILE! 2>&1
+	) else if !ERRORLEVEL!==1 (
+		rem Connection Test: FAILED
+		echo     Connection Test FAILED, cannot access !CONNECTION_TEST_EXT_URL!
+		echo Connection Test FAILED, cannot access !CONNECTION_TEST_EXT_URL!                                                              >> !REPORT_LOGFILE! 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_ext.txt                                                                           >> !REPORT_LOGFILE! 2>&1
+	)
+	echo -------------------------------------------------------                          >> !REPORT_LOGFILE! 2>&1
 	rem Connection Test to Siemens site
 	set CONNECTION_TEST_URL=http://new.siemens.com/global/en/general/legal.html
 	powershell -Command "(New-Object Net.WebClient).DownloadFile('!CONNECTION_TEST_URL!', '!temp!\downloadtest.txt')"  >!CHECKLMS_REPORT_LOG_PATH!\connection_test_siemens.txt 2>&1
 	if !ERRORLEVEL!==0 (
 		rem Connection Test: PASSED
 		echo     Connection Test PASSED, can access !CONNECTION_TEST_URL!
-		echo Connection Test PASSED, can access !CONNECTION_TEST_URL!                                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Connection Test PASSED, can access !CONNECTION_TEST_URL!                                                                     >> !REPORT_LOGFILE! 2>&1
 	) else if !ERRORLEVEL!==1 (
 		rem Connection Test: FAILED
 		echo     Connection Test FAILED, cannot access !CONNECTION_TEST_URL!
-		echo Connection Test FAILED, cannot access !CONNECTION_TEST_URL!                                                                      >> !REPORT_LOGFILE! 2>&1
-		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_siemens.txt                                                                           >> !REPORT_LOGFILE! 2>&1
+		echo Connection Test FAILED, cannot access !CONNECTION_TEST_URL!                                                                  >> !REPORT_LOGFILE! 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_siemens.txt                                                                       >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                          >> !REPORT_LOGFILE! 2>&1
 	echo ... test connection to LMS server: lms.bt.siemens.com [using https/443 port] ...
