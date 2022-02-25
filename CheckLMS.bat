@@ -14,6 +14,8 @@ rem        - show error message when V2C is not available.
 rem        - copy/analyze HASP error.log located in C:\Program Files (x86)\Common Files\Aladdin Shared\HASP\*
 rem     23-Feb-2022:
 rem        - add further external URL to perform a connection test; use https://webhook.site/54ced032-9f1a-427a-8eab-24e2329cb8cc
+rem     24-Feb-2022:
+rem        - Fix issue: 'The system cannot find the batch label specified - break_hostinfo_for_loop'
 rem     
 rem     Full details see changelog.md
 rem
@@ -57,8 +59,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 23-Feb-2022"
-set LMS_SCRIPT_BUILD=20220223
+set LMS_SCRIPT_VERSION="CheckLMS Script 24-Feb-2022"
+set LMS_SCRIPT_BUILD=20220224
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -5465,12 +5467,12 @@ IF EXIST "!REPORT_LOG_PATH!\SIEMBT.log" (
 							echo End of 'Host Info' section found ...   >> !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt 2>&1
 							Set LMS_START_LOG=0
 							Set LMS_HOSTINFO_FOUND=1
-							goto break_hostinfo_for_loop
+							goto break_hostinfo_for_loop 
 						)
 					)
 				)
 			)
-			:break_hostinfo_for_loop
+			:break_hostinfo_for_loop 
 			IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt" (
 				type "!CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt"                                                        >> !REPORT_LOGFILE! 2>&1
 			) else (
