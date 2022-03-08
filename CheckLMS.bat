@@ -14,8 +14,11 @@ rem        - show error message when V2C is not available.
 rem        - copy/analyze HASP error.log located in C:\Program Files (x86)\Common Files\Aladdin Shared\HASP\*
 rem     23-Feb-2022:
 rem        - add further external URL to perform a connection test; use https://webhook.site/54ced032-9f1a-427a-8eab-24e2329cb8cc
+rem          see dashboard at: https://webhook.site/#!/54ced032-9f1a-427a-8eab-24e2329cb8cc/7e4ec314-dbb8-421f-b210-1de546a3d65b/1
 rem     24-Feb-2022:
 rem        - Fix issue: 'The system cannot find the batch label specified - break_hostinfo_for_loop'
+rem     08-Mar-2022:
+rem        - add LMS_SYSTEMID and LMS_SCRIPT_BUILD to webhook connection test 
 rem     
 rem     Full details see changelog.md
 rem
@@ -59,8 +62,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 24-Feb-2022"
-set LMS_SCRIPT_BUILD=20220224
+set LMS_SCRIPT_VERSION="CheckLMS Script 08-Mar-2022"
+set LMS_SCRIPT_BUILD=20220308
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -7005,7 +7008,7 @@ echo ... start connection test at !DATE! !TIME! ...
 echo Start at !DATE! !TIME! ....                                                                                                          >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPCONTEST (
 	rem Connection Test to external site
-	set CONNECTION_TEST_EXT_URL=https://webhook.site/54ced032-9f1a-427a-8eab-24e2329cb8cc?LMS_VERSION=!LMS_VERSION!^&COMPUTERNAME=!COMPUTERNAME!
+	set CONNECTION_TEST_EXT_URL=https://webhook.site/54ced032-9f1a-427a-8eab-24e2329cb8cc?LMS_VERSION=!LMS_VERSION!^&COMPUTERNAME=!COMPUTERNAME!^&LMS_SYSTEMID=!LMS_SYSTEMID!^&LMS_SCRIPT_BUILD=!LMS_SCRIPT_BUILD!
 	powershell -Command "(New-Object Net.WebClient).DownloadFile('!CONNECTION_TEST_EXT_URL!', '!temp!\downloadtest.txt')"  >!CHECKLMS_REPORT_LOG_PATH!\connection_test_ext.txt 2>&1
 	if !ERRORLEVEL!==0 (
 		rem Connection Test: PASSED
