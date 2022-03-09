@@ -23,6 +23,7 @@ rem     09-Mar-2022:
 rem        - add reqeust to OSD server (at the end of the script). Add new section 'S E N D   S T A T I S T I C   D A T A'
 rem        - Initial file for !LMS_DOWNLOAD_PATH!\CheckLMS.ps1; with LMS_SCRIPT_BUILD, LMS_SYSTEMID, OS_MAJ_VERSION, OS_MIN_VERSION, LMS_IS_VM and OS_MACHINEGUID
 rem        - adjust ouptut when using 'goto' option 
+rem        - adjust check if WmiRead shall be executed, execute always when LMS 2.6.849 (or highr) is installed; otherwise execuet only when VC++ V14.29 (or higher) is installed (see 1722921)
 rem     
 rem     Full details see changelog.md
 rem
@@ -2529,120 +2530,128 @@ rem 	) else (
 rem 		echo     works only on "known" languages, for languages !OS_LANGUAGE! check output of systeminfo further down.       >> !REPORT_LOGFILE! 2>&1
 rem 	)
 rem )
-echo Collect information from windows [wmic] ...                                                                                 >> !REPORT_LOGFILE! 2>&1
+echo Collect information from windows [wmic] ...                                                                             >> !REPORT_LOGFILE! 2>&1
 echo ... collect information from windows [wmic] ...
 if not defined LMS_SKIPWMIC (
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	echo Read-out wmic information with WmiRead.exe:                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Read-out wmic information with WmiRead.exe:                                                                         >> !REPORT_LOGFILE! 2>&1
 	if exist "!LMS_DOWNLOAD_PATH!\WmiRead.exe" (
-		if /I !VC_REDIST_MAJ_VERSION! GTR 14 (
-			!LMS_DOWNLOAD_PATH!\WmiRead.exe                                                                                      >> !REPORT_LOGFILE! 2>&1
+		rem check if WmiRead shall be executed ..
+		rem - execute always when LMS 2.6.849 (or highr) is installed
+		rem - otherwise execuet only when VC++ V14.29 (or higher) is installed
+		if /I !LMS_BUILD_VERSION! GEQ 849 (
+			echo     Installed VC++ runtime is [!VC_REDIST_VERSION!], read-out wmic information with WmiRead.exe.            >> !REPORT_LOGFILE! 2>&1
+			!LMS_DOWNLOAD_PATH!\WmiRead.exe                                                                                  >> !REPORT_LOGFILE! 2>&1
 		) else (
-			if /I !VC_REDIST_MAJ_VERSION! EQU 14 (
-				if /I !VC_REDIST_MIN_VERSION! GEQ 29 (
-					!LMS_DOWNLOAD_PATH!\WmiRead.exe                                                                              >> !REPORT_LOGFILE! 2>&1
-				) else (
-					echo     Installed VC++ runtime [!VC_REDIST_VERSION!] is too old, cannot read-out wmic information with WmiRead.exe.   >> !REPORT_LOGFILE! 2>&1
-				)
+			if /I !VC_REDIST_MAJ_VERSION! GTR 14 (
+				!LMS_DOWNLOAD_PATH!\WmiRead.exe                                                                              >> !REPORT_LOGFILE! 2>&1
 			) else (
-				echo     Installed VC++ runtime [!VC_REDIST_VERSION!] is too old, cannot read-out wmic information with WmiRead.exe.   >> !REPORT_LOGFILE! 2>&1
+				if /I !VC_REDIST_MAJ_VERSION! EQU 14 (
+					if /I !VC_REDIST_MIN_VERSION! GEQ 29 (
+						!LMS_DOWNLOAD_PATH!\WmiRead.exe                                                                      >> !REPORT_LOGFILE! 2>&1
+					) else (
+						echo     Installed VC++ runtime [!VC_REDIST_VERSION!] is too old, cannot read-out wmic information with WmiRead.exe.   >> !REPORT_LOGFILE! 2>&1
+					)
+				) else (
+					echo     Installed VC++ runtime [!VC_REDIST_VERSION!] is too old, cannot read-out wmic information with WmiRead.exe.       >> !REPORT_LOGFILE! 2>&1
+				)
 			)
 		)
 	) else (
-		echo     '!LMS_DOWNLOAD_PATH!\WmiRead.exe' doesn't exist! Cannot read-out wmic information.                              >> !REPORT_LOGFILE! 2>&1
+		echo     '!LMS_DOWNLOAD_PATH!\WmiRead.exe' doesn't exist! Cannot read-out wmic information.                          >> !REPORT_LOGFILE! 2>&1
 	)
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	echo WMIC Report [using PowerShell: Get-WmiObject -class Win32_BIOS]:                                                        >> !REPORT_LOGFILE! 2>&1
-	powershell -c Get-WmiObject -class Win32_BIOS                                                                                >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+	echo WMIC Report [using PowerShell: Get-WmiObject -class Win32_BIOS]:                                                    >> !REPORT_LOGFILE! 2>&1
+	powershell -c Get-WmiObject -class Win32_BIOS                                                                            >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	rem see https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/identify_ec2_instances.html
-	echo WMIC Report [using PowerShell: Get-WmiObject -query 'select uuid from Win32_ComputerSystemProduct']:                    >> !REPORT_LOGFILE! 2>&1
-	powershell -c "Get-WmiObject -query 'select uuid from Win32_ComputerSystemProduct' | Select UUID"                            >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1 
+	echo WMIC Report [using PowerShell: Get-WmiObject -query 'select uuid from Win32_ComputerSystemProduct']:                >> !REPORT_LOGFILE! 2>&1
+	powershell -c "Get-WmiObject -query 'select uuid from Win32_ComputerSystemProduct' | Select UUID"                        >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1 
 	echo     Read installed products and version [with wmic /format:csv product get name, version, InstallDate, vendor]
-	echo Read installed products and version [with wmic product get name, version, InstallDate, vendor /format:csv]              >> !REPORT_LOGFILE! 2>&1
-	wmic /output:!REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV! product get name, version, InstallDate, vendor /format:csv               >> !REPORT_LOGFILE! 2>&1
-	echo     See '!REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV!' for full details.                                                      >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Read installed products and version [with wmic product get name, version, InstallDate, vendor /format:csv]          >> !REPORT_LOGFILE! 2>&1
+	wmic /output:!REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV! product get name, version, InstallDate, vendor /format:csv           >> !REPORT_LOGFILE! 2>&1
+	echo     See '!REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV!' for full details.                                                  >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
 	rem see https://www.lisenet.com/2014/get-windows-system-information-via-wmi-command-line-wmic/
-	echo WMIC Report                                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo WMIC Report                                                                                                         >> !REPORT_LOGFILE! 2>&1
 	del !REPORT_WMIC_LOGFILE! >nul 2>&1
-	echo ---------------- wmic csproduct get *                                                                                   >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- wmic csproduct get *                                                                               >> !REPORT_LOGFILE! 2>&1
 	echo     wmic csproduct get *
 	wmic /output:!REPORT_WMIC_LOGFILE! csproduct get * /format:list                    
-	type !REPORT_WMIC_LOGFILE!                                                                                                   >> !REPORT_LOGFILE! 2>&1
-	echo ---------------- wmic OS get Caption,CSDVersion,OSArchitecture,Version                                                  >> !REPORT_LOGFILE! 2>&1
-	echo     More information to Windows Version, see https://en.wikipedia.org/wiki/Windows_10_version_history                   >> !REPORT_LOGFILE! 2>&1
+	type !REPORT_WMIC_LOGFILE!                                                                                               >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- wmic OS get Caption,CSDVersion,OSArchitecture,Version                                              >> !REPORT_LOGFILE! 2>&1
+	echo     More information to Windows Version, see https://en.wikipedia.org/wiki/Windows_10_version_history               >> !REPORT_LOGFILE! 2>&1
 	echo     wmic OS get Caption,CSDVersion,OSArchitecture,Version
 	wmic /output:!REPORT_WMIC_LOGFILE! OS get Caption,CSDVersion,OSArchitecture,Version /format:list                    
-	type !REPORT_WMIC_LOGFILE!                                                                                                   >> !REPORT_LOGFILE! 2>&1
-	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicOS_fullList.txt OS get /format:list                                              >> !REPORT_LOGFILE! 2>&1                    
+	type !REPORT_WMIC_LOGFILE!                                                                                               >> !REPORT_LOGFILE! 2>&1
+	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicOS_fullList.txt OS get /format:list                                          >> !REPORT_LOGFILE! 2>&1                    
 	echo ---------------- wmic BIOS get Manufacturer,Name,SMBIOSBIOSVersion,Version,BuildNumber,InstallDate,SerialNumber,Description                         >> !REPORT_LOGFILE! 2>&1
 	echo     wmic BIOS get Manufacturer,Name,SMBIOSBIOSVersion,Version,BuildNumber,InstallDate,SerialNumber,Description
 	wmic /output:!REPORT_WMIC_LOGFILE! BIOS get Manufacturer,Name,SMBIOSBIOSVersion,Version,BuildNumber,InstallDate,SerialNumber,Description  /format:list   >> !REPORT_LOGFILE! 2>&1
-	type !REPORT_WMIC_LOGFILE!                                                                                                   >> !REPORT_LOGFILE! 2>&1
-	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicBIOS_fullList.txt BIOS get /format:list                                          >> !REPORT_LOGFILE! 2>&1             
-	echo ---------------- wmic CPU get Name,NumberOfCores,NumberOfLogicalProcessors                                              >> !REPORT_LOGFILE! 2>&1
+	type !REPORT_WMIC_LOGFILE!                                                                                               >> !REPORT_LOGFILE! 2>&1
+	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicBIOS_fullList.txt BIOS get /format:list                                      >> !REPORT_LOGFILE! 2>&1             
+	echo ---------------- wmic CPU get Name,NumberOfCores,NumberOfLogicalProcessors                                          >> !REPORT_LOGFILE! 2>&1
 	echo     wmic CPU get Name,NumberOfCores,NumberOfLogicalProcessors
-	wmic /output:!REPORT_WMIC_LOGFILE! CPU get Name,NumberOfCores,NumberOfLogicalProcessors /format:list                         >> !REPORT_LOGFILE! 2>&1
-	type !REPORT_WMIC_LOGFILE!                                                                                                   >> !REPORT_LOGFILE! 2>&1
-	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicCPU_fullList.txt CPU get /format:list                                            >> !REPORT_LOGFILE! 2>&1
-	echo ---------------- wmic MEMPHYSICAL get MaxCapacity                                                                       >> !REPORT_LOGFILE! 2>&1
+	wmic /output:!REPORT_WMIC_LOGFILE! CPU get Name,NumberOfCores,NumberOfLogicalProcessors /format:list                     >> !REPORT_LOGFILE! 2>&1
+	type !REPORT_WMIC_LOGFILE!                                                                                               >> !REPORT_LOGFILE! 2>&1
+	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicCPU_fullList.txt CPU get /format:list                                        >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- wmic MEMPHYSICAL get MaxCapacity                                                                   >> !REPORT_LOGFILE! 2>&1
 	echo     wmic MEMPHYSICAL get MaxCapacity
-	wmic /output:!REPORT_WMIC_LOGFILE! MEMPHYSICAL get MaxCapacity /format:list                                                  >> !REPORT_LOGFILE! 2>&1
-	type !REPORT_WMIC_LOGFILE!                                                                                                   >> !REPORT_LOGFILE! 2>&1
-	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicMEMPHYSICAL_fullList.txt MEMPHYSICAL get /format:list                            >> !REPORT_LOGFILE! 2>&1              
-	echo ---------------- wmic MEMORYCHIP get Capacity,DeviceLocator,PartNumber,Tag                                              >> !REPORT_LOGFILE! 2>&1
+	wmic /output:!REPORT_WMIC_LOGFILE! MEMPHYSICAL get MaxCapacity /format:list                                              >> !REPORT_LOGFILE! 2>&1
+	type !REPORT_WMIC_LOGFILE!                                                                                               >> !REPORT_LOGFILE! 2>&1
+	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicMEMPHYSICAL_fullList.txt MEMPHYSICAL get /format:list                        >> !REPORT_LOGFILE! 2>&1              
+	echo ---------------- wmic MEMORYCHIP get Capacity,DeviceLocator,PartNumber,Tag                                          >> !REPORT_LOGFILE! 2>&1
 	echo     wmic MEMORYCHIP get Capacity,DeviceLocator,PartNumber,Tag
-	wmic /output:!REPORT_WMIC_LOGFILE! MEMORYCHIP get Capacity,DeviceLocator,PartNumber,Tag                                      >> !REPORT_LOGFILE! 2>&1
-	type !REPORT_WMIC_LOGFILE!                                                                                                   >> !REPORT_LOGFILE! 2>&1
-	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicMEMORYCHIP_fullList.txt MEMORYCHIP get /format:list                              >> !REPORT_LOGFILE! 2>&1    
-	echo ---------------- wmic NIC get Description,MACAddress,NetEnabled,Speed,PhysicalAdapter,PNPDeviceID                       >> !REPORT_LOGFILE! 2>&1
+	wmic /output:!REPORT_WMIC_LOGFILE! MEMORYCHIP get Capacity,DeviceLocator,PartNumber,Tag                                  >> !REPORT_LOGFILE! 2>&1
+	type !REPORT_WMIC_LOGFILE!                                                                                               >> !REPORT_LOGFILE! 2>&1
+	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicMEMORYCHIP_fullList.txt MEMORYCHIP get /format:list                          >> !REPORT_LOGFILE! 2>&1    
+	echo ---------------- wmic NIC get Description,MACAddress,NetEnabled,Speed,PhysicalAdapter,PNPDeviceID                   >> !REPORT_LOGFILE! 2>&1
 	echo     wmic NIC get Description,MACAddress,NetEnabled,Speed,PhysicalAdapter,PNPDeviceID
-	wmic /output:!REPORT_WMIC_LOGFILE! NIC get Description,MACAddress,NetEnabled,Speed,PhysicalAdapter,PNPDeviceID               >> !REPORT_LOGFILE! 2>&1
-	type !REPORT_WMIC_LOGFILE!                                                                                                   >> !REPORT_LOGFILE! 2>&1
-	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicNIC_fullList.txt NIC get /format:list                                            >> !REPORT_LOGFILE! 2>&1
-	echo ---------------- wmic DISKDRIVE get InterfaceType,Name,Manufacturer,Model,MediaType,SerialNumber,Size,Status            >> !REPORT_LOGFILE! 2>&1
+	wmic /output:!REPORT_WMIC_LOGFILE! NIC get Description,MACAddress,NetEnabled,Speed,PhysicalAdapter,PNPDeviceID           >> !REPORT_LOGFILE! 2>&1
+	type !REPORT_WMIC_LOGFILE!                                                                                               >> !REPORT_LOGFILE! 2>&1
+	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicNIC_fullList.txt NIC get /format:list                                        >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- wmic DISKDRIVE get InterfaceType,Name,Manufacturer,Model,MediaType,SerialNumber,Size,Status        >> !REPORT_LOGFILE! 2>&1
 	echo     wmic DISKDRIVE get InterfaceType,Name,Manufacturer,Model,MediaType,SerialNumber,Size,Status
-	wmic /output:!REPORT_WMIC_LOGFILE! DISKDRIVE get InterfaceType,Name,Manufacturer,Model,MediaType,SerialNumber,Size,Status    >> !REPORT_LOGFILE! 2>&1
-	type !REPORT_WMIC_LOGFILE!                                                                                                   >> !REPORT_LOGFILE! 2>&1
-	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicDISKDRIVE_fullList.txt DISKDRIVE get /format:list                                >> !REPORT_LOGFILE! 2>&1
-	echo ---------------- wmic path win32_physicalmedia get SerialNumber                                                         >> !REPORT_LOGFILE! 2>&1
+	wmic /output:!REPORT_WMIC_LOGFILE! DISKDRIVE get InterfaceType,Name,Manufacturer,Model,MediaType,SerialNumber,Size,Status >> !REPORT_LOGFILE! 2>&1
+	type !REPORT_WMIC_LOGFILE!                                                                                               >> !REPORT_LOGFILE! 2>&1
+	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicDISKDRIVE_fullList.txt DISKDRIVE get /format:list                            >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- wmic path win32_physicalmedia get SerialNumber                                                     >> !REPORT_LOGFILE! 2>&1
 	echo     wmic path win32_physicalmedia get SerialNumber
-	wmic /output:!REPORT_WMIC_LOGFILE! path win32_physicalmedia get SerialNumber                                                 >> !REPORT_LOGFILE! 2>&1
-	type !REPORT_WMIC_LOGFILE!                                                                                                   >> !REPORT_LOGFILE! 2>&1
-	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicpathwin32_fullList.txt path win32_physicalmedia get /format:list                 >> !REPORT_LOGFILE! 2>&1     
-	echo ---------------- wmic path win32_computersystemproduct get uuid                                                         >> !REPORT_LOGFILE! 2>&1
+	wmic /output:!REPORT_WMIC_LOGFILE! path win32_physicalmedia get SerialNumber                                             >> !REPORT_LOGFILE! 2>&1
+	type !REPORT_WMIC_LOGFILE!                                                                                               >> !REPORT_LOGFILE! 2>&1
+	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicpathwin32_fullList.txt path win32_physicalmedia get /format:list             >> !REPORT_LOGFILE! 2>&1     
+	echo ---------------- wmic path win32_computersystemproduct get uuid                                                     >> !REPORT_LOGFILE! 2>&1
 	rem see https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/identify_ec2_instances.html
 	echo     wmic path win32_computersystemproduct get uuid
-	wmic /output:!REPORT_WMIC_LOGFILE! path win32_computersystemproduct get uuid                                                 >> !REPORT_LOGFILE! 2>&1
-	type !REPORT_WMIC_LOGFILE!                                                                                                   >> !REPORT_LOGFILE! 2>&1
+	wmic /output:!REPORT_WMIC_LOGFILE! path win32_computersystemproduct get uuid                                             >> !REPORT_LOGFILE! 2>&1
+	type !REPORT_WMIC_LOGFILE!                                                                                               >> !REPORT_LOGFILE! 2>&1
 	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicpathwin32_computersystemproduct_fullList.txt path win32_computersystemproduct get /format:list               >> !REPORT_LOGFILE! 2>&1     
-	echo ---------------- wmic path msft_disk get Model,BusType,SerialNumber,AdapterSerialNumber                                 >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- wmic path msft_disk get Model,BusType,SerialNumber,AdapterSerialNumber                             >> !REPORT_LOGFILE! 2>&1
 	echo     wmic path msft_disk get Model,BusType,SerialNumber,AdapterSerialNumber
 	wmic /output:!REPORT_WMIC_LOGFILE! /namespace:\\root\microsoft\windows\storage path msft_disk get Model,BusType,SerialNumber,AdapterSerialNumber         >> !REPORT_LOGFILE! 2>&1
-	type !REPORT_WMIC_LOGFILE!                                                                                                   >> !REPORT_LOGFILE! 2>&1
+	type !REPORT_WMIC_LOGFILE!                                                                                               >> !REPORT_LOGFILE! 2>&1
 	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicpathmsftdisk_fullList.txt /namespace:\\root\microsoft\windows\storage path msft_disk get /format:list        >> !REPORT_LOGFILE! 2>&1     
-	echo ---------------- wmic baseboard get manufacturer, product, Serialnumber, version                                        >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- wmic baseboard get manufacturer, product, Serialnumber, version                                    >> !REPORT_LOGFILE! 2>&1
 	echo     wmic baseboard get manufacturer, product, Serialnumber, version
-	wmic /output:!REPORT_WMIC_LOGFILE! baseboard get manufacturer, product, Serialnumber, version                                >> !REPORT_LOGFILE! 2>&1
-	type !REPORT_WMIC_LOGFILE!                                                                                                   >> !REPORT_LOGFILE! 2>&1
-	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicbaseboard_fullList.txt baseboard get /format:list                                >> !REPORT_LOGFILE! 2>&1
-	echo ---------------- wmic os get locale, oslanguage, codeset                                                                >> !REPORT_LOGFILE! 2>&1
+	wmic /output:!REPORT_WMIC_LOGFILE! baseboard get manufacturer, product, Serialnumber, version                            >> !REPORT_LOGFILE! 2>&1
+	type !REPORT_WMIC_LOGFILE!                                                                                               >> !REPORT_LOGFILE! 2>&1
+	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicbaseboard_fullList.txt baseboard get /format:list                            >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- wmic os get locale, oslanguage, codeset                                                            >> !REPORT_LOGFILE! 2>&1
 	echo     wmic os get locale, oslanguage, codeset
-	echo see http://www.robvanderwoude.com/languagecodes.php                                                                     >> !REPORT_LOGFILE! 2>&1
-	wmic /output:!REPORT_WMIC_LOGFILE! os get locale, oslanguage, codeset /format:list                                           >> !REPORT_LOGFILE! 2>&1
-	type !REPORT_WMIC_LOGFILE!                                                                                                   >> !REPORT_LOGFILE! 2>&1
-	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicos_fullList.txt os get /format:list                                              >> !REPORT_LOGFILE! 2>&1
-	echo ---------------- wmic product get name, version, InstallDate, vendor [with vendor=Siemens]                              >> !REPORT_LOGFILE! 2>&1
+	echo see http://www.robvanderwoude.com/languagecodes.php                                                                 >> !REPORT_LOGFILE! 2>&1
+	wmic /output:!REPORT_WMIC_LOGFILE! os get locale, oslanguage, codeset /format:list                                       >> !REPORT_LOGFILE! 2>&1
+	type !REPORT_WMIC_LOGFILE!                                                                                               >> !REPORT_LOGFILE! 2>&1
+	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicos_fullList.txt os get /format:list                                          >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- wmic product get name, version, InstallDate, vendor [with vendor=Siemens]                          >> !REPORT_LOGFILE! 2>&1
 	echo ... read installed products and version [with wmic] ...
 	echo     wmic product get name, version, InstallDate, vendor [for vendor=Siemens]
-	echo Read installed products and version [with wmic, for vendor=Siemens]                                                     >> !REPORT_LOGFILE! 2>&1
-	wmic /output:!REPORT_WMIC_LOGFILE! product where "Vendor like '%%Siemens%%'" get name, version, InstallDate, vendor          >> !REPORT_LOGFILE! 2>&1
-	type !REPORT_WMIC_LOGFILE!                                                                                                   >> !REPORT_LOGFILE! 2>&1
-	echo ---------------- analyze installed software [!REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV!]                                    >> !REPORT_LOGFILE! 2>&1
+	echo Read installed products and version [with wmic, for vendor=Siemens]                                                 >> !REPORT_LOGFILE! 2>&1
+	wmic /output:!REPORT_WMIC_LOGFILE! product where "Vendor like '%%Siemens%%'" get name, version, InstallDate, vendor      >> !REPORT_LOGFILE! 2>&1
+	type !REPORT_WMIC_LOGFILE!                                                                                               >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- analyze installed software [!REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV!]                                >> !REPORT_LOGFILE! 2>&1
 	set DONGLE_DRIVER_INSTALL_DATE=N/A
 	set SSU_INSTALL_DATE=N/A
 	set LMS_INSTALL_DATE=N/A
@@ -2650,58 +2659,58 @@ if not defined LMS_SKIPWMIC (
 	IF EXIST "!REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV!" for /f "tokens=1,2,3,4,5 eol=@ delims=," %%A in ('type !REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV!') do (
 		if "%%C" == "Sentinel Runtime" (
 			set DONGLE_DRIVER_INSTALL_DATE=%%B
-			echo 'Dongle Driver' [Version=%%E] installation date: !DONGLE_DRIVER_INSTALL_DATE!                                   >> !REPORT_LOGFILE! 2>&1
-			echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                                >> !REPORT_LOGFILE! 2>&1
+			echo 'Dongle Driver' [Version=%%E] installation date: !DONGLE_DRIVER_INSTALL_DATE!                               >> !REPORT_LOGFILE! 2>&1
+			echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                            >> !REPORT_LOGFILE! 2>&1
 		)
 		if "%%C" == "Sentinel Runtime R01" (
 			set DONGLE_DRIVER_INSTALL_DATE=%%B
-			echo 'Dongle Driver' [Version=%%E] installation date: !DONGLE_DRIVER_INSTALL_DATE!                                   >> !REPORT_LOGFILE! 2>&1
-			echo NOTE: There was a dongle driver update to version V7.81 at !DONGLE_DRIVER_INSTALL_DATE! provided by ATOS.       >> !REPORT_LOGFILE! 2>&1
-			echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                                >> !REPORT_LOGFILE! 2>&1
+			echo 'Dongle Driver' [Version=%%E] installation date: !DONGLE_DRIVER_INSTALL_DATE!                               >> !REPORT_LOGFILE! 2>&1
+			echo NOTE: There was a dongle driver update to version V7.81 at !DONGLE_DRIVER_INSTALL_DATE! provided by ATOS.   >> !REPORT_LOGFILE! 2>&1
+			echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                            >> !REPORT_LOGFILE! 2>&1
 		)
 		if "%%C" == "Sentinel License Manager R01" (
 			set DONGLE_DRIVER_INSTALL_DATE=%%B
-			echo 'Dongle Driver' [Version=%%E] installation date: !DONGLE_DRIVER_INSTALL_DATE!                                   >> !REPORT_LOGFILE! 2>&1
-			echo NOTE: There was a dongle driver update to version V7.92 at !DONGLE_DRIVER_INSTALL_DATE! provided by ATOS.       >> !REPORT_LOGFILE! 2>&1
-			echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                                >> !REPORT_LOGFILE! 2>&1
+			echo 'Dongle Driver' [Version=%%E] installation date: !DONGLE_DRIVER_INSTALL_DATE!                               >> !REPORT_LOGFILE! 2>&1
+			echo NOTE: There was a dongle driver update to version V7.92 at !DONGLE_DRIVER_INSTALL_DATE! provided by ATOS.   >> !REPORT_LOGFILE! 2>&1
+			echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                            >> !REPORT_LOGFILE! 2>&1
 		)
 		if "%%C" == "Siemens Software Updater" (
 			set SSU_INSTALL_DATE=%%B
-			echo 'Siemens Software Updater' [Version=%%E] installation date: !SSU_INSTALL_DATE!                                  >> !REPORT_LOGFILE! 2>&1
-			echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                                >> !REPORT_LOGFILE! 2>&1
+			echo 'Siemens Software Updater' [Version=%%E] installation date: !SSU_INSTALL_DATE!                              >> !REPORT_LOGFILE! 2>&1
+			echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                            >> !REPORT_LOGFILE! 2>&1
 		)
 		if "%%C" == "Siemens License Management" (
 			set LMS_INSTALL_DATE=%%B
-			echo 'License Management System' [Version=%%E] installation date: !LMS_INSTALL_DATE!                                 >> !REPORT_LOGFILE! 2>&1
-			echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                                >> !REPORT_LOGFILE! 2>&1
+			echo 'License Management System' [Version=%%E] installation date: !LMS_INSTALL_DATE!                             >> !REPORT_LOGFILE! 2>&1
+			echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                            >> !REPORT_LOGFILE! 2>&1
 		)
 		if "%%C" == "Siemens License Management R01" (
 			set LMS_INSTALL_DATE=%%B
-			echo 'License Management System' [Version=%%E] installation date: !LMS_INSTALL_DATE!                                 >> !REPORT_LOGFILE! 2>&1
-			echo NOTE: LMS 'R01' has been installed at !LMS_INSTALL_DATE! via Software Center [provided by ATOS]                 >> !REPORT_LOGFILE! 2>&1
-			echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                                >> !REPORT_LOGFILE! 2>&1
+			echo 'License Management System' [Version=%%E] installation date: !LMS_INSTALL_DATE!                             >> !REPORT_LOGFILE! 2>&1
+			echo NOTE: LMS 'R01' has been installed at !LMS_INSTALL_DATE! via Software Center [provided by ATOS]             >> !REPORT_LOGFILE! 2>&1
+			echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                            >> !REPORT_LOGFILE! 2>&1
 		)
 		if "%%C" == "Siemens License Management R02" (
 			set LMS_INSTALL_DATE=%%B
-			echo 'License Management System' [Version=%%E] installation date: !LMS_INSTALL_DATE!                                 >> !REPORT_LOGFILE! 2>&1
-			echo NOTE: LMS 'R02' has been installed at !LMS_INSTALL_DATE! via Software Center [provided by ATOS]                 >> !REPORT_LOGFILE! 2>&1
-			echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                                >> !REPORT_LOGFILE! 2>&1
+			echo 'License Management System' [Version=%%E] installation date: !LMS_INSTALL_DATE!                             >> !REPORT_LOGFILE! 2>&1
+			echo NOTE: LMS 'R02' has been installed at !LMS_INSTALL_DATE! via Software Center [provided by ATOS]             >> !REPORT_LOGFILE! 2>&1
+			echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                            >> !REPORT_LOGFILE! 2>&1
 		)
 	)
 	if defined LMS_INSTALLED_BY_ATOS (
 		rem based on registry key: "HKLM\SOFTWARE\LicenseManagementSystem\IsInstalled"
-		echo NOTE: LMS has been installed at !LMS_INSTALL_DATE! via Software Center [provided by ATOS]                           >> !REPORT_LOGFILE! 2>&1
+		echo NOTE: LMS has been installed at !LMS_INSTALL_DATE! via Software Center [provided by ATOS]                       >> !REPORT_LOGFILE! 2>&1
 	)
-	echo ---------------- analyze installed software [check number of installed Siemens Software]                                >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- analyze installed software [check number of installed Siemens Software]                            >> !REPORT_LOGFILE! 2>&1
 	set NUM_OF_INSTALLED_SW_FROM_SIEMENS=
 	set NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_1=130
 	set NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_2=80
 	IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "usebackq" %%A in (`TYPE !REPORT_WMIC_LOGFILE! ^| find /v /c "" `) do set NUM_OF_INSTALLED_SW_FROM_SIEMENS=%%A
 	if defined NUM_OF_INSTALLED_SW_FROM_SIEMENS (
 		set /A NUM_OF_INSTALLED_SW_FROM_SIEMENS -= 1 
-		echo .                                                                                                                   >> !REPORT_LOGFILE! 2>&1
-		echo NOTE: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS!.                               >> !REPORT_LOGFILE! 2>&1
-		echo .                                                                                                                   >> !REPORT_LOGFILE! 2>&1
+		echo .                                                                                                               >> !REPORT_LOGFILE! 2>&1
+		echo NOTE: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS!.                           >> !REPORT_LOGFILE! 2>&1
+		echo .                                                                                                               >> !REPORT_LOGFILE! 2>&1
 		rem check bumber of installed siemens software, see https://bt-clmserver01.hqs.sbt.siemens.com/ccm/resource/itemName/com.ibm.team.workitem.WorkItem/822161
 		if /I !NUM_OF_INSTALLED_SW_FROM_SIEMENS! GEQ !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_1! (
 			if defined SHOW_COLORED_OUTPUT (
@@ -2721,90 +2730,90 @@ if not defined LMS_SKIPWMIC (
 			)
 		)
 	)
-	echo ---------------- wmic product get name, version, InstallDate, vendor                                                    >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- wmic product get name, version, InstallDate, vendor                                                >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
 	echo     Read installed products and version [with wmic product get name, version, InstallDate, vendor]
-	echo Read installed products and version [with wmic]                                                                         >> !REPORT_LOGFILE! 2>&1
-	wmic /output:%REPORT_WMIC_INSTALLED_SW_LOGFILE% product get name, version, InstallDate, vendor                               >> !REPORT_LOGFILE! 2>&1
-	type %REPORT_WMIC_INSTALLED_SW_LOGFILE%                                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo Read installed products and version [with wmic]                                                                     >> !REPORT_LOGFILE! 2>&1
+	wmic /output:%REPORT_WMIC_INSTALLED_SW_LOGFILE% product get name, version, InstallDate, vendor                           >> !REPORT_LOGFILE! 2>&1
+	type %REPORT_WMIC_INSTALLED_SW_LOGFILE%                                                                                  >> !REPORT_LOGFILE! 2>&1
 	echo     Read installed products and version [with wmic *] 
-	echo Read installed products and version [with wmic *]                                                                       >> !REPORT_LOGFILE! 2>&1
-	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicproduct_fullList.txt product get /format:list                                    >> !REPORT_LOGFILE! 2>&1
-	echo     see more details in !CHECKLMS_REPORT_LOG_PATH!\wmicproduct_fullList.txt                                             >> !REPORT_LOGFILE! 2>&1
+	echo Read installed products and version [with wmic *]                                                                   >> !REPORT_LOGFILE! 2>&1
+	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicproduct_fullList.txt product get /format:list                                >> !REPORT_LOGFILE! 2>&1
+	echo     see more details in !CHECKLMS_REPORT_LOG_PATH!\wmicproduct_fullList.txt                                         >> !REPORT_LOGFILE! 2>&1
 ) else (
 	if defined SHOW_COLORED_OUTPUT (
 		echo [1;33m    SKIPPED wmic section. The script didn't execute the wmic commands. [1;37m
 	) else (
 		echo     SKIPPED wmic section. The script didn't execute the wmic commands.
 	)
-	echo SKIPPED wmic section. The script didn't execute the wmic commands.                                                      >> !REPORT_LOGFILE! 2>&1
+	echo SKIPPED wmic section. The script didn't execute the wmic commands.                                                  >> !REPORT_LOGFILE! 2>&1
 )
-echo Collect further information from windows ...                                                                                >> !REPORT_LOGFILE! 2>&1
+echo Collect further information from windows ...                                                                            >> !REPORT_LOGFILE! 2>&1
 echo ... collect further information from windows ...
 if not defined LMS_SKIPWINDOWS (
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	echo ... read installed .NET framework[s] [reg query] ...
-	echo Read installed .NET framework[s] [reg query]                                                                            >> !REPORT_LOGFILE! 2>&1
-	reg query "HKLM\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full" /v "Version" /z                                          >> !REPORT_LOGFILE! 2>&1
-	reg query "HKLM\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full" /v "Release" /z                                          >> !REPORT_LOGFILE! 2>&1
-	reg query "HKLM\SOFTWARE\Microsoft\NET Framework Setup\NDP" /f "v*"                                                          >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo Read installed .NET framework[s] [reg query]                                                                        >> !REPORT_LOGFILE! 2>&1
+	reg query "HKLM\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full" /v "Version" /z                                      >> !REPORT_LOGFILE! 2>&1
+	reg query "HKLM\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full" /v "Release" /z                                      >> !REPORT_LOGFILE! 2>&1
+	reg query "HKLM\SOFTWARE\Microsoft\NET Framework Setup\NDP" /f "v*"                                                      >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	echo ... read .NET information [dotnet --info] ...
-	echo Read .NET information [dotnet --info]                                                                                   >> !REPORT_LOGFILE! 2>&1
-	dotnet --info                                                                                                                >> !REPORT_LOGFILE! 2>&1
+	echo Read .NET information [dotnet --info]                                                                               >> !REPORT_LOGFILE! 2>&1
+	dotnet --info                                                                                                            >> !REPORT_LOGFILE! 2>&1
 	if not !ERRORLEVEL!==0 (
-		echo     ERROR: An error occured during execution of 'dotnet --info' [ERRORLEVEL=!ERRORLEVEL!]                           >> !REPORT_LOGFILE! 2>&1
+		echo     ERROR: An error occured during execution of 'dotnet --info' [ERRORLEVEL=!ERRORLEVEL!]                       >> !REPORT_LOGFILE! 2>&1
 		if exist "!ProgramFiles!\dotnet\dotnet.exe" (
-			echo     'dotnet.exe' found at '!ProgramFiles!\dotnet\dotnet.exe'!                                                   >> !REPORT_LOGFILE! 2>&1
+			echo     'dotnet.exe' found at '!ProgramFiles!\dotnet\dotnet.exe'!                                               >> !REPORT_LOGFILE! 2>&1
 		)
 	)
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	echo ... read installed products and version [from registry] ...
-	echo Read installed products and version [from registry]                                                                     >> !REPORT_LOGFILE! 2>&1
+	echo Read installed products and version [from registry]                                                                 >> !REPORT_LOGFILE! 2>&1
 	Powershell -command "Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport1.log 2>&1
 	Powershell -command "Powershell -command "Get-Item HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*"                                                                      > !CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport2.log 2>&1
 	rem type !CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport.log >> !REPORT_LOGFILE! 2>&1
 	echo     See full details in '!CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport1.log' and '!CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport2.log'!  >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                                           >> !REPORT_LOGFILE! 2>&1
 	echo ... list installed VC++ redistributable binaries [DLLs] ...
-	echo List installed VC++ redistributable binaries [DLLs]                                                                     >> !REPORT_LOGFILE! 2>&1
-	echo Content of folder: "%windir%\System32\msvcp*"                                                                           >> !REPORT_LOGFILE! 2>&1
-	dir /A /X /4 /W %windir%\System32\msvcp*                                                                                     >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	ver                                                                                                                          >> !REPORT_LOGFILE! 2>&1
-	echo see https://en.wikipedia.org/wiki/List_of_Microsoft_Windows_versions                                                    >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo List installed VC++ redistributable binaries [DLLs]                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo Content of folder: "%windir%\System32\msvcp*"                                                                       >> !REPORT_LOGFILE! 2>&1
+	dir /A /X /4 /W %windir%\System32\msvcp*                                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+	ver                                                                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo see https://en.wikipedia.org/wiki/List_of_Microsoft_Windows_versions                                                >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	echo ... display environment variables [using set command] ...
-	echo Display environment variables [using set command]:                                                                      >> !REPORT_LOGFILE! 2>&1
-	set                                                                                                                          >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Display environment variables [using set command]:                                                                  >> !REPORT_LOGFILE! 2>&1
+	set                                                                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
 	echo ... retrieve list of drivers [using driverquery] ...
-	echo Retrieve list of drivers [using driverquery]:                                                                           >> !REPORT_LOGFILE! 2>&1
-	driverquery /v                                                                                                               >> !REPORT_LOGFILE! 2>&1
-	echo .                                                                                                                       >> !REPORT_LOGFILE! 2>&1
-	echo For more details, see !CHECKLMS_REPORT_LOG_PATH!\driverquery_fullList.txt                                               >> !REPORT_LOGFILE! 2>&1
+	echo Retrieve list of drivers [using driverquery]:                                                                       >> !REPORT_LOGFILE! 2>&1
+	driverquery /v                                                                                                           >> !REPORT_LOGFILE! 2>&1
+	echo .                                                                                                                   >> !REPORT_LOGFILE! 2>&1
+	echo For more details, see !CHECKLMS_REPORT_LOG_PATH!\driverquery_fullList.txt                                           >> !REPORT_LOGFILE! 2>&1
 	driverquery /FO list /v  >> !CHECKLMS_REPORT_LOG_PATH!\driverquery_fullList.txt 2>&1
-	echo .                                                                                                                       >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo .                                                                                                                   >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	echo ... retrieve system time information ...
 	echo     w32tm /stripchart /computer:us.pool.ntp.org /dataonly /samples:2 ...
-	echo Retrieve system time information [using w32tm /stripchart /computer:us.pool.ntp.org /dataonly /samples:2]:              >> !REPORT_LOGFILE! 2>&1
-	w32tm /stripchart /computer:us.pool.ntp.org /dataonly /samples:2                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Retrieve system time information [using w32tm /stripchart /computer:us.pool.ntp.org /dataonly /samples:2]:          >> !REPORT_LOGFILE! 2>&1
+	w32tm /stripchart /computer:us.pool.ntp.org /dataonly /samples:2                                                         >> !REPORT_LOGFILE! 2>&1
 	echo     w32tm /query /status  ...
-	echo Retrieve system time information [using w32tm /query /status]:                                                          >> !REPORT_LOGFILE! 2>&1
-	w32tm /query /status                                                                                                         >> !REPORT_LOGFILE! 2>&1
+	echo Retrieve system time information [using w32tm /query /status]:                                                      >> !REPORT_LOGFILE! 2>&1
+	w32tm /query /status                                                                                                     >> !REPORT_LOGFILE! 2>&1
 	echo     w32tm /query /peers ...
-	echo Retrieve system time information [using w32tm /query /peers]:                                                           >> !REPORT_LOGFILE! 2>&1
-	w32tm /query /peers                                                                                                          >> !REPORT_LOGFILE! 2>&1
-	echo .                                                                                                                       >> !REPORT_LOGFILE! 2>&1
-	echo ---------------- powershell -command "Get-Host"                                                                         >> !REPORT_LOGFILE! 2>&1
+	echo Retrieve system time information [using w32tm /query /peers]:                                                       >> !REPORT_LOGFILE! 2>&1
+	w32tm /query /peers                                                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo .                                                                                                                   >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- powershell -command "Get-Host"                                                                     >> !REPORT_LOGFILE! 2>&1
 	echo ... retrieve powershell version ...
-	echo Retrieve powershell version [using 'powershell -command "Get-Host"']:                                                   >> !REPORT_LOGFILE! 2>&1
-	powershell -command "Get-Host"                                                                                               >> !REPORT_LOGFILE! 2>&1
-	echo ---------------- powershell -command "[Net.ServicePointManager]::SecurityProtocol"                                      >> !REPORT_LOGFILE! 2>&1
+	echo Retrieve powershell version [using 'powershell -command "Get-Host"']:                                               >> !REPORT_LOGFILE! 2>&1
+	powershell -command "Get-Host"                                                                                           >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- powershell -command "[Net.ServicePointManager]::SecurityProtocol"                                  >> !REPORT_LOGFILE! 2>&1
 	echo ... retrieve installed security protocols ...
-	echo Retrieve installed security protocols [using 'powershell -command "[Net.ServicePointManager]::SecurityProtocol"']:      >> !REPORT_LOGFILE! 2>&1
+	echo Retrieve installed security protocols [using 'powershell -command "[Net.ServicePointManager]::SecurityProtocol"']:  >> !REPORT_LOGFILE! 2>&1
 	powershell -command "[Net.ServicePointManager]::SecurityProtocol"                                                            >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- powershell -command "Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\.NetFramework\v4.0.30319' ..."   >> !REPORT_LOGFILE! 2>&1
 	echo ... retrieve regitry key 'SchUseStrongCrypto' ...
@@ -2812,20 +2821,20 @@ if not defined LMS_SKIPWINDOWS (
 	powershell -Command "Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\.NetFramework\v4.0.30319' -Name 'SchUseStrongCrypto'"  >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- powershell -command "Get-ExecutionPolicy"                                                              >> !REPORT_LOGFILE! 2>&1
 	echo ... retrieve powershell execution policy ...
-	echo Retrieve powershell execution policy [using 'powershell -command "Get-ExecutionPolicy"']:                               >> !REPORT_LOGFILE! 2>&1
-	powershell -command "Get-ExecutionPolicy"                                                                                    >> !REPORT_LOGFILE! 2>&1
-	echo Retrieve powershell execution policy [using 'powershell -command "Get-ExecutionPolicy -List"']:                         >> !REPORT_LOGFILE! 2>&1
-	powershell -command "Get-ExecutionPolicy -List"                                                                              >> !REPORT_LOGFILE! 2>&1
-	echo ---------------- powershell -command "Get-TimeZone"                                                                     >> !REPORT_LOGFILE! 2>&1
+	echo Retrieve powershell execution policy [using 'powershell -command "Get-ExecutionPolicy"']:                           >> !REPORT_LOGFILE! 2>&1
+	powershell -command "Get-ExecutionPolicy"                                                                                >> !REPORT_LOGFILE! 2>&1
+	echo Retrieve powershell execution policy [using 'powershell -command "Get-ExecutionPolicy -List"']:                     >> !REPORT_LOGFILE! 2>&1
+	powershell -command "Get-ExecutionPolicy -List"                                                                          >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- powershell -command "Get-TimeZone"                                                                 >> !REPORT_LOGFILE! 2>&1
 	echo ... retrieve time zone information ...
-	echo Retrieve time zone information [using 'powershell -command "Get-TimeZone"']:                                            >> !REPORT_LOGFILE! 2>&1
-	powershell -command "Get-TimeZone"                                                                                           >> !REPORT_LOGFILE! 2>&1
-	echo ---------------- powershell -command "$PSVersionTable"                                                                  >> !REPORT_LOGFILE! 2>&1
+	echo Retrieve time zone information [using 'powershell -command "Get-TimeZone"']:                                        >> !REPORT_LOGFILE! 2>&1
+	powershell -command "Get-TimeZone"                                                                                       >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- powershell -command "$PSVersionTable"                                                              >> !REPORT_LOGFILE! 2>&1
 	echo ... retrieve powershell information ...
-	echo Retrieve powershell information [using 'powershell -command "$PSVersionTable"']:                                        >> !REPORT_LOGFILE! 2>&1
-	powershell -command "$PSVersionTable"                                                                                        >> !REPORT_LOGFILE! 2>&1
-	echo ---------------- powershell -command "& {Get-Service -Name *}"                                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Retrieve powershell information [using 'powershell -command "$PSVersionTable"']:                                    >> !REPORT_LOGFILE! 2>&1
+	powershell -command "$PSVersionTable"                                                                                    >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- powershell -command "& {Get-Service -Name *}"                                                      >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
 	echo ... list installed services [using Get-Service powershell command] ...
 	echo List relevant installed services [using Get-Service powershell command]:                                                >> !REPORT_LOGFILE! 2>&1
 	powershell -command "& {Get-Service -Name 'Siemens BT Licensing Server'}" > !CHECKLMS_REPORT_LOG_PATH!\getservice.txt 2>&1
