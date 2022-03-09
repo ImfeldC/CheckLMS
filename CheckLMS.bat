@@ -19,6 +19,10 @@ rem     24-Feb-2022:
 rem        - Fix issue: 'The system cannot find the batch label specified - break_hostinfo_for_loop'
 rem     08-Mar-2022:
 rem        - add LMS_SYSTEMID and LMS_SCRIPT_BUILD to webhook connection test 
+rem     09-Mar-2022:
+rem        - add reqeust to OSD server (at the end of the script). Add new section 'S E N D   S T A T I S T I C   D A T A'
+rem        - Initial file for !LMS_DOWNLOAD_PATH!\CheckLMS.ps1; with LMS_SCRIPT_BUILD, LMS_SYSTEMID, OS_MAJ_VERSION, OS_MIN_VERSION, LMS_IS_VM and OS_MACHINEGUID
+rem        - adjust ouptut when using 'goto' option 
 rem     
 rem     Full details see changelog.md
 rem
@@ -62,8 +66,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 08-Mar-2022"
-set LMS_SCRIPT_BUILD=20220308
+set LMS_SCRIPT_VERSION="CheckLMS Script 09-Mar-2022"
+set LMS_SCRIPT_BUILD=20220309
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -1904,7 +1908,12 @@ rem goto collect_product_info
 rem goto create_archive
 rem - Usage: /goto <gotolabel>:           jump to a dedicated part within script.
 if defined LMS_GOTO (
-	echo Goto within check script to: !LMS_GOTO! ....                                                                        >> !REPORT_LOGFILE! 2>&1
+	echo --------------------------------------------
+	echo Goto within check script to: !LMS_GOTO! ....
+	echo --------------------------------------------
+	echo -------------------------------------------- >> !REPORT_LOGFILE! 2>&1
+	echo Goto within check script to: !LMS_GOTO! .... >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------- >> !REPORT_LOGFILE! 2>&1
 	goto !LMS_GOTO!
 )
 
@@ -8015,7 +8024,29 @@ if /I "!LMS_IS_VM!"=="true" (
 	)
 )
 
+:send_statistic_data
+echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+echo ... send statistic data to OSD ...
+echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
+echo =   S E N D   S T A T I S T I C   D A T A                                    =                                      >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
+SET lms_ps_script_base=!LMS_DOWNLOAD_PATH!\CheckLMS.ps1
+SET lms_ps_script_copy=!CHECKLMS_REPORT_LOG_PATH!\CheckLMSCopy.ps1
+IF EXIST "!lms_ps_script_base!" (
+	copy /Y "!lms_ps_script_base!" "!lms_ps_script_copy!"                                                                >> !REPORT_LOGFILE! 2>&1
+	rem replace placeholders, with real values
+	Powershell -ExecutionPolicy Bypass -Command "& {(Get-Content '!lms_ps_script_copy!').replace('?LMS_SCRIPT_BUILD?', '!LMS_SCRIPT_BUILD!') ^| Set-Content '!lms_ps_script_copy!'}"  >> !REPORT_LOGFILE! 2>&1
+	Powershell -ExecutionPolicy Bypass -Command "& {(Get-Content '!lms_ps_script_copy!').replace('?LMS_SYSTEMID?', '!LMS_SYSTEMID!') ^| Set-Content '!lms_ps_script_copy!'}"          >> !REPORT_LOGFILE! 2>&1
+	Powershell -ExecutionPolicy Bypass -Command "& {(Get-Content '!lms_ps_script_copy!').replace('?OS_MAJ_VERSION?', '!OS_MAJ_VERSION!') ^| Set-Content '!lms_ps_script_copy!'}"      >> !REPORT_LOGFILE! 2>&1
+	Powershell -ExecutionPolicy Bypass -Command "& {(Get-Content '!lms_ps_script_copy!').replace('?OS_MIN_VERSION?', '!OS_MIN_VERSION!') ^| Set-Content '!lms_ps_script_copy!'}"      >> !REPORT_LOGFILE! 2>&1
+	Powershell -ExecutionPolicy Bypass -Command "& {(Get-Content '!lms_ps_script_copy!').replace('?LMS_IS_VM?', '!LMS_IS_VM!') ^| Set-Content '!lms_ps_script_copy!'}"                >> !REPORT_LOGFILE! 2>&1
+	Powershell -ExecutionPolicy Bypass -Command "& {(Get-Content '!lms_ps_script_copy!').replace('?OS_MACHINEGUID?', '!OS_MACHINEGUID!') ^| Set-Content '!lms_ps_script_copy!'}"      >> !REPORT_LOGFILE! 2>&1
+	rem send statitic data to OSD
+	Powershell -ExecutionPolicy Bypass -Command "& '!lms_ps_script_copy!'"                                               >> !REPORT_LOGFILE! 2>&1
+)
+
 :summary
+echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
 echo ... summarize collected information ...
 echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
 echo =   S U M M A R Y                                                            =                                      >> !REPORT_LOGFILE! 2>&1
