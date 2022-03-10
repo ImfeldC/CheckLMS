@@ -26,6 +26,7 @@ rem        - adjust ouptut when using 'goto' option
 rem        - adjust check if WmiRead shall be executed, execute always when LMS 2.6.849 (or highr) is installed; otherwise execuet only when VC++ V14.29 (or higher) is installed (see 1722921)
 rem     10-Mar-2022:
 rem        - fix issue 1713700: make sure that files downloaded from git have 'windows style' line endings (CR LF)
+rem        - use correct replace('`n', '`r`n')
 rem     
 rem     Full details see changelog.md
 rem
@@ -1101,13 +1102,13 @@ if not defined LMS_SKIPDOWNLOAD (
 							echo Newer check script copied. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_GIT!, Previous script version: !LMS_SCRIPT_BUILD_DOWNLOAD!.                >> !REPORT_LOGFILE! 2>&1
 							rem copy /Y "!LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat" "!LMS_DOWNLOAD_PATH!\CheckLMS\"                                                                        >> !REPORT_LOGFILE! 2>&1
 							rem make sure that 'windows style' line endings are used
-							Powershell -ExecutionPolicy Bypass -Command "& {(Get-Content '!LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat').replace('`r', '`r`n') ^| Set-Content '!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat'}"
+							Powershell -ExecutionPolicy Bypass -Command "& {(Get-Content '!LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat').replace('`n', '`r`n') ^| Set-Content '!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat'}"
 							set LMS_SCRIPT_BUILD_DOWNLOAD=!LMS_SCRIPT_BUILD_DOWNLOAD_GIT!
 						)
 					) else (
 						rem copy /Y "!LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat" "!LMS_DOWNLOAD_PATH!\CheckLMS\"                                                                            >> !REPORT_LOGFILE! 2>&1
 						rem make sure that 'windows style' line endings are used
-						Powershell -ExecutionPolicy Bypass -Command "& {(Get-Content '!LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat').replace('`r', '`r`n') ^| Set-Content '!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat'}"
+						Powershell -ExecutionPolicy Bypass -Command "& {(Get-Content '!LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat').replace('`n', '`r`n') ^| Set-Content '!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat'}"
 						set LMS_SCRIPT_BUILD_DOWNLOAD=!LMS_SCRIPT_BUILD_DOWNLOAD_GIT!
 					)
 				)			
