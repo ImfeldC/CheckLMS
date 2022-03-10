@@ -24,6 +24,8 @@ rem        - add reqeust to OSD server (at the end of the script). Add new secti
 rem        - Initial file for !LMS_DOWNLOAD_PATH!\CheckLMS.ps1; with LMS_SCRIPT_BUILD, LMS_SYSTEMID, OS_MAJ_VERSION, OS_MIN_VERSION, LMS_IS_VM and OS_MACHINEGUID
 rem        - adjust ouptut when using 'goto' option 
 rem        - adjust check if WmiRead shall be executed, execute always when LMS 2.6.849 (or highr) is installed; otherwise execuet only when VC++ V14.29 (or higher) is installed (see 1722921)
+rem     10-Mar-2022:
+rem        - fix issue 1713700: make sure that files downloaded from git have 'windows style' line endings (CR LF)
 rem     
 rem     Full details see changelog.md
 rem
@@ -67,8 +69,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 09-Mar-2022"
-set LMS_SCRIPT_BUILD=20220309
+set LMS_SCRIPT_VERSION="CheckLMS Script 10-Mar-2022"
+set LMS_SCRIPT_BUILD=20220310
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -1102,6 +1104,8 @@ if not defined LMS_SKIPDOWNLOAD (
 						)
 					) else (
 						copy /Y "!LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat" "!LMS_DOWNLOAD_PATH!\CheckLMS\"                                                                            >> !REPORT_LOGFILE! 2>&1
+						rem make sure that 'windows style' line endings are used
+						Powershell -ExecutionPolicy Bypass -Command "& {(Get-Content '!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat').replace('`n', '`r`n') ^| Set-Content '!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat'}"
 						set LMS_SCRIPT_BUILD_DOWNLOAD=!LMS_SCRIPT_BUILD_DOWNLOAD_GIT!
 					)
 				)			
