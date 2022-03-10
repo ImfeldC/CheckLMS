@@ -27,7 +27,7 @@ rem        - adjust check if WmiRead shall be executed, execute always when LMS 
 rem     10-Mar-2022:
 rem        - fix issue 1713700: make sure that files downloaded from git have 'windows style' line endings (CR LF)
 rem        - use solution from https://ss64.com/ps/syntax-set-eol.html: Get-Content $OldFile | Set-Content -Path $NewFile
-rem        - implement check at script startup, and - if needed - convert script and restart them.
+rem        - implement check at script startup (after required folders have been created), and - if needed - convert script and restart them.
 rem     
 rem     Full details see changelog.md
 rem
@@ -134,23 +134,6 @@ rem Store report start date & time
 set LMS_REPORT_START=!DATE! !TIME!
 echo Report Start at !LMS_REPORT_START! ....
 
-rem Check encoding of running script ...
-rem https://stackoverflow.com/questions/32255747/on-windows-how-would-i-detect-the-line-ending-of-a-file#:~:text=use%20a%20text%20editor%20like,LF%2F%20CR%20LF%2FCR.
-rem In Powershell, this command returns "True" for a Windows style file and "False" for a *nix style file.
-FOR /F "tokens=* USEBACKQ" %%F IN (`Powershell -ExecutionPolicy Bypass -Command "& {(Get-Content '%0' -Raw) -match '\r\n$'}"`) DO (
-	SET EOL_FILE_STYLE=%%F
-)
-if /I "!EOL_FILE_STYLE!" EQU "False" (
-	echo The currently executed script, contains 'unix style' line endings. [EOL_FILE_STYLE="!EOL_FILE_STYLE!]
-	echo Convert them into '!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.CRLF.bat' and restart ...
-	rem make sure that 'windows style' line endings are used
-	Powershell -ExecutionPolicy Bypass -Command "& {Get-Content '%0' | Set-Content -path '!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.CRLF.bat'}"
-
-	start "Check LMS" !LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.CRLF.bat %*
-	exit
-	rem STOP EXECUTION HERE
-)
-
 rem check administrator priviledge (see https://stackoverflow.com/questions/4051883/batch-script-how-to-check-for-admin-rights)
 set guid=%random%%random%-%random%-%random%-%random%-%random%%random%%random%
 mkdir %WINDIR%\%guid%>nul 2>&1
@@ -212,6 +195,23 @@ IF NOT EXIST "!LMS_DOWNLOAD_PATH!\LMSSetup" (
 )
 IF NOT EXIST "!LMS_DOWNLOAD_PATH!\SDK" (
 	mkdir !LMS_DOWNLOAD_PATH!\SDK\ >nul 2>&1
+)
+
+rem Check encoding of running script ...
+rem https://stackoverflow.com/questions/32255747/on-windows-how-would-i-detect-the-line-ending-of-a-file#:~:text=use%20a%20text%20editor%20like,LF%2F%20CR%20LF%2FCR.
+rem In Powershell, this command returns "True" for a Windows style file and "False" for a *nix style file.
+FOR /F "tokens=* USEBACKQ" %%F IN (`Powershell -ExecutionPolicy Bypass -Command "& {(Get-Content '%0' -Raw) -match '\r\n$'}"`) DO (
+	SET EOL_FILE_STYLE=%%F
+)
+if /I "!EOL_FILE_STYLE!" EQU "False" (
+	echo The currently executed script, contains 'unix style' line endings. [EOL_FILE_STYLE="!EOL_FILE_STYLE!]
+	echo Convert them into '!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.CRLF.bat' and restart ...
+	rem make sure that 'windows style' line endings are used
+	Powershell -ExecutionPolicy Bypass -Command "& {Get-Content '%0' | Set-Content -path '!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.CRLF.bat'}"
+
+	start "Check LMS" !LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.CRLF.bat %*
+	exit
+	rem STOP EXECUTION HERE
 )
 
 rem clean-up files downloaded used with older CheckLMS script
