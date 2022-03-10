@@ -1100,6 +1100,8 @@ if not defined LMS_SKIPDOWNLOAD (
 						if /I !LMS_SCRIPT_BUILD_DOWNLOAD_GIT! GTR !LMS_SCRIPT_BUILD_DOWNLOAD! (
 							echo Newer check script copied. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_GIT!, Previous script version: !LMS_SCRIPT_BUILD_DOWNLOAD!.                >> !REPORT_LOGFILE! 2>&1
 							copy /Y "!LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat" "!LMS_DOWNLOAD_PATH!\CheckLMS\"                                                                        >> !REPORT_LOGFILE! 2>&1
+							rem make sure that 'windows style' line endings are used
+							Powershell -ExecutionPolicy Bypass -Command "& {(Get-Content '!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat').replace('`n', '`r`n') ^| Set-Content '!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat'}"
 							set LMS_SCRIPT_BUILD_DOWNLOAD=!LMS_SCRIPT_BUILD_DOWNLOAD_GIT!
 						)
 					) else (
