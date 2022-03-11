@@ -19,4 +19,4 @@ $body = "{
 `n}"
 
 $response = Invoke-RestMethod 'https://www.automation.siemens.com/softwareupdater/public/api/updates' -Method 'POST' -Headers $headers -Body $body
-$response | ConvertTo-Json
+$response | ConvertTo-Json -depth 100

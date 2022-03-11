@@ -28,6 +28,8 @@ rem     10-Mar-2022:
 rem        - fix issue 1713700: make sure that files downloaded from git have 'windows style' line endings (CR LF)
 rem        - use solution from https://ss64.com/ps/syntax-set-eol.html: Get-Content $OldFile | Set-Content -Path $NewFile
 rem        - implement check at script startup (after required folders have been created), and - if needed - convert script and restart them.
+rem     11-Mar-2022:
+rem        - add running script name to logfile.
 rem     
 rem     Full details see changelog.md
 rem
@@ -71,8 +73,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 10-Mar-2022"
-set LMS_SCRIPT_BUILD=20220310
+set LMS_SCRIPT_VERSION="CheckLMS Script 11-Mar-2022"
+set LMS_SCRIPT_BUILD=20220311
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -926,7 +928,7 @@ rem see https://stackoverflow.com/questions/21706204/how-to-put-a-single-powersh
 for /f "delims=" %%a in ('powershell -c "(gcim Win32_ComputerSystem).HypervisorPresent"') do set "LMS_IS_VM=%%a"
 rem echo LMS_IS_VM=!LMS_IS_VM!
 
-echo Report Start at !LMS_REPORT_START! ....                                                                                 >> !REPORT_LOGFILE! 2>&1
+echo Report Start '%0' at !LMS_REPORT_START! ....                                                                            >> !REPORT_LOGFILE! 2>&1
 echo ============================================================================================================================================================ >> !REPORT_LOGFILE! 2>&1
 echo =                                                                                                                       >> !REPORT_LOGFILE! 2>&1
 echo =   L      M     M   SSSS                                                                                               >> !REPORT_LOGFILE! 2>&1
@@ -951,9 +953,9 @@ IF "%~1"=="" (
 	echo =  Command Line Options: %*                                                                                         >> !REPORT_LOGFILE! 2>&1
 )
 if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
-	echo =  Script started with : Administrator priviledge                                                                    >> !REPORT_LOGFILE! 2>&1
+	echo =  Script started with : Administrator priviledge                                                                   >> !REPORT_LOGFILE! 2>&1
 ) else (
-	echo =  Script started with : normal priviledge                                                                           >> !REPORT_LOGFILE! 2>&1
+	echo =  Script started with : normal priviledge                                                                          >> !REPORT_LOGFILE! 2>&1
 )
 echo =  Hypervisor Present  : !LMS_IS_VM!                                                                                    >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
@@ -1264,7 +1266,7 @@ if not defined LMS_SKIPDOWNLOAD (
 		rem Connection Test: FAILED
 		echo     Connection Test FAILED, cannot access !CHECKLMS_EXTERNAL_SHARE!
 		echo Connection Test FAILED, cannot access !CHECKLMS_EXTERNAL_SHARE!                                       >> !REPORT_LOGFILE! 2>&1
-		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_btdownloads.txt                                                          >> !REPORT_LOGFILE! 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_btdownloads.txt                                            >> !REPORT_LOGFILE! 2>&1
 		set ConnectionTestStatus=Failed
 	)
 	echo ... download additional tools and libraries ...
@@ -2006,17 +2008,17 @@ if defined LMS_SET_FIREWALL (
 	echo Set firewall settings ...                                                                                                                        >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
 		rem set firewall settings ...
-		echo Delete rule: netsh advfirewall firewall delete rule name="LMS lmgrd"                                                                              >> !REPORT_LOGFILE! 2>&1
-		netsh advfirewall firewall delete rule name="LMS lmgrd"                                                                                                >> !REPORT_LOGFILE! 2>&1
-		echo Delete rule: netsh advfirewall firewall delete rule name="LMS SIEMBT"                                                                             >> !REPORT_LOGFILE! 2>&1
-		netsh advfirewall firewall delete rule name="LMS SIEMBT"                                                                                               >> !REPORT_LOGFILE! 2>&1
+		echo Delete rule: netsh advfirewall firewall delete rule name="LMS lmgrd"                                                                             >> !REPORT_LOGFILE! 2>&1
+		netsh advfirewall firewall delete rule name="LMS lmgrd"                                                                                               >> !REPORT_LOGFILE! 2>&1
+		echo Delete rule: netsh advfirewall firewall delete rule name="LMS SIEMBT"                                                                            >> !REPORT_LOGFILE! 2>&1
+		netsh advfirewall firewall delete rule name="LMS SIEMBT"                                                                                              >> !REPORT_LOGFILE! 2>&1
 		rem see also https://wiki.siemens.com/display/en/LMS+VMware+configuration
 		echo Set rule: netsh advfirewall firewall add rule name="LMS lmgrd" dir=in action=allow program="!ProgramFiles_x86!\Siemens\LMS\server\lmgrd.exe"     >> !REPORT_LOGFILE! 2>&1
 		netsh advfirewall firewall add rule name="LMS lmgrd" dir=in action=allow program="!ProgramFiles_x86!\Siemens\LMS\server\lmgrd.exe"                    >> !REPORT_LOGFILE! 2>&1
 		echo Setrule : netsh advfirewall firewall add rule name="LMS siembt" dir=in action=allow program="!ProgramFiles_x86!\Siemens\LMS\server\siembt.exe"   >> !REPORT_LOGFILE! 2>&1
 		netsh advfirewall firewall add rule name="LMS siembt" dir=in action=allow program="!ProgramFiles_x86!\Siemens\LMS\server\siembt.exe"                  >> !REPORT_LOGFILE! 2>&1
 		echo     DONE
-		echo Set firewall settings ... DONE                                                                                                                    >> !REPORT_LOGFILE! 2>&1
+		echo Set firewall settings ... DONE                                                                                                                   >> !REPORT_LOGFILE! 2>&1
 	) else (
 		if defined SHOW_COLORED_OUTPUT (
 			echo [1;33m    WARNING: Cannot set firewall settings, start script with administrator priviledge. [1;37m
@@ -4761,54 +4763,54 @@ if not defined LMS_SKIPFNP (
 	) else (
 		echo     tsreset_app.exe doesn't exist, cannot perform operation.                                                        >> !REPORT_LOGFILE! 2>&1
 	)
-	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo ============================================================================== >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                    >> !REPORT_LOGFILE! 2>&1
 	echo ... collect host id's ...
-	echo Collect host id's:                                                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo Collect host id's:                                                             >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_LMHOSTID (
-		echo ======== Host ID:                                                                                                   >> !REPORT_LOGFILE! 2>&1
-		"!LMS_LMHOSTID!"                                                                                                         >> !REPORT_LOGFILE! 2>&1
-		echo ======== PHYSICAL Host ID:                                                                                          >> !REPORT_LOGFILE! 2>&1
-		echo --- lmhostid: -user                                                                                                 >> !REPORT_LOGFILE! 2>&1
-		"!LMS_LMHOSTID!" -user                                                                                                   >> !REPORT_LOGFILE! 2>&1
-		echo --- lmhostid: -ether                                                                                                >> !REPORT_LOGFILE! 2>&1
-		"!LMS_LMHOSTID!" -ether                                                                                                  >> !REPORT_LOGFILE! 2>&1
-		echo --- lmhostid: -internet v4                                                                                          >> !REPORT_LOGFILE! 2>&1
-		"!LMS_LMHOSTID!" -internet v4                                                                                            >> !REPORT_LOGFILE! 2>&1
-		echo --- lmhostid: -internet v6                                                                                          >> !REPORT_LOGFILE! 2>&1
-		"!LMS_LMHOSTID!" -internet v6                                                                                            >> !REPORT_LOGFILE! 2>&1
-		echo --- lmhostid: -utf8                                                                                                 >> !REPORT_LOGFILE! 2>&1
-		"!LMS_LMHOSTID!" -utf8                                                                                                   >> !REPORT_LOGFILE! 2>&1
-		echo --- lmhostid: -vsn                                                                                                  >> !REPORT_LOGFILE! 2>&1
-		"!LMS_LMHOSTID!" -vsn                                                                                                    >> !REPORT_LOGFILE! 2>&1
-		echo --- lmhostid: -display                                                                                              >> !REPORT_LOGFILE! 2>&1
-		"!LMS_LMHOSTID!" -display                                                                                                >> !REPORT_LOGFILE! 2>&1
-		echo --- lmhostid: -hostname                                                                                             >> !REPORT_LOGFILE! 2>&1
-		"!LMS_LMHOSTID!" -hostname                                                                                               >> !REPORT_LOGFILE! 2>&1
-		echo --- lmhostid: -hostdomain                                                                                           >> !REPORT_LOGFILE! 2>&1
-		"!LMS_LMHOSTID!" -hostdomain                                                                                             >> !REPORT_LOGFILE! 2>&1
-		echo --- lmhostid: -tpm_id1                                                                                              >> !REPORT_LOGFILE! 2>&1
-		"!LMS_LMHOSTID!" -tpm_id1                                                                                                >> !REPORT_LOGFILE! 2>&1
-		echo --- lmhostid: -flexid                                                                                               >> !REPORT_LOGFILE! 2>&1
-		"!LMS_LMHOSTID!" -flexid                                                                                                 >> !REPORT_LOGFILE! 2>&1
-		echo ======== VIRTUAL Host ID:                                                                                           >> !REPORT_LOGFILE! 2>&1
-		echo --- lmhostid: -ptype VM -uuid                                                                                       >> !REPORT_LOGFILE! 2>&1
-		"!LMS_LMHOSTID!" -ptype VM -uuid                                                                                         >> !REPORT_LOGFILE! 2>&1
-		echo --- lmhostid: -ptype VM -genid                                                                                      >> !REPORT_LOGFILE! 2>&1
-		"!LMS_LMHOSTID!" -ptype VM -genid                                                                                        >> !REPORT_LOGFILE! 2>&1
-		echo ======== AMAZON Host ID:                                                                                            >> !REPORT_LOGFILE! 2>&1
-		echo --- lmhostid: -ptype AMZN -eip                                                                                      >> !REPORT_LOGFILE! 2>&1
-		"!LMS_LMHOSTID!" -ptype AMZN -eip                                                                                        >> !REPORT_LOGFILE! 2>&1
-		echo --- lmhostid: -ptype AMZN -ami                                                                                      >> !REPORT_LOGFILE! 2>&1
-		"!LMS_LMHOSTID!" -ptype AMZN -ami                                                                                        >> !REPORT_LOGFILE! 2>&1
-		echo --- lmhostid: -ptype AMZN -iid                                                                                      >> !REPORT_LOGFILE! 2>&1
-		"!LMS_LMHOSTID!" -ptype AMZN -iid                                                                                        >> !REPORT_LOGFILE! 2>&1
+		echo ======== Host ID:                                                          >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!"                                                                >> !REPORT_LOGFILE! 2>&1
+		echo ======== PHYSICAL Host ID:                                                 >> !REPORT_LOGFILE! 2>&1
+		echo --- lmhostid: -user                                                        >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -user                                                          >> !REPORT_LOGFILE! 2>&1
+		echo --- lmhostid: -ether                                                       >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -ether                                                         >> !REPORT_LOGFILE! 2>&1
+		echo --- lmhostid: -internet v4                                                 >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -internet v4                                                   >> !REPORT_LOGFILE! 2>&1
+		echo --- lmhostid: -internet v6                                                 >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -internet v6                                                   >> !REPORT_LOGFILE! 2>&1
+		echo --- lmhostid: -utf8                                                        >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -utf8                                                          >> !REPORT_LOGFILE! 2>&1
+		echo --- lmhostid: -vsn                                                         >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -vsn                                                           >> !REPORT_LOGFILE! 2>&1
+		echo --- lmhostid: -display                                                     >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -display                                                       >> !REPORT_LOGFILE! 2>&1
+		echo --- lmhostid: -hostname                                                    >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -hostname                                                      >> !REPORT_LOGFILE! 2>&1
+		echo --- lmhostid: -hostdomain                                                  >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -hostdomain                                                    >> !REPORT_LOGFILE! 2>&1
+		echo --- lmhostid: -tpm_id1                                                     >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -tpm_id1                                                       >> !REPORT_LOGFILE! 2>&1
+		echo --- lmhostid: -flexid                                                      >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -flexid                                                        >> !REPORT_LOGFILE! 2>&1
+		echo ======== VIRTUAL Host ID:                                                  >> !REPORT_LOGFILE! 2>&1
+		echo --- lmhostid: -ptype VM -uuid                                              >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -ptype VM -uuid                                                >> !REPORT_LOGFILE! 2>&1
+		echo --- lmhostid: -ptype VM -genid                                             >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -ptype VM -genid                                               >> !REPORT_LOGFILE! 2>&1
+		echo ======== AMAZON Host ID:                                                   >> !REPORT_LOGFILE! 2>&1
+		echo --- lmhostid: -ptype AMZN -eip                                             >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -ptype AMZN -eip                                               >> !REPORT_LOGFILE! 2>&1
+		echo --- lmhostid: -ptype AMZN -ami                                             >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -ptype AMZN -ami                                               >> !REPORT_LOGFILE! 2>&1
+		echo --- lmhostid: -ptype AMZN -iid                                             >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMHOSTID!" -ptype AMZN -iid                                               >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo     lmhostid.exe doesn't exist, cannot perform operation.                                                           >> !REPORT_LOGFILE! 2>&1
+		echo     lmhostid.exe doesn't exist, cannot perform operation.                  >> !REPORT_LOGFILE! 2>&1
 	)
 )
 rem Execute always, even LMS_SKIPFNP is set!
-echo ==============================================================================        >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================     >> !REPORT_LOGFILE! 2>&1
 echo ... collect further host id's ...
 
 if exist "!REPORT_LOG_PATH!\VMECMID_Latest.txt" (
@@ -8068,6 +8070,7 @@ SET lms_ps_script_base=!LMS_DOWNLOAD_PATH!\CheckLMS.ps1
 SET lms_ps_script_copy=!CHECKLMS_REPORT_LOG_PATH!\CheckLMSCopy.ps1
 IF EXIST "!lms_ps_script_base!" (
 	copy /Y "!lms_ps_script_base!" "!lms_ps_script_copy!"                                                                >> !REPORT_LOGFILE! 2>&1
+	echo Send statistic data to OSD, for script version '!LMS_SCRIPT_BUILD!' ...                                         >> !REPORT_LOGFILE! 2>&1
 	rem replace placeholders, with real values
 	Powershell -ExecutionPolicy Bypass -Command "& {(Get-Content '!lms_ps_script_copy!').replace('?LMS_SCRIPT_BUILD?', '!LMS_SCRIPT_BUILD!') ^| Set-Content '!lms_ps_script_copy!'}"  >> !REPORT_LOGFILE! 2>&1
 	Powershell -ExecutionPolicy Bypass -Command "& {(Get-Content '!lms_ps_script_copy!').replace('?LMS_SYSTEMID?', '!LMS_SYSTEMID!') ^| Set-Content '!lms_ps_script_copy!'}"          >> !REPORT_LOGFILE! 2>&1
@@ -8075,8 +8078,9 @@ IF EXIST "!lms_ps_script_base!" (
 	Powershell -ExecutionPolicy Bypass -Command "& {(Get-Content '!lms_ps_script_copy!').replace('?OS_MIN_VERSION?', '!OS_MIN_VERSION!') ^| Set-Content '!lms_ps_script_copy!'}"      >> !REPORT_LOGFILE! 2>&1
 	Powershell -ExecutionPolicy Bypass -Command "& {(Get-Content '!lms_ps_script_copy!').replace('?LMS_IS_VM?', '!LMS_IS_VM!') ^| Set-Content '!lms_ps_script_copy!'}"                >> !REPORT_LOGFILE! 2>&1
 	Powershell -ExecutionPolicy Bypass -Command "& {(Get-Content '!lms_ps_script_copy!').replace('?OS_MACHINEGUID?', '!OS_MACHINEGUID!') ^| Set-Content '!lms_ps_script_copy!'}"      >> !REPORT_LOGFILE! 2>&1
-	rem send statitic data to OSD
+	rem send statistic data to OSD
 	Powershell -ExecutionPolicy Bypass -Command "& '!lms_ps_script_copy!'"                                               >> !REPORT_LOGFILE! 2>&1
+	echo     Data sent: OS_MAJ_VERSION=!OS_MAJ_VERSION! / OS_MIN_VERSION=!OS_MIN_VERSION! / LMS_IS_VM=!LMS_IS_VM! / OS_MACHINEGUID=!OS_MACHINEGUID!  >> !REPORT_LOGFILE! 2>&1
 )
 
 :summary
