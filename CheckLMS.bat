@@ -30,6 +30,7 @@ rem        - use solution from https://ss64.com/ps/syntax-set-eol.html: Get-Cont
 rem        - implement check at script startup (after required folders have been created), and - if needed - convert script and restart them.
 rem     11-Mar-2022:
 rem        - add running script name to logfile.
+rem        - add execution of script 'CheckForUpdate.ps1' - if available - to retrieve software updates and messages for installed LMS client.
 rem     
 rem     Full details see changelog.md
 rem
@@ -3797,6 +3798,16 @@ if not defined LMS_SKIPLMS (
 		echo Get Product Maintenance: [read with LMU PowerShell command]                                                                                                   >> !REPORT_LOGFILE! 2>&1
 		echo     Get Product Maintenance: [read with LMU PowerShell command]
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {(Select-Product -report -upgrades)[0].Maintenance}"                           >> !REPORT_LOGFILE! 2>&1 
+		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! ....                                                                                                                                   >> !REPORT_LOGFILE! 2>&1
+		echo Check for software updates or messages: [read with 'CheckForUpdate.ps1' script from OSD server]                                                               >> !REPORT_LOGFILE! 2>&1
+		echo     Check for software updates or messages: [read with 'CheckForUpdate.ps1' script from OSD server]
+		IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1" (
+			echo RUN: powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" !ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1                        >> !REPORT_LOGFILE! 2>&1
+			powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" !ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1                                  >> !REPORT_LOGFILE! 2>&1
+		) else (
+			echo ERROR: Cannot execute powershell script 'CheckForUpdate.ps1', it doesn't exist '!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1'.                   >> !REPORT_LOGFILE! 2>&1
+		)
 	) else (
 		if defined SHOW_COLORED_OUTPUT (
 			echo [1;31m    ERROR: Cannot execute powershell commands due missing "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1".  [1;37m
