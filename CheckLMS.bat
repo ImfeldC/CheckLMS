@@ -3803,8 +3803,8 @@ if not defined LMS_SKIPLMS (
 		echo Check for software updates or messages: [read with 'CheckForUpdate.ps1' script from OSD server]                                                               >> !REPORT_LOGFILE! 2>&1
 		echo     Check for software updates or messages: [read with 'CheckForUpdate.ps1' script from OSD server]
 		IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1" (
-			echo RUN: powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" !ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1                        >> !REPORT_LOGFILE! 2>&1
-			powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" !ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1                                  >> !REPORT_LOGFILE! 2>&1
+			echo RUN: powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -Command "& '!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1'"         >> !REPORT_LOGFILE! 2>&1
+			powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -Command "& '!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1'"                   >> !REPORT_LOGFILE! 2>&1
 		) else (
 			echo ERROR: Cannot execute powershell script 'CheckForUpdate.ps1', it doesn't exist '!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1'.                   >> !REPORT_LOGFILE! 2>&1
 		)
