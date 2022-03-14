@@ -31,7 +31,7 @@ rem        - implement check at script startup (after required folders have been
 rem     11-Mar-2022:
 rem        - add running script name to logfile.
 rem        - add execution of script 'CheckForUpdate.ps1' - if available - to retrieve software updates and messages for installed LMS client.
-rem     11-Mar-2022:
+rem     14-Mar-2022:
 rem        - simplify colored output of CheckLMS script
 rem     
 rem     Full details see changelog.md
