@@ -31,6 +31,8 @@ rem        - implement check at script startup (after required folders have been
 rem     11-Mar-2022:
 rem        - add running script name to logfile.
 rem        - add execution of script 'CheckForUpdate.ps1' - if available - to retrieve software updates and messages for installed LMS client.
+rem     11-Mar-2022:
+rem        - simplify colored output of CheckLMS script
 rem     
 rem     Full details see changelog.md
 rem
@@ -74,8 +76,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 11-Mar-2022"
-set LMS_SCRIPT_BUILD=20220311
+set LMS_SCRIPT_VERSION="CheckLMS Script 14-Mar-2022"
+set LMS_SCRIPT_BUILD=20220314
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -901,15 +903,16 @@ rem check if colored ouput is supported
 set SHOW_COLORED_OUTPUT=
 if /I "!OS_MAJ_VERSION!" EQU "10" (
 	set SHOW_COLORED_OUTPUT="Yes"
+	set SHOW_RED=[1;31m
+	set SHOW_YELLOW=[1;33m
+	set SHOW_GREEN=[1;32m
+	set SHOW_BLUE=[1;34m
+	set SHOW_NORMAL=[1;37m
 )
 
-if defined SHOW_COLORED_OUTPUT (
-	echo [1;37mLMS Status Report for LMS System !LMS_SYSTEMID! with LMS Version: !LMS_VERSION!
-	echo [1;33m    be patient, the collection of the information requires some time, up to several minutes [1;37m
-) else (
-	echo LMS Status Report for LMS System !LMS_SYSTEMID! with LMS Version: !LMS_VERSION!
-	echo    be patient, the collection of the information requires some time, up to several minutes
-)
+echo !SHOW_NORMAL!LMS Status Report for LMS System !LMS_SYSTEMID! with LMS Version: !LMS_VERSION!
+echo !SHOW_YELLOW!    be patient, the collection of the information requires some time, up to several minutes !SHOW_NORMAL!
+
 echo Check current LMS installation .....
 if exist "!LMS_SERVERTOOL_PATH!" cd "!LMS_SERVERTOOL_PATH!"
 
@@ -993,20 +996,12 @@ if "!LMS_BUILD_VERSION!" NEQ "N/A" (
 			if /I !LMS_BUILD_VERSION! NEQ 745 (
 				if /I !LMS_BUILD_VERSION! LEQ 744 (
 					REM LMS Version 2.3.744 or older (lower build number)
-					if defined SHOW_COLORED_OUTPUT (
-						echo [1;31m    NOTE: The LMS version !LMS_VERSION! which you are using is DEPRECATED, pls update your system. [1;37m
-					) else (
-						echo     NOTE: The LMS version !LMS_VERSION! which you are using is DEPRECATED, pls update your system.
-					)
+					echo !SHOW_RED!    NOTE: The LMS version !LMS_VERSION! which you are using is DEPRECATED, pls update your system. !SHOW_NORMAL!
 					echo NOTE: The LMS version !LMS_VERSION! which you are using is DEPRECATED, pls update your system.      >> !REPORT_LOGFILE! 2>&1
 				) else (
 					REM Check: ... less than MOST_RECENT_LMS_BUILD --> IN TEST
 					if /I !LMS_BUILD_VERSION! LSS !MOST_RECENT_LMS_BUILD! (
-						if defined SHOW_COLORED_OUTPUT (
-							echo [1;33m    WARNING: The LMS version !LMS_VERSION! which you are using is a field test version, pls update your system as soon final version is available. [1;37m
-						) else (
-							echo     WARNING: The LMS version !LMS_VERSION! which you are using is a field test version, pls update your system as soon final version is available.
-						)
+						echo !SHOW_YELLOW!    WARNING: The LMS version !LMS_VERSION! which you are using is a field test version, pls update your system as soon final version is available. !SHOW_NORMAL!
 						echo WARNING: The LMS version !LMS_VERSION! which you are using is a field test version, pls update your system as soon final version is available. >> !REPORT_LOGFILE! 2>&1
 					)
 				)
@@ -1216,11 +1211,7 @@ if defined LMS_SCRIPT_BUILD_DOWNLOAD_TO_START (
 		rem STOP EXECUTION HERE
 	
 	) else (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;33m    SKIPPED start of newer script. Command line option "Do not start new script" is set. [1;37m
-		) else (
-			echo     SKIPPED start of newer script. Command line option "Do not start new script" is set.
-		)
+		echo !SHOW_YELLOW!    SKIPPED start of newer script. Command line option "Do not start new script" is set. !SHOW_NORMAL!
 		echo SKIPPED start of newer script. Command line option "Do not start new script" is set.                                  >> !REPORT_LOGFILE! 2>&1
 	)
 )	
@@ -1459,7 +1450,7 @@ if not defined LMS_SKIPDOWNLOAD (
 				echo     Newest dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] downloaded!
 				echo     Newest dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] downloaded!                       >> !REPORT_LOGFILE! 2>&1
 			) else (
-				echo     Download of dongle driver: '!CHECKLMS_EXTERNAL_SHARE!lms/hasp/!MOST_RECENT_DONGLE_DRIVER_VERSION!/haspdinst.exe' [!haspdinstVersion!] FAILED!   >> !REPORT_LOGFILE! 2>&1
+				echo     Download of dongle driver: '!CHECKLMS_EXTERNAL_SHARE!lms/hasp/!MOST_RECENT_DONGLE_DRIVER_VERSION!/haspdinst.exe' [!haspdinstVersion!] FAILED.   >> !REPORT_LOGFILE! 2>&1
 			)
 						
 			rem Download AccessChk tool
@@ -1558,11 +1549,7 @@ if not defined LMS_SKIPDOWNLOAD (
 	)
 ) else (
 	rem LMS_SKIPDOWNLOAD
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    SKIPPED download section. The script didn't execute the download commands. [1;37m
-	) else (
-		echo     SKIPPED download section. The script didn't execute the download commands.
-	)
+	echo !SHOW_YELLOW!    SKIPPED download section. The script didn't execute the download commands. !SHOW_NORMAL!
 	echo SKIPPED download section. The script didn't execute the download commands.                                               >> !REPORT_LOGFILE! 2>&1
 )
 
@@ -1662,11 +1649,7 @@ if not defined LMS_SKIPUNZIP (
 	)
 ) else (
 	rem LMS_SKIPUNZIP
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    SKIPPED unzip section. The script didn't execute the unzip commands. [1;37m
-	) else (
-		echo     SKIPPED unzip section. The script didn't execute the unzip commands.
-	)
+	echo !SHOW_YELLOW!    SKIPPED unzip section. The script didn't execute the unzip commands. !SHOW_NORMAL!
 	echo SKIPPED unzip section. The script didn't execute the unzip commands.                                               >> !REPORT_LOGFILE! 2>&1
 )
 
@@ -2021,11 +2004,7 @@ if defined LMS_SET_FIREWALL (
 		echo     DONE
 		echo Set firewall settings ... DONE                                                                                                                   >> !REPORT_LOGFILE! 2>&1
 	) else (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;33m    WARNING: Cannot set firewall settings, start script with administrator priviledge. [1;37m
-		) else (
-			echo     WARNING: Cannot set firewall settings, start script with administrator priviledge.
-		)
+		echo !SHOW_YELLOW!    WARNING: Cannot set firewall settings, start script with administrator priviledge. !SHOW_NORMAL!
 		echo WARNING: Cannot set firewall settings, start script with administrator priviledge.                                                           >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                               >> !REPORT_LOGFILE! 2>&1
@@ -2089,12 +2068,8 @@ if defined LMS_INSTALL_LMS_FT_CLIENT (
 	rem install 'field test' LMS client version
 	set LMS_INSTALL_VERSION=!MOST_RECENT_FT_LMS_VERSION!
 	set LMS_INSTALL_BUILD=!MOST_RECENT_FT_LMS_BUILD!
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    WARNING: Your are going to install !LMS_INSTALL_VERSION! which is a 'field test' version of LMS client! [1;37m
-	) else (
-		echo     WARNING: Your are going to install !LMS_INSTALL_VERSION! which is a 'field test' version of LMS client!
-	)
-	echo WARNING: Your are going to install !LMS_INSTALL_VERSION! which is a 'field test' version of LMS client!                 >> !REPORT_LOGFILE! 2>&1
+	echo !SHOW_YELLOW!    WARNING: Your are going to install !LMS_INSTALL_VERSION! which is a 'field test' version of LMS client. !SHOW_NORMAL!
+	echo WARNING: Your are going to install !LMS_INSTALL_VERSION! which is a 'field test' version of LMS client.                 >> !REPORT_LOGFILE! 2>&1
 )
 
 if defined LMS_INSTALL_VERSION (
@@ -2120,45 +2095,25 @@ if defined LMS_INSTALL_VERSION (
 				echo LMS client: !LMS_SETUP_EXECUTABLE! [!lmsclientVersion!] available                                           >> !REPORT_LOGFILE! 2>&1
 				if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
 					rem install LMS client downloaded by this script
-					if defined SHOW_COLORED_OUTPUT (
-						echo [1;31m    --- Install newest LMS client !lmsclientVersion! just downloaded by this script. [1;37m
-					) else (
-						echo     --- Install newest LMS client !lmsclientVersion! just downloaded by this script.
-					)
+					echo !SHOW_RED!    --- Install newest LMS client !lmsclientVersion! just downloaded by this script. !SHOW_NORMAL!
 					echo --- Install newest LMS client !lmsclientVersion! just downloaded by this script.                        >> !REPORT_LOGFILE! 2>&1
 					cd !temp!
 					start "Install LMS client" "!LMS_SETUP_EXECUTABLE!"  
 					echo --- Installation started in an own process/shell.                                                       >> !REPORT_LOGFILE! 2>&1
 				) else (
-					if defined SHOW_COLORED_OUTPUT (
-						echo [1;33m    WARNING: Cannot install or update LMS client to !LMS_INSTALL_VERSION!, start script with administrator priviledge. [1;37m
-					) else (
-						echo     WARNING: Cannot install or update LMS client to !LMS_INSTALL_VERSION!, start script with administrator priviledge.
-					)
+					echo !SHOW_YELLOW!    WARNING: Cannot install or update LMS client to !LMS_INSTALL_VERSION!, start script with administrator priviledge. !SHOW_NORMAL!
 					echo WARNING: Cannot install or update LMS client to !LMS_INSTALL_VERSION!, start script with administrator priviledge.                      >> !REPORT_LOGFILE! 2>&1
 				)
 			) else (
-				if defined SHOW_COLORED_OUTPUT (
-					echo [1;33m    WARNING: Cannot install or update LMS client to !LMS_INSTALL_VERSION!, file '!LMS_SETUP_EXECUTABLE!' doesn't exist. [1;37m
-				) else (
-					echo     WARNING: Cannot install or update LMS client to !LMS_INSTALL_VERSION!, file '!LMS_SETUP_EXECUTABLE!' doesn't exist.
-				)
+				echo !SHOW_YELLOW!    WARNING: Cannot install or update LMS client to !LMS_INSTALL_VERSION!, file '!LMS_SETUP_EXECUTABLE!' doesn't exist. !SHOW_NORMAL!
 				echo WARNING: Cannot install or update LMS client to !LMS_INSTALL_VERSION!, file '!LMS_SETUP_EXECUTABLE!' doesn't exist.                         >> !REPORT_LOGFILE! 2>&1
 			)
 		) else (
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;33m    WARNING: Cannot install or update LMS client to !LMS_INSTALL_VERSION!, because the LMS version !LMS_VERSION! which you are using is newer. [1;37m
-			) else (
-				echo     WARNING: Cannot install or update LMS client to !LMS_INSTALL_VERSION!, because the LMS version !LMS_VERSION! which you are using is newer.
-			)
+			echo !SHOW_YELLOW!    WARNING: Cannot install or update LMS client to !LMS_INSTALL_VERSION!, because the LMS version !LMS_VERSION! which you are using is newer. !SHOW_NORMAL!
 			echo WARNING: Cannot install or update LMS client to !LMS_INSTALL_VERSION!, because the LMS version !LMS_VERSION! which you are using is newer.      >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;33m    Cannot install or update LMS client to !LMS_INSTALL_VERSION!, because the LMS version !LMS_VERSION! is alraedy installed. [1;37m
-		) else (
-			echo     Cannot install or update LMS client to !LMS_INSTALL_VERSION!, because the LMS version !LMS_VERSION! is alraedy installed.
-		)
+		echo !SHOW_YELLOW!    Cannot install or update LMS client to !LMS_INSTALL_VERSION!, because the LMS version !LMS_VERSION! is alraedy installed. !SHOW_NORMAL!
 		echo Cannot install or update LMS client to !LMS_INSTALL_VERSION!, because the LMS version !LMS_VERSION! is alraedy installed.                           >> !REPORT_LOGFILE! 2>&1
 	)	
 	
@@ -2169,30 +2124,18 @@ if defined LMS_INSTALL_VERSION (
 )
 
 if defined LMS_REMOVE_LMS_CLIENT (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    WARNING: Your are going to remove LMS client '!LMS_VERSION!' from this machine. [1;37m
-	) else (
-		echo     WARNING: Your are going to remove LMS client '!LMS_VERSION!' from this machine.
-	)
+	echo !SHOW_YELLOW!    WARNING: Your are going to remove LMS client '!LMS_VERSION!' from this machine. !SHOW_NORMAL!
 	echo WARNING: Your are going to remove LMS client '!LMS_VERSION!' from this machine.                                         >> !REPORT_LOGFILE! 2>&1
 
 	if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
 		rem install LMS client downloaded by this script
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    --- Remove LMS client '!LMS_VERSION!'. [1;37m
-		) else (
-			echo     --- Remove LMS client '!LMS_VERSION!'.
-		)
+		echo !SHOW_RED!    --- Remove LMS client '!LMS_VERSION!'. !SHOW_NORMAL!
 		echo --- Remove LMS client '!LMS_VERSION!'.                                                                              >> !REPORT_LOGFILE! 2>&1
 		cd !temp!
 		wmic product where name="Siemens License Management" call uninstall                                                      >> !REPORT_LOGFILE! 2>&1
 		echo --- Remove LMS client, FINISHED.                                                                                    >> !REPORT_LOGFILE! 2>&1
 	) else (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;33m    WARNING: You cannot remove LMS client '!LMS_VERSION!' from this machine, start script with administrator priviledge. [1;37m
-		) else (
-			echo     WARNING: You cannot remove LMS client '!LMS_VERSION!' from this machine, start script with administrator priviledge.
-		)
+		echo !SHOW_YELLOW!    WARNING: You cannot remove LMS client '!LMS_VERSION!' from this machine, start script with administrator priviledge. !SHOW_NORMAL!
 		echo WARNING: You cannot remove LMS client '!LMS_VERSION!' from this machine, start script with administrator priviledge.   >> !REPORT_LOGFILE! 2>&1
 	)
 
@@ -2214,28 +2157,16 @@ if defined LMS_INSTALL_DONGLE_DRIVER (
 		echo Dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] available                                     >> !REPORT_LOGFILE! 2>&1
 		if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
 			rem install dongle driver downloaded by this script
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    --- Install newest dongle driver !haspdinstVersion! just downloaded by this script. [1;37m
-			) else (
-				echo     --- Install newest dongle driver !haspdinstVersion! just downloaded by this script.
-			)
+			echo !SHOW_RED!    --- Install newest dongle driver !haspdinstVersion! just downloaded by this script. !SHOW_NORMAL!
 			echo --- Install newest dongle driver !haspdinstVersion! just downloaded by this script.                             >> !REPORT_LOGFILE! 2>&1
 			start "Install dongle driver" "!LMS_DOWNLOAD_PATH!\haspdinst.exe" -install -killprocess 
 			echo --- Installation started in an own process/shell.                                                               >> !REPORT_LOGFILE! 2>&1
 		) else (
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;33m    WARNING: Cannot install dongle driver, start script with administrator priviledge. [1;37m
-			) else (
-				echo     WARNING: Cannot install dongle driver, start script with administrator priviledge.
-			)
+			echo !SHOW_YELLOW!    WARNING: Cannot install dongle driver, start script with administrator priviledge. !SHOW_NORMAL!
 			echo WARNING: Cannot install dongle driver, start script with administrator priviledge.                              >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;33m    WARNING: Cannot install dongle driver, file '!LMS_DOWNLOAD_PATH!\haspdinst.exe' doesn't exist. [1;37m
-		) else (
-			echo     WARNING: Cannot install dongle driver, file '!LMS_DOWNLOAD_PATH!\haspdinst.exe' doesn't exist.
-		)
+		echo !SHOW_YELLOW!    WARNING: Cannot install dongle driver, file '!LMS_DOWNLOAD_PATH!\haspdinst.exe' doesn't exist. !SHOW_NORMAL!
 		echo WARNING: Cannot install dongle driver, file '!LMS_DOWNLOAD_PATH!\haspdinst.exe' doesn't exist.                      >> !REPORT_LOGFILE! 2>&1
 	)
 	
@@ -2254,30 +2185,18 @@ if defined LMS_REMOVE_DONGLE_DRIVER (
 		echo     Dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] available 
 		echo Dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] available                                     >> !REPORT_LOGFILE! 2>&1
 		if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    --- Remove installed dongle driver !haspdinstVersion!. [1;37m
-			) else (
-				echo     --- Remove installed dongle driver !haspdinstVersion!.
-			)
+			echo !SHOW_RED!    --- Remove installed dongle driver !haspdinstVersion!. !SHOW_NORMAL!
 			rem reset installation counter to make sure that dongle driver get removed!
 			reg add "HKLM\SOFTWARE\Aladdin Knowledge Systems\HASP\Driver\Installer" /v "InstCount" /t REG_DWORD /d 1 /f          >> !REPORT_LOGFILE! 2>&1
 			echo --- Remove installed dongle driver !haspdinstVersion!.                                                          >> !REPORT_LOGFILE! 2>&1
 			start "Remove dongle driver" "!LMS_DOWNLOAD_PATH!\haspdinst.exe" -remove -killprocess 
 			echo --- Remove started in an own process/shell.                                                                     >> !REPORT_LOGFILE! 2>&1
 		) else (
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;33m    WARNING: Cannot remove dongle driver, start script with administrator priviledge. [1;37m
-			) else (
-				echo     WARNING: Cannot remove dongle driver, start script with administrator priviledge.
-			)
+			echo !SHOW_YELLOW!    WARNING: Cannot remove dongle driver, start script with administrator priviledge. !SHOW_NORMAL!
 			echo WARNING: Cannot remove dongle driver, start script with administrator priviledge.                               >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;33m    WARNING: Cannot remove dongle driver, file '!LMS_DOWNLOAD_PATH!\haspdinst.exe' doesn't exist. [1;37m
-		) else (
-			echo     WARNING: Cannot remove dongle driver, file '!LMS_DOWNLOAD_PATH!\haspdinst.exe' doesn't exist.
-		)
+		echo !SHOW_YELLOW!    WARNING: Cannot remove dongle driver, file '!LMS_DOWNLOAD_PATH!\haspdinst.exe' doesn't exist. !SHOW_NORMAL!
 		echo WARNING: Cannot remove dongle driver, file '!LMS_DOWNLOAD_PATH!\haspdinst.exe' doesn't exist.                       >> !REPORT_LOGFILE! 2>&1
 	)
 
@@ -2350,19 +2269,11 @@ if defined LMS_START_DEMO_VD (
 				"!LMS_SERVERTOOL_PATH!\lmgrd.exe" -c "!LMS_DOWNLOAD_PATH!\counted.lic" -l "!REPORT_LOG_PATH!\demo_debuglog.txt"  >> !REPORT_LOGFILE! 2>&1
 			)
 		) else (
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;33m    WARNING: Cannot start Demo Vendor Daemon, start script with administrator priviledge. [1;37m
-			) else (
-				echo     WARNING: Cannot start Demo Vendor Daemon, start script with administrator priviledge.
-			)
+			echo !SHOW_YELLOW!    WARNING: Cannot start Demo Vendor Daemon, start script with administrator priviledge. !SHOW_NORMAL!
 			echo WARNING: Cannot start Demo Vendor Daemon, start script with administrator priviledge.                       >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;33m    WARNING: Cannot start Demo Vendor Daemon, file '!LMS_DEMOLF_VD!' doesn't exist. [1;37m
-		) else (
-			echo     WARNING: Cannot start Demo Vendor Daemon, file '!LMS_DEMOLF_VD!' doesn't exist.
-		)
+		echo !SHOW_YELLOW!    WARNING: Cannot start Demo Vendor Daemon, file '!LMS_DEMOLF_VD!' doesn't exist. !SHOW_NORMAL!
 		echo WARNING: Cannot start Demo Vendor Daemon, file '!LMS_DEMOLF_VD!' doesn't exist.                                 >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
@@ -2370,7 +2281,7 @@ if defined LMS_START_DEMO_VD (
 		echo LOG FILE: demo_debuglog.txt [last !LOG_FILE_LINES! lines]                                                       >> !REPORT_LOGFILE! 2>&1
 		powershell -command "& {Get-Content '!REPORT_LOG_PATH!\demo_debuglog.txt' | Select-Object -last !LOG_FILE_LINES!}"   >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo LOG FILE: !REPORT_LOG_PATH!\demo_debuglog.txt not found!                                                        >> !REPORT_LOGFILE! 2>&1
+		echo LOG FILE: !REPORT_LOG_PATH!\demo_debuglog.txt not found.                                                        >> !REPORT_LOGFILE! 2>&1
 	)
 
 	goto script_end
@@ -2396,27 +2307,15 @@ if defined LMS_STOP_DEMO_VD (
 				powershell -Command "& {Restart-Service -displayname 'FlexNet Licensing Service' -force}"                    >> !REPORT_LOGFILE! 2>&1
 				powershell -Command "& {Restart-Service -displayname 'Siemens BT Licensing Server'}"                         >> !REPORT_LOGFILE! 2>&1
 			) else (
-				if defined SHOW_COLORED_OUTPUT (
-					echo [1;33m    WARNING: Cannot stop Demo Vendor Daemon, file '!LMS_LMDOWN! doesn't exist. [1;37m
-				) else (
-					echo     WARNING: Cannot stop Demo Vendor Daemon, file '!LMS_LMDOWN!' doesn't exist.
-				)
+				echo !SHOW_YELLOW!    WARNING: Cannot stop Demo Vendor Daemon, file '!LMS_LMDOWN! doesn't exist. !SHOW_NORMAL!
 				echo WARNING: Cannot stop Demo Vendor Daemon, file '!LMS_LMDOWN!' doesn't exist.                             >> !REPORT_LOGFILE! 2>&1
 			)
 		) else (
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;33m    WARNING: Cannot stop Demo Vendor Daemon, start script with administrator priviledge. [1;37m
-			) else (
-				echo     WARNING: Cannot stop Demo Vendor Daemon, start script with administrator priviledge.
-			)
+			echo !SHOW_YELLOW!    WARNING: Cannot stop Demo Vendor Daemon, start script with administrator priviledge. !SHOW_NORMAL!
 			echo WARNING: Cannot stop Demo Vendor Daemon, start script with administrator priviledge.                        >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;33m    WARNING: Cannot stop Demo Vendor Daemon, file '!LMS_SERVERTOOL_PATH!\demo.exe' doesn't exist. [1;37m
-		) else (
-			echo     WARNING: Cannot stop Demo Vendor Daemon, file '!LMS_SERVERTOOL_PATH!\demo.exe' doesn't exist.
-		)
+		echo !SHOW_YELLOW!    WARNING: Cannot stop Demo Vendor Daemon, file '!LMS_SERVERTOOL_PATH!\demo.exe' doesn't exist. !SHOW_NORMAL!
 		echo WARNING: Cannot stop Demo Vendor Daemon, file '!LMS_SERVERTOOL_PATH!\demo.exe' doesn't exist.                   >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
@@ -2424,7 +2323,7 @@ if defined LMS_STOP_DEMO_VD (
 		echo LOG FILE: demo_debuglog.txt [last !LOG_FILE_LINES! lines]                                                       >> !REPORT_LOGFILE! 2>&1
 		powershell -command "& {Get-Content '!REPORT_LOG_PATH!\demo_debuglog.txt' | Select-Object -last !LOG_FILE_LINES!}"   >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo LOG FILE: !REPORT_LOG_PATH!\demo_debuglog.txt not found!                                                        >> !REPORT_LOGFILE! 2>&1
+		echo LOG FILE: !REPORT_LOG_PATH!\demo_debuglog.txt not found.                                                        >> !REPORT_LOGFILE! 2>&1
 	)
 
 	goto script_end
@@ -2493,11 +2392,7 @@ if not defined LMS_SKIPTSBACKUP (
 	xcopy !ALLUSERSPROFILE!\FLEXnet\SIEMBT* "!REPORT_LOG_PATH!\TSbackup !STAMP!" /Y /H /I                                    >> !REPORT_LOGFILE! 2>&1
 	echo     ... copied to '!REPORT_LOG_PATH!\TSbackup !STAMP!'                                                              >> !REPORT_LOGFILE! 2>&1
 ) else (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    SKIPPED TS backup section. The script didn't execute the TS backup commands. [1;37m
-	) else (
-		echo     SKIPPED TS backup section. The script didn't execute the TS backup commands.
-	)
+	echo !SHOW_YELLOW!    SKIPPED TS backup section. The script didn't execute the TS backup commands. !SHOW_NORMAL!
 	echo SKIPPED TS backup section. The script didn't execute the TS backup commands.                                        >> !REPORT_LOGFILE! 2>&1
 )
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
@@ -2741,19 +2636,11 @@ if not defined LMS_SKIPWMIC (
 		echo .                                                                                                               >> !REPORT_LOGFILE! 2>&1
 		rem check bumber of installed siemens software, see https://bt-clmserver01.hqs.sbt.siemens.com/ccm/resource/itemName/com.ibm.team.workitem.WorkItem/822161
 		if /I !NUM_OF_INSTALLED_SW_FROM_SIEMENS! GEQ !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_1! (
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    NOTE: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS! and exceeds the limit of !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_1!. This will cause problems during activation. [1;37m
-			) else (
-				echo     NOTE: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS! and exceeds the limit of !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_1!. This will cause problems during activation.
-			)
+			echo !SHOW_RED!    NOTE: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS! and exceeds the limit of !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_1!. This will cause problems during activation. !SHOW_NORMAL!
 			echo NOTE: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS! and exceeds the limit of !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_1!. This will cause problems during activation.              >> !REPORT_LOGFILE! 2>&1
 		) else (
 			if /I !NUM_OF_INSTALLED_SW_FROM_SIEMENS! GEQ !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_2! (
-					if defined SHOW_COLORED_OUTPUT (
-						echo [1;33m    WARNING: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS! and exceeds the limit of !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_2!. This may cause problems during activation. [1;37m
-					) else (
-						echo     WARNING: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS! and exceeds the limit of !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_2!. This may cause problems during activation.
-					)
+					echo !SHOW_YELLOW!    WARNING: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS! and exceeds the limit of !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_2!. This may cause problems during activation. !SHOW_NORMAL!
 					echo WARNING: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS! and exceeds the limit of !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_2!. This may cause problems during activation. >> !REPORT_LOGFILE! 2>&1
 			)
 		)
@@ -2769,11 +2656,7 @@ if not defined LMS_SKIPWMIC (
 	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicproduct_fullList.txt product get /format:list                                >> !REPORT_LOGFILE! 2>&1
 	echo     see more details in !CHECKLMS_REPORT_LOG_PATH!\wmicproduct_fullList.txt                                         >> !REPORT_LOGFILE! 2>&1
 ) else (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    SKIPPED wmic section. The script didn't execute the wmic commands. [1;37m
-	) else (
-		echo     SKIPPED wmic section. The script didn't execute the wmic commands.
-	)
+	echo !SHOW_YELLOW!    SKIPPED wmic section. The script didn't execute the wmic commands. !SHOW_NORMAL!
 	echo SKIPPED wmic section. The script didn't execute the wmic commands.                                                  >> !REPORT_LOGFILE! 2>&1
 )
 echo Collect further information from windows ...                                                                            >> !REPORT_LOGFILE! 2>&1
@@ -2877,19 +2760,11 @@ if not defined LMS_SKIPWINDOWS (
 	set /a "PROC_FOUND=!PROC_RUNNING!+!PROC_STOPPED!"
 	echo Relevant services: Total !PROC_FOUND! services. !PROC_RUNNING! services running and !PROC_STOPPED! services stopped!    >> !REPORT_LOGFILE! 2>&1
 	if /I !PROC_STOPPED! NEQ 0 (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: !PROC_STOPPED! relevant services are stopped. [1;37m
-		) else (
-			echo     ATTENTION: !PROC_STOPPED! relevant services are stopped.
-		)
+		echo !SHOW_RED!    ATTENTION: !PROC_STOPPED! relevant services are stopped. !SHOW_NORMAL!
 		echo ATTENTION: !PROC_STOPPED! relevant services are stopped.                                                            >> !REPORT_LOGFILE! 2>&1
 	)
 	if /I !PROC_FOUND! NEQ 4 (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: Only !PROC_FOUND! relevant services found. [1;37m
-		) else (
-			echo     ATTENTION: Only !PROC_FOUND! relevant services found.
-		)
+		echo !SHOW_RED!    ATTENTION: Only !PROC_FOUND! relevant services found. !SHOW_NORMAL!
 		echo ATTENTION: Only !PROC_FOUND! relevant services found.                                                               >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
@@ -3106,11 +2981,7 @@ if not defined LMS_SKIPWINDOWS (
 	echo Start at !DATE! !TIME! ....                                                               >> !REPORT_LOGFILE! 2>&1
 ) else (
 	rem LMS_SKIPWINDOWS
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    SKIPPED windows section. The script didn't execute the windows specific commands. [1;37m
-	) else (
-		echo     SKIPPED windows section. The script didn't execute the windows specific commands.
-	)
+	echo !SHOW_YELLOW!    SKIPPED windows section. The script didn't execute the windows specific commands. !SHOW_NORMAL!
 	echo SKIPPED windows section. The script didn't execute the windows specific commands.         >> !REPORT_LOGFILE! 2>&1
 )
 echo Read network statistics [netstat reports]                                                                                   >> !REPORT_LOGFILE! 2>&1
@@ -3166,11 +3037,7 @@ if not defined LMS_SKIPNETSTAT (
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 ) else (
 	rem LMS_SKIPNETSTAT
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    SKIPPED netstat section. The script didn't execute the netstat commands. [1;37m
-	) else (
-		echo     SKIPPED netstat section. The script didn't execute the netstat commands.
-	)
+	echo !SHOW_YELLOW!    SKIPPED netstat section. The script didn't execute the netstat commands. !SHOW_NORMAL!
 	echo SKIPPED netstat section. The script didn't execute the netstat commands.                                                >> !REPORT_LOGFILE! 2>&1
 )
 echo Read network settings ...                                                                                                   >> !REPORT_LOGFILE! 2>&1
@@ -3193,11 +3060,7 @@ if not defined LMS_SKIPNETSETTINGS (
 	echo     Full details see '!CHECKLMS_REPORT_LOG_PATH!\netsh_wlan.log'                                                        >> !REPORT_LOGFILE! 2>&1
 ) else (
 	rem LMS_SKIPNETSETTINGS
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    SKIPPED network section. The script didn't execute the network commands. [1;37m
-	) else (
-		echo     SKIPPED network section. The script didn't execute the network commands.
-	)
+	echo !SHOW_YELLOW!    SKIPPED network section. The script didn't execute the network commands. !SHOW_NORMAL!
 	echo SKIPPED network section. The script didn't execute the network commands.                                            >> !REPORT_LOGFILE! 2>&1
 )
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
@@ -3259,11 +3122,7 @@ if not defined LMS_SKIPFIREWALL (
 	)
 	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\firewall_rules_LMS.txt" type "!CHECKLMS_REPORT_LOG_PATH!\firewall_rules_LMS.txt"    >> !REPORT_LOGFILE! 2>&1
 ) else (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    SKIPPED firewall section. The script didn't execute the firewall commands. [1;37m
-	) else (
-		echo     SKIPPED firewall section. The script didn't execute the firewall commands.
-	)
+	echo !SHOW_YELLOW!    SKIPPED firewall section. The script didn't execute the firewall commands. !SHOW_NORMAL!
 	echo SKIPPED firewall section. The script didn't execute the firewall commands.                                          >> !REPORT_LOGFILE! 2>&1
 )
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
@@ -3388,7 +3247,7 @@ if /I "!LMS_IS_VM!"=="true" (
 		echo     AWS_ACCID=!AWS_ACCID! / AWS_IMGID=!AWS_IMGID! / AWS_INSTID=!AWS_INSTID! / AWS_PENTIME=!AWS_PENTIME!  at !DATE! / !TIME!  >> !REPORT_LOG_PATH!\AWS.txt 2>&1
 		echo     AWS_ACCID=!AWS_ACCID! / AWS_IMGID=!AWS_IMGID! / AWS_INSTID=!AWS_INSTID! / AWS_PENTIME=!AWS_PENTIME!  at !DATE! / !TIME!  >  !REPORT_LOG_PATH!\AWS_Latest.txt 2>&1
 	) else (
-		echo AWS instance identity document not found!                                                                       >> !REPORT_LOGFILE! 2>&1
+		echo AWS instance identity document not found.                                                                       >> !REPORT_LOGFILE! 2>&1
 	)
 
 	echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
@@ -3412,7 +3271,7 @@ if /I "!LMS_IS_VM!"=="true" (
 			echo AZURE instance identity document not valid. Check 'AZURE_instance-identity-document.txt'                    >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
-		echo AZURE instance identity document not found!                                                                     >> !REPORT_LOGFILE! 2>&1
+		echo AZURE instance identity document not found.                                                                     >> !REPORT_LOGFILE! 2>&1
 	)
 
 	echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
@@ -3437,7 +3296,7 @@ if /I "!LMS_IS_VM!"=="true" (
 			echo GCP instance metadata document not valid. Check 'GCP-metadata-documen.txt'                                  >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
-		echo GCP instance metadata document not found!                                                                       >> !REPORT_LOGFILE! 2>&1
+		echo GCP instance metadata document not found.                                                                       >> !REPORT_LOGFILE! 2>&1
 	)
 )
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
@@ -3465,11 +3324,7 @@ if not defined LMS_SKIPSCHEDTASK (
 	schtasks /query /FO LIST /V /tn "\Siemens\Lms\WeeklyTask"                                                                >> !REPORT_LOGFILE! 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
 ) else (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    SKIPPED scheduled task section. The script didn't execute the scheduled task commands. [1;37m
-	) else (
-		echo     SKIPPED scheduled task section. The script didn't execute the scheduled task commands.
-	)
+	echo !SHOW_YELLOW!    SKIPPED scheduled task section. The script didn't execute the scheduled task commands. !SHOW_NORMAL!
 	echo SKIPPED scheduled task section. The script didn't execute the scheduled task commands.                              >> !REPORT_LOGFILE! 2>&1
 )
 :windows_error_reporting
@@ -3539,11 +3394,7 @@ if not defined LMS_SKIPWER (
 	)
 	echo Start at !DATE! !TIME! ....                                    >> !REPORT_LOGFILE! 2>&1
 ) else (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    SKIPPED windows error reporting [WER] section. The script didn't execute the windows error reporting [WER] commands. [1;37m
-	) else (
-		echo     SKIPPED windows error reporting [WER] section. The script didn't execute the windows error reporting [WER] commands.
-	)
+	echo !SHOW_YELLOW!    SKIPPED windows error reporting [WER] section. The script didn't execute the windows error reporting [WER] commands. !SHOW_NORMAL!
 	echo SKIPPED windows error reporting [WER] section. The script didn't execute the windows error reporting [WER] commands.             >> !REPORT_LOGFILE! 2>&1
 )
 :lms_section
@@ -3653,11 +3504,7 @@ if not defined LMS_SKIPLMS (
 		if defined LMS_CFG_CULTUREID (
 			if /I !LMS_CFG_CULTUREID! EQU 0 (
 				rem Show error message, that invalid culture id has been found
-				if defined SHOW_COLORED_OUTPUT (
-					echo [1;31m    ERROR: Configured culture id [read with LMU PowerShell command] is NOT valid.  [1;37m
-				) else (
-					echo     ERROR: Configured culture id [read with LMU PowerShell command] is NOT valid. 
-				)
+				echo !SHOW_RED!    ERROR: Configured culture id [read with LMU PowerShell command] is NOT valid.  !SHOW_NORMAL!
 				echo ERROR: Configured culture id [read with LMU PowerShell command] is NOT valid.                                                                         >> !REPORT_LOGFILE! 2>&1
 				rem FIX wrong configured culture id
 				if "!LMS_PS_CULTUREID!" == "en-US" (
@@ -3682,11 +3529,7 @@ if not defined LMS_SKIPLMS (
 				for /f %%i in ('powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -CultureId}"') do set LMS_PS_CULTUREID=%%i    >> !REPORT_LOGFILE! 2>&1
 				if "!LMS_PS_CULTUREID!" NEQ "" set LMS_PS_CULTUREID=!LMS_PS_CULTUREID: =!
 				echo LMS_PS_CULTUREID=[!LMS_PS_CULTUREID!]  /  LMS_CFG_CULTUREID=[!LMS_CFG_CULTUREID!]                                                                     >> !REPORT_LOGFILE! 2>&1
-				if defined SHOW_COLORED_OUTPUT (
-					echo [1;32m    FIXED: Configured culture id has been set to !LMS_CFG_CULTUREID! [!LMS_PS_CULTUREID!]  [1;37m
-				) else (
-					echo     FIXED: Configured culture id has been set to !LMS_CFG_CULTUREID! [!LMS_PS_CULTUREID!]
-				)
+				echo !SHOW_GREEN!    FIXED: Configured culture id has been set to !LMS_CFG_CULTUREID! [!LMS_PS_CULTUREID!]  !SHOW_NORMAL!
 				echo FIXED: Configured culture id has been set to !LMS_CFG_CULTUREID!  [!LMS_PS_CULTUREID!]                                                                >> !REPORT_LOGFILE! 2>&1
 			)
 		)
@@ -3721,11 +3564,7 @@ if not defined LMS_SKIPLMS (
 		echo LMS_PS_TOKEN=[!LMS_PS_TOKEN!]                                                                                                                                 >> !REPORT_LOGFILE! 2>&1
 		if "!LMS_PS_TOKEN!" EQU "" (
 			rem Show error message, that empty/invalid access token has been found
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    ERROR: Configured access token [read with LMU PowerShell command] is NOT valid.  [1;37m
-			) else (
-				echo     ERROR: Configured access token [read with LMU PowerShell command] is NOT valid. 
-			)
+			echo !SHOW_RED!    ERROR: Configured access token [read with LMU PowerShell command] is NOT valid.  !SHOW_NORMAL!
 			echo ERROR: Configured access token [read with LMU PowerShell command] is NOT valid.                                                                           >> !REPORT_LOGFILE! 2>&1
 			rem FIX wrong configured access token
 			powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {set-lms -Token act_imhg05mh_dmg4ufrigv03}"                                >> !REPORT_LOGFILE! 2>&1
@@ -3736,11 +3575,7 @@ if not defined LMS_SKIPLMS (
 			rem remove spaces within LMS_PS_TOKEN
 			if "!LMS_PS_TOKEN!" NEQ "" set LMS_PS_TOKEN=!LMS_PS_TOKEN: =!
 			echo LMS_PS_TOKEN=[!LMS_PS_TOKEN!]                                                                                                                             >> !REPORT_LOGFILE! 2>&1
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;32m    FIXED: Configured access token has been set to [!LMS_PS_TOKEN!]  [1;37m
-			) else (
-				echo     FIXED: Configured access token has been set to [!LMS_PS_TOKEN!]
-			)
+			echo !SHOW_GREEN!    FIXED: Configured access token has been set to [!LMS_PS_TOKEN!]  !SHOW_NORMAL!
 			echo FIXED: Configured access token has been set to [!LMS_PS_TOKEN!]                                                                                           >> !REPORT_LOGFILE! 2>&1
 		)
 		if "!LMS_PS_TOKEN!" EQU "act_imhg05mh_dmg4ufrigv03" (
@@ -3809,11 +3644,7 @@ if not defined LMS_SKIPLMS (
 			echo ERROR: Cannot execute powershell script 'CheckForUpdate.ps1', it doesn't exist '!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1'.                   >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ERROR: Cannot execute powershell commands due missing "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1".  [1;37m
-		) else (
-			echo     ERROR: Cannot execute powershell commands due missing "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1". 
-		)
+		echo !SHOW_RED!    ERROR: Cannot execute powershell commands due missing "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1".  !SHOW_NORMAL!
 		echo ERROR: Cannot execute powershell commands due missing "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1".                >> !REPORT_LOGFILE! 2>&1
 	)	
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
@@ -3915,11 +3746,7 @@ if not defined LMS_SKIPLMS (
 			) 
 		)
 		if not defined DONGLE_DRIVER_MOST_RECENT_VERSION_INSTALLED (
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;33m    WARNING: There is not the most recent dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! installed on the system. Installed driver is !DONGLE_DRIVER_PKG_VERSION!. [1;37m
-			) else (
-				echo     WARNING: There is not the most recent dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! installed on the system. Installed driver is !DONGLE_DRIVER_PKG_VERSION!.
-			)
+			echo !SHOW_YELLOW!    WARNING: There is not the most recent dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! installed on the system. Installed driver is !DONGLE_DRIVER_PKG_VERSION!. !SHOW_NORMAL!
 			echo     WARNING: There is not the most recent dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! installed on the system. Installed driver is !DONGLE_DRIVER_PKG_VERSION!.     >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
@@ -3980,11 +3807,7 @@ if not defined LMS_SKIPLMS (
 	) else (
 		set LMS_V2C_FILE_NOT_INSTALLED=1
 		if defined LMS_V2C_FILE_NOT_INSTALLED (
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    ERROR: There is NO vendor file '!LMS_V2C_FILE!' installed on the system. Pls install correct dongle driver. [1;37m
-			) else (
-				echo     ERROR: There is NO vendor file '!LMS_V2C_FILE!' installed on the system. Pls install correct dongle driver.
-			)
+			echo !SHOW_RED!    ERROR: There is NO vendor file '!LMS_V2C_FILE!' installed on the system. Pls install correct dongle driver. !SHOW_NORMAL!
 			echo     ERROR: There is NO vendor file '!LMS_V2C_FILE! installed on the system. Pls install correct dongle driver.  >> !REPORT_LOGFILE! 2>&1
 		)
 	)
@@ -4044,11 +3867,7 @@ if not defined LMS_SKIPLMS (
 	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
 ) else (
 	rem LMS_SKIPLMS
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    SKIPPED LMS section. The script didn't execute the LMS commands. [1;37m
-	) else (
-		echo     SKIPPED LMS section. The script didn't execute the LMS commands.
-	)
+	echo !SHOW_YELLOW!    SKIPPED LMS section. The script didn't execute the LMS commands. !SHOW_NORMAL!
 	echo SKIPPED LMS section. The script didn't execute the LMS commands.                                                    >> !REPORT_LOGFILE! 2>&1
 )
 :alm_section
@@ -4087,16 +3906,12 @@ if not defined LMS_SKIPBTALMPLUGIN (
 	if defined ALM_IS_SUPPORTED (
 		echo     Installed ALM [!ALM_RELEASE!] is supported: !ALM_IS_SUPPORTED!                          >> !REPORT_LOGFILE! 2>&1
 		if "!ALM_IS_SUPPORTED!" NEQ "Yes" (
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please update to newer version. [1;37m
-			) else (
-				echo     ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please update to newer version.
-			)
+			echo !SHOW_RED!    ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please update to newer version. !SHOW_NORMAL!
 			echo ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please update to newer version.  >> !REPORT_LOGFILE! 2>&1
 		)
 	)
 	if defined LMS_SKIP_ALM_BT_PUGIN_INSTALLATION (
-		echo     BT ALM Plugin is NOT handled/installed by LMS client!                                   >> !REPORT_LOGFILE! 2>&1
+		echo     BT ALM Plugin is NOT handled/installed by LMS client.                                   >> !REPORT_LOGFILE! 2>&1
 	)
 	if defined ALM_REG_PendingFileRenameOperations (
 		echo     'PendingFileRenameOperations' registry key: !ALM_REG_PendingFileRenameOperations!       >> !REPORT_LOGFILE! 2>&1
@@ -4174,11 +3989,7 @@ if not defined LMS_SKIPBTALMPLUGIN (
 		type "!LMS_ALMBTPLUGIN_FOLDER_X86!\\AlmBtPg.xml"                                                                     >> !REPORT_LOGFILE! 2>&1
 	)
 ) else (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    SKIPPED BT ALM plugin section. The script didn't execute the BT ALM plugin commands. [1;37m
-	) else (
-		echo     SKIPPED BT ALM plugin section. The script didn't execute the BT ALM plugin commands.
-	)
+	echo !SHOW_YELLOW!    SKIPPED BT ALM plugin section. The script didn't execute the BT ALM plugin commands. !SHOW_NORMAL!
 	echo SKIPPED BT ALM plugin section. The script didn't execute the BT ALM plugin commands.                                >> !REPORT_LOGFILE! 2>&1
 )
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
@@ -4212,11 +4023,7 @@ if not defined LMS_SKIPSIGCHECK (
 	)
 	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
 ) else (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    SKIPPED signature check section. The script didn't execute the signature check commands. [1;37m
-	) else (
-		echo     SKIPPED signature check section. The script didn't execute the signature check commands.
-	)
+	echo !SHOW_YELLOW!    SKIPPED signature check section. The script didn't execute the signature check commands. !SHOW_NORMAL!
 	echo SKIPPED signature check section. The script didn't execute the signature check commands.                            >> !REPORT_LOGFILE! 2>&1
 )
 :flexera_fnp_information
@@ -4392,11 +4199,7 @@ if not defined LMS_SKIPFNP (
 			findstr /m /c:"FAIL" "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_healthCheck.txt"                                 >> !REPORT_LOGFILE! 2>&1
 			if !ERRORLEVEL!==0 (
 				set HealthCheckOk=No
-				if defined SHOW_COLORED_OUTPUT (
-					echo [1;31m    ATTENTION: HealthCheck FAILED. [1;37m
-				) else (
-					echo     ATTENTION: HealthCheck FAILED.
-				)
+				echo !SHOW_RED!    ATTENTION: HealthCheck FAILED. !SHOW_NORMAL!
 				echo ATTENTION: HealthCheck FAILED.                                                                              >> !REPORT_LOGFILE! 2>&1
 			) else (
 				set HealthCheckOk=Yes
@@ -4463,11 +4266,7 @@ if defined LMS_SERVERCOMTRANUTIL (
 		echo     UMN1=!UMN1_A! / UMN2=!UMN2_A! / UMN3=!UMN3_A! / UMN4=!UMN4_A! / UMN5=!UMN5_A! at !DATE! / !TIME! / using servercomptranutil.exe >> !REPORT_LOG_PATH!\UMN.txt 2>&1
 		echo     UMN1=!UMN1_A! / UMN2=!UMN2_A! / UMN3=!UMN3_A! / UMN4=!UMN4_A! / UMN5=!UMN5_A! at !DATE! / !TIME! / using servercomptranutil.exe >  !REPORT_LOG_PATH!\UMN_Latest.txt 2>&1
 		if !UMN_COUNT_A! leq 1 (
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    ATTENTION: Only ONE UMN is used to bind TS. [1;37m
-			) else (
-				echo     ATTENTION: Only ONE UMN is used to bind TS.
-			)
+			echo !SHOW_RED!    ATTENTION: Only ONE UMN is used to bind TS. !SHOW_NORMAL!
 		)
 	)
 ) else (
@@ -4499,11 +4298,7 @@ if defined LMS_APPACTUTIL (
 	echo     UMN1=!UMN1_B! / UMN2=!UMN2_B! / UMN3=!UMN3_B! / UMN4=!UMN4_B! / UMN5=!UMN5_B!                                           >> !REPORT_LOGFILE! 2>&1
 	echo     UMN1=!UMN1_B! / UMN2=!UMN2_B! / UMN3=!UMN3_B! / UMN4=!UMN4_B! / UMN5=!UMN5_B! at !DATE! / !TIME! / using appactutil.exe >> !REPORT_LOG_PATH!\UMN.txt 2>&1
 	if !UMN_COUNT_B! leq 1 (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: Only ONE UMN is used to bind TS. [1;37m
-		) else (
-			echo     ATTENTION: Only ONE UMN is used to bind TS.
-		)
+		echo !SHOW_RED!    ATTENTION: Only ONE UMN is used to bind TS. !SHOW_NORMAL!
 	)
 	
 ) else (
@@ -4672,12 +4467,8 @@ if not defined LMS_SKIPFNP (
 			type !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_8098d100_event_extract.log                                                    >> !REPORT_LOGFILE! 2>&1
 			findstr /m /c:"orphans" "!CHECKLMS_REPORT_LOG_PATH!\SIEMBT_8098d100_event_extract.log"                               >> !REPORT_LOGFILE! 2>&1
 			if !ERRORLEVEL!==0 (
-				if defined SHOW_COLORED_OUTPUT (
-					echo [1;33m    WARNING: One or more orphan anchors have been found! [tsreset_svr.exe] [1;37m
-				) else (
-					echo     WARNING: One or more orphan anchors have been found! [tsreset_svr.exe]
-				)
-				echo     WARNING: One or more orphan anchors have been found! [tsreset_svr.exe]                                  >> !REPORT_LOGFILE! 2>&1
+				echo !SHOW_YELLOW!    WARNING: One or more orphan anchors have been found. [tsreset_svr.exe] !SHOW_NORMAL!
+				echo     WARNING: One or more orphan anchors have been found. [tsreset_svr.exe]                                  >> !REPORT_LOGFILE! 2>&1
 				echo     Remove orphan anchors with tsreset_svr.exe -anchors orphan                                              >> !REPORT_LOGFILE! 2>&1
 				"!LMS_TSRESETSVR!" -anchors orphan                                                                               >> !REPORT_LOGFILE! 2>&1
 
@@ -4699,12 +4490,8 @@ if not defined LMS_SKIPFNP (
 				type !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_8098d100_event_extract_retry.log                                          >> !REPORT_LOGFILE! 2>&1
 				findstr /m /c:"orphans" "!CHECKLMS_REPORT_LOG_PATH!\SIEMBT_8098d100_event_extract_retry.log"                     >> !REPORT_LOGFILE! 2>&1
 				if !ERRORLEVEL!==0 (
-					if defined SHOW_COLORED_OUTPUT (
-						echo [1;33m    WARNING: Still one or more orphan anchors have been found! [tsreset_svr.exe] [1;37m
-					) else (
-						echo     WARNING: Still one or more orphan anchors have been found! [tsreset_svr.exe]
-					)
-					echo     WARNING: Still one or more orphan anchors have been found! [tsreset_svr.exe]                        >> !REPORT_LOGFILE! 2>&1
+					echo !SHOW_YELLOW!    WARNING: Still one or more orphan anchors have been found. [tsreset_svr.exe] !SHOW_NORMAL!
+					echo     WARNING: Still one or more orphan anchors have been found. [tsreset_svr.exe]                        >> !REPORT_LOGFILE! 2>&1
 				)
 			)
 		)
@@ -4735,12 +4522,8 @@ if not defined LMS_SKIPFNP (
 			type !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_0098d100_event_extract.log                                                    >> !REPORT_LOGFILE! 2>&1
 			findstr /m /c:"orphans" "!CHECKLMS_REPORT_LOG_PATH!\SIEMBT_0098d100_event_extract.log"                               >> !REPORT_LOGFILE! 2>&1
 			if !ERRORLEVEL!==0 (
-				if defined SHOW_COLORED_OUTPUT (
-					echo [1;33m    WARNING: One or more orphan anchors have been found! [tsreset_app.exe] [1;37m
-				) else (
-					echo     WARNING: One or more orphan anchors have been found! [tsreset_app.exe]
-				)
-				echo     WARNING: One or more orphan anchors have been found! [tsreset_app.exe]                                  >> !REPORT_LOGFILE! 2>&1
+				echo !SHOW_YELLOW!    WARNING: One or more orphan anchors have been found. [tsreset_app.exe] !SHOW_NORMAL!
+				echo     WARNING: One or more orphan anchors have been found. [tsreset_app.exe]                                  >> !REPORT_LOGFILE! 2>&1
 				echo     Remove orphan anchors with tsreset_app.exe -anchors orphan                                              >> !REPORT_LOGFILE! 2>&1
 				"!LMS_TSRESETAPP!" -anchors orphan                                                                               >> !REPORT_LOGFILE! 2>&1
 
@@ -4762,12 +4545,8 @@ if not defined LMS_SKIPFNP (
 				type !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_0098d100_event_extract_retry.log                                          >> !REPORT_LOGFILE! 2>&1
 				findstr /m /c:"orphans" "!CHECKLMS_REPORT_LOG_PATH!\SIEMBT_0098d100_event_extract_retry.log"                     >> !REPORT_LOGFILE! 2>&1
 				if !ERRORLEVEL!==0 (
-					if defined SHOW_COLORED_OUTPUT (
-						echo [1;33m    WARNING: Still one or more orphan anchors have been found! [tsreset_app.exe] [1;37m
-					) else (
-						echo     WARNING: Still one or more orphan anchors have been found! [tsreset_app.exe]
-					)
-					echo     WARNING: Still one or more orphan anchors have been found! [tsreset_app.exe]                        >> !REPORT_LOGFILE! 2>&1
+					echo !SHOW_YELLOW!    WARNING: Still one or more orphan anchors have been found. [tsreset_app.exe] !SHOW_NORMAL!
+					echo     WARNING: Still one or more orphan anchors have been found. [tsreset_app.exe]                        >> !REPORT_LOGFILE! 2>&1
 				)
 			)
 		)
@@ -5403,44 +5182,24 @@ if not defined LMS_SKIPFNP (
 
 	echo     Check for break information within logfiles ...
 	if defined TS_LOG_TRANS_BRK_FOUND (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: "Transient break" [Event: 40000012] found - !TS_LOG_TRANS_BRK_FOUND! [1;37m
-		) else (
-			echo     ATTENTION: "Transient break" [Event: 40000012] found - !TS_LOG_TRANS_BRK_FOUND!
-		)
-		echo ATTENTION: "Transient break" [Event: 40000012] found - !TS_LOG_TRANS_BRK_FOUND!                                               >> !REPORT_LOGFILE! 2>&1
+		echo !SHOW_RED!    ATTENTION: "Transient break" [Event: 40000012] found - !TS_LOG_TRANS_BRK_FOUND!. !SHOW_NORMAL!
+		echo ATTENTION: "Transient break" [Event: 40000012] found - !TS_LOG_TRANS_BRK_FOUND!.                                               >> !REPORT_LOGFILE! 2>&1
 	)
 	if defined TS_LOG_TRANS_BRK_VAL1_FOUND (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: "Transient break in Anchoring" [Event: 40000012] found - !TS_LOG_TRANS_BRK_VAL1_FOUND! [1;37m
-		) else (
-			echo     ATTENTION: "Transient break in Anchoring" [Event: 40000012] found - !TS_LOG_TRANS_BRK_VAL1_FOUND!
-		)
-		echo ATTENTION: "Transient break in Anchoring" [Event: 40000012] found - !TS_LOG_TRANS_BRK_VAL1_FOUND!                             >> !REPORT_LOGFILE! 2>&1
+		echo !SHOW_RED!    ATTENTION: "Transient break in Anchoring" [Event: 40000012] found - !TS_LOG_TRANS_BRK_VAL1_FOUND!. !SHOW_NORMAL!
+		echo ATTENTION: "Transient break in Anchoring" [Event: 40000012] found - !TS_LOG_TRANS_BRK_VAL1_FOUND!.                             >> !REPORT_LOGFILE! 2>&1
 	)
 	if defined TS_LOG_TRANS_BRK_VAL2_FOUND (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: "Transient break in Binding" [Event: 40000012] found - !TS_LOG_TRANS_BRK_VAL2_FOUND! [1;37m
-		) else (
-			echo     ATTENTION: "Transient break in Binding" [Event: 40000012] found - !TS_LOG_TRANS_BRK_VAL2_FOUND!
-		)
-		echo ATTENTION: "Transient break in Binding" [Event: 40000012] found - !TS_LOG_TRANS_BRK_VAL2_FOUND!                               >> !REPORT_LOGFILE! 2>&1
+		echo !SHOW_RED!    ATTENTION: "Transient break in Binding" [Event: 40000012] found - !TS_LOG_TRANS_BRK_VAL2_FOUND!. !SHOW_NORMAL!
+		echo ATTENTION: "Transient break in Binding" [Event: 40000012] found - !TS_LOG_TRANS_BRK_VAL2_FOUND!.                               >> !REPORT_LOGFILE! 2>&1
 	)
 	if defined TS_LOG_BAD_ANCH_FOUND (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: !TS_LOG_BAD_ANCH_FOUND_MESSAGE! [1;37m
-		) else (
-			echo     ATTENTION: !TS_LOG_BAD_ANCH_FOUND_MESSAGE!
-		)
+		echo !SHOW_RED!    ATTENTION: !TS_LOG_BAD_ANCH_FOUND_MESSAGE! !SHOW_NORMAL!
 		echo ATTENTION: !TS_LOG_BAD_ANCH_FOUND_MESSAGE!                                                                                    >> !REPORT_LOGFILE! 2>&1
 	)
 	if defined TS_LOG_ANCH_NOT_FOUND (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: "Anchor not available" [Event: 1000000d] found - !TS_LOG_ANCH_NOT_FOUND! [1;37m
-		) else (
-			echo     ATTENTION: "Anchor not available" [Event: 1000000d] found - !TS_LOG_ANCH_NOT_FOUND!
-		)
-		echo ATTENTION: "Anchor not available" [Event: 1000000d] found - !TS_LOG_ANCH_NOT_FOUND!                                           >> !REPORT_LOGFILE! 2>&1
+		echo !SHOW_RED!    ATTENTION: "Anchor not available" [Event: 1000000d] found - !TS_LOG_ANCH_NOT_FOUND!. !SHOW_NORMAL!
+		echo ATTENTION: "Anchor not available" [Event: 1000000d] found - !TS_LOG_ANCH_NOT_FOUND!.                                           >> !REPORT_LOGFILE! 2>&1
 	)
 
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1 
@@ -5462,11 +5221,7 @@ if not defined LMS_SKIPFNP (
 		echo     No files found, the directory '!ALLUSERSPROFILE!\FLEXnet\' doesn't exist.                                       >> !REPORT_LOGFILE! 2>&1
 	)
 ) else (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    SKIPPED FNP section. The script didn't execute the FNP commands. [1;37m
-	) else (
-		echo     SKIPPED FNP section. The script didn't execute the FNP commands.
-	)
+	echo !SHOW_YELLOW!    SKIPPED FNP section. The script didn't execute the FNP commands. !SHOW_NORMAL!
 	echo SKIPPED FNP section. The script didn't execute the FNP commands.                                                        >> !REPORT_LOGFILE! 2>&1
 )
 rem Run *always* even if LMS_SKIPFNP is set
@@ -5724,11 +5479,7 @@ if not defined LMS_SKIPLICSERV (
 		for /f "tokens=6 eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_viewlong.txt ^|find /I "**BROKEN**"') do if "%%i" == "Host" SET /A TS_TF_HOST += 1
 		for /f "tokens=6 eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_viewlong.txt ^|find /I "**BROKEN**"') do if "%%i" == "Restore" SET /A TS_TF_RESTORE += 1
 		rem echo TS Broken ... TS_TF_TIME=!TS_TF_TIME! / TS_TF_HOST=!TS_TF_HOST! / TS_TF_RESTORE=!TS_TF_RESTORE!
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: Trusted Store is BROKEN. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE! [1;37m
-		) else (
-			echo     ATTENTION: Trusted Store is BROKEN. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE!
-		)
+		echo !SHOW_RED!    ATTENTION: Trusted Store is BROKEN. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE! !SHOW_NORMAL!
 		echo ATTENTION: Trusted Store is BROKEN. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE!  >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo Trusted Store is NOT broken.                                                                                        >> !REPORT_LOGFILE! 2>&1
@@ -5739,11 +5490,7 @@ if not defined LMS_SKIPLICSERV (
 	if defined TS_DISABLED (
 		set /a TS_DISABLED_COUNT = 0
 		for /f "tokens=3 eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_viewlong.txt ^|find /I "Status"') do if "%%i" == "Disabled" SET /A TS_DISABLED_COUNT += 1
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    Disabled licenses found. Disabled=!TS_DISABLED_COUNT! of !TS_TOTAL_COUNT! [1;37m
-		) else (
-			echo     ATTENTION: Disabled licenses found. Disabled=!TS_DISABLED_COUNT! of !TS_TOTAL_COUNT!
-		)
+		echo !SHOW_RED!    Disabled licenses found. Disabled=!TS_DISABLED_COUNT! of !TS_TOTAL_COUNT! !SHOW_NORMAL!
 		echo ATTENTION: Disabled licenses found. Disabled=!TS_DISABLED_COUNT! of !TS_TOTAL_COUNT!                                >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo No disabled licenses found.                                                                                         >> !REPORT_LOGFILE! 2>&1
@@ -5775,11 +5522,7 @@ if not defined LMS_SKIPLICSERV (
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 ) else (
 	rem LMS_SKIPLICSERV
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    SKIPPED license server section. The script didn't execute the license server commands. [1;37m
-	) else (
-		echo     SKIPPED license server section. The script didn't execute the license server commands.
-	)
+	echo !SHOW_YELLOW!    SKIPPED license server section. The script didn't execute the license server commands. !SHOW_NORMAL!
 	echo SKIPPED license server section. The script didn't execute the license server commands.                                  >> !REPORT_LOGFILE! 2>&1
 )
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
@@ -5788,11 +5531,7 @@ echo ===========================================================================
 echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 echo ... analyze local license server on !LMS_LIC_SERVER! ...
 if not defined LMS_SKIPLOCLICSERV (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    NOTE: In case default configuration has been changed, adapt setting !LMS_LIC_SERVER! for license server to be used. [1;37m
-	) else (
-		echo     NOTE: In case default configuration has been changed, adapt setting !LMS_LIC_SERVER! for license server to be used.
-	)
+	echo !SHOW_YELLOW!    NOTE: In case default configuration has been changed, adapt setting !LMS_LIC_SERVER! for license server to be used. !SHOW_NORMAL!
 	echo servercomptranutil.exe -serverView !LMS_LIC_SERVER!                                                                     >> !REPORT_LOGFILE! 2>&1
 	echo NOTE: In case default configuration has been changed, adapt setting !LMS_LIC_SERVER! for license server to be used.     >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
@@ -5847,11 +5586,7 @@ if not defined LMS_SKIPLOCLICSERV (
 		for /f "tokens=1,6 eol=@ delims== " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_serverView.txt') do if "%%A" EQU "U" (
 			if "%%B" NEQ "" (
 				set NeedRepair=Yes
-				if defined SHOW_COLORED_OUTPUT (
-					echo [1;31m    Try to repair %%B [1;37m
-				) else (
-					echo     Try to repair %%B
-				)
+				echo !SHOW_RED!    Try to repair %%B !SHOW_NORMAL!
 				echo Try to repair %%B                                                                                          >> !REPORT_LOGFILE! 2>&1
 				
 				rem servercomptranutil.exe
@@ -5925,11 +5660,7 @@ if not defined LMS_SKIPLOCLICSERV (
 			for /f "tokens=6 eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_serverViewFull_AfterRepair.txt ^|find /I "**BROKEN**"') do if "%%i" == "Host" SET /A TS_TF_HOST += 1
 			for /f "tokens=6 eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_serverViewFull_AfterRepair.txt ^|find /I "**BROKEN**"') do if "%%i" == "Restore" SET /A TS_TF_RESTORE += 1
 			rem echo TS Broken ... TS_TF_TIME=!TS_TF_TIME! / TS_TF_HOST=!TS_TF_HOST! / TS_TF_RESTORE=!TS_TF_RESTORE!
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    ATTENTION: Trusted Store is BROKEN [AFTER REPAIR]. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE! [1;37m
-			) else (
-				echo     ATTENTION: Trusted Store is BROKEN [AFTER REPAIR]. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE!
-			)
+			echo !SHOW_RED!    ATTENTION: Trusted Store is BROKEN [AFTER REPAIR]. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE! !SHOW_NORMAL!
 			echo ATTENTION: Trusted Store is BROKEN [AFTER REPAIR]. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE!     >> !REPORT_LOGFILE! 2>&1
 		) else (
 			echo Trusted Store is NOT broken [AFTER REPAIR].                                                                                           >> !REPORT_LOGFILE! 2>&1
@@ -5957,11 +5688,7 @@ if not defined LMS_SKIPLOCLICSERV (
 				rem ***************
 				rem TS needs repair
 				rem ***************
-				if defined SHOW_COLORED_OUTPUT (
-					echo [1;31m    ATTENTION: Repair was required. [1;37m
-				) else (
-					echo     ATTENTION: Repair was required.
-				)
+				echo !SHOW_RED!    ATTENTION: Repair was required. !SHOW_NORMAL!
 				echo ATTENTION: Repair was required.                                                                             >> !REPORT_LOGFILE! 2>&1
 				set NeedRepairAll=Yes
 				
@@ -6029,11 +5756,7 @@ if not defined LMS_SKIPLOCLICSERV (
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 ) else (
 	rem LMS_SKIPLOCLICSERV
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    SKIPPED local license server section. The script didn't execute the local license server commands. [1;37m
-	) else (
-		echo     SKIPPED local license server section. The script didn't execute the local license server commands.
-	)
+	echo !SHOW_YELLOW!    SKIPPED local license server section. The script didn't execute the local license server commands. !SHOW_NORMAL!
 	echo SKIPPED local license server section. The script didn't execute the local license server commands.                      >> !REPORT_LOGFILE! 2>&1
 )
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
@@ -6073,11 +5796,7 @@ if not defined LMS_SKIPREMLICSERV (
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 ) else (
 	rem LMS_SKIPREMLICSERV
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    SKIPPED remote license server section. The script didn't execute the remote license server commands. [1;37m
-	) else (
-		echo     SKIPPED remote license server section. The script didn't execute the remote license server commands.
-	)
+	echo !SHOW_YELLOW!    SKIPPED remote license server section. The script didn't execute the remote license server commands. !SHOW_NORMAL!
 	echo SKIPPED remote license server section. The script didn't execute the remote license server commands.                    >> !REPORT_LOGFILE! 2>&1
 )
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
@@ -6226,11 +5945,7 @@ if not defined LMS_CHECK_ID (
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 ) else (
 	rem LMS_CHECK_ID
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    SKIPPED LMS config section. The script didn't execute the LMS config commands. [1;37m
-	) else (
-		echo     SKIPPED LMS config section. The script didn't execute the LMS config commands.
-	)
+	echo !SHOW_YELLOW!    SKIPPED LMS config section. The script didn't execute the LMS config commands. !SHOW_NORMAL!
 	echo SKIPPED LMS config section. The script didn't execute the LMS config commands.                                      >> !REPORT_LOGFILE! 2>&1
 )
 :ssu_update_information
@@ -6434,12 +6149,8 @@ if not defined LMS_SKIPSSU (
 			echo --- File automatically copied from !ProgramFiles!\Siemens\SSU\bin\debug.log to !CHECKLMS_SSU_PATH!\ssu_debug.log ---               >> !CHECKLMS_SSU_PATH!\ssu_debug.log 2>&1
 			powershell -Command "get-childitem '!ProgramFiles!\Siemens\SSU\bin\debug.log' | select Name,CreationTime,LastAccessTime,LastWriteTime"  >> !REPORT_LOGFILE! 2>&1
 
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    ATTENTION: SSU - CRASH FILE debug.log found! [1;37m
-			) else (
-				echo     ATTENTION: SSU - CRASH FILE debug.log found!
-			)
-			echo ATTENTION: SSU - CRASH FILE debug.log found!                                                                    >> !REPORT_LOGFILE! 2>&1
+			echo !SHOW_RED!    ATTENTION: SSU - CRASH FILE debug.log found. !SHOW_NORMAL!
+			echo ATTENTION: SSU - CRASH FILE debug.log found.                                                                    >> !REPORT_LOGFILE! 2>&1
 		)
 		IF EXIST "!ProgramFiles!\Siemens\SSU\bin\SSUManager.exe" (
 			echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
@@ -6461,13 +6172,9 @@ if not defined LMS_SKIPSSU (
 			set /A LMS_SSU_CONSISTENCY_CHECK += 1
 		)
 		if /I !LMS_SSU_CONSISTENCY_CHECK! NEQ 0 (
-			echo SSU - Installation is NOT consistent, !LMS_SSU_CONSISTENCY_CHECK! file[s] missing!                              >> !REPORT_LOGFILE! 2>&1
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    ATTENTION: SSU - Installation is NOT consistent, !LMS_SSU_CONSISTENCY_CHECK! file[s] missing! [1;37m
-			) else (
-				echo     ATTENTION: SSU - Installation is NOT consistent, !LMS_SSU_CONSISTENCY_CHECK! file[s] missing!
-			)
-			echo ATTENTION: SSU - Installation is NOT consistent, !LMS_SSU_CONSISTENCY_CHECK! file[s] missing!                   >> !REPORT_LOGFILE! 2>&1
+			echo SSU - Installation is NOT consistent, !LMS_SSU_CONSISTENCY_CHECK! file[s] missing.                              >> !REPORT_LOGFILE! 2>&1
+			echo !SHOW_RED!    ATTENTION: SSU - Installation is NOT consistent, !LMS_SSU_CONSISTENCY_CHECK! file[s] missing. !SHOW_NORMAL!
+			echo ATTENTION: SSU - Installation is NOT consistent, !LMS_SSU_CONSISTENCY_CHECK! file[s] missing.                   >> !REPORT_LOGFILE! 2>&1
 		) else (
 			echo SSU - Installation is consistent, NO file missing in !ProgramFiles!\Siemens\SSU\bin\                            >> !REPORT_LOGFILE! 2>&1
 		)
@@ -6517,11 +6224,7 @@ if not defined LMS_SKIPSSU (
 	)
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 ) else (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    SKIPPED SSU section. The script didn't execute the SSU commands. [1;37m
-	) else (
-		echo     SKIPPED SSU section. The script didn't execute the SSU commands.
-	)
+	echo !SHOW_YELLOW!    SKIPPED SSU section. The script didn't execute the SSU commands. !SHOW_NORMAL!
 	echo SKIPPED SSU section. The script didn't execute the SSU commands.                                                        >> !REPORT_LOGFILE! 2>&1
 )
 :lms_log_files
@@ -6534,11 +6237,7 @@ if not defined LMS_CHECK_ID (
 	dir /S /A /X /4 /W "!REPORT_LOG_PATH!"                                                                                   >> !REPORT_LOGFILE! 2>&1
 ) else (
 	rem LMS_CHECK_ID
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    SKIPPED LMS logfile section. The script didn't execute the LMS logfile commands. [1;37m
-	) else (
-		echo     SKIPPED LMS logfile section. The script didn't execute the LMS logfile commands.
-	)
+	echo !SHOW_YELLOW!    SKIPPED LMS logfile section. The script didn't execute the LMS logfile commands. !SHOW_NORMAL!
 	echo SKIPPED LMS logfile section. The script didn't execute the LMS logfile commands.                                    >> !REPORT_LOGFILE! 2>&1
 )
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
@@ -6685,11 +6384,7 @@ if not defined LMS_SKIPSETUP (
 	)
 ) else (
 	rem LMS_SKIPSETUP
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    SKIPPED LMS Setup Files section. The script didn't execute the LMS Setup Files commands. [1;37m
-	) else (
-		echo     SKIPPED LMS Setup Files section. The script didn't execute the LMS Setup Files commands.
-	)
+	echo !SHOW_YELLOW!    SKIPPED LMS Setup Files section. The script didn't execute the LMS Setup Files commands. !SHOW_NORMAL!
 	echo SKIPPED LMS Setup Files section. The script didn't execute the LMS Setup Files commands.                                                                                       >> !REPORT_LOGFILE! 2>&1
 )
 echo ==============================================================================                                                                                                     >> !REPORT_LOGFILE! 2>&1
@@ -6780,11 +6475,7 @@ if not defined LMS_SKIPLOGS (
 	)
 ) else (
 	rem LMS_SKIPLOGS
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    SKIPPED logfile section. The script didn't execute the logfile commands. [1;37m
-	) else (
-		echo     SKIPPED logfile section. The script didn't execute the logfile commands.
-	)
+	echo !SHOW_YELLOW!    SKIPPED logfile section. The script didn't execute the logfile commands. !SHOW_NORMAL!
 	echo SKIPPED logfile section. The script didn't execute the logfile commands.                                               >> !REPORT_LOGFILE! 2>&1
 )
 echo ==============================================================================                                             >> !REPORT_LOGFILE! 2>&1
@@ -6891,11 +6582,7 @@ if not defined LMS_SKIPDDSETUP (
 	)
 ) else (
 	rem LMS_SKIPDDSETUP
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    SKIPPED dongle driver setup section. The script didn't execute the dongle driver setup commands. [1;37m
-	) else (
-		echo     SKIPPED dongle driver setup section. The script didn't execute the dongle driver setup commands.
-	)
+	echo !SHOW_YELLOW!    SKIPPED dongle driver setup section. The script didn't execute the dongle driver setup commands. !SHOW_NORMAL!
 	echo SKIPPED dongle driver setup section. The script didn't execute the dongle driver setup commands.                                                                           >> !REPORT_LOGFILE! 2>&1
 )
 echo ==============================================================================                                                                                                 >> !REPORT_LOGFILE! 2>&1
@@ -6910,11 +6597,7 @@ if not defined LMS_SKIPUCMS (
 	echo Start at !DATE! !TIME! ....                                                                                                                                                                            >> !REPORT_LOGFILE! 2>&1
 ) else (
 	rem LMS_SKIPUCMS
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    SKIPPED UCMS section. The script didn't execute the UCMS commands. [1;37m
-	) else (
-		echo     SKIPPED UCMS section. The script didn't execute the UCMS commands.
-	)
+	echo !SHOW_YELLOW!    SKIPPED UCMS section. The script didn't execute the UCMS commands. !SHOW_NORMAL!
 	echo SKIPPED UCMS section. The script didn't execute the UCMS commands.                                                                                                                                     >> !REPORT_LOGFILE! 2>&1
 )
 echo ==============================================================================                                                                                                                             >> !REPORT_LOGFILE! 2>&1
@@ -7026,11 +6709,7 @@ if not defined LMS_SKIPWINEVENT (
 	echo     see folder '!CHECKLMS_REPORT_LOG_PATH!\UCMS\' for more details.                                                                                                   >> !REPORT_LOGFILE! 2>&1
 ) else (
 	rem LMS_SKIPWINEVENT
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    SKIPPED Windows Events section. The script didn't execute the Windows Events commands. [1;37m
-	) else (
-		echo     SKIPPED Windows Events section. The script didn't execute the Windows Events commands.
-	)
+	echo !SHOW_YELLOW!    SKIPPED Windows Events section. The script didn't execute the Windows Events commands. !SHOW_NORMAL!
 	echo SKIPPED Windows Events section. The script didn't execute the Windows Events commands.                                           >> !REPORT_LOGFILE! 2>&1
 )
 echo ==============================================================================                                                       >> !REPORT_LOGFILE! 2>&1
@@ -7049,11 +6728,7 @@ if not defined LMS_CHECK_ID (
 	echo Start at !DATE! !TIME! ....                                                                                                      >> !REPORT_LOGFILE! 2>&1
 ) else (
 	rem LMS_CHECK_ID
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    SKIPPED notification report section. The script didn't execute the notification report commands. [1;37m
-	) else (
-		echo     SKIPPED notification report section. The script didn't execute the notification report commands.
-	)
+	echo !SHOW_YELLOW!    SKIPPED notification report section. The script didn't execute the notification report commands. !SHOW_NORMAL!
 	echo SKIPPED notification report section. The script didn't execute the notification report commands.                                 >> !REPORT_LOGFILE! 2>&1
 )
 :connection_test
@@ -7332,11 +7007,7 @@ if not defined LMS_SKIPCONTEST (
 		echo Skipped 'Ping Test to Quality System', to execute this test run with /extend otion.                                              >> !REPORT_LOGFILE! 2>&1
 	)
 ) else (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    SKIPPED connection test. The script didn't execute the connections tests. [1;37m
-	) else (
-		echo     SKIPPED connection test. The script didn't execute the connections tests.
-	)
+	echo !SHOW_YELLOW!    SKIPPED connection test. The script didn't execute the connections tests. !SHOW_NORMAL!
 	echo SKIPPED connection test. The script didn't execute the connections tests.                                                            >> !REPORT_LOGFILE! 2>&1
 )
 echo Start at !DATE! !TIME! ....                                                                                                              >> !REPORT_LOGFILE! 2>&1
@@ -7652,15 +7323,9 @@ if not defined LMS_SKIPPRODUCTS (
 			rem As creation of MainMenuUnitTest.txt takes some time, start Main.exe as early as possible
 			rem start "Start DMA" "!DMA_DIRECTORY!\Main.exe" /test
 			rem The creation of MainMenuUnitTest.txt takes approx. 15[s]
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;34m    -------------------------------------------- [1;37m
-				echo [1;34m    NOTE: Execute the following command "!DMA_DIRECTORY!\Main.exe /test" and provide C:\MainMenuUnitTest.txt. [1;37m
-				echo [1;34m    -------------------------------------------- [1;37m
-			) else (
-				echo     --------------------------------------------
-				echo     NOTE: Execute the following command "!DMA_DIRECTORY!\Main.exe /test" and provide C:\MainMenuUnitTest.txt.
-				echo     --------------------------------------------
-			)
+			echo !SHOW_BLUE!    -------------------------------------------- !SHOW_NORMAL!
+			echo !SHOW_BLUE!    NOTE: Execute the following command "!DMA_DIRECTORY!\Main.exe /test" and provide C:\MainMenuUnitTest.txt. !SHOW_NORMAL!
+			echo !SHOW_BLUE!    -------------------------------------------- !SHOW_NORMAL!
 			echo     --------------------------------------------                                                                >> !REPORT_LOGFILE! 2>&1
 			echo     NOTE: Execute the following command "!DMA_DIRECTORY!\Main.exe /test" and provide C:\MainMenuUnitTest.txt.   >> !REPORT_LOGFILE! 2>&1
 			echo     --------------------------------------------                                                                >> !REPORT_LOGFILE! 2>&1
@@ -7680,11 +7345,7 @@ if not defined LMS_SKIPPRODUCTS (
 	)	
 ) else (
 	rem LMS_SKIPPRODUCTS
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;33m    SKIPPED products section. The script didn't execute the product specific commands. [1;37m
-	) else (
-		echo     SKIPPED products section. The script didn't execute the product specific commands.
-	)
+	echo !SHOW_YELLOW!    SKIPPED products section. The script didn't execute the product specific commands. !SHOW_NORMAL!
 	echo SKIPPED products section. The script didn't execute the product specific commands.                                  >> !REPORT_LOGFILE! 2>&1
 )
 echo ... perform check on different id's ...
@@ -7699,66 +7360,42 @@ if defined UMN_COUNT_A (
 	set UMN_CHECK_STATUS=Ok
 	if /I !UMN_COUNT_A! NEQ !UMN_COUNT_B! (
 		set UMN_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: UMN count differs between servercomptranutil = !UMN_COUNT_A! and appactutil = !UMN_COUNT_B! [1;37m
-		) else (
-			echo     ATTENTION: UMN count differs between servercomptranutil = !UMN_COUNT_A! and appactutil = !UMN_COUNT_B!
-		)
+		echo !SHOW_RED!    ATTENTION: UMN count differs between servercomptranutil = !UMN_COUNT_A! and appactutil = !UMN_COUNT_B! !SHOW_NORMAL!
 		echo     ATTENTION: UMN count differs between servercomptranutil = !UMN_COUNT_A! and appactutil = !UMN_COUNT_B!  >> !REPORT_LOGFILE! 2>&1
 	) else (
 		set /a UMN_COUNT = !UMN_COUNT_A!
 	)
 	if /I !UMN1_A! NEQ !UMN1_B! (
 		set UMN_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: UMN1 differs between servercomptranutil = !UMN1_A! and appactutil = !UMN1_B! [1;37m
-		) else (
-			echo     ATTENTION: UMN1 differs between servercomptranutil = !UMN1_A! and appactutil = !UMN1_B!
-		)
+		echo !SHOW_RED!    ATTENTION: UMN1 differs between servercomptranutil = !UMN1_A! and appactutil = !UMN1_B! !SHOW_NORMAL!
 		echo     ATTENTION: UMN1 differs between servercomptranutil = !UMN1_A! and appactutil = !UMN1_B!                 >> !REPORT_LOGFILE! 2>&1
 	) else (
 		set UMN1=!UMN1_A!
 	)
 	if /I !UMN2_A! NEQ !UMN2_B! (
 		set UMN_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: UMN2 differs between servercomptranutil = !UMN2_A! and appactutil = !UMN2_B! [1;37m
-		) else (
-			echo     ATTENTION: UMN2 differs between servercomptranutil = !UMN2_A! and appactutil = !UMN2_B!
-		)
+		echo !SHOW_RED!    ATTENTION: UMN2 differs between servercomptranutil = !UMN2_A! and appactutil = !UMN2_B! !SHOW_NORMAL!
 		echo     ATTENTION: UMN2 differs between servercomptranutil = !UMN2_A! and appactutil = !UMN2_B!                 >> !REPORT_LOGFILE! 2>&1
 	) else (
 		set UMN2=!UMN2_A!
 	)
 	if /I !UMN3_A! NEQ !UMN3_B! (
 		set UMN_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: UMN3 differs between servercomptranutil = !UMN3_A! and appactutil = !UMN3_B! [1;37m
-		) else (
-			echo     ATTENTION: UMN3 differs between servercomptranutil = !UMN3_A! and appactutil = !UMN3_B!
-		)
+		echo !SHOW_RED!    ATTENTION: UMN3 differs between servercomptranutil = !UMN3_A! and appactutil = !UMN3_B! !SHOW_NORMAL!
 		echo     ATTENTION: UMN3 differs between servercomptranutil = !UMN3_A! and appactutil = !UMN3_B!                 >> !REPORT_LOGFILE! 2>&1
 	) else (
 		set UMN3=!UMN3_A!
 	)
 	if /I !UMN4_A! NEQ !UMN4_B! (
 		set UMN_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: UMN4 differs between servercomptranutil = !UMN4_A! and appactutil = !UMN4_B! [1;37m
-		) else (
-			echo     ATTENTION: UMN4 differs between servercomptranutil = !UMN4_A! and appactutil = !UMN4_B!
-		)
+		echo !SHOW_RED!    ATTENTION: UMN4 differs between servercomptranutil = !UMN4_A! and appactutil = !UMN4_B! !SHOW_NORMAL!
 		echo     ATTENTION: UMN4 differs between servercomptranutil = !UMN4_A! and appactutil = !UMN4_B!                 >> !REPORT_LOGFILE! 2>&1
 	) else (
 		set UMN4=!UMN4_A!
 	)
 	if /I !UMN5_A! NEQ !UMN5_B! (
 		set UMN_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: UMN5 differs between servercomptranutil = !UMN5_A! and appactutil = !UMN5_B! [1;37m
-		) else (
-			echo     ATTENTION: UMN5 differs between servercomptranutil = !UMN5_A! and appactutil = !UMN5_B!
-		)
+		echo !SHOW_RED!    ATTENTION: UMN5 differs between servercomptranutil = !UMN5_A! and appactutil = !UMN5_B! !SHOW_NORMAL!
 		echo     ATTENTION: UMN5 differs between servercomptranutil = !UMN5_A! and appactutil = !UMN5_B!                 >> !REPORT_LOGFILE! 2>&1
 	) else (
 		set UMN5=!UMN5_A!
@@ -7780,56 +7417,32 @@ echo Compare the UMNs read from offline request file                            
 if defined UMN_COUNT_TS (
 	if /I !UMN_COUNT_TS! NEQ !UMN_COUNT! (
 		set UMN_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: UMN count differs between offline request file = !UMN_COUNT_TS! and command line tool = !UMN_COUNT! [1;37m
-		) else (
-			echo     ATTENTION: UMN count differs between offline request file = !UMN_COUNT_TS! and command line tool = !UMN_COUNT!
-		)
+		echo !SHOW_RED!    ATTENTION: UMN count differs between offline request file = !UMN_COUNT_TS! and command line tool = !UMN_COUNT! !SHOW_NORMAL!
 		echo     ATTENTION: UMN count differs between offline request file = !UMN_COUNT_TS! and command line tool = !UMN_COUNT!  >> !REPORT_LOGFILE! 2>&1
 	)
 	if /I !UMN1_TS! NEQ !UMN1! (
 		set UMN_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: UMN1 differs between offline request file = !UMN1_TS! and command line tool = !UMN1! [1;37m
-		) else (
-			echo     ATTENTION: UMN1 differs between offline request file = !UMN1_TS! and command line tool = !UMN1!
-		)
+		echo !SHOW_RED!    ATTENTION: UMN1 differs between offline request file = !UMN1_TS! and command line tool = !UMN1! !SHOW_NORMAL!
 		echo     ATTENTION: UMN1 differs between offline request file = !UMN1_TS! and command line tool = !UMN1!                 >> !REPORT_LOGFILE! 2>&1
 	)
 	if /I !UMN2_TS! NEQ !UMN2! (
 		set UMN_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: UMN2 differs between offline request file = !UMN2_TS! and command line tool = !UMN2! [1;37m
-		) else (
-			echo     ATTENTION: UMN2 differs between offline request file = !UMN2_TS! and command line tool = !UMN2!
-		)
+		echo !SHOW_RED!    ATTENTION: UMN2 differs between offline request file = !UMN2_TS! and command line tool = !UMN2! !SHOW_NORMAL!
 		echo     ATTENTION: UMN2 differs between offline request file = !UMN2_TS! and command line tool = !UMN2!                 >> !REPORT_LOGFILE! 2>&1
 	)
 	if /I !UMN3_TS! NEQ !UMN3! (
 		set UMN_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: UMN3 differs between offline request file = !UMN3_TS! and command line tool = !UMN3! [1;37m
-		) else (
-			echo     ATTENTION: UMN3 differs between offline request file = !UMN3_TS! and command line tool = !UMN3!
-		)
+		echo !SHOW_RED!    ATTENTION: UMN3 differs between offline request file = !UMN3_TS! and command line tool = !UMN3! !SHOW_NORMAL!
 		echo     ATTENTION: UMN3 differs between offline request file = !UMN3_TS! and command line tool = !UMN3!                 >> !REPORT_LOGFILE! 2>&1
 	)
 	if /I !UMN4_TS! NEQ !UMN4! (
 		set UMN_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: UMN4 differs between offline request file = !UMN4_TS! and command line tool = !UMN4! [1;37m
-		) else (
-			echo     ATTENTION: UMN4 differs between offline request file = !UMN4_TS! and command line tool = !UMN4!
-		)
+		echo !SHOW_RED!    ATTENTION: UMN4 differs between offline request file = !UMN4_TS! and command line tool = !UMN4! !SHOW_NORMAL!
 		echo     ATTENTION: UMN4 differs between offline request file = !UMN4_TS! and command line tool = !UMN4!                 >> !REPORT_LOGFILE! 2>&1
 	)
 	if /I !UMN5_TS! NEQ !UMN5! (
 		set UMN_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: UMN5 differs between offline request file = !UMN5_TS! and command line tool = !UMN5! [1;37m
-		) else (
-			echo     ATTENTION: UMN5 differs between offline request file = !UMN5_TS! and command line tool = !UMN5!
-		)
+		echo !SHOW_RED!    ATTENTION: UMN5 differs between offline request file = !UMN5_TS! and command line tool = !UMN5! !SHOW_NORMAL!
 		echo     ATTENTION: UMN5 differs between offline request file = !UMN5_TS! and command line tool = !UMN5!                 >> !REPORT_LOGFILE! 2>&1
 	)
 )
@@ -7838,56 +7451,32 @@ echo Compare the UMNs read from previous run                                    
 if defined UMN_COUNT_PREV (
 	if /I !UMN_COUNT_PREV! NEQ !UMN_COUNT! (
 		set UMN_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: UMN count differs between previous run = !UMN_COUNT_PREV! and current run = !UMN_COUNT! [1;37m
-		) else (
-			echo     ATTENTION: UMN count differs between previous run = !UMN_COUNT_PREV! and current run = !UMN_COUNT!
-		)
+		echo !SHOW_RED!    ATTENTION: UMN count differs between previous run = !UMN_COUNT_PREV! and current run = !UMN_COUNT! !SHOW_NORMAL!
 		echo     ATTENTION: UMN count differs between previous run = !UMN_COUNT_PREV! and current run = !UMN_COUNT!              >> !REPORT_LOGFILE! 2>&1
 	)
 	if /I !UMN1_PREV! NEQ !UMN1! (
 		set UMN_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: UMN1 differs between previous run = !UMN1_PREV! and current run = !UMN1! [1;37m
-		) else (
-			echo     ATTENTION: UMN1 differs between previous run = !UMN1_PREV! and current run = !UMN1!
-		)
+		echo !SHOW_RED!    ATTENTION: UMN1 differs between previous run = !UMN1_PREV! and current run = !UMN1! !SHOW_NORMAL!
 		echo     ATTENTION: UMN1 differs between previous run = !UMN1_PREV! and current run = !UMN1!                             >> !REPORT_LOGFILE! 2>&1
 	)
 	if /I !UMN2_PREV! NEQ !UMN2! (
 		set UMN_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: UMN2 differs between previous run = !UMN2_PREV! and current run = !UMN2! [1;37m
-		) else (
-			echo     ATTENTION: UMN2 differs between previous run = !UMN2_PREV! and current run = !UMN2!
-		)
+		echo !SHOW_RED!    ATTENTION: UMN2 differs between previous run = !UMN2_PREV! and current run = !UMN2! !SHOW_NORMAL!
 		echo     ATTENTION: UMN2 differs between previous run = !UMN2_PREV! and current run = !UMN2!                             >> !REPORT_LOGFILE! 2>&1
 	)
 	if /I !UMN3_PREV! NEQ !UMN3! (
 		set UMN_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: UMN3 differs between previous run = !UMN3_PREV! and current run = !UMN3! [1;37m
-		) else (
-			echo     ATTENTION: UMN3 differs between previous run = !UMN3_PREV! and current run = !UMN3!
-		)
+		echo !SHOW_RED!    ATTENTION: UMN3 differs between previous run = !UMN3_PREV! and current run = !UMN3! !SHOW_NORMAL!
 		echo     ATTENTION: UMN3 differs between previous run = !UMN3_PREV! and current run = !UMN3!                             >> !REPORT_LOGFILE! 2>&1
 	)
 	if /I !UMN4_PREV! NEQ !UMN4! (
 		set UMN_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: UMN4 differs between previous run = !UMN4_PREV! and current run = !UMN4! [1;37m
-		) else (
-			echo     ATTENTION: UMN4 differs between previous run = !UMN4_PREV! and current run = !UMN4!
-		)
+		echo !SHOW_RED!    ATTENTION: UMN4 differs between previous run = !UMN4_PREV! and current run = !UMN4! !SHOW_NORMAL!
 		echo     ATTENTION: UMN4 differs between previous run = !UMN4_PREV! and current run = !UMN4!                             >> !REPORT_LOGFILE! 2>&1
 	)
 	if /I !UMN5_PREV! NEQ !UMN5! (
 		set UMN_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: UMN5 differs between previous run = !UMN5_PREV! and current run = !UMN5! [1;37m
-		) else (
-			echo     ATTENTION: UMN5 differs between previous run = !UMN5_PREV! and current run = !UMN5!
-		)
+		echo !SHOW_RED!    ATTENTION: UMN5 differs between previous run = !UMN5_PREV! and current run = !UMN5! !SHOW_NORMAL!
 		echo     ATTENTION: UMN5 differs between previous run = !UMN5_PREV! and current run = !UMN5!                             >> !REPORT_LOGFILE! 2>&1
 	)
 )
@@ -7896,37 +7485,21 @@ echo     check VM values collected with servercomptranutil ...
 echo Check VM values collected with servercomptranutil                                                                                     >> !REPORT_LOGFILE! 2>&1
 rem check VM values (also on physical machine.)
 if "!VM_FAMILY!" == "UNKNOWNVM" (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;31m    ATTENTION: Unknown VM family detected. [1;37m
-	) else (
-		echo     ATTENTION: Unknown VM family detected.
-	)
+	echo !SHOW_RED!    ATTENTION: Unknown VM family detected. !SHOW_NORMAL!
 	echo ATTENTION: Unknown VM family detected.                                                                              >> !REPORT_LOGFILE! 2>&1
 )
 if "!VM_NAME!" == "UNKNOWNVM" (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;31m    ATTENTION: Unknown VM name detected. [1;37m
-	) else (
-		echo     ATTENTION: Unknown VM name detected.
-	)
+	echo !SHOW_RED!    ATTENTION: Unknown VM name detected. !SHOW_NORMAL!
 	echo ATTENTION: Unknown VM name detected.                                                                                >> !REPORT_LOGFILE! 2>&1
 )
 echo     check VM values collected with lmvminfo ...
 echo Check VM values collected with lmvminfo                                                                                     >> !REPORT_LOGFILE! 2>&1
 if "%VM_FAMILY_2%" == "UNKNOWNVM" (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;31m    ATTENTION: Unknown VM family detected. [1;37m
-	) else (
-		echo     ATTENTION: Unknown VM family detected.
-	)
+	echo !SHOW_RED!    ATTENTION: Unknown VM family detected. !SHOW_NORMAL!
 	echo ATTENTION: Unknown VM family detected.                                                                              >> !REPORT_LOGFILE! 2>&1
 )
 if "%VM_NAME_2%" == "UNKNOWNVM" (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;31m    ATTENTION: Unknown VM name detected. [1;37m
-	) else (
-		echo     ATTENTION: Unknown VM name detected.
-	)
+	echo !SHOW_RED!    ATTENTION: Unknown VM name detected. !SHOW_NORMAL!
 	echo ATTENTION: Unknown VM name detected.                                                                                >> !REPORT_LOGFILE! 2>&1
 )
 REM Compare output of two VM detections with servercomptranutil and lmvminfo
@@ -7934,38 +7507,22 @@ if defined VM_DETECTED if defined VM_DETECTED_2 (
 	set VM_DETECTION_CHECK_STATUS=Ok
 	if /I "!VM_FAMILY!" NEQ "!VM_FAMILY_2!" (
 		set VM_DETECTION_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: VM family detection differs between servercomptranutil = !VM_FAMILY! and lmvminfo = !VM_FAMILY_2! [1;37m
-		) else (
-			echo     ATTENTION: VM family differs detection between servercomptranutil = !VM_FAMILY! and lmvminfo = !VM_FAMILY_2!
-		)
+		echo !SHOW_RED!    ATTENTION: VM family detection differs between servercomptranutil = !VM_FAMILY! and lmvminfo = !VM_FAMILY_2! !SHOW_NORMAL!
 		echo     ATTENTION: VM family detection differs between servercomptranutil = !VM_FAMILY! and lmvminfo = !VM_FAMILY_2!     >> !REPORT_LOGFILE! 2>&1
 	)
 	if /I "!VM_NAME!" NEQ "!VM_NAME_2!" (
 		set VM_DETECTION_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: VM name detection differs between servercomptranutil = !VM_NAME! and lmvminfo = !VM_NAME_2! [1;37m
-		) else (
-			echo     ATTENTION: VM name differs detection between servercomptranutil = !VM_NAME! and lmvminfo = !VM_NAME_2!
-		)
+		echo !SHOW_RED!    ATTENTION: VM name detection differs between servercomptranutil = !VM_NAME! and lmvminfo = !VM_NAME_2! !SHOW_NORMAL!
 		echo     ATTENTION: VM name detection differs between servercomptranutil = !VM_NAME! and lmvminfo = !VM_NAME_2!      >> !REPORT_LOGFILE! 2>&1
 	)
 	if /I "!VM_UUID!" NEQ "!VM_UUID_2!" (
 		set VM_DETECTION_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: VM UUID detection differs between servercomptranutil = !VM_UUID! and lmvminfo = !VM_UUID_2! [1;37m
-		) else (
-			echo     ATTENTION: VM UUID differs detection between servercomptranutil = !VM_UUID! and lmvminfo = !VM_UUID_2!
-		)
+		echo !SHOW_RED!    ATTENTION: VM UUID detection differs between servercomptranutil = !VM_UUID! and lmvminfo = !VM_UUID_2! !SHOW_NORMAL!
 		echo     ATTENTION: VM UUID detection differs between servercomptranutil = !VM_UUID! and lmvminfo = !VM_UUID_2!      >> !REPORT_LOGFILE! 2>&1
 	)
 	if /I "!VM_GENID!" NEQ "!VM_GENID_2!" (
 		set VM_DETECTION_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: VM GENID detection differs between servercomptranutil = !VM_GENID! and lmvminfo = !VM_GENID_2! [1;37m
-		) else (
-			echo     ATTENTION: VM GENID differs detection between servercomptranutil = !VM_GENID! and lmvminfo = !VM_GENID_2!
-		)
+		echo !SHOW_RED!    ATTENTION: VM GENID detection differs between servercomptranutil = !VM_GENID! and lmvminfo = !VM_GENID_2! !SHOW_NORMAL!
 		echo     ATTENTION: VM GENID detection differs between servercomptranutil = !VM_GENID! and lmvminfo = !VM_GENID_2!   >> !REPORT_LOGFILE! 2>&1
 	)
 )
@@ -7979,47 +7536,27 @@ if defined VMINFO_PREV (
 	rem compare current VM values with previous values
 	if /I !VM_DETECTED! NEQ !VM_DETECTED_PREV! (
 		set VM_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: VM detection differs between previous run = !VM_DETECTED_PREV! and current run = !VM_DETECTED! [1;37m
-		) else (
-			echo     ATTENTION: VM detection differs between previous run = !VM_DETECTED_PREV! and current run = !VM_DETECTED!
-		)
+		echo !SHOW_RED!    ATTENTION: VM detection differs between previous run = !VM_DETECTED_PREV! and current run = !VM_DETECTED! !SHOW_NORMAL!
 		echo     ATTENTION: VM detection differs between previous run = !VM_DETECTED_PREV! and current run = !VM_DETECTED!   >> !REPORT_LOGFILE! 2>&1
 	)
 	if /I !VM_FAMILY! NEQ !VM_FAMILY_PREV! (
 		set VM_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: VM family differs between previous run = !VM_FAMILY_PREV! and current run = !VM_FAMILY! [1;37m
-		) else (
-			echo     ATTENTION: VM family differs between previous run = !VM_FAMILY_PREV! and current run = !VM_FAMILY!
-		)
+		echo !SHOW_RED!    ATTENTION: VM family differs between previous run = !VM_FAMILY_PREV! and current run = !VM_FAMILY! !SHOW_NORMAL!
 		echo     ATTENTION: VM family differs between previous run = !VM_FAMILY_PREV! and current run = !VM_FAMILY!          >> !REPORT_LOGFILE! 2>&1
 	)
 	if /I !VM_NAME! NEQ !VM_NAME_PREV! (
 		set VM_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: VM name differs between previous run = !VM_NAME_PREV! and current run = !VM_NAME! [1;37m
-		) else (
-			echo     ATTENTION: VM name differs between previous run = !VM_NAME_PREV! and current run = !VM_NAME!
-		)
+		echo !SHOW_RED!    ATTENTION: VM name differs between previous run = !VM_NAME_PREV! and current run = !VM_NAME! !SHOW_NORMAL!
 		echo     ATTENTION: VM name differs between previous run = !VM_NAME_PREV! and current run = !VM_NAME!                >> !REPORT_LOGFILE! 2>&1
 	)
 	if /I !VM_UUID! NEQ !VM_UUID_PREV! (
 		set VM_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: VM UUID differs between previous run = !VM_UUID_PREV! and current run = !VM_UUID! [1;37m
-		) else (
-			echo     ATTENTION: VM UUID differs between previous run = !VM_UUID_PREV! and current run = !VM_UUID!
-		)
+		echo !SHOW_RED!    ATTENTION: VM UUID differs between previous run = !VM_UUID_PREV! and current run = !VM_UUID! !SHOW_NORMAL!
 		echo     ATTENTION: VM UUID differs between previous run = !VM_UUID_PREV! and current run = !VM_UUID!                >> !REPORT_LOGFILE! 2>&1
 	)
 	if /I !VM_GENID! NEQ !VM_GENID_PREV! (
 		set VM_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: VM GENID differs between previous run = !VM_GENID_PREV! and current run = !VM_GENID! [1;37m
-		) else (
-			echo     ATTENTION: VM GENID differs between previous run = !VM_GENID_PREV! and current run = !VM_GENID!
-		)
+		echo !SHOW_RED!    ATTENTION: VM GENID differs between previous run = !VM_GENID_PREV! and current run = !VM_GENID! !SHOW_NORMAL!
 		echo     ATTENTION: VM GENID differs between previous run = !VM_GENID_PREV! and current run = !VM_GENID!             >> !REPORT_LOGFILE! 2>&1
 	)
 )
@@ -8035,38 +7572,22 @@ if /I "!LMS_IS_VM!"=="true" (
 	rem compare current AWS instance identify document values with previous values
 	if /I !AWS_ACCID! NEQ !AWS_ACCID_PREV! (
 		set AWS_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: AWS Account ID differs between previous run = !AWS_ACCID_PREV! and current run = !AWS_ACCID! [1;37m
-		) else (
-			echo     ATTENTION: AWS Account ID differs between previous run = !AWS_ACCID_PREV! and current run = !AWS_ACCID!
-		)
+		echo !SHOW_RED!    ATTENTION: AWS Account ID differs between previous run = !AWS_ACCID_PREV! and current run = !AWS_ACCID! !SHOW_NORMAL!
 		echo     ATTENTION: AWS Account ID differs between previous run = !AWS_ACCID_PREV! and current run = !AWS_ACCID!         >> !REPORT_LOGFILE! 2>&1
 	)
 	if /I !AWS_IMGID! NEQ !AWS_IMGID_PREV! (
 		set AWS_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: AWS Image ID differs between previous run = !AWS_IMGID_PREV! and current run = !AWS_IMGID! [1;37m
-		) else (
-			echo     ATTENTION: AWS Image ID differs between previous run = !AWS_IMGID_PREV! and current run = !AWS_IMGID!
-		)
+		echo !SHOW_RED!    ATTENTION: AWS Image ID differs between previous run = !AWS_IMGID_PREV! and current run = !AWS_IMGID! !SHOW_NORMAL!
 		echo     ATTENTION: AWS Image ID differs between previous run = !AWS_IMGID_PREV! and current run = !AWS_IMGID!           >> !REPORT_LOGFILE! 2>&1
 	)
 	if /I !AWS_INSTID! NEQ !AWS_INSTID_PREV! (
 		set AWS_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: AWS Instance ID differs between previous run = !AWS_INSTID_PREV! and current run = !AWS_INSTID! [1;37m
-		) else (
-			echo     ATTENTION: AWS Instance ID differs between previous run = !AWS_INSTID_PREV! and current run = !AWS_INSTID!
-		)
+		echo !SHOW_RED!    ATTENTION: AWS Instance ID differs between previous run = !AWS_INSTID_PREV! and current run = !AWS_INSTID! !SHOW_NORMAL!
 		echo     ATTENTION: AWS Instance ID differs between previous run = !AWS_INSTID_PREV! and current run = !AWS_INSTID!      >> !REPORT_LOGFILE! 2>&1
 	)
 	if /I !AWS_PENTIME! NEQ !AWS_PENTIME_PREV! (
 		set AWS_CHECK_STATUS=Failed
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: AWS Pending Time differs between previous run = !AWS_PENTIME_PREV! and current run = !AWS_PENTIME! [1;37m
-		) else (
-			echo     ATTENTION: AWS Pending Time differs between previous run = !AWS_PENTIME_PREV! and current run = !AWS_PENTIME!
-		)
+		echo !SHOW_RED!    ATTENTION: AWS Pending Time differs between previous run = !AWS_PENTIME_PREV! and current run = !AWS_PENTIME! !SHOW_NORMAL!
 		echo     ATTENTION: AWS Pending Time differs between previous run = !AWS_PENTIME_PREV! and current run = !AWS_PENTIME!   >> !REPORT_LOGFILE! 2>&1
 	)
 )
@@ -8112,19 +7633,11 @@ echo     MachineIdentifier: !LMS_TS_MACHINE_IDENTIFIER!  /  TrustedStorageSerial
 echo     TS Status: !LMS_TS_STATUS!  /  TS SequenceNumber: !LMS_TS_SEQ_NUM!  /  TS Revision: !LMS_TS_REVISION!           >> !REPORT_LOGFILE! 2>&1
 echo     SIEMBT Hostname: !LMS_SIEMBT_HOSTNAME! / SIEMBT HostID: !LMS_SIEMBT_HOSTIDS!                                    >> !REPORT_LOGFILE! 2>&1
 if "!LMS_SIEMBT_HOSTIDS!" == "ffffffff" (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;31m    ERROR: Invalid HostID found in SIEMBT.log. SIEMBT HostID: !LMS_SIEMBT_HOSTIDS! [1;37m
-	) else (
-		echo     ERROR: Invalid HostID found in SIEMBT.log. SIEMBT HostID: !LMS_SIEMBT_HOSTIDS!
-	)
+	echo !SHOW_RED!    ERROR: Invalid HostID found in SIEMBT.log. SIEMBT HostID: !LMS_SIEMBT_HOSTIDS! !SHOW_NORMAL!
 	echo ERROR: Invalid HostID found in SIEMBT.log. SIEMBT HostID: !LMS_SIEMBT_HOSTIDS!                                  >> !REPORT_LOGFILE! 2>&1
 )
 if "!LMS_SIEMBT_HYPERVISOR!" == "Unknown Hypervisor" (
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;31m    ERROR: Unknown Hypervisor found in SIEMBT.log. Running on Hypervisor: !LMS_SIEMBT_HYPERVISOR! [1;37m
-	) else (
-		echo     ERROR: Unknown Hypervisor found in SIEMBT.log. Running on Hypervisor: !LMS_SIEMBT_HYPERVISOR!
-	)
+	echo !SHOW_RED!    ERROR: Unknown Hypervisor found in SIEMBT.log. Running on Hypervisor: !LMS_SIEMBT_HYPERVISOR! !SHOW_NORMAL!
 	echo ERROR: Unknown Hypervisor found in SIEMBT.log. Running on Hypervisor: !LMS_SIEMBT_HYPERVISOR!                   >> !REPORT_LOGFILE! 2>&1
 )
 IF EXIST "!DOCUMENTATION_PATH!\\info.txt" (
@@ -8135,12 +7648,8 @@ echo -------------------------------------------------------                    
 if not defined LMS_CHECK_ID (
 	echo Connection Test Status: !ConnectionTestStatus! [ !CHECKLMS_EXTERNAL_SHARE! ]                      >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_CON_TEST_FAILED (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: Enhanced Connection Test Status: FAILED! [1;37m
-		) else (
-			echo     ATTENTION: Enhanced Connection Test Status: FAILED!
-		)
-		echo ATTENTION: Enhanced Connection Test Status: FAILED!                                                         >> !REPORT_LOGFILE! 2>&1
+		echo !SHOW_RED!    ATTENTION: Enhanced Connection Test Status: FAILED. !SHOW_NORMAL!
+		echo ATTENTION: Enhanced Connection Test Status: FAILED.                                                         >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo Enhanced Connection Test Status: PASSED!                                                                    >> !REPORT_LOGFILE! 2>&1
 	)
@@ -8187,19 +7696,11 @@ if not defined LMS_CHECK_ID (
 		if defined DONGLE_DRIVER_MOST_RECENT_VERSION_INSTALLED (
 			echo     Most recent or newer dongle driver !DONGLE_DRIVER_PKG_VERSION! installed on the system.                 >> !REPORT_LOGFILE! 2>&1
 		) else (
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;33m    WARNING: There is not the most recent dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! installed on the system. Installed driver is !DONGLE_DRIVER_PKG_VERSION!. [1;37m
-			) else (
-				echo     WARNING: There is not the most recent dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! installed on the system. Installed driver is !DONGLE_DRIVER_PKG_VERSION!.
-			)
+			echo !SHOW_YELLOW!    WARNING: There is not the most recent dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! installed on the system. Installed driver is !DONGLE_DRIVER_PKG_VERSION!. !SHOW_NORMAL!
 			echo     WARNING: There is not the most recent dongle driver !MOST_RECENT_DONGLE_DRIVER_VERSION! installed on the system. Installed driver is !DONGLE_DRIVER_PKG_VERSION!.   >> !REPORT_LOGFILE! 2>&1
 		)
 		if defined LMS_V2C_FILE_NOT_INSTALLED (
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    ERROR: There is NO vendor file '!LMS_V2C_FILE!' installed on the system. Pls install correct dongle driver. [1;37m
-			) else (
-				echo     ERROR: There is NO vendor file '!LMS_V2C_FILE!' installed on the system. Pls install correct dongle driver.
-			)
+			echo !SHOW_RED!    ERROR: There is NO vendor file '!LMS_V2C_FILE!' installed on the system. Pls install correct dongle driver. !SHOW_NORMAL!
 			echo     ERROR: There is NO vendor file '!LMS_V2C_FILE! installed on the system. Pls install correct dongle driver.  >> !REPORT_LOGFILE! 2>&1
 		)
 		if defined DONGLE_DRIVER_UPDATE_TO781_BY_ATOS (
@@ -8209,11 +7710,7 @@ if not defined LMS_CHECK_ID (
 			echo     NOTE: There was a dongle driver update to version V7.92 at %DONGLE_DRIVER_UPDATE_TO792_BY_ATOS% provided by ATOS.  >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: No Dongle Driver installed. [1;37m
-		) else (
-			echo     ATTENTION: No Dongle Driver installed.
-		)
+		echo !SHOW_RED!    ATTENTION: No Dongle Driver installed. !SHOW_NORMAL!
 		echo ATTENTION: No Dongle Driver installed.                                                                          >> !REPORT_LOGFILE! 2>&1
 
 		if exist "!LMS_DOWNLOAD_PATH!\haspdinst.exe" (
@@ -8225,23 +7722,14 @@ if not defined LMS_CHECK_ID (
 			echo Dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] available                             >> !REPORT_LOGFILE! 2>&1
 			if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
 				rem install dongle driver downloaded by this script
-				if defined SHOW_COLORED_OUTPUT (
-					echo [1;31m    --- Install newest dongle driver !haspdinstVersion! just downloaded by this script. [1;37m
-				) else (
-					echo     --- Install newest dongle driver !haspdinstVersion! just downloaded by this script.
-				)
+				echo !SHOW_RED!    --- Install newest dongle driver !haspdinstVersion! just downloaded by this script. !SHOW_NORMAL!
 				echo --- Install newest dongle driver !haspdinstVersion! just downloaded by this script.                     >> !REPORT_LOGFILE! 2>&1
 				start "Install dongle driver" "!LMS_DOWNLOAD_PATH!\haspdinst.exe" -install -killprocess
 				echo --- Installation started in an own process/shell.                                                       >> !REPORT_LOGFILE! 2>&1
 			) else (
 				rem show message to install dongle driver downloaded by this script
-				if defined SHOW_COLORED_OUTPUT (
-					echo [1;31m    --- Install newest dongle driver !haspdinstVersion! just downloaded by this script. [1;37m
-					echo [1;31m    --- Execute '"!LMS_DOWNLOAD_PATH!\haspdinst.exe" -install -killprocess' with administrator priviledge. [1;37m
-				) else (
-					echo     --- Install newest dongle driver !haspdinstVersion! just downloaded by this script.
-					echo     --- Execute '"!LMS_DOWNLOAD_PATH!\haspdinst.exe" -install -killprocess' with administrator priviledge.
-				)
+				echo !SHOW_RED!    --- Install newest dongle driver !haspdinstVersion! just downloaded by this script. !SHOW_NORMAL!
+				echo !SHOW_RED!    --- Execute '"!LMS_DOWNLOAD_PATH!\haspdinst.exe" -install -killprocess' with administrator priviledge. !SHOW_NORMAL!
 				echo --- Install newest dongle driver !haspdinstVersion! just downloaded by this script.                     >> !REPORT_LOGFILE! 2>&1
 				echo --- Execute '"!LMS_DOWNLOAD_PATH!\haspdinst.exe" -install -killprocess' with administrator priviledge.  >> !REPORT_LOGFILE! 2>&1
 			)
@@ -8254,11 +7742,7 @@ if defined ALM_VERSION_STRING (
 	if defined ALM_IS_SUPPORTED (
 		echo     Installed ALM [!ALM_RELEASE!] is supported: !ALM_IS_SUPPORTED!                                              >> !REPORT_LOGFILE! 2>&1
 		if "!ALM_IS_SUPPORTED!" NEQ "Yes" (
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;31m    ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please update to newer version. [1;37m
-			) else (
-				echo     ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please update to newer version.
-			)
+			echo !SHOW_RED!    ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please update to newer version. !SHOW_NORMAL!
 			echo ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please update to newer version.                      >> !REPORT_LOGFILE! 2>&1
 		)
 	)
@@ -8288,33 +7772,21 @@ if not defined LMS_CHECK_ID (
 	rem This part is not processed written to logfile if /checkid is set!
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	if /I !FIPS_MODE_ENABLED! NEQ 0 (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;33m    WARNING: FIPS mode is ENABLED. [1;37m
-		) else (
-			echo     WARNING: FIPS mode is ENABLED.
-		)
+		echo !SHOW_YELLOW!    WARNING: FIPS mode is ENABLED. !SHOW_NORMAL!
 		echo WARNING: FIPS mode is ENABLED.                                                                                  >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo INFO: FIPS mode is NOT enabled.                                                                                 >> !REPORT_LOGFILE! 2>&1
 	)
 	if defined NON_STANDARD_OS_LANGUAGE (
 		rem Non standard OS language (1031, 1033) found
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;33m    WARNING: The OS language !OS_LANGUAGE! is not a - per default - supported language. [1;37m
-		) else (
-			echo     WARNING: The OS language !OS_LANGUAGE! is not a - per default - supported language.
-		)
+		echo !SHOW_YELLOW!    WARNING: The OS language !OS_LANGUAGE! is not a - per default - supported language. !SHOW_NORMAL!
 		echo WARNING: The OS language !OS_LANGUAGE! is not a - per default - supported language.                             >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo INFO: The OS language !OS_LANGUAGE! is a fully supported language.                                              >> !REPORT_LOGFILE! 2>&1
 	)
 	if defined NON_STANDARD_LOCAL_LANGUAGE (
 		rem Non standard local language (1031, 1033) found
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;33m    The local language !LOCAL_LANGUAGE! is not a - per default - supported language. [1;37m
-		) else (
-			echo     WARNING: The local language !LOCAL_LANGUAGE! is not a - per default - supported language.
-		)
+		echo !SHOW_YELLOW!    The local language !LOCAL_LANGUAGE! is not a - per default - supported language. !SHOW_NORMAL!
 		echo WARNING: The local language !LOCAL_LANGUAGE! is not a - per default - supported language.                       >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo INFO: The local language !LOCAL_LANGUAGE! is a fully supported language.                                        >> !REPORT_LOGFILE! 2>&1
@@ -8323,46 +7795,26 @@ if not defined LMS_CHECK_ID (
 if defined TS_BROKEN (
 	echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
 	if defined TS_BROKEN_AFTER_REPAIR (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: Trusted Store is still BROKEN. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE! [1;37m
-		) else (
-			echo     ATTENTION: Trusted Store is still BROKEN. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE!
-		)
+		echo !SHOW_RED!    ATTENTION: Trusted Store is still BROKEN. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE! !SHOW_NORMAL!
 		echo ATTENTION: Trusted Store is still BROKEN. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE!                  >> !REPORT_LOGFILE! 2>&1
 	) else (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: Trusted Store was BROKEN, but has been FIXED. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE! [1;37m
-		) else (
-			echo     ATTENTION: Trusted Store was BROKEN, but has been FIXED. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE!
-		)
+		echo !SHOW_RED!    ATTENTION: Trusted Store was BROKEN, but has been FIXED. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE! !SHOW_NORMAL!
 		echo ATTENTION: Trusted Store was BROKEN, but has been FIXED. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE!   >> !REPORT_LOGFILE! 2>&1
 	)
 )
 if defined TS_DISABLED (
 	echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
-	if defined SHOW_COLORED_OUTPUT (
-		echo [1;31m    Disabled licenses found. Disabled=!TS_DISABLED_COUNT! of !TS_TOTAL_COUNT! [1;37m
-	) else (
-		echo     ATTENTION: Disabled licenses found. Disabled=!TS_DISABLED_COUNT! of !TS_TOTAL_COUNT!
-	)
+	echo !SHOW_RED!    Disabled licenses found. Disabled=!TS_DISABLED_COUNT! of !TS_TOTAL_COUNT! !SHOW_NORMAL!
 	echo ATTENTION: Disabled licenses found. Disabled=!TS_DISABLED_COUNT! of !TS_TOTAL_COUNT!                            >> !REPORT_LOGFILE! 2>&1
 )
 if defined PROC_STOPPED (
 	echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
 	if /I !PROC_STOPPED! NEQ 0 (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: !PROC_STOPPED! relevant services are stopped. [1;37m
-		) else (
-			echo     ATTENTION: !PROC_STOPPED! relevant services are stopped.
-		)
+		echo !SHOW_RED!    ATTENTION: !PROC_STOPPED! relevant services are stopped. !SHOW_NORMAL!
 		echo ATTENTION: !PROC_STOPPED! relevant services are stopped.                                                    >> !REPORT_LOGFILE! 2>&1
 	)
 	if /I !PROC_FOUND! NEQ 4 (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: Only !PROC_FOUND! relevant services found. [1;37m
-		) else (
-			echo     ATTENTION: Only !PROC_FOUND! relevant services found.
-		)
+		echo !SHOW_RED!    ATTENTION: Only !PROC_FOUND! relevant services found. !SHOW_NORMAL!
 		echo ATTENTION: Only !PROC_FOUND! relevant services found.                                                       >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo INFO: All !PROC_FOUND! relevant services found.                                                             >> !REPORT_LOGFILE! 2>&1
@@ -8371,13 +7823,9 @@ if defined PROC_STOPPED (
 if defined LMS_SSU_CONSISTENCY_CHECK (
 	echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
 	if /I !LMS_SSU_CONSISTENCY_CHECK! NEQ 0 (
-		echo SSU - Installation is NOT consistent, !LMS_SSU_CONSISTENCY_CHECK! file[s] missing!                          >> !REPORT_LOGFILE! 2>&1
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    ATTENTION: SSU - Installation is NOT consistent, !LMS_SSU_CONSISTENCY_CHECK! file[s] missing! [1;37m
-		) else (
-			echo     ATTENTION: SSU - Installation is NOT consistent, !LMS_SSU_CONSISTENCY_CHECK! file[s] missing!
-		)
-		echo ATTENTION: SSU - Installation is NOT consistent, !LMS_SSU_CONSISTENCY_CHECK! file[s] missing!               >> !REPORT_LOGFILE! 2>&1
+		echo SSU - Installation is NOT consistent, !LMS_SSU_CONSISTENCY_CHECK! file[s] missing.                          >> !REPORT_LOGFILE! 2>&1
+		echo !SHOW_RED!    ATTENTION: SSU - Installation is NOT consistent, !LMS_SSU_CONSISTENCY_CHECK! file[s] missing. !SHOW_NORMAL!
+		echo ATTENTION: SSU - Installation is NOT consistent, !LMS_SSU_CONSISTENCY_CHECK! file[s] missing.               >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo SSU - Installation is consistent, NO file missing in !ProgramFiles!\Siemens\SSU\bin\                        >> !REPORT_LOGFILE! 2>&1
 	)
@@ -8472,19 +7920,11 @@ echo -------------------------------------------------------                    
 if defined NUM_OF_INSTALLED_SW_FROM_SIEMENS (
 	rem check bumber of installed siemens software, see https://bt-clmserver01.hqs.sbt.siemens.com/ccm/resource/itemName/com.ibm.team.workitem.WorkItem/822161
 	if /I !NUM_OF_INSTALLED_SW_FROM_SIEMENS! GEQ !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_1! (
-		if defined SHOW_COLORED_OUTPUT (
-			echo [1;31m    NOTE: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS! and exceeds the limit of !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_1!. This will cause problems during activation. [1;37m
-		) else (
-			echo     NOTE: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS! and exceeds the limit of !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_1!. This will cause problems during activation.
-		)
+		echo !SHOW_RED!    NOTE: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS! and exceeds the limit of !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_1!. This will cause problems during activation. !SHOW_NORMAL!
 		echo NOTE: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS! and exceeds the limit of !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_1!. This will cause problems during activation.              >> !REPORT_LOGFILE! 2>&1
 	) else (
 		if /I !NUM_OF_INSTALLED_SW_FROM_SIEMENS! GEQ !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_2! (
-				if defined SHOW_COLORED_OUTPUT (
-					echo [1;33m    WARNING: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS! and exceeds the limit of !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_2!. This may cause problems during activation. [1;37m
-				) else (
-					echo     WARNING: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS! and exceeds the limit of !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_2!. This may cause problems during activation.
-				)
+				echo !SHOW_YELLOW!    WARNING: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS! and exceeds the limit of !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_2!. This may cause problems during activation. !SHOW_NORMAL!
 				echo WARNING: The number of installed Siemens software is !NUM_OF_INSTALLED_SW_FROM_SIEMENS! and exceeds the limit of !NUM_OF_INSTALLED_SW_FROM_SIEMENS_LIMIT_2!. This may cause problems during activation. >> !REPORT_LOGFILE! 2>&1
 		)
 	)
@@ -8541,11 +7981,7 @@ if not defined LMS_CHECK_ID (
 			rem access to internal public share, copy zipped archive to this share
 			echo -------------------------------------------------------                       >> !CHECKLMS_REPORT_LOG_PATH!\zip_logfile_archive.log 2>&1
 			echo Start at !DATE! !TIME! to copy '!REPORT_LOGARCHIVE!' ....                     >> !CHECKLMS_REPORT_LOG_PATH!\zip_logfile_archive.log 2>&1
-			if defined SHOW_COLORED_OUTPUT (
-				echo [1;33m    be patient, the upload of the archive requires some time, up to several hours [1;37m
-			) else (
-				echo    be patient, the upload of the archive requires some time, up to several hours
-			)
+			echo !SHOW_YELLOW!    be patient, the upload of the archive requires some time, up to several hours !SHOW_NORMAL!
 			echo     start upload '!REPORT_LOGARCHIVE!' to '!CHECKLMS_PUBLIC_SHARE!' at !DATE! !TIME! ...
 			xcopy "!REPORT_LOGARCHIVE!" "!CHECKLMS_PUBLIC_SHARE!" /Y /H /I                     >> !CHECKLMS_REPORT_LOG_PATH!\zip_logfile_archive.log 2>&1
 			echo     ... '!REPORT_LOGARCHIVE!' copied to '!CHECKLMS_PUBLIC_SHARE!'!            >> !CHECKLMS_REPORT_LOG_PATH!\zip_logfile_archive.log 2>&1
