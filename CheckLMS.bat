@@ -8,32 +8,6 @@ rem        - Initial version
 rem     24-Jan-2022:
 rem        - Final script, released for LMS 2.6
 rem 
-rem     21-Feb-2022:
-rem        - check V2C file in !LMS_V2C_FOLDER!
-rem        - show error message when V2C is not available.
-rem        - copy/analyze HASP error.log located in C:\Program Files (x86)\Common Files\Aladdin Shared\HASP\*
-rem     23-Feb-2022:
-rem        - add further external URL to perform a connection test; use https://webhook.site/54ced032-9f1a-427a-8eab-24e2329cb8cc
-rem          see dashboard at: https://webhook.site/#!/54ced032-9f1a-427a-8eab-24e2329cb8cc/7e4ec314-dbb8-421f-b210-1de546a3d65b/1
-rem     24-Feb-2022:
-rem        - Fix issue: 'The system cannot find the batch label specified - break_hostinfo_for_loop'
-rem     08-Mar-2022:
-rem        - add LMS_SYSTEMID and LMS_SCRIPT_BUILD to webhook connection test 
-rem     09-Mar-2022:
-rem        - add reqeust to OSD server (at the end of the script). Add new section 'S E N D   S T A T I S T I C   D A T A'
-rem        - Initial file for !LMS_DOWNLOAD_PATH!\CheckLMS.ps1; with LMS_SCRIPT_BUILD, LMS_SYSTEMID, OS_MAJ_VERSION, OS_MIN_VERSION, LMS_IS_VM and OS_MACHINEGUID
-rem        - adjust ouptut when using 'goto' option 
-rem        - adjust check if WmiRead shall be executed, execute always when LMS 2.6.849 (or highr) is installed; otherwise execuet only when VC++ V14.29 (or higher) is installed (see 1722921)
-rem     10-Mar-2022:
-rem        - fix issue 1713700: make sure that files downloaded from git have 'windows style' line endings (CR LF)
-rem        - use solution from https://ss64.com/ps/syntax-set-eol.html: Get-Content $OldFile | Set-Content -Path $NewFile
-rem        - implement check at script startup (after required folders have been created), and - if needed - convert script and restart them.
-rem     11-Mar-2022:
-rem        - add running script name to logfile.
-rem        - add execution of script 'CheckForUpdate.ps1' - if available - to retrieve software updates and messages for installed LMS client.
-rem     14-Mar-2022:
-rem        - simplify colored output of CheckLMS script
-rem        - Move 'Collection of additional logfiles [based on UCMS-LogcollectorDWP.ini]' into /extend section
 rem     21-Mar-2022:
 rem        - copy/analyze HASP access.log located in C:\Program Files (x86)\Common Files\Aladdin Shared\HASP\*
 rem        - type HASP pid file located in C:\Program Files (x86)\Common Files\Aladdin Shared\HASP\*
