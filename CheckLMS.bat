@@ -33,6 +33,10 @@ rem        - add running script name to logfile.
 rem        - add execution of script 'CheckForUpdate.ps1' - if available - to retrieve software updates and messages for installed LMS client.
 rem     14-Mar-2022:
 rem        - simplify colored output of CheckLMS script
+rem        - Move 'Collection of additional logfiles [based on UCMS-LogcollectorDWP.ini]' into /extend section
+rem     21-Mar-2022:
+rem        - copy/analyze HASP access.log located in C:\Program Files (x86)\Common Files\Aladdin Shared\HASP\*
+rem        - type HASP pid file located in C:\Program Files (x86)\Common Files\Aladdin Shared\HASP\*
 rem     
 rem     Full details see changelog.md
 rem
@@ -76,8 +80,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 14-Mar-2022"
-set LMS_SCRIPT_BUILD=20220314
+set LMS_SCRIPT_VERSION="CheckLMS Script 21-Mar-2022"
+set LMS_SCRIPT_BUILD=20220321
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -3789,6 +3793,11 @@ if not defined LMS_SKIPLMS (
 		echo !LMS_HASPDRIVER_FOLDER!\hasplm.ini:                                                                                 >> !REPORT_LOGFILE! 2>&1
 		type "!LMS_HASPDRIVER_FOLDER!\\hasplm.ini"                                                                               >> !REPORT_LOGFILE! 2>&1
 	)
+	IF EXIST "!LMS_HASPDRIVER_FOLDER!\hasplm.pid" (
+		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+		echo !LMS_HASPDRIVER_FOLDER!\hasplm.pid:                                                                                 >> !REPORT_LOGFILE! 2>&1
+		type "!LMS_HASPDRIVER_FOLDER!\\hasplm.pid"                                                                               >> !REPORT_LOGFILE! 2>&1
+	)
 	IF EXIST "!LMS_HASPDRIVER_FOLDER!\error.log" (
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 		echo '!LMS_HASPDRIVER_FOLDER!\error.log', copied to '!CHECKLMS_REPORT_LOG_PATH!\hasp_error.log':                         >> !REPORT_LOGFILE! 2>&1
@@ -3796,6 +3805,14 @@ if not defined LMS_SKIPLMS (
 		echo --- File automatically copied from !LMS_HASPDRIVER_FOLDER!\error.log to !CHECKLMS_REPORT_LOG_PATH!\hasp_error.log --- >> !CHECKLMS_REPORT_LOG_PATH!\hasp_error.log 2>&1
 		powershell -command "& {Get-Content '!LMS_HASPDRIVER_FOLDER!\error.log' | Select-Object -last !LOG_FILE_SNIPPET!}"       >> !REPORT_LOGFILE! 2>&1
 		rem type "!LMS_HASPDRIVER_FOLDER!\\error.log"                                                                                >> !REPORT_LOGFILE! 2>&1
+	)
+	IF EXIST "!LMS_HASPDRIVER_FOLDER!\access.log" (
+		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+		echo '!LMS_HASPDRIVER_FOLDER!\access.log', copied to '!CHECKLMS_REPORT_LOG_PATH!\hasp_access.log':                       >> !REPORT_LOGFILE! 2>&1
+		copy /Y "!LMS_HASPDRIVER_FOLDER!\access.log" "!CHECKLMS_REPORT_LOG_PATH!\hasp_access.log"                                >> !REPORT_LOGFILE! 2>&1
+		echo --- File automatically copied from !LMS_HASPDRIVER_FOLDER!\access.log to !CHECKLMS_REPORT_LOG_PATH!\hasp_access.log --- >> !CHECKLMS_REPORT_LOG_PATH!\hasp_access.log 2>&1
+		powershell -command "& {Get-Content '!LMS_HASPDRIVER_FOLDER!\access.log' | Select-Object -last !LOG_FILE_SNIPPET!}"      >> !REPORT_LOGFILE! 2>&1
+		rem type "!LMS_HASPDRIVER_FOLDER!\\access.log"                                                                                >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	echo LMS_V2C_FOLDER='!LMS_V2C_FOLDER!' / LMS_V2C_FILE='!LMS_V2C_FILE!'                                                       >> !REPORT_LOGFILE! 2>&1
@@ -6587,14 +6604,18 @@ if not defined LMS_SKIPDDSETUP (
 )
 echo ==============================================================================                                                                                                 >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPUCMS (
-	rem copied from UCMS-LogcollectorDWP.ini
-	echo Several additional logfiles collected [based on UCMS-LogcollectorDWP.ini] ...                                                                                                                          >> !REPORT_LOGFILE! 2>&1
-	robocopy.exe %SystemRoot%  "!CHECKLMS_REPORT_LOG_PATH!\UCMS\WINDOWS" IE*.log cbs*.log WU_IE10_LangPacks.log    /NP /R:1 /W:1 /LOG+:!CHECKLMS_REPORT_LOG_PATH!\robocopy.log                                  >> !REPORT_LOGFILE! 2>&1
-	robocopy.exe %SystemRoot%\debug "!CHECKLMS_REPORT_LOG_PATH!\UCMS\WINDOWS\debug" *.log      /S /NP /R:1 /W:1 /LOG+:!CHECKLMS_REPORT_LOG_PATH!\robocopy.log                                                   >> !REPORT_LOGFILE! 2>&1
-	robocopy.exe %systemroot%\logs\ManagedPC\Applications "!CHECKLMS_REPORT_LOG_PATH!\UCMS\WINDOWS\logs\ManagedPC\Applications" *.log  /S /NP /R:1 /W:1 /LOG+:!CHECKLMS_REPORT_LOG_PATH!\robocopy.log           >> !REPORT_LOGFILE! 2>&1
-	robocopy.exe %systemroot%\logs "!CHECKLMS_REPORT_LOG_PATH!\UCMS\WINDOWS\logs" *.log       /NP /R:1 /W:1 /LOG+:!CHECKLMS_REPORT_LOG_PATH!\robocopy.log                                                       >> !REPORT_LOGFILE! 2>&1
-	echo     see folder '!CHECKLMS_REPORT_LOG_PATH!\UCMS\' for more details.                                                                                                                                    >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                                                                                                            >> !REPORT_LOGFILE! 2>&1
+	if defined LMS_EXTENDED_CONTENT (
+		rem copied from UCMS-LogcollectorDWP.ini
+		echo Collect additional logfiles [based on UCMS-LogcollectorDWP.ini] ...                                                                                                                                >> !REPORT_LOGFILE! 2>&1
+		robocopy.exe %SystemRoot%  "!CHECKLMS_REPORT_LOG_PATH!\UCMS\WINDOWS" IE*.log cbs*.log WU_IE10_LangPacks.log    /NP /R:1 /W:1 /LOG+:!CHECKLMS_REPORT_LOG_PATH!\robocopy.log                              >> !REPORT_LOGFILE! 2>&1
+		robocopy.exe %SystemRoot%\debug "!CHECKLMS_REPORT_LOG_PATH!\UCMS\WINDOWS\debug" *.log      /S /NP /R:1 /W:1 /LOG+:!CHECKLMS_REPORT_LOG_PATH!\robocopy.log                                               >> !REPORT_LOGFILE! 2>&1
+		robocopy.exe %systemroot%\logs\ManagedPC\Applications "!CHECKLMS_REPORT_LOG_PATH!\UCMS\WINDOWS\logs\ManagedPC\Applications" *.log  /S /NP /R:1 /W:1 /LOG+:!CHECKLMS_REPORT_LOG_PATH!\robocopy.log       >> !REPORT_LOGFILE! 2>&1
+		robocopy.exe %systemroot%\logs "!CHECKLMS_REPORT_LOG_PATH!\UCMS\WINDOWS\logs" *.log       /NP /R:1 /W:1 /LOG+:!CHECKLMS_REPORT_LOG_PATH!\robocopy.log                                                   >> !REPORT_LOGFILE! 2>&1
+		echo     see folder '!CHECKLMS_REPORT_LOG_PATH!\UCMS\' for more details.                                                                                                                                >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! ....                                                                                                                                                                        >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo Collection of additional logfiles [based on UCMS-LogcollectorDWP.ini] skipped, start script with option '/extend' to enable extended content.                                                      >> !REPORT_LOGFILE! 2>&1
+	)
 ) else (
 	rem LMS_SKIPUCMS
 	echo !SHOW_YELLOW!    SKIPPED UCMS section. The script didn't execute the UCMS commands. !SHOW_NORMAL!
