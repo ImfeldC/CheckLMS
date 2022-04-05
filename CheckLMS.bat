@@ -8,9 +8,6 @@ rem        - Initial version
 rem     24-Jan-2022:
 rem        - Final script, released for LMS 2.6
 rem 
-rem     21-Mar-2022:
-rem        - copy/analyze HASP access.log located in C:\Program Files (x86)\Common Files\Aladdin Shared\HASP\*
-rem        - type HASP pid file located in C:\Program Files (x86)\Common Files\Aladdin Shared\HASP\*
 rem     30-Mar-2022:
 rem        - support 'ecmcommonutil.exe' V1.27
 rem     

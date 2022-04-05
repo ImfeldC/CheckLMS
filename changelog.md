@@ -1230,5 +1230,8 @@ rem        - add execution of script 'CheckForUpdate.ps1' - if available - to re
 rem     14-Mar-2022:
 rem        - simplify colored output of CheckLMS script
 rem        - Move 'Collection of additional logfiles [based on UCMS-LogcollectorDWP.ini]' into /extend section
+rem     21-Mar-2022:
+rem        - copy/analyze HASP access.log located in C:\Program Files (x86)\Common Files\Aladdin Shared\HASP\*
+rem        - type HASP pid file located in C:\Program Files (x86)\Common Files\Aladdin Shared\HASP\*
 rem 
 ```
