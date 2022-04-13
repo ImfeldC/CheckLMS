@@ -10,6 +10,8 @@ rem        - Final script, released for LMS 2.6
 rem 
 rem     30-Mar-2022:
 rem        - support 'ecmcommonutil.exe' V1.27
+rem     13-Apr-2022:
+rem        - remove 'CheckLMS.ps1' (and whole part of sending statistic data), use 'CheckForUpdate.ps1' instead
 rem     
 rem     Full details see changelog.md
 rem
@@ -53,8 +55,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 30-Mar-2022"
-set LMS_SCRIPT_BUILD=20220330
+set LMS_SCRIPT_VERSION="CheckLMS Script 13-Apr-2022"
+set LMS_SCRIPT_BUILD=20220413
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -3622,16 +3624,6 @@ if not defined LMS_SKIPLMS (
 		echo Get Product Maintenance: [read with LMU PowerShell command]                                                                                                   >> !REPORT_LOGFILE! 2>&1
 		echo     Get Product Maintenance: [read with LMU PowerShell command]
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {(Select-Product -report -upgrades)[0].Maintenance}"                           >> !REPORT_LOGFILE! 2>&1 
-		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo Start at !DATE! !TIME! ....                                                                                                                                   >> !REPORT_LOGFILE! 2>&1
-		echo Check for software updates or messages: [read with 'CheckForUpdate.ps1' script from OSD server]                                                               >> !REPORT_LOGFILE! 2>&1
-		echo     Check for software updates or messages: [read with 'CheckForUpdate.ps1' script from OSD server]
-		IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1" (
-			echo RUN: powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -Command "& '!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1'"         >> !REPORT_LOGFILE! 2>&1
-			powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -Command "& '!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1'"                   >> !REPORT_LOGFILE! 2>&1
-		) else (
-			echo ERROR: Cannot execute powershell script 'CheckForUpdate.ps1', it doesn't exist '!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1'.                   >> !REPORT_LOGFILE! 2>&1
-		)
 	) else (
 		echo !SHOW_RED!    ERROR: Cannot execute powershell commands due missing "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1".  !SHOW_NORMAL!
 		echo ERROR: Cannot execute powershell commands due missing "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1".                >> !REPORT_LOGFILE! 2>&1
@@ -7758,21 +7750,14 @@ echo ... send statistic data to OSD ...
 echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
 echo =   S E N D   S T A T I S T I C   D A T A                                    =                                      >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
-SET lms_ps_script_base=!LMS_DOWNLOAD_PATH!\CheckLMS.ps1
-SET lms_ps_script_copy=!CHECKLMS_REPORT_LOG_PATH!\CheckLMSCopy.ps1
-IF EXIST "!lms_ps_script_base!" (
-	copy /Y "!lms_ps_script_base!" "!lms_ps_script_copy!"                                                                >> !REPORT_LOGFILE! 2>&1
-	echo Send statistic data to OSD, for script version '!LMS_SCRIPT_BUILD!' ...                                         >> !REPORT_LOGFILE! 2>&1
-	rem replace placeholders, with real values
-	Powershell -ExecutionPolicy Bypass -Command "& {(Get-Content '!lms_ps_script_copy!').replace('?LMS_SCRIPT_BUILD?', '!LMS_SCRIPT_BUILD!') ^| Set-Content '!lms_ps_script_copy!'}"  >> !REPORT_LOGFILE! 2>&1
-	Powershell -ExecutionPolicy Bypass -Command "& {(Get-Content '!lms_ps_script_copy!').replace('?LMS_SYSTEMID?', '!LMS_SYSTEMID!') ^| Set-Content '!lms_ps_script_copy!'}"          >> !REPORT_LOGFILE! 2>&1
-	Powershell -ExecutionPolicy Bypass -Command "& {(Get-Content '!lms_ps_script_copy!').replace('?OS_MAJ_VERSION?', '!OS_MAJ_VERSION!') ^| Set-Content '!lms_ps_script_copy!'}"      >> !REPORT_LOGFILE! 2>&1
-	Powershell -ExecutionPolicy Bypass -Command "& {(Get-Content '!lms_ps_script_copy!').replace('?OS_MIN_VERSION?', '!OS_MIN_VERSION!') ^| Set-Content '!lms_ps_script_copy!'}"      >> !REPORT_LOGFILE! 2>&1
-	Powershell -ExecutionPolicy Bypass -Command "& {(Get-Content '!lms_ps_script_copy!').replace('?LMS_IS_VM?', '!LMS_IS_VM!') ^| Set-Content '!lms_ps_script_copy!'}"                >> !REPORT_LOGFILE! 2>&1
-	Powershell -ExecutionPolicy Bypass -Command "& {(Get-Content '!lms_ps_script_copy!').replace('?OS_MACHINEGUID?', '!OS_MACHINEGUID!') ^| Set-Content '!lms_ps_script_copy!'}"      >> !REPORT_LOGFILE! 2>&1
-	rem send statistic data to OSD
-	Powershell -ExecutionPolicy Bypass -Command "& '!lms_ps_script_copy!'"                                               >> !REPORT_LOGFILE! 2>&1
-	echo     Data sent: OS_MAJ_VERSION=!OS_MAJ_VERSION! / OS_MIN_VERSION=!OS_MIN_VERSION! / LMS_IS_VM=!LMS_IS_VM! / OS_MACHINEGUID=!OS_MACHINEGUID!  >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! ....                                                                                                                                   >> !REPORT_LOGFILE! 2>&1
+echo Check for software updates or messages: [read with 'CheckForUpdate.ps1' script from OSD server]                                                               >> !REPORT_LOGFILE! 2>&1
+echo     Check for software updates or messages: [read with 'CheckForUpdate.ps1' script from OSD server]
+IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1" (
+	echo RUN: powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -Command "& '!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1'"         >> !REPORT_LOGFILE! 2>&1
+	powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -Command "& '!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1'"                   >> !REPORT_LOGFILE! 2>&1
+) else (
+	echo ERROR: Cannot execute powershell script 'CheckForUpdate.ps1', it doesn't exist '!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1'.                   >> !REPORT_LOGFILE! 2>&1
 )
 
 :summary
