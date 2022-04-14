@@ -12,6 +12,10 @@ rem     30-Mar-2022:
 rem        - support 'ecmcommonutil.exe' V1.27
 rem     13-Apr-2022:
 rem        - remove 'CheckLMS.ps1' (and whole part of sending statistic data), use 'CheckForUpdate.ps1' instead
+rem     14-Apr-2022:
+rem        - add 'powershell -command "Get-Culture"'
+rem        - add 'powershell -command "Get-WinHomeLocation"'
+rem        - add option /skipdownload
 rem     
 rem     Full details see changelog.md
 rem
@@ -28,6 +32,7 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /nouserinput                 supresses any user input (mainly the stop command at the end of the script)
 rem              - /nowait                      supresses any user input and any further "wait" commands 
 rem              - /logfilename <logfilename>   specifies the name and location of the logfile
+rem              - /skipdownload                skip section wich performs download.
 rem              - /skipnetstat                 skip section wich performs netstat commands. 
 rem              - /skipcontest                 skip section wich performs connection tests.
 rem              - /extend                      run extended content, increases script running time!
@@ -55,8 +60,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 13-Apr-2022"
-set LMS_SCRIPT_BUILD=20220413
+set LMS_SCRIPT_VERSION="CheckLMS Script 14-Apr-2022"
+set LMS_SCRIPT_BUILD=20220414
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -341,6 +346,9 @@ FOR %%A IN (%*) DO (
 		)
 		if "!var!"=="logfilename" (
 			set LMS_LOGFILENAME=1
+		)
+		if "!var!"=="skipdownload" (
+			set LMS_SKIPDOWNLOAD=1
 		)
 		if "!var!"=="skipnetstat" (
 			set LMS_SKIPNETSTAT=1
@@ -2731,6 +2739,14 @@ if not defined LMS_SKIPWINDOWS (
 	echo ... retrieve time zone information ...
 	echo Retrieve time zone information [using 'powershell -command "Get-TimeZone"']:                                        >> !REPORT_LOGFILE! 2>&1
 	powershell -command "Get-TimeZone"                                                                                       >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- powershell -command "Get-Culture"                                                                  >> !REPORT_LOGFILE! 2>&1
+	echo ... retrieve culture information ...
+	echo Retrieve culture information [using 'powershell -command "Get-Culture"']:                                           >> !REPORT_LOGFILE! 2>&1
+	powershell -command "Get-Culture"                                                                                        >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- powershell -command "Get-WinHomeLocation"                                                          >> !REPORT_LOGFILE! 2>&1
+	echo ... retrieve region or country information ...
+	echo Retrieve region or country information [using 'powershell -command "Get-WinHomeLocation"']:                         >> !REPORT_LOGFILE! 2>&1
+	powershell -command "Get-WinHomeLocation"                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- powershell -command "$PSVersionTable"                                                              >> !REPORT_LOGFILE! 2>&1
 	echo ... retrieve powershell information ...
 	echo Retrieve powershell information [using 'powershell -command "$PSVersionTable"']:                                    >> !REPORT_LOGFILE! 2>&1
