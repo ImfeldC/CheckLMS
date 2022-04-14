@@ -31,6 +31,13 @@ $OS_VERSION = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\Curren
 $OS_MAJ_VERSION = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'CurrentMajorVersionNumber' | select -expand CurrentMajorVersionNumber
 $OS_MIN_VERSION = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'CurrentMinorVersionNumber' | select -expand CurrentMinorVersionNumber
 
+# Determine hypervisor (using SIEMBT logfile)
+$A = Get-ChildItem -Path C:\ProgramData\Siemens\LMS\Logs\SIEMBT.log | Select-String -Pattern 'Running on Hypervisor:(.+)'
+if( $A[0] -match 'Running on Hypervisor:\s(?<Hypervisor>.+)' )
+{
+	$LMS_SIEMBT_HYPERVISOR = $Matches.Hypervisor
+}
+
 Write-Host "Check for updates on client '$lmssystemid' for '$operatingsystem', for product '$productcode' with version '$productversion' ..."
 
 $body = "{
@@ -48,6 +55,7 @@ $body = "{
         `"language`":`"$display_language`",
         `"CSID`":`"$LMS_PS_CSID`",
         `"LMS_IS_VM`":`"$LMS_IS_VM`",
+        `"LMS_SIEMBT_HYPERVISOR`":`"$LMS_SIEMBT_HYPERVISOR`",
         `"OS_PRODUCTNAME`":`"$OS_PRODUCTNAME`",
         `"OS_VERSION`":`"$OS_VERSION`",
         `"OS_MAJ_VERSION`":`"$OS_MAJ_VERSION`",
