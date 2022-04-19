@@ -8,13 +8,16 @@ rem        - Initial version
 rem     24-Jan-2022:
 rem        - Final script, released for LMS 2.6
 rem 
+rem     Full details see changelog.md
+rem
 rem     14-Apr-2022:
 rem        - add 'powershell -command "Get-Culture"'
 rem        - add 'powershell -command "Get-WinHomeLocation"'
 rem        - add option /skipdownload
+rem     19-Apr-2022:
+rem        - read-out installed SW from '\CurrentVersion\Uninstall\*' for Siemens products
+rem        - move 'Read installed products and version [from registry]' in another section, closer to same command using WMI 
 rem     
-rem     Full details see changelog.md
-rem
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -56,8 +59,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 14-Apr-2022"
-set LMS_SCRIPT_BUILD=20220414
+set LMS_SCRIPT_VERSION="CheckLMS Script 19-Apr-2022"
+set LMS_SCRIPT_BUILD=20220419
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -2563,6 +2566,11 @@ if not defined LMS_SKIPWMIC (
 	wmic /output:!REPORT_WMIC_LOGFILE! os get locale, oslanguage, codeset /format:list                                       >> !REPORT_LOGFILE! 2>&1
 	type !REPORT_WMIC_LOGFILE!                                                                                               >> !REPORT_LOGFILE! 2>&1
 	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicos_fullList.txt os get /format:list                                          >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+	echo ... read installed products and version for vendor=Siemens [from registry] ...
+	echo Read installed products and version for vendor=Siemens [from registry]                                              >> !REPORT_LOGFILE! 2>&1
+	Powershell -command "Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Where-Object{$_.Publisher -like "*Siemens*"} | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\InstalledSiemensProgramsReport.log 2>&1
+	type !CHECKLMS_REPORT_LOG_PATH!\InstalledSiemensProgramsReport.log                                                       >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- wmic product get name, version, InstallDate, vendor [with vendor=Siemens]                          >> !REPORT_LOGFILE! 2>&1
 	echo ... read installed products and version [with wmic] ...
 	echo     wmic product get name, version, InstallDate, vendor [for vendor=Siemens]
@@ -2640,6 +2648,13 @@ if not defined LMS_SKIPWMIC (
 			)
 		)
 	)
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+	echo ... read installed products and version [from registry] ...
+	echo Read installed products and version [from registry]                                                                 >> !REPORT_LOGFILE! 2>&1
+	Powershell -command "Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport1.log 2>&1
+	Powershell -command "Powershell -command "Get-Item HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*"                                                                      > !CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport2.log 2>&1
+	rem type !CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport.log >> !REPORT_LOGFILE! 2>&1
+	echo     See full details in '!CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport1.log' and '!CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport2.log'!  >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- wmic product get name, version, InstallDate, vendor                                                >> !REPORT_LOGFILE! 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
 	echo     Read installed products and version [with wmic product get name, version, InstallDate, vendor]
@@ -2673,13 +2688,6 @@ if not defined LMS_SKIPWINDOWS (
 			echo     'dotnet.exe' found at '!ProgramFiles!\dotnet\dotnet.exe'!                                               >> !REPORT_LOGFILE! 2>&1
 		)
 	)
-	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-	echo ... read installed products and version [from registry] ...
-	echo Read installed products and version [from registry]                                                                 >> !REPORT_LOGFILE! 2>&1
-	Powershell -command "Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport1.log 2>&1
-	Powershell -command "Powershell -command "Get-Item HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*"                                                                      > !CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport2.log 2>&1
-	rem type !CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport.log >> !REPORT_LOGFILE! 2>&1
-	echo     See full details in '!CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport1.log' and '!CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport2.log'!  >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                                           >> !REPORT_LOGFILE! 2>&1
 	echo ... list installed VC++ redistributable binaries [DLLs] ...
 	echo List installed VC++ redistributable binaries [DLLs]                                                                 >> !REPORT_LOGFILE! 2>&1
