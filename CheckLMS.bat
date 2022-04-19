@@ -8,10 +8,6 @@ rem        - Initial version
 rem     24-Jan-2022:
 rem        - Final script, released for LMS 2.6
 rem 
-rem     30-Mar-2022:
-rem        - support 'ecmcommonutil.exe' V1.27
-rem     13-Apr-2022:
-rem        - remove 'CheckLMS.ps1' (and whole part of sending statistic data), use 'CheckForUpdate.ps1' instead
 rem     14-Apr-2022:
 rem        - add 'powershell -command "Get-Culture"'
 rem        - add 'powershell -command "Get-WinHomeLocation"'
@@ -32,9 +28,9 @@ rem              - /info "Any text"             Adds this text to the output, e.
 rem              - /nouserinput                 supresses any user input (mainly the stop command at the end of the script)
 rem              - /nowait                      supresses any user input and any further "wait" commands 
 rem              - /logfilename <logfilename>   specifies the name and location of the logfile
-rem              - /skipdownload                skip section wich performs download.
-rem              - /skipnetstat                 skip section wich performs netstat commands. 
-rem              - /skipcontest                 skip section wich performs connection tests.
+rem              - /skipdownload                skip section which performs download.
+rem              - /skipnetstat                 skip section which performs netstat commands. 
+rem              - /skipcontest                 skip section which performs connection tests.
 rem              - /extend                      run extended content, increases script running time!
 rem              - /donotstartnewerscript       don't start newer script even if available (mainly to ensure proper handling of command line options) 
 rem              - /checkdownload               perform downloads and print file versions.

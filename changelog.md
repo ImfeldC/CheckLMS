@@ -1233,5 +1233,9 @@ rem        - Move 'Collection of additional logfiles [based on UCMS-Logcollector
 rem     21-Mar-2022:
 rem        - copy/analyze HASP access.log located in C:\Program Files (x86)\Common Files\Aladdin Shared\HASP\*
 rem        - type HASP pid file located in C:\Program Files (x86)\Common Files\Aladdin Shared\HASP\*
+rem     30-Mar-2022:
+rem        - support 'ecmcommonutil.exe' V1.27
+rem     13-Apr-2022:
+rem        - remove 'CheckLMS.ps1' (and whole part of sending statistic data), use 'CheckForUpdate.ps1' instead
 rem 
 ```
