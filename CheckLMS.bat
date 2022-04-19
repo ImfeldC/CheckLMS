@@ -17,6 +17,7 @@ rem        - add option /skipdownload
 rem     19-Apr-2022:
 rem        - read-out installed SW from '\CurrentVersion\Uninstall\*' for Siemens products
 rem        - move 'Read installed products and version [from registry]' in another section, closer to same command using WMI 
+rem        - use 'Format-Table' option to format output of 'extended' logfiles to list all installed software on a PC.
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -2569,7 +2570,7 @@ if not defined LMS_SKIPWMIC (
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	echo ... read installed products and version for vendor=Siemens [from registry] ...
 	echo Read installed products and version for vendor=Siemens [from registry]                                              >> !REPORT_LOGFILE! 2>&1
-	Powershell -command "Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Where-Object{$_.Publisher -like "*Siemens*"} | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\InstalledSiemensProgramsReport.log 2>&1
+	Powershell -command "Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Where-Object{$_.Publisher -like '*Siemens*'} | Format-Table" > !CHECKLMS_REPORT_LOG_PATH!\InstalledSiemensProgramsReport.log 2>&1
 	type !CHECKLMS_REPORT_LOG_PATH!\InstalledSiemensProgramsReport.log                                                       >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- wmic product get name, version, InstallDate, vendor [with vendor=Siemens]                          >> !REPORT_LOGFILE! 2>&1
 	echo ... read installed products and version [with wmic] ...
@@ -2651,8 +2652,8 @@ if not defined LMS_SKIPWMIC (
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	echo ... read installed products and version [from registry] ...
 	echo Read installed products and version [from registry]                                                                 >> !REPORT_LOGFILE! 2>&1
-	Powershell -command "Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport1.log 2>&1
-	Powershell -command "Powershell -command "Get-Item HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*"                                                                      > !CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport2.log 2>&1
+	Powershell -command "Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Format-Table" > !CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport1.log 2>&1
+	Powershell -command "Get-Item HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*"                                                                                            > !CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport2.log 2>&1
 	rem type !CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport.log >> !REPORT_LOGFILE! 2>&1
 	echo     See full details in '!CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport1.log' and '!CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport2.log'!  >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- wmic product get name, version, InstallDate, vendor                                                >> !REPORT_LOGFILE! 2>&1
