@@ -5,12 +5,16 @@ param(
 )
 #endregion
 
+# '20220420': Add installed Siemens Software 
+# '20220421': try/catch rest method call, read addtional data, see https://github.com/MicrosoftDocs/PowerShell-Docs/issues/4456 
+
+
 $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
 $headers.Add("Content-Type", "application/json")
 
 # set client type ..
 $clientType = 'CheckForUpdate'
-$clientVersion = '20220420'
+$clientVersion = '20220421'
 
 # retrieve product information ...
 $productcode = get-lms -ProductCode | select -expand Guid
@@ -65,7 +69,23 @@ $body = "{
 }"
 
 Write-Host "Message Body ... `n'$body'"
-$response = Invoke-RestMethod 'https://www.automation.siemens.com/softwareupdater/public/api/updates' -Method 'POST' -Headers $headers -Body $body
+Try {
+	$response = Invoke-RestMethod 'https://www.automation.siemens.com/softwareupdater/public/api/updates' -Method 'POST' -Headers $headers -Body $body
+} Catch {
+	Write-Host "Error Response ..."
+	Write-Host "StatusCode:" $_.Exception.Response.StatusCode.value__
+	Write-Host "StatusDescription:" $_.Exception.Response.StatusDescription
+    if($_.ErrorDetails.Message) {
+        Write-Host $_.ErrorDetails.Message
+    } else {
+        Write-Host $_
+    }
+	# read addtional data, see https://github.com/MicrosoftDocs/PowerShell-Docs/issues/4456
+	$reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
+	$reader.BaseStream.Position = 0
+	$reader.DiscardBufferedData()
+	$reader.ReadToEnd() | ConvertFrom-Json
+}
 Write-Host "Message Response ..."
 $response | ConvertTo-Json -depth 100
 
@@ -90,7 +110,23 @@ $body = "{
 }"
 
 Write-Host "Message Body ... `n'$body'"
-$response = Invoke-RestMethod 'https://www.automation.siemens.com/softwareupdater/public/api/updates' -Method 'POST' -Headers $headers -Body $body
+Try {
+	$response = Invoke-RestMethod 'https://www.automation.siemens.com/softwareupdater/public/api/updates' -Method 'POST' -Headers $headers -Body $body
+} Catch {
+	Write-Host "Error Response ..."
+	Write-Host "StatusCode:" $_.Exception.Response.StatusCode.value__
+	Write-Host "StatusDescription:" $_.Exception.Response.StatusDescription
+    if($_.ErrorDetails.Message) {
+        Write-Host $_.ErrorDetails.Message
+    } else {
+        Write-Host $_
+    }
+	# read addtional data, see https://github.com/MicrosoftDocs/PowerShell-Docs/issues/4456
+	$reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
+	$reader.BaseStream.Position = 0
+	$reader.DiscardBufferedData()
+	$reader.ReadToEnd() | ConvertFrom-Json
+}
 Write-Host "Message Response ..."
 $response | ConvertTo-Json -depth 100
 
