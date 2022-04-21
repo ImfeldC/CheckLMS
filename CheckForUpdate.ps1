@@ -10,7 +10,7 @@ $headers.Add("Content-Type", "application/json")
 
 # set client type ..
 $clientType = 'CheckForUpdate'
-$clientVersion = '20220414'
+$clientVersion = '20220420'
 
 # retrieve product information ...
 $productcode = get-lms -ProductCode | select -expand Guid
@@ -65,8 +65,32 @@ $body = "{
 }"
 
 Write-Host "Message Body ... `n'$body'"
-
 $response = Invoke-RestMethod 'https://www.automation.siemens.com/softwareupdater/public/api/updates' -Method 'POST' -Headers $headers -Body $body
-
 Write-Host "Message Response ..."
 $response | ConvertTo-Json -depth 100
+
+
+# Read-out installed Siemens software and convert then into json 
+$SiemensInstalledSoftware1 = Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate, PSChildName | Where-Object{$_.Publisher -like '*Siemens*'} | ConvertTo-Json
+$SiemensInstalledSoftware2 = Get-CimInstance Win32_Product | Sort-Object -property Name | Where-Object{$_.Vendor -like '*Siemens*'} | Select-Object Name, Version, InstallDate, Vendor, IdentifyingNumber | ConvertTo-Json
+
+$body = "{
+    `"ProductCode`": `"$productcode`",
+    `"ProductVersion`": `"$productversion`",
+    `"OperationSystem`": `"$operatingsystem`",
+    `"Language`": `"$language`",
+    `"clientType`":`"$clientType`",
+    `"clientVersion`":`"$clientVersion`",
+    `"clientGUID`":`"$lmssystemid`",
+    `"clientInfo`":
+    {
+		`"siemens_installed_software`": $SiemensInstalledSoftware1,
+		`"siemens_installed_software`": $SiemensInstalledSoftware2
+    }
+}"
+
+Write-Host "Message Body ... `n'$body'"
+$response = Invoke-RestMethod 'https://www.automation.siemens.com/softwareupdater/public/api/updates' -Method 'POST' -Headers $headers -Body $body
+Write-Host "Message Response ..."
+$response | ConvertTo-Json -depth 100
+
