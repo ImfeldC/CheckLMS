@@ -18,6 +18,11 @@ rem     19-Apr-2022:
 rem        - read-out installed SW from '\CurrentVersion\Uninstall\*' for Siemens products
 rem        - move 'Read installed products and version [from registry]' in another section, closer to same command using WMI 
 rem        - use 'Format-Table' option to format output of 'extended' logfiles to list all installed software on a PC.
+rem     20-Apr-2022:
+rem        - add InstallSource, ModifyPath, UninstallString, PSChildName as new parameters of Get-ItemProperty command
+rem        - add IdentifyingNumber as new parameter of wmic command 
+rem     21-Apr-2022:
+rem        - set width to 1024 for 'Format-Table' 
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -60,8 +65,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 19-Apr-2022"
-set LMS_SCRIPT_BUILD=20220419
+set LMS_SCRIPT_VERSION="CheckLMS Script 21-Apr-2022"
+set LMS_SCRIPT_BUILD=20220421
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -2570,14 +2575,14 @@ if not defined LMS_SKIPWMIC (
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	echo ... read installed products and version for vendor=Siemens [from registry] ...
 	echo Read installed products and version for vendor=Siemens [from registry]                                              >> !REPORT_LOGFILE! 2>&1
-	Powershell -command "Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Where-Object{$_.Publisher -like '*Siemens*'} | Format-Table" > !CHECKLMS_REPORT_LOG_PATH!\InstalledSiemensProgramsReport.log 2>&1
+	Powershell -command "Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate, InstallSource, ModifyPath, UninstallString, PSChildName | Where-Object{$_.Publisher -like '*Siemens*'} | Format-Table | Out-File -Width 1024 '!CHECKLMS_REPORT_LOG_PATH!\InstalledSiemensProgramsReport.log'" >> !REPORT_LOGFILE! 2>&1
 	type !CHECKLMS_REPORT_LOG_PATH!\InstalledSiemensProgramsReport.log                                                       >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- wmic product get name, version, InstallDate, vendor [with vendor=Siemens]                          >> !REPORT_LOGFILE! 2>&1
 	echo ... read installed products and version [with wmic] ...
 	echo     wmic product get name, version, InstallDate, vendor [for vendor=Siemens]
-	echo Read installed products and version [with wmic, for vendor=Siemens]                                                 >> !REPORT_LOGFILE! 2>&1
-	wmic /output:!REPORT_WMIC_LOGFILE! product where "Vendor like '%%Siemens%%'" get name, version, InstallDate, vendor      >> !REPORT_LOGFILE! 2>&1
-	type !REPORT_WMIC_LOGFILE!                                                                                               >> !REPORT_LOGFILE! 2>&1
+	echo Read installed products and version [with wmic, for vendor=Siemens]                                                                    >> !REPORT_LOGFILE! 2>&1
+	wmic /output:!REPORT_WMIC_LOGFILE! product where "Vendor like '%%Siemens%%'" get name, version, InstallDate, vendor, IdentifyingNumber      >> !REPORT_LOGFILE! 2>&1
+	type !REPORT_WMIC_LOGFILE!                                                                                                                  >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- analyze installed software [!REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV!]                                >> !REPORT_LOGFILE! 2>&1
 	set DONGLE_DRIVER_INSTALL_DATE=N/A
 	set SSU_INSTALL_DATE=N/A
@@ -2652,15 +2657,15 @@ if not defined LMS_SKIPWMIC (
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	echo ... read installed products and version [from registry] ...
 	echo Read installed products and version [from registry]                                                                 >> !REPORT_LOGFILE! 2>&1
-	Powershell -command "Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Format-Table" > !CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport1.log 2>&1
-	Powershell -command "Get-Item HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*"                                                                                            > !CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport2.log 2>&1
+	Powershell -command "Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate, InstallSource, ModifyPath, UninstallString, PSChildName | Format-Table | Out-File -Width 1024 '!CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport1.log'" >> !REPORT_LOGFILE! 2>&1
+	Powershell -command "Get-Item HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*"                                                                                                                                                     > !CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport2.log 2>&1
 	rem type !CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport.log >> !REPORT_LOGFILE! 2>&1
 	echo     See full details in '!CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport1.log' and '!CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport2.log'!  >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- wmic product get name, version, InstallDate, vendor                                                >> !REPORT_LOGFILE! 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
-	echo     Read installed products and version [with wmic product get name, version, InstallDate, vendor]
+	echo     Read installed products and version [with wmic product get name, version, InstallDate, vendor, IdentifyingNumber]
 	echo Read installed products and version [with wmic]                                                                     >> !REPORT_LOGFILE! 2>&1
-	wmic /output:%REPORT_WMIC_INSTALLED_SW_LOGFILE% product get name, version, InstallDate, vendor                           >> !REPORT_LOGFILE! 2>&1
+	wmic /output:%REPORT_WMIC_INSTALLED_SW_LOGFILE% product get name, version, InstallDate, vendor, IdentifyingNumber        >> !REPORT_LOGFILE! 2>&1
 	type %REPORT_WMIC_INSTALLED_SW_LOGFILE%                                                                                  >> !REPORT_LOGFILE! 2>&1
 	echo     Read installed products and version [with wmic *] 
 	echo Read installed products and version [with wmic *]                                                                   >> !REPORT_LOGFILE! 2>&1
