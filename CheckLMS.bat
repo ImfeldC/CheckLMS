@@ -23,6 +23,9 @@ rem        - add InstallSource, ModifyPath, UninstallString, PSChildName as new 
 rem        - add IdentifyingNumber as new parameter of wmic command 
 rem     21-Apr-2022:
 rem        - set width to 1024 for 'Format-Table' 
+rem     27-Apr-2022:
+rem        - delete !CHECKLMS_REPORT_LOG_PATH!\pending_req_*.xml
+rem        - fix dispaly issue of SHOW_NORMAL in ALM message.
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -65,8 +68,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 21-Apr-2022"
-set LMS_SCRIPT_BUILD=20220421
+set LMS_SCRIPT_VERSION="CheckLMS Script 27-Apr-2022"
+set LMS_SCRIPT_BUILD=20220427
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -237,6 +240,7 @@ del !REPORT_LOG_PATH!\SIEMBT_*_event.log >nul 2>&1
 del !REPORT_LOG_PATH!\yes.txt >nul 2>&1
 del !CHECKLMS_REPORT_LOG_PATH!\desigcc_reistry.txt >nul 2>&1
 del !CHECKLMS_REPORT_LOG_PATH!\desigocc_installed_EM.txt >nul 2>&1
+del !CHECKLMS_REPORT_LOG_PATH!\pending_req_*.xml >nul 2>&1
 del !CHECKLMS_ALM_PATH!\ALM\ >nul 2>&1
 
 rem remove former used local path (clean-up no longer used data)
@@ -3900,17 +3904,17 @@ if not defined LMS_SKIPBTALMPLUGIN (
 			echo     LMS 2.6.xxx [!LMS_VERSION!], check installed ALM ...                                >> !REPORT_LOGFILE! 2>&1
 			rem Check for LMS 2.6.xxx [>LMS 2.5.824] ...
 			if /I !ALM_MAJ_VERSION! LSS 6 (
-				rem ALM is below V6.x ... it is NOT supported!
+				rem ALM is below V6.x ... it is NOT supported
 				echo     Installed ALM [!ALM_RELEASE!] is below V6.x ...                                 >> !REPORT_LOGFILE! 2>&1
 				set ALM_IS_SUPPORTED=No
 			) else (
 				if /I !ALM_MIN_VERSION! GEQ 1 (
-					rem ALM is equal or above V6.1 ... it is supported!
+					rem ALM is equal or above V6.1 ... it is supported
 					echo     Installed ALM [!ALM_RELEASE!] is equal or above V6.1 ...                    >> !REPORT_LOGFILE! 2>&1
 					set ALM_IS_SUPPORTED=Yes
 				) else (
 					if /I !ALM_PATCH_VERSION! GEQ 8 (
-						rem ALM is V6.0.8.x or above ... it is supported!
+						rem ALM is V6.0.8.x or above ... it is supported
 						echo     Installed ALM [!ALM_RELEASE!] is V6.0.8.x or above ...                  >> !REPORT_LOGFILE! 2>&1
 						set ALM_IS_SUPPORTED=Yes
 					) else (
@@ -3926,8 +3930,8 @@ if not defined LMS_SKIPBTALMPLUGIN (
 	if defined ALM_IS_SUPPORTED (
 		echo     Installed ALM [!ALM_RELEASE!] is supported: !ALM_IS_SUPPORTED!                          >> !REPORT_LOGFILE! 2>&1
 		if "!ALM_IS_SUPPORTED!" NEQ "Yes" (
-			echo !SHOW_RED!    ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please update to newer version. !SHOW_NORMAL!
-			echo ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please update to newer version.  >> !REPORT_LOGFILE! 2>&1
+			echo !SHOW_RED!    ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported. Please update to newer version. !SHOW_NORMAL!
+			echo ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported. Please update to newer version.  >> !REPORT_LOGFILE! 2>&1
 		)
 	)
 	if defined LMS_SKIP_ALM_BT_PUGIN_INSTALLATION (
@@ -7913,8 +7917,8 @@ if defined ALM_VERSION_STRING (
 	if defined ALM_IS_SUPPORTED (
 		echo     Installed ALM [!ALM_RELEASE!] is supported: !ALM_IS_SUPPORTED!                                              >> !REPORT_LOGFILE! 2>&1
 		if "!ALM_IS_SUPPORTED!" NEQ "Yes" (
-			echo !SHOW_RED!    ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please update to newer version. !SHOW_NORMAL!
-			echo ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported! Please update to newer version.                      >> !REPORT_LOGFILE! 2>&1
+			echo !SHOW_RED!    ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported. Please update to newer version. !SHOW_NORMAL!
+			echo ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported. Please update to newer version.                      >> !REPORT_LOGFILE! 2>&1
 		)
 	)
 ) else (
