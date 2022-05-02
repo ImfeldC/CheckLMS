@@ -1237,5 +1237,23 @@ rem     30-Mar-2022:
 rem        - support 'ecmcommonutil.exe' V1.27
 rem     13-Apr-2022:
 rem        - remove 'CheckLMS.ps1' (and whole part of sending statistic data), use 'CheckForUpdate.ps1' instead
+rem     14-Apr-2022:
+rem        - add 'powershell -command "Get-Culture"'
+rem        - add 'powershell -command "Get-WinHomeLocation"'
+rem        - add option /skipdownload
+rem     19-Apr-2022:
+rem        - read-out installed SW from '\CurrentVersion\Uninstall\*' for Siemens products
+rem        - move 'Read installed products and version [from registry]' in another section, closer to same command using WMI 
+rem        - use 'Format-Table' option to format output of 'extended' logfiles to list all installed software on a PC.
+rem     20-Apr-2022:
+rem        - add InstallSource, ModifyPath, UninstallString, PSChildName as new parameters of Get-ItemProperty command
+rem        - add IdentifyingNumber as new parameter of wmic command 
+rem     21-Apr-2022:
+rem        - set width to 1024 for 'Format-Table' 
+rem     27-Apr-2022:
+rem        - delete !CHECKLMS_REPORT_LOG_PATH!\pending_req_*.xml
+rem        - fix dispaly issue of SHOW_NORMAL in ALM message.
+rem     28-Apr-2022:
+rem        - added 'netsh winhttp show proxy' (see https://support.microsoft.com/en-us/topic/how-the-windows-update-client-determines-which-proxy-server-to-use-to-connect-to-the-windows-update-website-08612ae5-3722-886c-f1e1-d012516c22a1 )
 rem 
 ```

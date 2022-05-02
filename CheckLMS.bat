@@ -10,22 +10,8 @@ rem        - Final script, released for LMS 2.6
 rem 
 rem     Full details see changelog.md
 rem
-rem     14-Apr-2022:
-rem        - add 'powershell -command "Get-Culture"'
-rem        - add 'powershell -command "Get-WinHomeLocation"'
-rem        - add option /skipdownload
-rem     19-Apr-2022:
-rem        - read-out installed SW from '\CurrentVersion\Uninstall\*' for Siemens products
-rem        - move 'Read installed products and version [from registry]' in another section, closer to same command using WMI 
-rem        - use 'Format-Table' option to format output of 'extended' logfiles to list all installed software on a PC.
-rem     20-Apr-2022:
-rem        - add InstallSource, ModifyPath, UninstallString, PSChildName as new parameters of Get-ItemProperty command
-rem        - add IdentifyingNumber as new parameter of wmic command 
-rem     21-Apr-2022:
-rem        - set width to 1024 for 'Format-Table' 
-rem     27-Apr-2022:
-rem        - delete !CHECKLMS_REPORT_LOG_PATH!\pending_req_*.xml
-rem        - fix dispaly issue of SHOW_NORMAL in ALM message.
+rem     28-Apr-2022:
+rem        - added 'netsh winhttp show proxy' (see https://support.microsoft.com/en-us/topic/how-the-windows-update-client-determines-which-proxy-server-to-use-to-connect-to-the-windows-update-website-08612ae5-3722-886c-f1e1-d012516c22a1 )
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -68,8 +54,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 27-Apr-2022"
-set LMS_SCRIPT_BUILD=20220427
+set LMS_SCRIPT_VERSION="CheckLMS Script 28-Apr-2022"
+set LMS_SCRIPT_BUILD=20220428
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -3074,11 +3060,16 @@ if not defined LMS_SKIPNETSETTINGS (
 	powershell -command "Get-NetAdapterBinding -ComponentID ms_tcpip6"                                                           >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- Displays the current ephemeral port range: netsh int ipv4 show dynamicport tcp                         >> !REPORT_LOGFILE! 2>&1
 	echo     Displays the current ephemeral port range: netsh int ipv4 show dynamicport tcp
+	echo Displays the current ephemeral port range: netsh int ipv4 show dynamicport tcp                                          >> !REPORT_LOGFILE! 2>&1
 	netsh int ipv4 show dynamicport tcp                                                                                          >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	echo Retrieve WLAN settings [with 'netsh wlan show all']                                                                     >> !REPORT_LOGFILE! 2>&1
 	netsh wlan show all   > !CHECKLMS_REPORT_LOG_PATH!\netsh_wlan.log 2>&1
 	echo     Full details see '!CHECKLMS_REPORT_LOG_PATH!\netsh_wlan.log'                                                        >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo     Displays the current proxy settings: netsh winhttp show proxy
+	echo Displays the current proxy settings: netsh winhttp show proxy                                                           >> !REPORT_LOGFILE! 2>&1
+	netsh winhttp show proxy                                                                                                     >> !REPORT_LOGFILE! 2>&1
 ) else (
 	rem LMS_SKIPNETSETTINGS
 	echo !SHOW_YELLOW!    SKIPPED network section. The script didn't execute the network commands. !SHOW_NORMAL!
