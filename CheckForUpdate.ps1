@@ -2,7 +2,8 @@
 param(
 	[string]$operatingsystem = 'Windows10',
 	[string]$language = 'en-us',
-	[bool]$SkipSiemensSoftware = $true
+	[bool]$SkipSiemensSoftware = $true,
+	[bool]$Verbose = $true
 )
 #endregion
 
@@ -10,8 +11,9 @@ param(
 # '20220421': try/catch rest method call, read addtional data, see https://github.com/MicrosoftDocs/PowerShell-Docs/issues/4456 
 # '20220504': Add option $SkipSiemensSoftware, to skip sending installed Siemens Software. Disable per default.
 #             Add return code; any value > 0 means an error.
+#             Add option $Verbose, to enable/disable additional output. Enabled per default.
 
-echo "SkipSiemensSoftware=$SkipSiemensSoftware"
+echo "Parameters: operatingsystem=$operatingsystem / language=$language / SkipSiemensSoftware=$SkipSiemensSoftware / Verbose=$Verbose"
 
 $ExitCode=0
 
@@ -74,7 +76,9 @@ $body = "{
     }
 }"
 
-Write-Host "Message Body ... `n'$body'"
+if ( $Verbose ) {
+	Write-Host "Message Body ... `n'$body'"
+}
 Try {
 	$response = Invoke-RestMethod 'https://www.automation.siemens.com/softwareupdater/public/api/updates' -Method 'POST' -Headers $headers -Body $body
 } Catch {
@@ -93,8 +97,10 @@ Try {
 	$reader.DiscardBufferedData()
 	$reader.ReadToEnd() | ConvertFrom-Json
 }
-Write-Host "Message Response ..."
-$response | ConvertTo-Json -depth 100
+if ( $Verbose ) {
+	Write-Host "Message Response ..."
+	$response | ConvertTo-Json -depth 100
+}
 
 if (-not $SkipSiemensSoftware) {
 	# Read-out installed Siemens software and convert then into json 
@@ -116,7 +122,9 @@ if (-not $SkipSiemensSoftware) {
 		}
 	}"
 
-	Write-Host "Message Body ... `n'$body'"
+	if ( $Verbose ) {
+		Write-Host "Message Body ... `n'$body'"
+	}
 	Try {
 		$response = Invoke-RestMethod 'https://www.automation.siemens.com/softwareupdater/public/api/updates' -Method 'POST' -Headers $headers -Body $body
 	} Catch {
@@ -135,9 +143,12 @@ if (-not $SkipSiemensSoftware) {
 		$reader.DiscardBufferedData()
 		$reader.ReadToEnd() | ConvertFrom-Json
 	}
-	Write-Host "Message Response ..."
-	$response | ConvertTo-Json -depth 100
+	if ( $Verbose ) {
+		Write-Host "Message Response ..."
+		$response | ConvertTo-Json -depth 100
+	}
 }
 
+Write-Host "Exit with '$ExitCode'"
 exit $ExitCode
 
