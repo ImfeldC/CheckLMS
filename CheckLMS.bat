@@ -22,6 +22,9 @@ rem        - Do no longer show/display output of "appactutil.exe -serverview -co
 rem        - Do no longer show/display the output of the LOGS folder in main logfile.
 rem        - LMS_LIC_SERVER uses new the configured port number, no longer the default 27000
 rem        - reuse already retrieved information from pending requests in files like pending_request_*.xml
+rem     04-May-2022:
+rem        - 'Test connection to FNC cloud' moved to extended content.
+rem        - Add connection test to OSD software updater using CheckForUpdate.ps1 [API URL], requires CheckForUpdate.ps1 Version '20220504' or newer
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -64,8 +67,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 03-May-2022"
-set LMS_SCRIPT_BUILD=20220503
+set LMS_SCRIPT_VERSION="CheckLMS Script 04-May-2022"
+set LMS_SCRIPT_BUILD=20220504
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -237,6 +240,7 @@ del !REPORT_LOG_PATH!\yes.txt >nul 2>&1
 del !CHECKLMS_REPORT_LOG_PATH!\desigcc_reistry.txt >nul 2>&1
 del !CHECKLMS_REPORT_LOG_PATH!\desigocc_installed_EM.txt >nul 2>&1
 del !CHECKLMS_REPORT_LOG_PATH!\pending_req_*.xml >nul 2>&1
+del !CHECKLMS_REPORT_LOG_PATH!\connection_test_*.txt >nul 2>&1
 del !CHECKLMS_ALM_PATH!\ALM\ >nul 2>&1
 
 rem remove former used local path (clean-up no longer used data)
@@ -6286,23 +6290,52 @@ if not defined LMS_SKIPSSU (
 		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_softwareupdate.txt                                                   >> !REPORT_LOGFILE! 2>&1
 		set OSDSoftwareUpdateServerConnectionTestStatus=Failed
 	)
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	echo ... test connection to FNC cloud ...
-	echo Test connection to FNC cloud                                                                                            >> !REPORT_LOGFILE! 2>&1
-	rem Connection Test to FNC Cloud
-	powershell -Command "(New-Object Net.WebClient).DownloadFile('http://updates.installshield.com/ClientInterfaces.asp', '!temp!\ClientInterfaces.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_fnccloud.txt 2>&1
-	if !ERRORLEVEL!==0 (
-		rem Connection Test: PASSED
-		echo     Connection Test PASSED, can access http://updates.installshield.com/ClientInterfaces.asp
-		echo Connection Test PASSED, can access http://updates.installshield.com/ClientInterfaces.asp                            >> !REPORT_LOGFILE! 2>&1
-		set FNCCloudConnectionTestStatus=Passed
-		rem type !temp!\ClientInterfaces.txt
-	) else if !ERRORLEVEL!==1 (
-		rem Connection Test: FAILED
-		echo     Connection Test FAILED, cannot access http://updates.installshield.com/ClientInterfaces.asp
-		echo Connection Test FAILED, cannot access http://updates.installshield.com/ClientInterfaces.asp                         >> !REPORT_LOGFILE! 2>&1
-		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_fnccloud.txt                                                             >> !REPORT_LOGFILE! 2>&1
-		set FNCCloudConnectionTestStatus=Failed
+	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1 
+	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo ... test connection to OSD software update server  [using API URL] ...
+	echo Test connection to OSD software update server  [using API URL]                                                          >> !REPORT_LOGFILE! 2>&1                                                                                            
+	rem Connection Test to OSD software update server
+	IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1" (
+		echo RUN: powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -Command "& '!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1' -SkipSiemensSoftware 1; exit $LASTEXITCODE"  >> !REPORT_LOGFILE! 2>&1
+		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -Command "& '!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1' -SkipSiemensSoftware 1; exit $LASTEXITCODE"            >> !REPORT_LOGFILE! 2>&1
+		if !ERRORLEVEL!==0 (
+			rem Connection Test: PASSED
+			echo     Connection Test PASSED, can access OSD software update server  [using API URL]
+			echo Connection Test PASSED, can access OSD software update server  [using API URL]                                  >> !REPORT_LOGFILE! 2>&1                           
+		) else if !ERRORLEVEL!==1 (
+			rem Connection Test: FAILED
+			echo     Connection Test FAILED, cannot access OSD software update server  [using API URL]
+			echo Connection Test FAILED, cannot access OSD software update server  [using API URL]                               >> !REPORT_LOGFILE! 2>&1                       
+		) else (
+			rem Connection Test: FAILED
+			echo     Connection Test FAILED, cannot access OSD software update server  [using API URL] [Exit Code: !ERRORLEVEL!]
+			echo Connection Test FAILED, cannot access OSD software update server  [using API URL] [Exit Code: !ERRORLEVEL!]     >> !REPORT_LOGFILE! 2>&1                       
+		)
+	) else (
+		echo ERROR: Cannot execute powershell script 'CheckForUpdate.ps1', it doesn't exist '!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1'.                   >> !REPORT_LOGFILE! 2>&1
+	)
+	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	if defined LMS_EXTENDED_CONTENT (
+		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+		echo ... test connection to FNC cloud ...
+		echo Test connection to FNC cloud                                                                                        >> !REPORT_LOGFILE! 2>&1
+		rem Connection Test to FNC Cloud
+		powershell -Command "(New-Object Net.WebClient).DownloadFile('http://updates.installshield.com/ClientInterfaces.asp', '!temp!\ClientInterfaces.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_fnccloud.txt 2>&1
+		if !ERRORLEVEL!==0 (
+			rem Connection Test: PASSED
+			echo     Connection Test PASSED, can access http://updates.installshield.com/ClientInterfaces.asp
+			echo Connection Test PASSED, can access http://updates.installshield.com/ClientInterfaces.asp                        >> !REPORT_LOGFILE! 2>&1
+			set FNCCloudConnectionTestStatus=Passed
+			rem type !temp!\ClientInterfaces.txt
+		) else if !ERRORLEVEL!==1 (
+			rem Connection Test: FAILED
+			echo     Connection Test FAILED, cannot access http://updates.installshield.com/ClientInterfaces.asp
+			echo Connection Test FAILED, cannot access http://updates.installshield.com/ClientInterfaces.asp                     >> !REPORT_LOGFILE! 2>&1
+			type !CHECKLMS_REPORT_LOG_PATH!\connection_test_fnccloud.txt                                                         >> !REPORT_LOGFILE! 2>&1
+			set FNCCloudConnectionTestStatus=Failed
+		)
+	) else (
+		echo 'Test connection to FNC cloud' SKIPPED, start script with option '/extend' to enable extended content.              >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	echo **** Siemens Software Updater [SSU] ****                                                                                >> !REPORT_LOGFILE! 2>&1
