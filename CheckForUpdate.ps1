@@ -1,20 +1,26 @@
 #region Parameters
 param(
 	[string]$operatingsystem = 'Windows10',
-	[string]$language = 'en-us'
+	[string]$language = 'en-us',
+	[bool]$SkipSiemensSoftware = $true
 )
 #endregion
 
 # '20220420': Add installed Siemens Software 
 # '20220421': try/catch rest method call, read addtional data, see https://github.com/MicrosoftDocs/PowerShell-Docs/issues/4456 
+# '20220504': Add option $SkipSiemensSoftware, to skip sending installed Siemens Software. Disable per default.
+#             Add return code; any value > 0 means an error.
 
+echo "SkipSiemensSoftware=$SkipSiemensSoftware"
+
+$ExitCode=0
 
 $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
 $headers.Add("Content-Type", "application/json")
 
 # set client type ..
 $clientType = 'CheckForUpdate'
-$clientVersion = '20220421'
+$clientVersion = '20220504'
 
 # retrieve product information ...
 $productcode = get-lms -ProductCode | select -expand Guid
@@ -75,6 +81,7 @@ Try {
 	Write-Host "Error Response ..."
 	Write-Host "StatusCode:" $_.Exception.Response.StatusCode.value__
 	Write-Host "StatusDescription:" $_.Exception.Response.StatusDescription
+	$ExitCode=$_.Exception.Response.StatusCode.value__
     if($_.ErrorDetails.Message) {
         Write-Host $_.ErrorDetails.Message
     } else {
@@ -89,44 +96,48 @@ Try {
 Write-Host "Message Response ..."
 $response | ConvertTo-Json -depth 100
 
+if (-not $SkipSiemensSoftware) {
+	# Read-out installed Siemens software and convert then into json 
+	$SiemensInstalledSoftware1 = Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate, PSChildName | Where-Object{$_.Publisher -like '*Siemens*'} | ConvertTo-Json
+	$SiemensInstalledSoftware2 = Get-CimInstance Win32_Product | Sort-Object -property Name | Where-Object{$_.Vendor -like '*Siemens*'} | Select-Object Name, Version, InstallDate, Vendor, IdentifyingNumber | ConvertTo-Json
 
-# Read-out installed Siemens software and convert then into json 
-$SiemensInstalledSoftware1 = Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate, PSChildName | Where-Object{$_.Publisher -like '*Siemens*'} | ConvertTo-Json
-$SiemensInstalledSoftware2 = Get-CimInstance Win32_Product | Sort-Object -property Name | Where-Object{$_.Vendor -like '*Siemens*'} | Select-Object Name, Version, InstallDate, Vendor, IdentifyingNumber | ConvertTo-Json
+	$body = "{
+		`"ProductCode`": `"$productcode`",
+		`"ProductVersion`": `"$productversion`",
+		`"OperationSystem`": `"$operatingsystem`",
+		`"Language`": `"$language`",
+		`"clientType`":`"$clientType`",
+		`"clientVersion`":`"$clientVersion`",
+		`"clientGUID`":`"$lmssystemid`",
+		`"clientInfo`":
+		{
+			`"siemens_installed_software`": $SiemensInstalledSoftware1,
+			`"siemens_installed_software`": $SiemensInstalledSoftware2
+		}
+	}"
 
-$body = "{
-    `"ProductCode`": `"$productcode`",
-    `"ProductVersion`": `"$productversion`",
-    `"OperationSystem`": `"$operatingsystem`",
-    `"Language`": `"$language`",
-    `"clientType`":`"$clientType`",
-    `"clientVersion`":`"$clientVersion`",
-    `"clientGUID`":`"$lmssystemid`",
-    `"clientInfo`":
-    {
-		`"siemens_installed_software`": $SiemensInstalledSoftware1,
-		`"siemens_installed_software`": $SiemensInstalledSoftware2
-    }
-}"
-
-Write-Host "Message Body ... `n'$body'"
-Try {
-	$response = Invoke-RestMethod 'https://www.automation.siemens.com/softwareupdater/public/api/updates' -Method 'POST' -Headers $headers -Body $body
-} Catch {
-	Write-Host "Error Response ..."
-	Write-Host "StatusCode:" $_.Exception.Response.StatusCode.value__
-	Write-Host "StatusDescription:" $_.Exception.Response.StatusDescription
-    if($_.ErrorDetails.Message) {
-        Write-Host $_.ErrorDetails.Message
-    } else {
-        Write-Host $_
-    }
-	# read addtional data, see https://github.com/MicrosoftDocs/PowerShell-Docs/issues/4456
-	$reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
-	$reader.BaseStream.Position = 0
-	$reader.DiscardBufferedData()
-	$reader.ReadToEnd() | ConvertFrom-Json
+	Write-Host "Message Body ... `n'$body'"
+	Try {
+		$response = Invoke-RestMethod 'https://www.automation.siemens.com/softwareupdater/public/api/updates' -Method 'POST' -Headers $headers -Body $body
+	} Catch {
+		Write-Host "Error Response ..."
+		Write-Host "StatusCode:" $_.Exception.Response.StatusCode.value__
+		Write-Host "StatusDescription:" $_.Exception.Response.StatusDescription
+		$ExitCode=$_.Exception.Response.StatusCode.value__
+		if($_.ErrorDetails.Message) {
+			Write-Host $_.ErrorDetails.Message
+		} else {
+			Write-Host $_
+		}
+		# read addtional data, see https://github.com/MicrosoftDocs/PowerShell-Docs/issues/4456
+		$reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
+		$reader.BaseStream.Position = 0
+		$reader.DiscardBufferedData()
+		$reader.ReadToEnd() | ConvertFrom-Json
+	}
+	Write-Host "Message Response ..."
+	$response | ConvertTo-Json -depth 100
 }
-Write-Host "Message Response ..."
-$response | ConvertTo-Json -depth 100
+
+exit $ExitCode
 
