@@ -25,6 +25,11 @@ rem        - reuse already retrieved information from pending requests in files 
 rem     04-May-2022:
 rem        - 'Test connection to FNC cloud' moved to extended content.
 rem        - Add connection test to OSD software updater using CheckForUpdate.ps1 [API URL], requires CheckForUpdate.ps1 Version '20220504' or newer
+rem     05-May-2022:
+rem        - move 'resend all stored requests, using servercomptranutil.exe' into extend section, use /extend to execute
+rem     06-May-2022:
+rem        - use new URL  https://softwareupdater.osd.universe.eb.siemens.cloud/servertest.aspx (instead of old: https://www.automation.siemens.com/softwareupdater/servertest.aspx)
+rem        - 'Test connection to OSD server' moved to extended content.
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -67,8 +72,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 04-May-2022"
-set LMS_SCRIPT_BUILD=20220504
+set LMS_SCRIPT_VERSION="CheckLMS Script 06-May-2022"
+set LMS_SCRIPT_BUILD=20220506
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -1236,6 +1241,7 @@ if defined LMS_SHOW_VERSION (
 )
 
 if not defined LMS_SKIPDOWNLOAD (
+	echo Start at !DATE! !TIME! ....                                                                   >> !REPORT_LOGFILE! 2>&1
 	echo ... Connection Test to BT download site ...
 	rem Connection Test to BT download site
 	set ConnectionTestStatus=Unknown
@@ -1244,13 +1250,13 @@ if not defined LMS_SKIPDOWNLOAD (
 	if exist "!LMS_DOWNLOAD_PATH!\ReadMe.txt" (
 		rem Connection Test: PASSED
 		echo     Connection Test PASSED, can access !CHECKLMS_EXTERNAL_SHARE!
-		echo Connection Test PASSED, can access !CHECKLMS_EXTERNAL_SHARE!                                          >> !REPORT_LOGFILE! 2>&1
+		echo Connection Test PASSED, can access !CHECKLMS_EXTERNAL_SHARE!                              >> !REPORT_LOGFILE! 2>&1
 		set ConnectionTestStatus=Passed
 	) else if !ERRORLEVEL!==1 (
 		rem Connection Test: FAILED
 		echo     Connection Test FAILED, cannot access !CHECKLMS_EXTERNAL_SHARE!
-		echo Connection Test FAILED, cannot access !CHECKLMS_EXTERNAL_SHARE!                                       >> !REPORT_LOGFILE! 2>&1
-		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_btdownloads.txt                                            >> !REPORT_LOGFILE! 2>&1
+		echo Connection Test FAILED, cannot access !CHECKLMS_EXTERNAL_SHARE!                           >> !REPORT_LOGFILE! 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_btdownloads.txt                                >> !REPORT_LOGFILE! 2>&1
 		set ConnectionTestStatus=Failed
 	)
 	echo ... download additional tools and libraries ...
@@ -1557,6 +1563,7 @@ if not defined LMS_SKIPDOWNLOAD (
 	echo SKIPPED download section. The script didn't execute the download commands.                                               >> !REPORT_LOGFILE! 2>&1
 )
 
+echo Start at !DATE! !TIME! ....                                                                   >> !REPORT_LOGFILE! 2>&1
 rem set background info; when ...
 rem [1] either /setbginfo option is set [-> LMS_SET_BGINFO]
 rem [2] or setbginfo.lock exists [=setbginfo.bat has been executed before]
@@ -1564,11 +1571,14 @@ rem [3] or LMS_UPDATE_BGINFO has been set; because setbginfo.lock existed before
 if defined LMS_SET_BGINFO ( set LMS_UPDATE_BGINFO=1 )
 if exist "!LMS_PROGRAMDATA!\BgInfo\setbginfo.lock" ( set LMS_UPDATE_BGINFO=1 )
 if defined LMS_UPDATE_BGINFO (
+	echo     Update BGInfo ...
 	IF EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat" (
+		echo call "!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat" ...                                   >> !REPORT_LOGFILE! 2>&1
 		call "!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat"                                            >> !REPORT_LOGFILE! 2>&1
 		echo     Updated BGInfo at !DATE! !TIME!
 		echo Updated BGInfo at !DATE! !TIME! [with '!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat']     >> !REPORT_LOGFILE! 2>&1
 	) else if exist "!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat" (
+		echo call "!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat" ...                                     >> !REPORT_LOGFILE! 2>&1
 		call "!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat"                                              >> !REPORT_LOGFILE! 2>&1
 		echo     Updated BGInfo at !DATE! !TIME!
 		echo Updated BGInfo at !DATE! !TIME! [with '!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat']       >> !REPORT_LOGFILE! 2>&1
@@ -1576,6 +1586,7 @@ if defined LMS_UPDATE_BGINFO (
 		echo     CANNOT update BGInfo because 'setbginfo.bat' doesn't exist.
 		echo CANNOT update BGInfo because 'setbginfo.bat' doesn't exist.                           >> !REPORT_LOGFILE! 2>&1
 	)
+	echo Start at !DATE! !TIME! ....                                                               >> !REPORT_LOGFILE! 2>&1
 )
 if defined LMS_SET_BGINFO (
 	goto script_end
@@ -1583,11 +1594,14 @@ if defined LMS_SET_BGINFO (
 )
 rem clear background info
 if defined LMS_CLEAR_BGINFO (
+	echo     Clear BGInfo ...
 	IF EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\cleanbginfo.bat" (
+		echo call "!LMS_DOWNLOAD_PATH!\BgInfo\cleanbginfo.bat" ...                                 >> !REPORT_LOGFILE! 2>&1
 		call "!LMS_DOWNLOAD_PATH!\BgInfo\cleanbginfo.bat"                                          >> !REPORT_LOGFILE! 2>&1
 		echo     Removed BGInfo at !DATE! !TIME!
 		echo Removed BGInfo at !DATE! !TIME! [with '!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat']     >> !REPORT_LOGFILE! 2>&1
 	) else if exist "!LMS_PROGRAMDATA!\BgInfo\cleanbginfo.bat" (
+		echo call "!LMS_PROGRAMDATA!\BgInfo\cleanbginfo.bat" ...                                   >> !REPORT_LOGFILE! 2>&1
 		call "!LMS_PROGRAMDATA!\BgInfo\cleanbginfo.bat"                                            >> !REPORT_LOGFILE! 2>&1
 		echo     Removed BGInfo at !DATE! !TIME!
 		echo Removed BGInfo at !DATE! !TIME! [with '!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat']       >> !REPORT_LOGFILE! 2>&1
@@ -1595,6 +1609,7 @@ if defined LMS_CLEAR_BGINFO (
 		echo     CANNOT remove BGInfo because 'cleanbginfo.bat' doesn't exist.
 		echo CANNOT remove BGInfo because 'cleanbginfo.bat' doesn't exist.                         >> !REPORT_LOGFILE! 2>&1
 	)
+	echo Start at !DATE! !TIME! ....                                                               >> !REPORT_LOGFILE! 2>&1
 
 	goto script_end
 	rem STOP EXECUTION HERE
@@ -2979,7 +2994,7 @@ if not defined LMS_SKIPWINDOWS (
 		rem Connection Test: FAILED
 		echo     Connection Test FAILED, cannot access http://www.ifconfig.io/
 		echo Connection Test FAILED, cannot access http://www.ifconfig.io/                         >> !REPORT_LOGFILE! 2>&1
-		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_ifconfig_log.txt                           >> !REPORT_LOGFILE! 2>&1
+		echo     Details, see '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ifconfig_log.txt'        >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ---------------- Retrieve public IP address: from https://www.whoismyisp.org/             >> !REPORT_LOGFILE! 2>&1
 	rem Connection Test to http://www.ifconfig.io/
@@ -2993,7 +3008,7 @@ if not defined LMS_SKIPWINDOWS (
 		rem Connection Test: FAILED
 		echo     Connection Test FAILED, cannot access https://www.whoismyisp.org/
 		echo Connection Test FAILED, cannot access https://www.whoismyisp.org/                     >> !REPORT_LOGFILE! 2>&1
-		echo     See '!CHECKLMS_REPORT_LOG_PATH!\connection_test_whoismyisp_log.txt' for more details. >> !REPORT_LOGFILE! 2>&1
+		echo     Details, see '!CHECKLMS_REPORT_LOG_PATH!\connection_test_whoismyisp_log.txt'      >> !REPORT_LOGFILE! 2>&1
 	)
 	echo Start at !DATE! !TIME! ....                                                               >> !REPORT_LOGFILE! 2>&1
 ) else (
@@ -4741,10 +4756,9 @@ IF EXIST "!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" (
 ) else (
 	echo     !ECMCOMMONUTIL_TOOL! doesn't exist, cannot perform operation.          >> !REPORT_LOGFILE! 2>&1
 )
-rem --------------------------
+echo ==============================================================================     >> !REPORT_LOGFILE! 2>&1
 set ECMCOMMONUTIL_TOOL=ECMCommonUtil_DevMar2022.exe
 if defined LMS_EXTENDED_CONTENT (
-	echo ==============================================================================           >> !REPORT_LOGFILE! 2>&1
 	set ECMCOMMONUTIL_LOGFILE=!CHECKLMS_REPORT_LOG_PATH!\ECMCommonUtil_DevMar2022.txt
 	set ECMCOMMONUTIL_LOGFILE_DEBUG=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_debug_DevMar2022.txt
 	echo     read host id's [using !ECMCOMMONUTIL_TOOL! V1.27] ...
@@ -4913,10 +4927,9 @@ IF EXIST "!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" (
 ) else (
 	echo     !ECMCOMMONUTIL_TOOL! doesn't exist, cannot perform operation.          >> !REPORT_LOGFILE! 2>&1
 )
-rem --------------------------
+echo ==============================================================================     >> !REPORT_LOGFILE! 2>&1
 set ECMCOMMONUTIL_TOOL=ecmcommonutil_x64_n6_V1.23.exe
 if defined LMS_EXTENDED_CONTENT (
-	echo ==============================================================================           >> !REPORT_LOGFILE! 2>&1
 	set ECMCOMMONUTIL_LOGFILE=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.23.txt
 	set ECMCOMMONUTIL_LOGFILE_DEBUG=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_debug_V1.23.txt
 	echo     read host id's [using !ECMCOMMONUTIL_TOOL! V1.23] ...
@@ -4998,10 +5011,9 @@ if defined LMS_EXTENDED_CONTENT (
 ) else (
 	echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.23] SKIPPED, start script with option '/extend' to enable extended content.         >> !REPORT_LOGFILE! 2>&1
 )
-rem --------------------------
+echo ==============================================================================     >> !REPORT_LOGFILE! 2>&1
 set ECMCOMMONUTIL_TOOL=ecmcommonutil.exe
 if defined LMS_EXTENDED_CONTENT (
-	echo ==============================================================================                  >> !REPORT_LOGFILE! 2>&1
 	set ECMCOMMONUTIL_TOOL=ecmcommonutil.exe
 	set ECMCOMMONUTIL_LOGFILE=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.21.txt
 	set ECMCOMMONUTIL_LOGFILE_DEBUG=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_debug_V1.21.txt
@@ -5068,10 +5080,9 @@ if defined LMS_EXTENDED_CONTENT (
 ) else (
 	echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.21] SKIPPED, start script with option '/extend' to enable extended content.         >> !REPORT_LOGFILE! 2>&1
 )
-rem --------------------------
+echo ==============================================================================     >> !REPORT_LOGFILE! 2>&1
 set ECMCOMMONUTIL_TOOL=ecmcommonutil.exe
 if defined LMS_EXTENDED_CONTENT (
-	echo ==============================================================================                  >> !REPORT_LOGFILE! 2>&1
 	set ECMCOMMONUTIL_TOOL=ecmcommonutil_1.19.exe
 	set ECMCOMMONUTIL_LOGFILE=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.19.txt
 	set ECMCOMMONUTIL_LOGFILE_DEBUG=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_debug_V1.19.txt
@@ -5950,22 +5961,26 @@ if not defined LMS_SKIPLOCLICSERV (
 		)
 	)
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
-	echo ... resend all stored requests, using servercomptranutil.exe -t xxx -stored request=all ...
-	echo ... resend all stored requests, using servercomptranutil.exe -t %LMS_FNO_SERVER% -stored request=all ...                >> !REPORT_LOGFILE! 2>&1
-	echo     servercomptranutil.exe -t %LMS_FNO_SERVER% -stored request=all                                                      >> !REPORT_LOGFILE! 2>&1
-	if defined LMS_SERVERCOMTRANUTIL (
-		del !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_resend_stored_requests.txt >nul 2>&1
-		rem call RepairAll command
-		"!LMS_SERVERCOMTRANUTIL!" -t %LMS_FNO_SERVER% -stored request=all   < !CHECKLMS_REPORT_LOG_PATH!\yes.txt   >> !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_resend_stored_requests.txt 2>&1
-		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_resend_stored_requests.txt" (
-			Type "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_resend_stored_requests.txt"                                      >> !REPORT_LOGFILE! 2>&1
+	if defined LMS_EXTENDED_CONTENT (
+		echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+		echo ... resend all stored requests, using servercomptranutil.exe -t xxx -stored request=all ...
+		echo ... resend all stored requests, using servercomptranutil.exe -t %LMS_FNO_SERVER% -stored request=all ...            >> !REPORT_LOGFILE! 2>&1
+		echo     servercomptranutil.exe -t %LMS_FNO_SERVER% -stored request=all                                                  >> !REPORT_LOGFILE! 2>&1
+		if defined LMS_SERVERCOMTRANUTIL (
+			del !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_resend_stored_requests.txt >nul 2>&1
+			rem call RepairAll command
+			"!LMS_SERVERCOMTRANUTIL!" -t %LMS_FNO_SERVER% -stored request=all   < !CHECKLMS_REPORT_LOG_PATH!\yes.txt   >> !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_resend_stored_requests.txt 2>&1
+			IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_resend_stored_requests.txt" (
+				Type "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_resend_stored_requests.txt"                                  >> !REPORT_LOGFILE! 2>&1
+			)
+			echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
+			echo servercomptranutil.exe -listRequests ...                                                                        >> !REPORT_LOGFILE! 2>&1
+			"!LMS_SERVERCOMTRANUTIL!" -listRequests                                                                              >> !REPORT_LOGFILE! 2>&1
+		) else (
+			echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                             >> !REPORT_LOGFILE! 2>&1
 		)
-		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-		echo servercomptranutil.exe -listRequests ...                                                                            >> !REPORT_LOGFILE! 2>&1
-		"!LMS_SERVERCOMTRANUTIL!" -listRequests                                                                                  >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> !REPORT_LOGFILE! 2>&1
+		echo 'Resend all stored requests, using servercomptranutil.exe' SKIPPED, start script with option '/extend' to enable extended content.              >> !REPORT_LOGFILE! 2>&1
 	)
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 ) else (
@@ -6237,56 +6252,65 @@ if not defined LMS_SKIPSSU (
 	echo Content of registry key: "HKCU:\SOFTWARE\Siemens\SSU" ...                                                               >> !REPORT_LOGFILE! 2>&1
 	type !CHECKLMS_SSU_PATH!\ssu_hkcu_registry.txt                                                                               >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                  >> !REPORT_LOGFILE! 2>&1
-	echo ... test connection to OSD server [using https/443 port] ...
-	echo Test connection to OSD server  [using https/443 port]                                    >> !REPORT_LOGFILE! 2>&1 
-	rem Connection Test to OSD server
-	powershell -Command "Test-NetConnection www.automation.siemens.com -port 443" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_port.txt 2>&1
-	if !ERRORLEVEL!==0 (
-		rem Connection Test: PASSED
-		echo     Connection Test PASSED, can access port 443 on www.automation.siemens.com
-		echo Connection Test PASSED, can access port 443 on www.automation.siemens.com            >> !REPORT_LOGFILE! 2>&1
-		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_port.txt                              >> !REPORT_LOGFILE! 2>&1
-	) else if !ERRORLEVEL!==1 (
-		rem Connection Test: FAILED
-		echo     Connection Test FAILED, cannot access port 443 on www.automation.siemens.com
-		echo Connection Test FAILED, cannot access port 443 on www.automation.siemens.com         >> !REPORT_LOGFILE! 2>&1            
-		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_port.txt                              >> !REPORT_LOGFILE! 2>&1
+	if defined LMS_EXTENDED_CONTENT (
+		echo ... test connection to OSD server [using https/443 port] ...
+		echo Test connection to OSD server  [using https/443 port]                                >> !REPORT_LOGFILE! 2>&1 
+		rem Connection Test to OSD server
+		powershell -Command "Test-NetConnection www.automation.siemens.com -port 443" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_port.txt 2>&1
+		if !ERRORLEVEL!==0 (
+			rem Connection Test: PASSED
+			echo     Connection Test PASSED, can access port 443 on www.automation.siemens.com
+			echo Connection Test PASSED, can access port 443 on www.automation.siemens.com        >> !REPORT_LOGFILE! 2>&1
+			type !CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_port.txt                          >> !REPORT_LOGFILE! 2>&1
+		) else if !ERRORLEVEL!==1 (
+			rem Connection Test: FAILED
+			echo     Connection Test FAILED, cannot access port 443 on www.automation.siemens.com
+			echo Connection Test FAILED, cannot access port 443 on www.automation.siemens.com     >> !REPORT_LOGFILE! 2>&1            
+			type !CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_port.txt                          >> !REPORT_LOGFILE! 2>&1
+		)
+	) else (
+		echo 'Test connection to OSD server [using https/443 port]' SKIPPED, start script with option '/extend' to enable extended content.             >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                  >> !REPORT_LOGFILE! 2>&1
-	echo ... test connection to OSD server [using http request] ...
-	echo Test connection to OSD server  [using http request]                                                                     >> !REPORT_LOGFILE! 2>&1 
-	rem Connection Test to OSD server
-	powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.automation.siemens.com/swdl/servertest/', '!temp!\OSD_servertest.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_swdl.txt 2>&1
-	if !ERRORLEVEL!==0 (
-		rem Connection Test: PASSED
-		echo     Connection Test PASSED, can access https://www.automation.siemens.com/swdl/servertest/
-		echo Connection Test PASSED, can access https://www.automation.siemens.com/swdl/servertest/                              >> !REPORT_LOGFILE! 2>&1                
-		set OSDServerConnectionTestStatus=Passed
-		rem type !temp!\OSD_servertest.txt
-		rem echo .
-	) else if !ERRORLEVEL!==1 (
-		rem Connection Test: FAILED
-		echo     Connection Test FAILED, cannot access https://www.automation.siemens.com/swdl/servertest/
-		echo Connection Test FAILED, cannot access https://www.automation.siemens.com/swdl/servertest/                           >> !REPORT_LOGFILE! 2>&1            
-		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_swdl.txt                                                             >> !REPORT_LOGFILE! 2>&1
-		set OSDServerConnectionTestStatus=Failed
+	if defined LMS_EXTENDED_CONTENT (
+		echo ... test connection to OSD server [using http request] ...
+		echo Test connection to OSD server  [using http request]                                                                 >> !REPORT_LOGFILE! 2>&1 
+		rem Connection Test to OSD server
+		powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.automation.siemens.com/swdl/servertest/', '!temp!\OSD_servertest.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_swdl.txt 2>&1
+		if !ERRORLEVEL!==0 (
+			rem Connection Test: PASSED
+			echo     Connection Test PASSED, can access https://www.automation.siemens.com/swdl/servertest/
+			echo Connection Test PASSED, can access https://www.automation.siemens.com/swdl/servertest/                          >> !REPORT_LOGFILE! 2>&1                
+			set OSDServerConnectionTestStatus=Passed
+			rem type !temp!\OSD_servertest.txt
+			rem echo .
+		) else if !ERRORLEVEL!==1 (
+			rem Connection Test: FAILED
+			echo     Connection Test FAILED, cannot access https://www.automation.siemens.com/swdl/servertest/
+			echo Connection Test FAILED, cannot access https://www.automation.siemens.com/swdl/servertest/                       >> !REPORT_LOGFILE! 2>&1            
+			type !CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_swdl.txt                                                         >> !REPORT_LOGFILE! 2>&1
+			set OSDServerConnectionTestStatus=Failed
+		)
+	) else (
+		echo 'Test connection to OSD server [using http request]' SKIPPED, start script with option '/extend' to enable extended content.             >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1 
 	echo ... test connection to OSD software update server  [using http request] ...
 	echo Test connection to OSD software update server  [using http request]                                                     >> !REPORT_LOGFILE! 2>&1                                                                                            
 	rem Connection Test to OSD software update server
-	powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.automation.siemens.com/softwareupdater/servertest.aspx', '!temp!\OSD_softwareupdateservertest.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_softwareupdate.txt 2>&1
+	rem use new URL  https://softwareupdater.osd.universe.eb.siemens.cloud/servertest.aspx (instead of old: https://www.automation.siemens.com/softwareupdater/servertest.aspx)
+	powershell -Command "(New-Object Net.WebClient).DownloadFile('https://softwareupdater.osd.universe.eb.siemens.cloud/servertest.aspx', '!temp!\OSD_softwareupdateservertest.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_softwareupdate.txt 2>&1
 	if !ERRORLEVEL!==0 (
 		rem Connection Test: PASSED
-		echo     Connection Test PASSED, can access https://www.automation.siemens.com/softwareupdater/servertest.aspx
-		echo Connection Test PASSED, can access https://www.automation.siemens.com/softwareupdater/servertest.aspx               >> !REPORT_LOGFILE! 2>&1                           
+		echo     Connection Test PASSED, can access https://softwareupdater.osd.universe.eb.siemens.cloud/servertest.aspx
+		echo Connection Test PASSED, can access https://softwareupdater.osd.universe.eb.siemens.cloud/servertest.aspx            >> !REPORT_LOGFILE! 2>&1                           
 		set OSDSoftwareUpdateServerConnectionTestStatus=Passed
 		rem type !temp!\OSD_softwareupdateservertest.txt
 		rem echo .
 	) else if !ERRORLEVEL!==1 (
 		rem Connection Test: FAILED
-		echo     Connection Test FAILED, cannot access https://www.automation.siemens.com/softwareupdater/servertest.aspx
-		echo Connection Test FAILED, cannot access https://www.automation.siemens.com/softwareupdater/servertest.aspx            >> !REPORT_LOGFILE! 2>&1                       
+		echo     Connection Test FAILED, cannot access https://softwareupdater.osd.universe.eb.siemens.cloud/servertest.aspx
+		echo Connection Test FAILED, cannot access https://softwareupdater.osd.universe.eb.siemens.cloud/servertest.aspx         >> !REPORT_LOGFILE! 2>&1                       
 		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_softwareupdate.txt                                                   >> !REPORT_LOGFILE! 2>&1
 		set OSDSoftwareUpdateServerConnectionTestStatus=Failed
 	)
@@ -6315,8 +6339,8 @@ if not defined LMS_SKIPSSU (
 		echo ERROR: Cannot execute powershell script 'CheckForUpdate.ps1', it doesn't exist '!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1'.                   >> !REPORT_LOGFILE! 2>&1
 	)
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_EXTENDED_CONTENT (
-		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 		echo ... test connection to FNC cloud ...
 		echo Test connection to FNC cloud                                                                                        >> !REPORT_LOGFILE! 2>&1
 		rem Connection Test to FNC Cloud

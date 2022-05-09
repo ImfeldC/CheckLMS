@@ -12,17 +12,20 @@ param(
 # '20220504': Add option $SkipSiemensSoftware, to skip sending installed Siemens Software. Disable per default.
 #             Add return code; any value > 0 means an error.
 #             Add option $Verbose, to enable/disable additional output. Enabled per default.
+# '20220506': Use new API URL: https://osd-ak.automation.siemens.com/softwareupdater/public/api/updates
 
 echo "Parameters: operatingsystem=$operatingsystem / language=$language / SkipSiemensSoftware=$SkipSiemensSoftware / Verbose=$Verbose"
 
 $ExitCode=0
+# Old API URL -> $OSD_APIURL="https://www.automation.siemens.com/softwareupdater/public/api/updates"
+$OSD_APIURL="https://osd-ak.automation.siemens.com/softwareupdater/public/api/updates"
 
 $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
 $headers.Add("Content-Type", "application/json")
 
 # set client type ..
 $clientType = 'CheckForUpdate'
-$clientVersion = '20220504'
+$clientVersion = '20220506'
 
 # retrieve product information ...
 $productcode = get-lms -ProductCode | select -expand Guid
@@ -80,7 +83,7 @@ if ( $Verbose ) {
 	Write-Host "Message Body ... `n'$body'"
 }
 Try {
-	$response = Invoke-RestMethod 'https://www.automation.siemens.com/softwareupdater/public/api/updates' -Method 'POST' -Headers $headers -Body $body
+	$response = Invoke-RestMethod $OSD_APIURL -Method 'POST' -Headers $headers -Body $body
 } Catch {
 	Write-Host "Error Response ..."
 	Write-Host "StatusCode:" $_.Exception.Response.StatusCode.value__
@@ -126,7 +129,7 @@ if (-not $SkipSiemensSoftware) {
 		Write-Host "Message Body ... `n'$body'"
 	}
 	Try {
-		$response = Invoke-RestMethod 'https://www.automation.siemens.com/softwareupdater/public/api/updates' -Method 'POST' -Headers $headers -Body $body
+		$response = Invoke-RestMethod $OSD_APIURL -Method 'POST' -Headers $headers -Body $body
 	} Catch {
 		Write-Host "Error Response ..."
 		Write-Host "StatusCode:" $_.Exception.Response.StatusCode.value__
