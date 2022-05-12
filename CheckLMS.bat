@@ -12,6 +12,8 @@ rem     Full details see changelog.md
 rem
 rem     11-May-2022:
 rem        - Search for McAfee Logfiles, on %programdata%\McAfee\Endpoint Security\Logs\
+rem     12-May-2022:
+rem        - Improve dongle driver download, do not downloaded again, when it has been downloaded earlier
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -54,8 +56,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 11-May-2022"
-set LMS_SCRIPT_BUILD=20220511
+set LMS_SCRIPT_VERSION="CheckLMS Script 12-May-2022"
+set LMS_SCRIPT_BUILD=20220512
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -1255,7 +1257,7 @@ if not defined LMS_SKIPDOWNLOAD (
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.7-zip.org/a/7zr.exe', '!LMS_DOWNLOAD_PATH!\7zr.exe')" >> !REPORT_LOGFILE! 2>&1
 
 			) else (
-				echo     Don't download 7zip app [ https://www.7-zip.org/a/7zr.exe ], because they exist already.
+				rem echo     Don't download 7zip app [ https://www.7-zip.org/a/7zr.exe ], because they exist already.
 				echo Don't download 7zip app [ https://www.7-zip.org/a/7zr.exe ], because they exist already.                           >> !REPORT_LOGFILE! 2>&1
 			)
 			rem Set unzip tool: !LMS_DOWNLOAD_PATH!\7zr.exe
@@ -1284,7 +1286,7 @@ if not defined LMS_SKIPDOWNLOAD (
 						"!UNZIP_TOOL!" x -y -spe -o"!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!\" "!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.zip" > !CHECKLMS_REPORT_LOG_PATH!\unzip_fnp_library_zip.txt 2>&1
 					)
 				) else (
-					echo     Don't download FNP Siemens Library [ZIP], because they exist already.
+					rem echo     Don't download FNP Siemens Library [ZIP], because they exist already.
 					echo Don't download FNP Siemens Library [ZIP], because they exist already.                                              >> !REPORT_LOGFILE! 2>&1
 				)
 			) else (
@@ -1305,7 +1307,7 @@ if not defined LMS_SKIPDOWNLOAD (
 						!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.exe -y -o"!LMS_DOWNLOAD_PATH!\"                                             > !CHECKLMS_REPORT_LOG_PATH!\unzip_fnp_library_exe.txt 2>&1
 					)
 				) else (
-					echo     Don't download FNP Siemens Library [EXE], because they exist already.
+					rem echo     Don't download FNP Siemens Library [EXE], because they exist already.
 					echo Don't download FNP Siemens Library [EXE], because they exist already.                                              >> !REPORT_LOGFILE! 2>&1
 				)
 			)
@@ -1325,7 +1327,7 @@ if not defined LMS_SKIPDOWNLOAD (
 					echo Download latest released LMS setup [!MOST_RECENT_LMS_VERSION!]: !LMS_SETUP_EXECUTABLE!                                      >> !REPORT_LOGFILE! 2>&1
 					powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_SETUP_DOWNLOAD_LINK!', '!LMS_SETUP_EXECUTABLE!')"             >> !REPORT_LOGFILE! 2>&1
 				) else (
-					echo     Don't download latest released LMS setup [!MOST_RECENT_LMS_VERSION!], because it exist already: !LMS_SETUP_EXECUTABLE!
+					rem echo     Don't download latest released LMS setup [!MOST_RECENT_LMS_VERSION!], because it exist already: !LMS_SETUP_EXECUTABLE!
 					echo Don't download latest released LMS setup [!MOST_RECENT_LMS_VERSION!], because it exist already: !LMS_SETUP_EXECUTABLE!      >> !REPORT_LOGFILE! 2>&1
 				)
 			)
@@ -1342,7 +1344,7 @@ if not defined LMS_SKIPDOWNLOAD (
 				echo Download latest released LMS SDK [!LMS_VERSION!]: !LMS_SDK_ZIP!                                      >> !REPORT_LOGFILE! 2>&1
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_SDK_DOWNLOAD_LINK!', '!LMS_SDK_ZIP!')" >> !REPORT_LOGFILE! 2>&1
 			) else (
-				echo     Don't download latest released LMS SDK [!LMS_VERSION!], because it exist already: !LMS_SDK_ZIP!
+				rem echo     Don't download latest released LMS SDK [!LMS_VERSION!], because it exist already: !LMS_SDK_ZIP!
 				echo Don't download latest released LMS SDK [!LMS_VERSION!], because it exist already: !LMS_SDK_ZIP!      >> !REPORT_LOGFILE! 2>&1
 			)
 			
@@ -1360,11 +1362,11 @@ if not defined LMS_SKIPDOWNLOAD (
 						echo Download latest field test LMS setup [!MOST_RECENT_FT_LMS_VERSION!]: !LMS_FT_SETUP_EXECUTABLE!                                      >> !REPORT_LOGFILE! 2>&1
 						powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_FT_SETUP_DOWNLOAD_LINK!', '!LMS_FT_SETUP_EXECUTABLE!')"               >> !REPORT_LOGFILE! 2>&1
 					) else (
-						echo     Don't download latest field test LMS setup [!MOST_RECENT_FT_LMS_VERSION!], because it exist already: !LMS_FT_SETUP_EXECUTABLE!
+						rem echo     Don't download latest field test LMS setup [!MOST_RECENT_FT_LMS_VERSION!], because it exist already: !LMS_FT_SETUP_EXECUTABLE!
 						echo Don't download latest field test LMS setup [!MOST_RECENT_FT_LMS_VERSION!], because it exist already: !LMS_FT_SETUP_EXECUTABLE!      >> !REPORT_LOGFILE! 2>&1
 					)
 				) else (
-					echo     Don't download latest field test LMS setup [!MOST_RECENT_FT_LMS_VERSION!], because it is already installed.
+					rem echo     Don't download latest field test LMS setup [!MOST_RECENT_FT_LMS_VERSION!], because it is already installed.
 					echo Don't download latest field test LMS setup [!MOST_RECENT_FT_LMS_VERSION!], because it is already installed.                             >> !REPORT_LOGFILE! 2>&1
 				)
 			)
@@ -1430,21 +1432,31 @@ if not defined LMS_SKIPDOWNLOAD (
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/FNP/ECMCommonUtil_DevMar2022.exe', '!LMS_DOWNLOAD_PATH!\ECMCommonUtil_DevMar2022.exe')"   >> !REPORT_LOGFILE! 2>&1
 			)
 			
-			rem Download newest dongle driver always, to ensure that older driver get overwritten
-			echo     Download newest dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!MOST_RECENT_DONGLE_DRIVER_VERSION!] ...
-			echo Download newest dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!MOST_RECENT_DONGLE_DRIVER_VERSION!] ...             >> !REPORT_LOGFILE! 2>&1
-			powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/hasp/!MOST_RECENT_DONGLE_DRIVER_VERSION!/haspdinst.exe', '!LMS_DOWNLOAD_PATH!\haspdinst.exe')"   >> !REPORT_LOGFILE! 2>&1
-			if exist "!LMS_DOWNLOAD_PATH!\haspdinst.exe" (
-				set TARGETFILE=!LMS_DOWNLOAD_PATH!\haspdinst.exe
+			set LMS_DOWNLOAD_PATH_HASPDRIVER=!LMS_DOWNLOAD_PATH!\hasp\!MOST_RECENT_DONGLE_DRIVER_VERSION!
+			if not exist "!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe" (
+				mkdir !LMS_DOWNLOAD_PATH!\hasp\ >nul 2>&1
+				mkdir !LMS_DOWNLOAD_PATH!\hasp\!MOST_RECENT_DONGLE_DRIVER_VERSION!\ >nul 2>&1
+
+				rem Download newest dongle driver
+				echo     Download newest dongle driver: !LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe [!MOST_RECENT_DONGLE_DRIVER_VERSION!] ...
+				echo Download newest dongle driver: !LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe [!MOST_RECENT_DONGLE_DRIVER_VERSION!] ...             >> !REPORT_LOGFILE! 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/hasp/!MOST_RECENT_DONGLE_DRIVER_VERSION!/haspdinst.exe', '!LMS_DOWNLOAD_PATH!\hasp\!MOST_RECENT_DONGLE_DRIVER_VERSION!\haspdinst.exe')"   >> !REPORT_LOGFILE! 2>&1
+			) else (
+				rem echo     Don't download newest dongle driver [!MOST_RECENT_DONGLE_DRIVER_VERSION!], because it exist already: !LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe
+				echo Don't download newest dongle driver [!MOST_RECENT_DONGLE_DRIVER_VERSION!], because it exist already: !LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe      >> !REPORT_LOGFILE! 2>&1
+			)
+			if exist "!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe" (
+
+				set TARGETFILE=!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe
 				set TARGETFILE=!TARGETFILE:\=\\!
 				wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
 				IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "haspdinstVersion=%%i"
-				echo     Newest dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] downloaded!
-				echo     Newest dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] downloaded!                       >> !REPORT_LOGFILE! 2>&1
+				echo     Newest dongle driver: !LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe [!haspdinstVersion!] downloaded!
+				echo     Newest dongle driver: !LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe [!haspdinstVersion!] downloaded!                       >> !REPORT_LOGFILE! 2>&1
 			) else (
 				echo     Download of dongle driver: '!CHECKLMS_EXTERNAL_SHARE!lms/hasp/!MOST_RECENT_DONGLE_DRIVER_VERSION!/haspdinst.exe' [!haspdinstVersion!] FAILED.   >> !REPORT_LOGFILE! 2>&1
 			)
-						
+			
 			rem Download AccessChk tool
 			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\AccessChk.zip" (
 				echo     Download AccessChk tool: !LMS_DOWNLOAD_PATH!\AccessChk.zip
@@ -2149,26 +2161,26 @@ if defined LMS_REMOVE_LMS_CLIENT (
 if defined LMS_INSTALL_DONGLE_DRIVER (
 	echo Dongle Driver: !DONGLE_DRIVER_VERSION! [!DONGLE_DRIVER_PKG_VERSION!] / Major=[!DONGLE_DRIVER_MAJ_VERSION!] / Minor=[!DONGLE_DRIVER_MIN_VERSION!] / installed !DONGLE_DRIVER_INST_COUNT! times     >> !REPORT_LOGFILE! 2>&1
 	rem The same code block is again at script end (was introduced in an earlier script version and kept for "backward" compatibility)
-	if exist "!LMS_DOWNLOAD_PATH!\haspdinst.exe" (
-		set TARGETFILE=!LMS_DOWNLOAD_PATH!\haspdinst.exe
+	if exist "!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe" (
+		set TARGETFILE=!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe
 		set TARGETFILE=!TARGETFILE:\=\\!
 		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
 		IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "haspdinstVersion=%%i"
-		echo     Dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] available 
-		echo Dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] available                                     >> !REPORT_LOGFILE! 2>&1
+		echo     Dongle driver: !LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe [!haspdinstVersion!] available 
+		echo Dongle driver: !LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe [!haspdinstVersion!] available                                     >> !REPORT_LOGFILE! 2>&1
 		if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
 			rem install dongle driver downloaded by this script
 			echo !SHOW_RED!    --- Install newest dongle driver !haspdinstVersion! just downloaded by this script. !SHOW_NORMAL!
 			echo --- Install newest dongle driver !haspdinstVersion! just downloaded by this script.                             >> !REPORT_LOGFILE! 2>&1
-			start "Install dongle driver" "!LMS_DOWNLOAD_PATH!\haspdinst.exe" -install -killprocess 
+			start "Install dongle driver" "!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe" -install -killprocess 
 			echo --- Installation started in an own process/shell.                                                               >> !REPORT_LOGFILE! 2>&1
 		) else (
 			echo !SHOW_YELLOW!    WARNING: Cannot install dongle driver, start script with administrator priviledge. !SHOW_NORMAL!
 			echo WARNING: Cannot install dongle driver, start script with administrator priviledge.                              >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
-		echo !SHOW_YELLOW!    WARNING: Cannot install dongle driver, file '!LMS_DOWNLOAD_PATH!\haspdinst.exe' doesn't exist. !SHOW_NORMAL!
-		echo WARNING: Cannot install dongle driver, file '!LMS_DOWNLOAD_PATH!\haspdinst.exe' doesn't exist.                      >> !REPORT_LOGFILE! 2>&1
+		echo !SHOW_YELLOW!    WARNING: Cannot install dongle driver, file '!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe' doesn't exist. !SHOW_NORMAL!
+		echo WARNING: Cannot install dongle driver, file '!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe' doesn't exist.                      >> !REPORT_LOGFILE! 2>&1
 	)
 	
 	goto script_end
@@ -2178,27 +2190,27 @@ if defined LMS_INSTALL_DONGLE_DRIVER (
 )
 if defined LMS_REMOVE_DONGLE_DRIVER (
 	echo Dongle Driver: !DONGLE_DRIVER_VERSION! [!DONGLE_DRIVER_PKG_VERSION!] / Major=[!DONGLE_DRIVER_MAJ_VERSION!] / Minor=[!DONGLE_DRIVER_MIN_VERSION!] / installed !DONGLE_DRIVER_INST_COUNT! times     >> !REPORT_LOGFILE! 2>&1
-	if exist "!LMS_DOWNLOAD_PATH!\haspdinst.exe" (
-		set TARGETFILE=!LMS_DOWNLOAD_PATH!\haspdinst.exe
+	if exist "!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe" (
+		set TARGETFILE=!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe
 		set TARGETFILE=!TARGETFILE:\=\\!
 		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
 		IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "haspdinstVersion=%%i"
-		echo     Dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] available 
-		echo Dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] available                                     >> !REPORT_LOGFILE! 2>&1
+		echo     Dongle driver: !LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe [!haspdinstVersion!] available 
+		echo Dongle driver: !LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe [!haspdinstVersion!] available                                     >> !REPORT_LOGFILE! 2>&1
 		if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
 			echo !SHOW_RED!    --- Remove installed dongle driver !haspdinstVersion!. !SHOW_NORMAL!
 			rem reset installation counter to make sure that dongle driver get removed!
 			reg add "HKLM\SOFTWARE\Aladdin Knowledge Systems\HASP\Driver\Installer" /v "InstCount" /t REG_DWORD /d 1 /f          >> !REPORT_LOGFILE! 2>&1
 			echo --- Remove installed dongle driver !haspdinstVersion!.                                                          >> !REPORT_LOGFILE! 2>&1
-			start "Remove dongle driver" "!LMS_DOWNLOAD_PATH!\haspdinst.exe" -remove -killprocess 
+			start "Remove dongle driver" "!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe" -remove -killprocess 
 			echo --- Remove started in an own process/shell.                                                                     >> !REPORT_LOGFILE! 2>&1
 		) else (
 			echo !SHOW_YELLOW!    WARNING: Cannot remove dongle driver, start script with administrator priviledge. !SHOW_NORMAL!
 			echo WARNING: Cannot remove dongle driver, start script with administrator priviledge.                               >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
-		echo !SHOW_YELLOW!    WARNING: Cannot remove dongle driver, file '!LMS_DOWNLOAD_PATH!\haspdinst.exe' doesn't exist. !SHOW_NORMAL!
-		echo WARNING: Cannot remove dongle driver, file '!LMS_DOWNLOAD_PATH!\haspdinst.exe' doesn't exist.                       >> !REPORT_LOGFILE! 2>&1
+		echo !SHOW_YELLOW!    WARNING: Cannot remove dongle driver, file '!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe' doesn't exist. !SHOW_NORMAL!
+		echo WARNING: Cannot remove dongle driver, file '!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe' doesn't exist.                       >> !REPORT_LOGFILE! 2>&1
 	)
 
 	goto script_end
@@ -7992,25 +8004,25 @@ if not defined LMS_CHECK_ID (
 		echo !SHOW_RED!    ATTENTION: No Dongle Driver installed. !SHOW_NORMAL!
 		echo ATTENTION: No Dongle Driver installed.                                                                          >> !REPORT_LOGFILE! 2>&1
 
-		if exist "!LMS_DOWNLOAD_PATH!\haspdinst.exe" (
-			set TARGETFILE=!LMS_DOWNLOAD_PATH!\haspdinst.exe
+		if exist "!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe" (
+			set TARGETFILE=!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe
 			set TARGETFILE=!TARGETFILE:\=\\!
 			wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
 			IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "haspdinstVersion=%%i"
-			echo     Dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] available 
-			echo Dongle driver: !LMS_DOWNLOAD_PATH!\haspdinst.exe [!haspdinstVersion!] available                             >> !REPORT_LOGFILE! 2>&1
+			echo     Dongle driver: !LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe [!haspdinstVersion!] available 
+			echo Dongle driver: !LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe [!haspdinstVersion!] available                             >> !REPORT_LOGFILE! 2>&1
 			if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
 				rem install dongle driver downloaded by this script
 				echo !SHOW_RED!    --- Install newest dongle driver !haspdinstVersion! just downloaded by this script. !SHOW_NORMAL!
 				echo --- Install newest dongle driver !haspdinstVersion! just downloaded by this script.                     >> !REPORT_LOGFILE! 2>&1
-				start "Install dongle driver" "!LMS_DOWNLOAD_PATH!\haspdinst.exe" -install -killprocess
+				start "Install dongle driver" "!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe" -install -killprocess
 				echo --- Installation started in an own process/shell.                                                       >> !REPORT_LOGFILE! 2>&1
 			) else (
 				rem show message to install dongle driver downloaded by this script
 				echo !SHOW_RED!    --- Install newest dongle driver !haspdinstVersion! just downloaded by this script. !SHOW_NORMAL!
-				echo !SHOW_RED!    --- Execute '"!LMS_DOWNLOAD_PATH!\haspdinst.exe" -install -killprocess' with administrator priviledge. !SHOW_NORMAL!
+				echo !SHOW_RED!    --- Execute '"!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe" -install -killprocess' with administrator priviledge. !SHOW_NORMAL!
 				echo --- Install newest dongle driver !haspdinstVersion! just downloaded by this script.                     >> !REPORT_LOGFILE! 2>&1
-				echo --- Execute '"!LMS_DOWNLOAD_PATH!\haspdinst.exe" -install -killprocess' with administrator priviledge.  >> !REPORT_LOGFILE! 2>&1
+				echo --- Execute '"!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe" -install -killprocess' with administrator priviledge.  >> !REPORT_LOGFILE! 2>&1
 			)
 		)
 	)
