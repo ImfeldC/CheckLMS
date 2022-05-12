@@ -10,26 +10,8 @@ rem        - Final script, released for LMS 2.6
 rem 
 rem     Full details see changelog.md
 rem
-rem     03-May-2022:
-rem        - move execution of several ecmcommonutil tools into /extend section: V1.19, V1.21 and V1.23
-rem        - use for VMECMID_Latest.txt new the ecmcommonutil tool V1.25 
-rem        - add check command: LmuTool.exe /check
-rem        - Do not show error message anymore, when accessing: 'https://www.whoismyisp.org/'
-rem        - Do no longer show/display output of "servercomptranutil.exe -listRequests format=long" in main logfile.
-rem        - Do no longer show/display ouptut of "servercomptranutil.exe -view format=long" in main logfile
-rem        - Do no longer show/display output of "serveractutil.exe -view -long" in main logfile.
-rem        - Do no longer show/display output of "appactutil.exe -serverview -commServer <Port@Server> -long" in main logfile.
-rem        - Do no longer show/display the output of the LOGS folder in main logfile.
-rem        - LMS_LIC_SERVER uses new the configured port number, no longer the default 27000
-rem        - reuse already retrieved information from pending requests in files like pending_request_*.xml
-rem     04-May-2022:
-rem        - 'Test connection to FNC cloud' moved to extended content.
-rem        - Add connection test to OSD software updater using CheckForUpdate.ps1 [API URL], requires CheckForUpdate.ps1 Version '20220504' or newer
-rem     05-May-2022:
-rem        - move 'resend all stored requests, using servercomptranutil.exe' into extend section, use /extend to execute
-rem     06-May-2022:
-rem        - use new URL  https://softwareupdater.osd.universe.eb.siemens.cloud/servertest.aspx (instead of old: https://www.automation.siemens.com/softwareupdater/servertest.aspx)
-rem        - 'Test connection to OSD server' moved to extended content.
+rem     11-May-2022:
+rem        - Search for McAfee Logfiles, on %programdata%\McAfee\Endpoint Security\Logs\
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -72,8 +54,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 06-May-2022"
-set LMS_SCRIPT_BUILD=20220506
+set LMS_SCRIPT_VERSION="CheckLMS Script 11-May-2022"
+set LMS_SCRIPT_BUILD=20220511
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -6510,104 +6492,104 @@ if not defined LMS_CHECK_ID (
 	echo SKIPPED LMS logfile section. The script didn't execute the LMS logfile commands.                                    >> !REPORT_LOGFILE! 2>&1
 )
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-set LMS_SETUP_LOGFILE_NAME=LMSSetup
-echo ... search LMS setup logfiles [!LMS_SETUP_LOGFILE_NAME!.log] [on c:\ only] ...
-echo Search LMS setup logfiles [!LMS_SETUP_LOGFILE_NAME!.log] [on c:\ only]:                                                 >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPSETUP (
+	set LMS_SETUP_LOGFILE_NAME=LMSSetup
+	echo ... search LMS setup logfiles [!LMS_SETUP_LOGFILE_NAME!.log] [on c:\ only] ...
+	echo Search LMS setup logfiles [!LMS_SETUP_LOGFILE_NAME!.log] [on c:\ only]:                                             >> !REPORT_LOGFILE! 2>&1
 	del !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt >nul 2>&1
 	FOR /r C:\ %%X IN (*.log) DO if "%%~nxX"=="!LMS_SETUP_LOGFILE_NAME!.log" echo %%~dpnxX >> !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt
 	IF EXIST "!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt" (
-		Type !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt                                                   >> !REPORT_LOGFILE! 2>&1
+		Type !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt                                               >> !REPORT_LOGFILE! 2>&1
 		set LOG_FILE_COUNT=0
-		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1 
+		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1 
 		FOR /F "eol=@ delims=@" %%i IN (!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt) DO ( 
 			set /A LOG_FILE_COUNT += 1
-			echo copy '%%i' to '!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log' ...                     >> !REPORT_LOGFILE! 2>&1   
-			copy /Y "%%i" !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                                >> !REPORT_LOGFILE! 2>&1
-			powershell -command "& {Get-Content '%%i' | Select-Object -last !LOG_FILE_SNIPPET!}"                                 >> !REPORT_LOGFILE! 2>&1 
-			echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1 
+			echo copy '%%i' to '!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log' ...                 >> !REPORT_LOGFILE! 2>&1   
+			copy /Y "%%i" !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                            >> !REPORT_LOGFILE! 2>&1
+			powershell -command "& {Get-Content '%%i' | Select-Object -last !LOG_FILE_SNIPPET!}"                             >> !REPORT_LOGFILE! 2>&1 
+			echo -------------------------------------------------------                                                     >> !REPORT_LOGFILE! 2>&1 
 		)
 	) else (
-		echo     No LMS setup logfile [!LMS_SETUP_LOGFILE_NAME!.log] found.                                                      >> !REPORT_LOGFILE! 2>&1
+		echo     No LMS setup logfile [!LMS_SETUP_LOGFILE_NAME!.log] found.                                                  >> !REPORT_LOGFILE! 2>&1
 	)
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	set LMS_SETUP_LOGFILE_NAME=LMSSetupIS
 	echo ... search LMS setup logfiles [!LMS_SETUP_LOGFILE_NAME!.log] [on c:\ only] ...
-	echo Search LMS setup logfiles [!LMS_SETUP_LOGFILE_NAME!.log] [on c:\ only]:                                               >> !REPORT_LOGFILE! 2>&1
+	echo Search LMS setup logfiles [!LMS_SETUP_LOGFILE_NAME!.log] [on c:\ only]:                                             >> !REPORT_LOGFILE! 2>&1
 	del !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt >nul 2>&1
 	FOR /r C:\ %%X IN (*.log) DO if "%%~nxX"=="!LMS_SETUP_LOGFILE_NAME!.log" echo %%~dpnxX >> !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt
 	IF EXIST "!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt" (
-		Type !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt                                                   >> !REPORT_LOGFILE! 2>&1
+		Type !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt                                               >> !REPORT_LOGFILE! 2>&1
 		set LOG_FILE_COUNT=0
-		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1 
+		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1 
 		FOR /F "eol=@ delims=@" %%i IN (!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt) DO ( 
 			set /A LOG_FILE_COUNT += 1
-			echo copy '%%i' to '!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log' ...                     >> !REPORT_LOGFILE! 2>&1   
-			copy /Y "%%i" !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                                >> !REPORT_LOGFILE! 2>&1
-			powershell -command "& {Get-Content '%%i' | Select-Object -last !LOG_FILE_SNIPPET!}"                                 >> !REPORT_LOGFILE! 2>&1 
-			echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1 
+			echo copy '%%i' to '!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log' ...                 >> !REPORT_LOGFILE! 2>&1   
+			copy /Y "%%i" !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                            >> !REPORT_LOGFILE! 2>&1
+			powershell -command "& {Get-Content '%%i' | Select-Object -last !LOG_FILE_SNIPPET!}"                             >> !REPORT_LOGFILE! 2>&1 
+			echo -------------------------------------------------------                                                     >> !REPORT_LOGFILE! 2>&1 
 		)
 	) else (
-		echo     No LMS setup logfile [!LMS_SETUP_LOGFILE_NAME!.log] found.                                                      >> !REPORT_LOGFILE! 2>&1
+		echo     No LMS setup logfile [!LMS_SETUP_LOGFILE_NAME!.log] found.                                                  >> !REPORT_LOGFILE! 2>&1
 	)
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	set LMS_SETUP_LOGFILE_NAME=LMSSetupMSI
 	echo ... search LMS setup logfiles [!LMS_SETUP_LOGFILE_NAME!.log] [on c:\ only] ...
-	echo Search LMS setup logfiles [!LMS_SETUP_LOGFILE_NAME!.log] [on c:\ only]:                                                 >> !REPORT_LOGFILE! 2>&1
+	echo Search LMS setup logfiles [!LMS_SETUP_LOGFILE_NAME!.log] [on c:\ only]:                                             >> !REPORT_LOGFILE! 2>&1
 	del !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt >nul 2>&1
 	FOR /r C:\ %%X IN (*.log) DO if "%%~nxX"=="!LMS_SETUP_LOGFILE_NAME!.log" echo %%~dpnxX >> !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt
 	IF EXIST "!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt" (
-		Type !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt                                                   >> !REPORT_LOGFILE! 2>&1
+		Type !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt                                               >> !REPORT_LOGFILE! 2>&1
 		set LOG_FILE_COUNT=0
-		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1 
+		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1 
 		FOR /F "eol=@ delims=@" %%i IN (!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!_FilesFound.txt) DO ( 
 			set /A LOG_FILE_COUNT += 1
-			echo copy '%%i' to '!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log' ...                     >> !REPORT_LOGFILE! 2>&1   
-			copy /Y "%%i" !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                                >> !REPORT_LOGFILE! 2>&1
-			powershell -command "& {Get-Content '%%i' | Select-Object -last !LOG_FILE_SNIPPET!}"                                 >> !REPORT_LOGFILE! 2>&1 
-			echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1 
+			echo copy '%%i' to '!CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log' ...                 >> !REPORT_LOGFILE! 2>&1   
+			copy /Y "%%i" !CHECKLMS_SETUP_LOG_PATH!\!LMS_SETUP_LOGFILE_NAME!.!LOG_FILE_COUNT!.log                            >> !REPORT_LOGFILE! 2>&1
+			powershell -command "& {Get-Content '%%i' | Select-Object -last !LOG_FILE_SNIPPET!}"                             >> !REPORT_LOGFILE! 2>&1 
+			echo -------------------------------------------------------                                                     >> !REPORT_LOGFILE! 2>&1 
 		)
 	) else (
-		echo     No LMS setup logfile [!LMS_SETUP_LOGFILE_NAME!.log] found.                                                      >> !REPORT_LOGFILE! 2>&1
+		echo     No LMS setup logfile [!LMS_SETUP_LOGFILE_NAME!.log] found.                                                  >> !REPORT_LOGFILE! 2>&1
 	)
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	rem NOTE: the ccmcache (incl. ManagedPC folder) has an overall size of xx GB. If this size is full, oldest downloaded packages will be erased automatically
 	echo ... search LMS setup logfiles [*LicenseManagementSystem*.log]  [on C:\Windows\Logs\ManagedPC\Applications] ...
-	echo Search LMS setup logfiles [*LicenseManagementSystem*.log] [on C:\Windows\Logs\ManagedPC\Applications]:                  >> !REPORT_LOGFILE! 2>&1
+	echo Search LMS setup logfiles [*LicenseManagementSystem*.log] [on C:\Windows\Logs\ManagedPC\Applications]:              >> !REPORT_LOGFILE! 2>&1
 	del !CHECKLMS_SETUP_LOG_PATH!\LicenseManagementSystemSetupLogFilesFound.txt >nul 2>&1
 	FOR /r C:\Windows\Logs\ManagedPC\Applications\ %%X IN (*LicenseManagementSystem*.log) DO echo %%~dpnxX >> !CHECKLMS_SETUP_LOG_PATH!\LicenseManagementSystemSetupLogFilesFound.txt
 	IF EXIST "!CHECKLMS_SETUP_LOG_PATH!\LicenseManagementSystemSetupLogFilesFound.txt" (
-		Type !CHECKLMS_SETUP_LOG_PATH!\LicenseManagementSystemSetupLogFilesFound.txt                                             >> !REPORT_LOGFILE! 2>&1
+		Type !CHECKLMS_SETUP_LOG_PATH!\LicenseManagementSystemSetupLogFilesFound.txt                                         >> !REPORT_LOGFILE! 2>&1
 		FOR /r C:\Windows\Logs\ManagedPC\Applications\ %%X IN (*LicenseManagementSystem*.log) DO (
 		  set myline=%%~dpX
 		  for /f "delims=" %%y in ("!myline:\=.!") do set folder=%%~xy
-		  echo %%~dpX* copy to !CHECKLMS_SETUP_LOG_PATH!\ManagedPC\!folder:~1!\ ...                                              >> !REPORT_LOGFILE! 2>&1
-		  xcopy %%~dpX*  !CHECKLMS_SETUP_LOG_PATH!\ManagedPC\!folder:~1!\ /E /Y /H /I                                            >> !REPORT_LOGFILE! 2>&1
+		  echo %%~dpX* copy to !CHECKLMS_SETUP_LOG_PATH!\ManagedPC\!folder:~1!\ ...                                          >> !REPORT_LOGFILE! 2>&1
+		  xcopy %%~dpX*  !CHECKLMS_SETUP_LOG_PATH!\ManagedPC\!folder:~1!\ /E /Y /H /I                                        >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
-		echo     No LMS setup logfile [*LicenseManagementSystem*.log] found.                                                     >> !REPORT_LOGFILE! 2>&1
+		echo     No LMS setup logfile [*LicenseManagementSystem*.log] found.                                                 >> !REPORT_LOGFILE! 2>&1
 	)
-	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
 	echo ... search further setup logfiles ...
-	echo Search further setup logfiles:                                                                                          >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo Search further setup logfiles:                                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!temp!\setup_LMS_IS_x64.log" (
-		echo !temp!\setup_LMS_IS_x64.log found.                                                                                  >> !REPORT_LOGFILE! 2>&1
-		copy !temp!\setup_LMS_IS_x64.log !CHECKLMS_SETUP_LOG_PATH!\                                                              >> !REPORT_LOGFILE! 2>&1
+		echo !temp!\setup_LMS_IS_x64.log found.                                                                              >> !REPORT_LOGFILE! 2>&1
+		copy !temp!\setup_LMS_IS_x64.log !CHECKLMS_SETUP_LOG_PATH!\                                                          >> !REPORT_LOGFILE! 2>&1
 		echo --- File automatically copied from !temp!\setup_LMS_IS_x64.log to !CHECKLMS_SETUP_LOG_PATH!\ ---  >> !CHECKLMS_SETUP_LOG_PATH!\setup_LMS_IS_x64.log 2>&1
 	) else (
-		echo     !temp!\setup_LMS_IS_x64.log not found.                                                                          >> !REPORT_LOGFILE! 2>&1
+		echo     !temp!\setup_LMS_IS_x64.log not found.                                                                      >> !REPORT_LOGFILE! 2>&1
 	)
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!temp!\setup_LMS_x64.log" (
-		echo !temp!\setup_LMS_x64.log found.                                                                                     >> !REPORT_LOGFILE! 2>&1
-		copy !temp!\setup_LMS_x64.log !CHECKLMS_SETUP_LOG_PATH!\                                                                 >> !REPORT_LOGFILE! 2>&1
+		echo !temp!\setup_LMS_x64.log found.                                                                                 >> !REPORT_LOGFILE! 2>&1
+		copy !temp!\setup_LMS_x64.log !CHECKLMS_SETUP_LOG_PATH!\                                                             >> !REPORT_LOGFILE! 2>&1
 		echo --- File automatically copied from !temp!\setup_LMS_x64.log to !CHECKLMS_SETUP_LOG_PATH!\ ---  >> !CHECKLMS_SETUP_LOG_PATH!\setup_LMS_x64.log 2>&1
 	) else (
-		echo     !temp!\setup_LMS_x64.log not found.                                                                             >> !REPORT_LOGFILE! 2>&1
+		echo     !temp!\setup_LMS_x64.log not found.                                                                         >> !REPORT_LOGFILE! 2>&1
 	)
-	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\" (
 		IF EXIST "!ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log" (
 			echo !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log found.                                                                   >> !REPORT_LOGFILE! 2>&1
@@ -6657,8 +6639,8 @@ if not defined LMS_SKIPSETUP (
 	echo SKIPPED LMS Setup Files section. The script didn't execute the LMS Setup Files commands.                                                                                       >> !REPORT_LOGFILE! 2>&1
 )
 echo ==============================================================================                                                                                                     >> !REPORT_LOGFILE! 2>&1
-echo ... read LMS logfiles [last !LOG_FILE_LINES! lines] ...
 if not defined LMS_SKIPLOGS (
+	echo ... read LMS logfiles [last !LOG_FILE_LINES! lines] ...
 	echo LOG FILE: LMU.log [last !LOG_FILE_LINES! lines]                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!REPORT_LOG_PATH!\LMU.log" (
 		FOR /F "usebackq" %%A IN ('!REPORT_LOG_PATH!\LMU.log') DO set LMULOG_FILESIZE=%%~zA
@@ -6748,10 +6730,10 @@ if not defined LMS_SKIPLOGS (
 	echo SKIPPED logfile section. The script didn't execute the logfile commands.                                               >> !REPORT_LOGFILE! 2>&1
 )
 echo ==============================================================================                                             >> !REPORT_LOGFILE! 2>&1
-rem NOTE: the ccmcache (incl. ManagedPC folder) has an overall size of xx GB. If this size is full, oldest downloaded packages will be erased automatically
-echo ... search dongle driver setup logfiles [*SentinelLicenseManager*.log] [on C:\Windows\Logs\ManagedPC\Applications] ...
-echo Search dongle driver setup logfiles [*SentinelLicenseManager*.log] [on C:\Windows\Logs\ManagedPC\Applications]:            >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPDDSETUP (
+	rem NOTE: the ccmcache (incl. ManagedPC folder) has an overall size of xx GB. If this size is full, oldest downloaded packages will be erased automatically
+	echo ... search dongle driver setup logfiles [*SentinelLicenseManager*.log] [on C:\Windows\Logs\ManagedPC\Applications] ...
+	echo Search dongle driver setup logfiles [*SentinelLicenseManager*.log] [on C:\Windows\Logs\ManagedPC\Applications]:        >> !REPORT_LOGFILE! 2>&1
 	del !CHECKLMS_REPORT_LOG_PATH!\DongleDriverSetupLogFilesFound.txt >nul 2>&1
 	FOR /r C:\Windows\Logs\ManagedPC\Applications\ %%X IN (*SentinelLicenseManager*.log) DO echo %%~dpnxX >> !CHECKLMS_REPORT_LOG_PATH!\DongleDriverSetupLogFilesFound.txt
 	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\DongleDriverSetupLogFilesFound.txt" (
@@ -6854,7 +6836,39 @@ if not defined LMS_SKIPDDSETUP (
 	echo !SHOW_YELLOW!    SKIPPED dongle driver setup section. The script didn't execute the dongle driver setup commands. !SHOW_NORMAL!
 	echo SKIPPED dongle driver setup section. The script didn't execute the dongle driver setup commands.                                                                           >> !REPORT_LOGFILE! 2>&1
 )
-echo ==============================================================================                                                                                                 >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================                >> !REPORT_LOGFILE! 2>&1
+if not defined LMS_SKIPLOGS (
+	rem Check if folder exists, see https://superuser.com/questions/219050/how-to-check-if-a-directory-exists-in-windows
+	set McAfeeDirName=%programdata%\McAfee\Endpoint Security\Logs\
+	dir /A:D !McAfeeDirName! >nul 2>&1
+	if ERRORLEVEL 1 (
+		mkdir !CHECKLMS_REPORT_LOG_PATH!\McAfee\  >nul 2>&1
+		rem serach for C:\ProgramData\McAfee\Endpoint Security\Logs\FirewallEventMonitor.log
+		echo ... search McAfee logfiles [on !McAfeeDirName!] ...
+		echo Search McAfee logfiles [on !McAfeeDirName!]:                                                                              >> !REPORT_LOGFILE! 2>&1
+
+		echo Content of folder: !McAfeeDirName!                                                                                        >> !REPORT_LOGFILE! 2>&1
+		dir /S /A /X /4 /W "!McAfeeDirName!" > !CHECKLMS_REPORT_LOG_PATH!\McAfee\mcafee_logfolder.log
+		echo     see !CHECKLMS_REPORT_LOG_PATH!\McAfee\mcafee_logfolder.log                                                            >> !REPORT_LOGFILE! 2>&1
+		echo -------------------------------------------------------                                                                   >> !REPORT_LOGFILE! 2>&1
+
+		IF EXIST "!McAfeeDirName!FirewallEventMonitor.log" (
+			powershell -command "& {Get-Content '!McAfeeDirName!FirewallEventMonitor.log' | Select-Object -last !LOG_FILE_SNIPPET!}"   >> !REPORT_LOGFILE! 2>&1
+			copy "!McAfeeDirName!FirewallEventMonitor.log" "!CHECKLMS_REPORT_LOG_PATH!\McAfee\"                                        >> !REPORT_LOGFILE! 2>&1
+			echo --- File automatically copied from !McAfeeDirName!FirewallEventMonitor.log to !CHECKLMS_REPORT_LOG_PATH!\McAfee\ ---  >> !CHECKLMS_REPORT_LOG_PATH!\McAfee\FirewallEventMonitor.log 2>&1
+			echo     see '!CHECKLMS_REPORT_LOG_PATH!\McAfee\FirewallEventMonitor.log' for full logfile.                                >> !REPORT_LOGFILE! 2>&1
+		) else (
+			echo     Logfile '!McAfeeDirName!FirewallEventMonitor.log' not found.                                                      >> !REPORT_LOGFILE! 2>&1
+		)
+	) else (
+		echo No McAfee logfiles found [on !McAfeeDirName!]:                                                                            >> !REPORT_LOGFILE! 2>&1
+	)
+) else (
+	rem LMS_SKIPLOGS
+	echo !SHOW_YELLOW!    SKIPPED search McAfee logfiles section.  !SHOW_NORMAL!
+	echo SKIPPED search McAfee logfiles section.                                                                                       >> !REPORT_LOGFILE! 2>&1
+)
+echo ==============================================================================                                                    >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPUCMS (
 	if defined LMS_EXTENDED_CONTENT (
 		rem copied from UCMS-LogcollectorDWP.ini

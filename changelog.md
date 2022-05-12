@@ -1255,5 +1255,25 @@ rem        - delete !CHECKLMS_REPORT_LOG_PATH!\pending_req_*.xml
 rem        - fix dispaly issue of SHOW_NORMAL in ALM message.
 rem     28-Apr-2022:
 rem        - added 'netsh winhttp show proxy' (see https://support.microsoft.com/en-us/topic/how-the-windows-update-client-determines-which-proxy-server-to-use-to-connect-to-the-windows-update-website-08612ae5-3722-886c-f1e1-d012516c22a1 )
+rem     03-May-2022:
+rem        - move execution of several ecmcommonutil tools into /extend section: V1.19, V1.21 and V1.23
+rem        - use for VMECMID_Latest.txt new the ecmcommonutil tool V1.25 
+rem        - add check command: LmuTool.exe /check
+rem        - Do not show error message anymore, when accessing: 'https://www.whoismyisp.org/'
+rem        - Do no longer show/display output of "servercomptranutil.exe -listRequests format=long" in main logfile.
+rem        - Do no longer show/display ouptut of "servercomptranutil.exe -view format=long" in main logfile
+rem        - Do no longer show/display output of "serveractutil.exe -view -long" in main logfile.
+rem        - Do no longer show/display output of "appactutil.exe -serverview -commServer <Port@Server> -long" in main logfile.
+rem        - Do no longer show/display the output of the LOGS folder in main logfile.
+rem        - LMS_LIC_SERVER uses new the configured port number, no longer the default 27000
+rem        - reuse already retrieved information from pending requests in files like pending_request_*.xml
+rem     04-May-2022:
+rem        - 'Test connection to FNC cloud' moved to extended content.
+rem        - Add connection test to OSD software updater using CheckForUpdate.ps1 [API URL], requires CheckForUpdate.ps1 Version '20220504' or newer
+rem     05-May-2022:
+rem        - move 'resend all stored requests, using servercomptranutil.exe' into extend section, use /extend to execute
+rem     06-May-2022:
+rem        - use new URL  https://softwareupdater.osd.universe.eb.siemens.cloud/servertest.aspx (instead of old: https://www.automation.siemens.com/softwareupdater/servertest.aspx)
+rem        - 'Test connection to OSD server' moved to extended content.
 rem 
 ```
