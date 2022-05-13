@@ -14,6 +14,8 @@ rem     11-May-2022:
 rem        - Search for McAfee Logfiles, on %programdata%\McAfee\Endpoint Security\Logs\
 rem     12-May-2022:
 rem        - Improve dongle driver download, do not downloaded again, when it has been downloaded earlier
+rem     13-May-2022:
+rem        - List available sleep states of power configuration [using powercfg /AVAILABLESLEEPSTATES], as 'hybernate' can potentially cause issues.
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -56,8 +58,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 12-May-2022"
-set LMS_SCRIPT_BUILD=20220512
+set LMS_SCRIPT_VERSION="CheckLMS Script 13-May-2022"
+set LMS_SCRIPT_BUILD=20220513
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -2843,6 +2845,9 @@ if not defined LMS_SKIPWINDOWS (
 	rem 	type "%WinDir%\System32\Drivers\Etc\protocol"                                                                            >> !REPORT_LOGFILE! 2>&1
 	rem 	echo .                                                                                                                   >> !REPORT_LOGFILE! 2>&1
 	rem )
+	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo List available sleep states of power configuration [using powercfg /AVAILABLESLEEPSTATES]:                              >> !REPORT_LOGFILE! 2>&1
+	powercfg /AVAILABLESLEEPSTATES                                                                                               >> !REPORT_LOGFILE! 2>&1
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 	echo ... collect system information ...
@@ -5585,6 +5590,7 @@ echo ===========================================================================
 echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 echo ... analyze license server ...
 if not defined LMS_SKIPLICSERV (
+	echo     list requests [servercomptranutil.exe -listRequests] ...
 	echo servercomptranutil.exe -listRequests                                                                                    >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SERVERCOMTRANUTIL (
 		"!LMS_SERVERCOMTRANUTIL!" -listRequests > !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_listRequests_simple.xml 2>&1
@@ -5606,6 +5612,7 @@ if not defined LMS_SKIPLICSERV (
 	)
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1 
+	echo     list requests in long format [servercomptranutil.exe -listRequests format=long] ...
 	echo servercomptranutil.exe -listRequests format=long                                                                        >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SERVERCOMTRANUTIL (
 		"!LMS_SERVERCOMTRANUTIL!" -listRequests format=long > !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_listRequests_long.txt 2>&1
@@ -5615,6 +5622,7 @@ if not defined LMS_SKIPLICSERV (
 	)
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1 
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo     list requests in xml format [servercomptranutil.exe -listRequests format=xml] ...
 	echo servercomptranutil.exe -listRequests format=xml                                                                         >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SERVERCOMTRANUTIL (
 		"!LMS_SERVERCOMTRANUTIL!" -listRequests format=xml > !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_listRequests_XML.xml 2>&1
@@ -5651,6 +5659,7 @@ if not defined LMS_SKIPLICSERV (
 	)
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo     viewing server trusted storage [servercomptranutil.exe -view] ...
 	echo servercomptranutil.exe -view                                                                                            >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SERVERCOMTRANUTIL (
 		"!LMS_SERVERCOMTRANUTIL!" -view > !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_view.txt  2>&1
@@ -5660,6 +5669,7 @@ if not defined LMS_SKIPLICSERV (
 	)
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1 
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo     viewing server trusted storage in long format [servercomptranutil.exe -view format=long] ...
 	echo servercomptranutil.exe -view format=long                                                                                >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SERVERCOMTRANUTIL (
 		"!LMS_SERVERCOMTRANUTIL!" -view format=long > !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_viewlong.txt  2>&1
@@ -5673,9 +5683,11 @@ if not defined LMS_SKIPLICSERV (
 	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_viewlong.txt" for /f "tokens=2 eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_viewlong.txt ^|find /I "INCREMENT"') do set "tsfeature=%%i"
 	if defined LMS_LMUTOOL (
 		if defined tsfeature (
+			echo     check trusted store feature: !tsfeature!, with LmuTool.exe /CHECK:!tsfeature!
 			echo Check trusted store feature: !tsfeature!, with LmuTool.exe /CHECK:!tsfeature!                                   >> !REPORT_LOGFILE! 2>&1
 			"!LMS_LMUTOOL!" /CHECK:!tsfeature!                                                                                   >> !REPORT_LOGFILE! 2>&1
 			echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1 
+			echo     check trusted store feature: !tsfeature!, with LmuTool.exe /FC:!tsfeature!
 			echo Check trusted store feature: !tsfeature!, with LmuTool.exe /FC:!tsfeature!                                      >> !REPORT_LOGFILE! 2>&1
 			"!LMS_LMUTOOL!" /FC:!tsfeature!                                                                                      >> !REPORT_LOGFILE! 2>&1
 		) else (
