@@ -13,7 +13,10 @@ param(
 #             Add return code; any value > 0 means an error.
 #             Add option $Verbose, to enable/disable additional output. Enabled per default.
 # '20220506': Use new API URL: https://osd-ak.automation.siemens.com/softwareupdater/public/api/updates
-# '20220516': Add <date> and <time> information of script execution.
+# '20220516': Add <date> and <time> information of script execution to logfile output.
+#             Add script version to logfile output.
+$scriptVersion = '20220516'
+
 
 # Function to print-out messages, including <date> and <time> information.
 $scriptName = $MyInvocation.MyCommand.Name
@@ -26,7 +29,7 @@ function Log-Message
         [string]$LogMessage
     )
 
-    Write-Output ("[$scriptName] {0} - {1}" -f (Get-Date), $LogMessage)
+    Write-Output ("[$scriptName/$scriptVersion] {0} - {1}" -f (Get-Date), $LogMessage)
 }
 
 Log-Message "Script Execution started ..."
