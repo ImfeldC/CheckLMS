@@ -13,8 +13,24 @@ param(
 #             Add return code; any value > 0 means an error.
 #             Add option $Verbose, to enable/disable additional output. Enabled per default.
 # '20220506': Use new API URL: https://osd-ak.automation.siemens.com/softwareupdater/public/api/updates
+# '20220516': Add <date> and <time> information of script execution.
 
-echo "Parameters: operatingsystem=$operatingsystem / language=$language / SkipSiemensSoftware=$SkipSiemensSoftware / Verbose=$Verbose"
+# Function to print-out messages, including <date> and <time> information.
+$scriptName = $MyInvocation.MyCommand.Name
+function Log-Message
+{
+    [CmdletBinding()]
+    Param
+    (
+        [Parameter(Mandatory=$true, Position=0)]
+        [string]$LogMessage
+    )
+
+    Write-Output ("[$scriptName] {0} - {1}" -f (Get-Date), $LogMessage)
+}
+
+Log-Message "Script Execution started ..."
+Log-Message "Parameters: operatingsystem=$operatingsystem / language=$language / SkipSiemensSoftware=$SkipSiemensSoftware / Verbose=$Verbose"
 
 $ExitCode=0
 # Old API URL -> $OSD_APIURL="https://www.automation.siemens.com/softwareupdater/public/api/updates"
@@ -25,7 +41,7 @@ $headers.Add("Content-Type", "application/json")
 
 # set client type ..
 $clientType = 'CheckForUpdate'
-$clientVersion = '20220506'
+$clientVersion = '20220516'
 
 # retrieve product information ...
 $productcode = get-lms -ProductCode | select -expand Guid
@@ -53,7 +69,7 @@ if( $A[0] -match 'Running on Hypervisor:\s(?<Hypervisor>.+)' )
 	$LMS_SIEMBT_HYPERVISOR = $Matches.Hypervisor
 }
 
-Write-Host "Check for updates on client '$lmssystemid' for '$operatingsystem', for product '$productcode' with version '$productversion' ..."
+Log-Message "Check for updates on client '$lmssystemid' for '$operatingsystem', for product '$productcode' with version '$productversion' ..."
 
 $body = "{
     `"ProductCode`": `"$productcode`",
@@ -80,19 +96,19 @@ $body = "{
 }"
 
 if ( $Verbose ) {
-	Write-Host "Message Body ... `n'$body'"
+	Log-Message "Message Body ... `n'$body'"
 }
 Try {
 	$response = Invoke-RestMethod $OSD_APIURL -Method 'POST' -Headers $headers -Body $body
 } Catch {
-	Write-Host "Error Response ..."
-	Write-Host "StatusCode:" $_.Exception.Response.StatusCode.value__
-	Write-Host "StatusDescription:" $_.Exception.Response.StatusDescription
+	Log-Message "Error Response ..."
+	Log-Message "StatusCode:" $_.Exception.Response.StatusCode.value__
+	Log-Message "StatusDescription:" $_.Exception.Response.StatusDescription
 	$ExitCode=$_.Exception.Response.StatusCode.value__
     if($_.ErrorDetails.Message) {
-        Write-Host $_.ErrorDetails.Message
+        Log-Message $_.ErrorDetails.Message
     } else {
-        Write-Host $_
+        Log-Message $_
     }
 	# read addtional data, see https://github.com/MicrosoftDocs/PowerShell-Docs/issues/4456
 	$reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
@@ -101,7 +117,7 @@ Try {
 	$reader.ReadToEnd() | ConvertFrom-Json
 }
 if ( $Verbose ) {
-	Write-Host "Message Response ..."
+	Log-Message "Message Response ..."
 	$response | ConvertTo-Json -depth 100
 }
 
@@ -126,19 +142,19 @@ if (-not $SkipSiemensSoftware) {
 	}"
 
 	if ( $Verbose ) {
-		Write-Host "Message Body ... `n'$body'"
+		Log-Message "Message Body ... `n'$body'"
 	}
 	Try {
 		$response = Invoke-RestMethod $OSD_APIURL -Method 'POST' -Headers $headers -Body $body
 	} Catch {
-		Write-Host "Error Response ..."
-		Write-Host "StatusCode:" $_.Exception.Response.StatusCode.value__
-		Write-Host "StatusDescription:" $_.Exception.Response.StatusDescription
+		Log-Message "Error Response ..."
+		Log-Message "StatusCode:" $_.Exception.Response.StatusCode.value__
+		Log-Message "StatusDescription:" $_.Exception.Response.StatusDescription
 		$ExitCode=$_.Exception.Response.StatusCode.value__
 		if($_.ErrorDetails.Message) {
-			Write-Host $_.ErrorDetails.Message
+			Log-Message $_.ErrorDetails.Message
 		} else {
-			Write-Host $_
+			Log-Message $_
 		}
 		# read addtional data, see https://github.com/MicrosoftDocs/PowerShell-Docs/issues/4456
 		$reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
@@ -147,11 +163,12 @@ if (-not $SkipSiemensSoftware) {
 		$reader.ReadToEnd() | ConvertFrom-Json
 	}
 	if ( $Verbose ) {
-		Write-Host "Message Response ..."
+		Log-Message "Message Response ..."
 		$response | ConvertTo-Json -depth 100
 	}
 }
 
-Write-Host "Exit with '$ExitCode'"
+Log-Message "Script Execution ended ..."
+Log-Message "Exit with '$ExitCode'"
 exit $ExitCode
 
