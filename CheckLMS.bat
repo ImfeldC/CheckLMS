@@ -16,6 +16,7 @@ rem     12-May-2022:
 rem        - Improve dongle driver download, do not downloaded again, when it has been downloaded earlier
 rem     13-May-2022:
 rem        - List available sleep states of power configuration [using powercfg /AVAILABLESLEEPSTATES], as 'hybernate' can potentially cause issues.
+rem        - add further output to command line window, when analyzing the trusted store.
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -5766,7 +5767,8 @@ if defined LMS_CFG_LICENSE_SRV_PORT (
 )
 echo ... analyze local license server on !LMS_LIC_SERVER! ...
 if not defined LMS_SKIPLOCLICSERV (
-	echo servercomptranutil.exe -serverView !LMS_LIC_SERVER!                                                                     >> !REPORT_LOGFILE! 2>&1
+	echo     viewing server trusted storage [servercomptranutil.exe -serverView !LMS_LIC_SERVER!] ...
+	echo Viewing server trusted storage [servercomptranutil.exe -serverView !LMS_LIC_SERVER!]                                    >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SERVERCOMTRANUTIL (
@@ -5777,7 +5779,8 @@ if not defined LMS_SKIPLOCLICSERV (
 	)
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
-	echo servercomptranutil.exe -serverView !LMS_LIC_SERVER! format=full                                                         >> !REPORT_LOGFILE! 2>&1
+	echo     viewing server trusted storage in full format [servercomptranutil.exe -serverView !LMS_LIC_SERVER! format=full] ...
+	echo Viewing server trusted storage in full format [servercomptranutil.exe -serverView !LMS_LIC_SERVER! format=full]         >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SERVERCOMTRANUTIL (
 		"!LMS_SERVERCOMTRANUTIL!" -serverView !LMS_LIC_SERVER! format=full > !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_serverViewFull.txt 2>&1
@@ -5787,7 +5790,8 @@ if not defined LMS_SKIPLOCLICSERV (
 	)
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
-	echo appactutil.exe -serverview -commServer !LMS_LIC_SERVER! -long                                                           >> !REPORT_LOGFILE! 2>&1
+	echo     viewing trusted storage in long format [appactutil.exe -serverview -commServer !LMS_LIC_SERVER! -long] ...
+	echo Viewing trusted storage in long format [appactutil.exe -serverview -commServer !LMS_LIC_SERVER! -long]                  >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_APPACTUTIL (
 		"!LMS_APPACTUTIL!" -serverview -commServer !LMS_LIC_SERVER! -long > !CHECKLMS_REPORT_LOG_PATH!\appactutil_serverViewLong.txt 2>&1
@@ -6003,7 +6007,8 @@ if not defined LMS_SKIPREMLICSERV (
 	if defined LMS_CFG_LICENSE_SRV_NAME (
 		if not "!LMS_CFG_LICENSE_SRV_NAME!" == "localhost" (
 			echo Configured license server: !LMS_CFG_LICENSE_SRV_NAME! with port !LMS_CFG_LICENSE_SRV_PORT!                      >> !REPORT_LOGFILE! 2>&1
-			echo servercomptranutil.exe -serverView !LMS_CFG_LICENSE_SRV_PORT!@!LMS_CFG_LICENSE_SRV_NAME!                        >> !REPORT_LOGFILE! 2>&1
+			echo     viewing server trusted storage [servercomptranutil.exe -serverView !LMS_CFG_LICENSE_SRV_PORT!@!LMS_CFG_LICENSE_SRV_NAME!] ...
+			echo Viewing server trusted storage [servercomptranutil.exe -serverView !LMS_CFG_LICENSE_SRV_PORT!@!LMS_CFG_LICENSE_SRV_NAME!]     >> !REPORT_LOGFILE! 2>&1
 			if defined LMS_SERVERCOMTRANUTIL (
 				"!LMS_SERVERCOMTRANUTIL!" -serverView !LMS_CFG_LICENSE_SRV_PORT!@!LMS_CFG_LICENSE_SRV_NAME!                      >> !REPORT_LOGFILE! 2>&1
 				echo ==============================================================================                              >> !REPORT_LOGFILE! 2>&1
@@ -6016,7 +6021,8 @@ if not defined LMS_SKIPREMLICSERV (
 			echo ==============================================================================                                  >> !REPORT_LOGFILE! 2>&1
 			echo Start at !DATE! !TIME! ....                                                                                     >> !REPORT_LOGFILE! 2>&1
 
-			echo appactutil.exe -serverview -commServer !LMS_CFG_LICENSE_SRV_PORT!@!LMS_CFG_LICENSE_SRV_NAME! -long              >> !REPORT_LOGFILE! 2>&1
+			echo     viewing trusted storage in long format [appactutil.exe -serverview -commServer !LMS_CFG_LICENSE_SRV_PORT!@!LMS_CFG_LICENSE_SRV_NAME! -long] ...
+			echo Viewing trusted storage in long format [appactutil.exe -serverview -commServer !LMS_CFG_LICENSE_SRV_PORT!@!LMS_CFG_LICENSE_SRV_NAME! -long]     >> !REPORT_LOGFILE! 2>&1
 			if defined LMS_APPACTUTIL (
 				"!LMS_APPACTUTIL!" -serverview -commServer !LMS_CFG_LICENSE_SRV_PORT!@!LMS_CFG_LICENSE_SRV_NAME! -long  > !CHECKLMS_REPORT_LOG_PATH!\appactutil_serverViewLong_RemLicSrv.txt 2>&1
 				Echo     See "!CHECKLMS_REPORT_LOG_PATH!\appactutil_serverViewLong_RemLicSrv.txt" for more details.              >> !REPORT_LOGFILE! 2>&1
