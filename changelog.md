@@ -1275,5 +1275,17 @@ rem        - move 'resend all stored requests, using servercomptranutil.exe' int
 rem     06-May-2022:
 rem        - use new URL  https://softwareupdater.osd.universe.eb.siemens.cloud/servertest.aspx (instead of old: https://www.automation.siemens.com/softwareupdater/servertest.aspx)
 rem        - 'Test connection to OSD server' moved to extended content.
+rem     11-May-2022:
+rem        - Search for McAfee Logfiles, on %programdata%\McAfee\Endpoint Security\Logs\
+rem     12-May-2022:
+rem        - Improve dongle driver download, do not downloaded again, when it has been downloaded earlier
+rem     13-May-2022:
+rem        - List available sleep states of power configuration [using powercfg /AVAILABLESLEEPSTATES], as 'hybernate' can potentially cause issues.
+rem        - add further output to command line window, when analyzing the trusted store.
+rem     01-Jun-2022:
+rem        - Added DataExecutionPrevention_Available & DataExecutionPrevention_SupportPolicy to wmic os get locale, oslanguage, codeset, DataExecutionPrevention_Available, DataExecutionPrevention_SupportPolicy /format:list
+rem          See also https://docs.microsoft.com/en-us/troubleshoot/windows-client/performance/determine-hardware-dep-available
+rem     08-Jun-2022:
+rem        - Adjust, Search crash dump files [*.dmp]; copy only when /extend is set.
 rem 
 ```

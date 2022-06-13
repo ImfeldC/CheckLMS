@@ -10,18 +10,7 @@ rem        - Final script, released for LMS 2.6
 rem 
 rem     Full details see changelog.md (on https://github.com/ImfeldC/CheckLMS/blob/master/changelog.md )
 rem
-rem     11-May-2022:
-rem        - Search for McAfee Logfiles, on %programdata%\McAfee\Endpoint Security\Logs\
-rem     12-May-2022:
-rem        - Improve dongle driver download, do not downloaded again, when it has been downloaded earlier
-rem     13-May-2022:
-rem        - List available sleep states of power configuration [using powercfg /AVAILABLESLEEPSTATES], as 'hybernate' can potentially cause issues.
-rem        - add further output to command line window, when analyzing the trusted store.
-rem     01-Jun-2022:
-rem        - Added DataExecutionPrevention_Available & DataExecutionPrevention_SupportPolicy to wmic os get locale, oslanguage, codeset, DataExecutionPrevention_Available, DataExecutionPrevention_SupportPolicy /format:list
-rem          See also https://docs.microsoft.com/en-us/troubleshoot/windows-client/performance/determine-hardware-dep-available
-rem     08-Jun-2022:
-rem        - Adjust, Search crash dump files [*.dmp]; copy only when /extend is set.
+rem     13-Jun-2022:
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -64,8 +53,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 08-Jun-2022"
-set LMS_SCRIPT_BUILD=20220608
+set LMS_SCRIPT_VERSION="CheckLMS Script 13-Jun-2022"
+set LMS_SCRIPT_BUILD=20220613
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
