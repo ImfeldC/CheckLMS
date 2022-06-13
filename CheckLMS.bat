@@ -20,6 +20,8 @@ rem        - add further output to command line window, when analyzing the trust
 rem     01-Jun-2022:
 rem        - Added DataExecutionPrevention_Available & DataExecutionPrevention_SupportPolicy to wmic os get locale, oslanguage, codeset, DataExecutionPrevention_Available, DataExecutionPrevention_SupportPolicy /format:list
 rem          See also https://docs.microsoft.com/en-us/troubleshoot/windows-client/performance/determine-hardware-dep-available
+rem     08-Jun-2022:
+rem        - Adjust, Search crash dump files [*.dmp]; copy only when /extend is set.
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -62,8 +64,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 01-Jun-2022"
-set LMS_SCRIPT_BUILD=20220601
+set LMS_SCRIPT_VERSION="CheckLMS Script 08-Jun-2022"
+set LMS_SCRIPT_BUILD=20220608
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -3396,6 +3398,7 @@ if not defined LMS_SKIPWER (
 	FOR /r C:\ %%X IN (*.dmp) DO if "%%~dpX" NEQ "!CHECKLMS_CRASH_DUMP_PATH!\" echo %%~dpnxX >> !CHECKLMS_CRASH_DUMP_PATH!\CrashDumpFilesFound.txt
 	IF EXIST "!CHECKLMS_CRASH_DUMP_PATH!\CrashDumpFilesFound.txt" (
 		set CRASHDUMP_FILE_COUNT=0
+		set CRASHDUMP_FILE_COPY=0
 		set CRASHDUMP_TOTAL_FILE_COUNT=0
 		FOR /F "eol=@ delims=@" %%i IN (!CHECKLMS_CRASH_DUMP_PATH!\CrashDumpFilesFound.txt) DO ( 
 			set name=%%~nxi
@@ -3404,30 +3407,52 @@ if not defined LMS_SKIPWER (
 			set "first=!name:~0,3!"
 			if /I "!first!" EQU "alm" (
 				set /A CRASHDUMP_FILE_COUNT += 1
-				echo copy '%%i' to '!CHECKLMS_CRASH_DUMP_PATH!\' ...    >> !REPORT_LOGFILE! 2>&1   
-				copy /Y "%%i" !CHECKLMS_CRASH_DUMP_PATH!\               >> !REPORT_LOGFILE! 2>&1
+				if defined LMS_EXTENDED_CONTENT (
+					set /A CRASHDUMP_FILE_COPY += 1
+					echo copy '%%i' to '!CHECKLMS_CRASH_DUMP_PATH!\' ...    >> !REPORT_LOGFILE! 2>&1   
+					copy /Y "%%i" !CHECKLMS_CRASH_DUMP_PATH!\               >> !REPORT_LOGFILE! 2>&1
+				) else (
+					echo copy '%%i' to '!CHECKLMS_CRASH_DUMP_PATH!\' SKIPPED, start script with option '/extend' to enable extended content.         >> !REPORT_LOGFILE! 2>&1
+				)
 			)
 			set "first=!name:~0,7!"
 			if /I "!first!" EQU "Siemens" (
 				set /A CRASHDUMP_FILE_COUNT += 1
-				echo copy '%%i' to '!CHECKLMS_CRASH_DUMP_PATH!\' ...    >> !REPORT_LOGFILE! 2>&1   
-				copy /Y "%%i" !CHECKLMS_CRASH_DUMP_PATH!\               >> !REPORT_LOGFILE! 2>&1
+				if defined LMS_EXTENDED_CONTENT (
+					set /A CRASHDUMP_FILE_COPY += 1
+					echo copy '%%i' to '!CHECKLMS_CRASH_DUMP_PATH!\' ...    >> !REPORT_LOGFILE! 2>&1   
+					copy /Y "%%i" !CHECKLMS_CRASH_DUMP_PATH!\               >> !REPORT_LOGFILE! 2>&1
+				) else (
+					echo copy '%%i' to '!CHECKLMS_CRASH_DUMP_PATH!\' SKIPPED, start script with option '/extend' to enable extended content.         >> !REPORT_LOGFILE! 2>&1
+				)
 			)
 			set "first=!name:~0,6!"
 			if /I "!first!" EQU "SIEMBT" (
 				set /A CRASHDUMP_FILE_COUNT += 1
-				echo copy '%%i' to '!CHECKLMS_CRASH_DUMP_PATH!\' ...    >> !REPORT_LOGFILE! 2>&1   
-				copy /Y "%%i" !CHECKLMS_CRASH_DUMP_PATH!\               >> !REPORT_LOGFILE! 2>&1
+				if defined LMS_EXTENDED_CONTENT (
+					set /A CRASHDUMP_FILE_COPY += 1
+					echo copy '%%i' to '!CHECKLMS_CRASH_DUMP_PATH!\' ...    >> !REPORT_LOGFILE! 2>&1   
+					copy /Y "%%i" !CHECKLMS_CRASH_DUMP_PATH!\               >> !REPORT_LOGFILE! 2>&1
+				) else (
+					echo copy '%%i' to '!CHECKLMS_CRASH_DUMP_PATH!\' SKIPPED, start script with option '/extend' to enable extended content.         >> !REPORT_LOGFILE! 2>&1
+				)
 			)
 			set "first=!name:~0,10!"
 			if /I "!first!" EQU "SSUManager" (
 				set /A CRASHDUMP_FILE_COUNT += 1
-				echo copy '%%i' to '!CHECKLMS_CRASH_DUMP_PATH!\' ...    >> !REPORT_LOGFILE! 2>&1   
-				copy /Y "%%i" !CHECKLMS_CRASH_DUMP_PATH!\               >> !REPORT_LOGFILE! 2>&1
+				if defined LMS_EXTENDED_CONTENT (
+					set /A CRASHDUMP_FILE_COPY += 1
+					echo copy '%%i' to '!CHECKLMS_CRASH_DUMP_PATH!\' ...    >> !REPORT_LOGFILE! 2>&1   
+					copy /Y "%%i" !CHECKLMS_CRASH_DUMP_PATH!\               >> !REPORT_LOGFILE! 2>&1
+				) else (
+					echo copy '%%i' to '!CHECKLMS_CRASH_DUMP_PATH!\' SKIPPED, start script with option '/extend' to enable extended content.         >> !REPORT_LOGFILE! 2>&1
+				)
 			)
 		)
-		echo     Total !CRASHDUMP_FILE_COUNT! out of !CRASHDUMP_TOTAL_FILE_COUNT! crash dump files copied.
-		echo     Total !CRASHDUMP_FILE_COUNT! out of !CRASHDUMP_TOTAL_FILE_COUNT! crash dump files copied.   >> !REPORT_LOGFILE! 2>&1
+		echo     Total !CRASHDUMP_FILE_COUNT! out of !CRASHDUMP_TOTAL_FILE_COUNT! crash dump files found.
+		echo     Total !CRASHDUMP_FILE_COUNT! out of !CRASHDUMP_TOTAL_FILE_COUNT! crash dump files found.   >> !REPORT_LOGFILE! 2>&1
+		echo     Total !CRASHDUMP_FILE_COPY! out of !CRASHDUMP_TOTAL_FILE_COUNT! crash dump files copied.
+		echo     Total !CRASHDUMP_FILE_COPY! out of !CRASHDUMP_TOTAL_FILE_COUNT! crash dump files copied.   >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo     No crash dump files [*.dmp] found.
 		echo     No crash dump files [*.dmp] found.                     >> !REPORT_LOGFILE! 2>&1
