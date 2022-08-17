@@ -11,6 +11,11 @@ rem
 rem     Full details see changelog.md (on https://github.com/ImfeldC/CheckLMS/blob/master/changelog.md )
 rem
 rem     13-Jun-2022:
+rem        - Prepare for 2032330: CheckLMS: Publish script "XX-XXX-2022" as part of LMS 2.7.856 (Sprint 58)
+rem     17-Aug-2022:
+rem        - Added LmuTool /RMS
+rem        - Show content of 'C:\ProgramData\Siemens\LMS\OnlineCheckTokens'
+rem        - Show content of all json files in 'C:\ProgramData\Siemens\LMS\OnlineCheckTokens'
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -53,8 +58,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 13-Jun-2022"
-set LMS_SCRIPT_BUILD=20220613
+set LMS_SCRIPT_VERSION="CheckLMS Script 17-Aug-2022"
+set LMS_SCRIPT_BUILD=20220817
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -378,6 +383,7 @@ FOR %%A IN (%*) DO (
 			set LMS_SKIPLICSERV=1
 			set LMS_SKIPLOCLICSERV=1
 			set LMS_SKIPREMLICSERV=1
+			set LMS_SKIPONLICSERV=1
 			set LMS_SKIPPRODUCTS=1
 			set LMS_SKIPWINDOWS=1
 		)
@@ -2352,7 +2358,7 @@ if not defined LMS_CHECK_ID (
 		if /I !LMS_BUILD_VERSION! GEQ 816 (
 			"!LMS_LMUTOOL!" /MULTICSID                                                                                       >> !REPORT_LOGFILE! 2>&1
 		) else (
-			echo     This operation is not required with LMS !LMS_VERSION!, don't perform operation.                         >> !REPORT_LOGFILE! 2>&1 
+			echo     This operation is not available with LMS !LMS_VERSION!, don't perform operation.                         >> !REPORT_LOGFILE! 2>&1 
 		)
 	) else (
 		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                  >> !REPORT_LOGFILE! 2>&1 
@@ -3545,7 +3551,7 @@ if not defined LMS_SKIPLMS (
 			if "!LMS_PS_DEFAULTFAMILY!" NEQ "" set LMS_PS_DEFAULTFAMILY=!LMS_PS_DEFAULTFAMILY: =!
 			echo LMS_PS_DEFAULTFAMILY=[!LMS_PS_DEFAULTFAMILY!]                                                                                                             >> !REPORT_LOGFILE! 2>&1
 		) else (
-			echo     This operation is not supported with LMS !LMS_VERSION!, cannot perform operation.                                                                     >> !REPORT_LOGFILE! 2>&1 
+			echo     This operation is not available with LMS !LMS_VERSION!, cannot perform operation.                                                                     >> !REPORT_LOGFILE! 2>&1 
 		)
 		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
 		echo LMS Culture Id: [read with LMU PowerShell command: get-lms -CultureId]                                                                                        >> !REPORT_LOGFILE! 2>&1
@@ -3699,7 +3705,7 @@ if not defined LMS_SKIPLMS (
 		if /I !LMS_BUILD_VERSION! GEQ 839 (
 			"!LMS_LMUTOOL!" /SurEDateAll                                                                                         >> !REPORT_LOGFILE! 2>&1
 		) else (
-			echo     This operation is not supported with LMS !LMS_VERSION!, cannot perform operation.                           >> !REPORT_LOGFILE! 2>&1 
+			echo     This operation is not available with LMS !LMS_VERSION!, cannot perform operation.                           >> !REPORT_LOGFILE! 2>&1 
 		)
 	) else (
 		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> !REPORT_LOGFILE! 2>&1 
@@ -3712,10 +3718,10 @@ if not defined LMS_SKIPLMS (
 			if /I !LMS_BUILD_VERSION! NEQ 610 (
 				"!LMS_LMUTOOL!" /SUREDATE                                                                                        >> !REPORT_LOGFILE! 2>&1
 			) else (
-				echo     This operation is not supported with LMS !LMS_VERSION!, cannot perform operation.                       >> !REPORT_LOGFILE! 2>&1 
+				echo     This operation is not available with LMS !LMS_VERSION!, cannot perform operation.                       >> !REPORT_LOGFILE! 2>&1 
 			)
 		) else (
-			echo     This operation is not supported with LMS !LMS_VERSION!, cannot perform operation.                           >> !REPORT_LOGFILE! 2>&1 
+			echo     This operation is not available with LMS !LMS_VERSION!, cannot perform operation.                           >> !REPORT_LOGFILE! 2>&1 
 		)
 	) else (
 		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> !REPORT_LOGFILE! 2>&1 
@@ -3734,10 +3740,10 @@ if not defined LMS_SKIPLMS (
 			if /I !LMS_BUILD_VERSION! NEQ 610 (
 				"!LMS_LMUTOOL!" /SITEVALUE                                                                                       >> !REPORT_LOGFILE! 2>&1
 			) else (
-				echo     This operation is not supported with LMS !LMS_VERSION!, cannot perform operation.                       >> !REPORT_LOGFILE! 2>&1 
+				echo     This operation is not available with LMS !LMS_VERSION!, cannot perform operation.                       >> !REPORT_LOGFILE! 2>&1 
 			)
 		) else (
-			echo     This operation is not supported with LMS !LMS_VERSION!, cannot perform operation.                           >> !REPORT_LOGFILE! 2>&1 
+			echo     This operation is not available with LMS !LMS_VERSION!, cannot perform operation.                           >> !REPORT_LOGFILE! 2>&1 
 		)
 	) else (
 		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> !REPORT_LOGFILE! 2>&1 
@@ -3751,10 +3757,10 @@ if not defined LMS_SKIPLMS (
 			if /I !LMS_BUILD_VERSION! NEQ 610 (
 				"!LMS_LMUTOOL!" /healthcheck                                                                                     >> !REPORT_LOGFILE! 2>&1
 			) else (
-				echo     This operation is not supported with LMS !LMS_VERSION!, cannot perform operation.                       >> !REPORT_LOGFILE! 2>&1 
+				echo     This operation is not available with LMS !LMS_VERSION!, cannot perform operation.                       >> !REPORT_LOGFILE! 2>&1 
 			)
 		) else (
-			echo     This operation is not supported with LMS !LMS_VERSION!, cannot perform operation.                           >> !REPORT_LOGFILE! 2>&1 
+			echo     This operation is not available with LMS !LMS_VERSION!, cannot perform operation.                           >> !REPORT_LOGFILE! 2>&1 
 		)
 	) else (
 		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> !REPORT_LOGFILE! 2>&1 
@@ -3767,7 +3773,7 @@ if not defined LMS_SKIPLMS (
 		if /I !LMS_BUILD_VERSION! GEQ 800 (
 			"!LMS_LMUTOOL!" /cleants                                                                                             >> !REPORT_LOGFILE! 2>&1
 		) else (
-			echo     This operation is not supported with LMS !LMS_VERSION!, cannot perform operation.                           >> !REPORT_LOGFILE! 2>&1 
+			echo     This operation is not available with LMS !LMS_VERSION!, cannot perform operation.                           >> !REPORT_LOGFILE! 2>&1 
 		)
 	) else (
 		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> !REPORT_LOGFILE! 2>&1 
@@ -3884,10 +3890,10 @@ if not defined LMS_SKIPLMS (
 			if /I !LMS_BUILD_VERSION! NEQ 610 (
 				"!LMS_LMUTOOL!" /DONGLES                                                                                         >> !REPORT_LOGFILE! 2>&1
 			) else (
-				echo     This operation is not supported with LMS !LMS_VERSION!, cannot perform operation.                       >> !REPORT_LOGFILE! 2>&1 
+				echo     This operation is not available with LMS !LMS_VERSION!, cannot perform operation.                       >> !REPORT_LOGFILE! 2>&1 
 			)
 		) else (
-			echo     This operation is not supported with LMS !LMS_VERSION!, cannot perform operation.                           >> !REPORT_LOGFILE! 2>&1 
+			echo     This operation is not available with LMS !LMS_VERSION!, cannot perform operation.                           >> !REPORT_LOGFILE! 2>&1 
 		)
 	) else (
 		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> !REPORT_LOGFILE! 2>&1 
@@ -5969,10 +5975,10 @@ if not defined LMS_SKIPLOCLICSERV (
 			if /I !LMS_BUILD_VERSION! NEQ 610 (
 				"!LMS_LMUTOOL!" /REPALL /M:O                                                                                     >> !REPORT_LOGFILE! 2>&1
 			) else (
-				echo     This operation is not supported with LMS !LMS_VERSION!, cannot perform operation.                       >> !REPORT_LOGFILE! 2>&1 
+				echo     This operation is not available with LMS !LMS_VERSION!, cannot perform operation.                       >> !REPORT_LOGFILE! 2>&1 
 			)
 		) else (
-			echo     This operation is not supported with LMS !LMS_VERSION!, cannot perform operation.                           >> !REPORT_LOGFILE! 2>&1 
+			echo     This operation is not available with LMS !LMS_VERSION!, cannot perform operation.                           >> !REPORT_LOGFILE! 2>&1 
 		)
 	) else (
 		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> !REPORT_LOGFILE! 2>&1 
@@ -6023,40 +6029,72 @@ echo ... analyze remote license server on !LMS_CFG_LICENSE_SRV_PORT!@!LMS_CFG_LI
 if not defined LMS_SKIPREMLICSERV (
 	if defined LMS_CFG_LICENSE_SRV_NAME (
 		if not "!LMS_CFG_LICENSE_SRV_NAME!" == "localhost" (
-			echo Configured license server: !LMS_CFG_LICENSE_SRV_NAME! with port !LMS_CFG_LICENSE_SRV_PORT!                      >> !REPORT_LOGFILE! 2>&1
+			echo Configured license server: !LMS_CFG_LICENSE_SRV_NAME! with port !LMS_CFG_LICENSE_SRV_PORT!                  >> !REPORT_LOGFILE! 2>&1
 			echo     viewing server trusted storage [servercomptranutil.exe -serverView !LMS_CFG_LICENSE_SRV_PORT!@!LMS_CFG_LICENSE_SRV_NAME!] ...
 			echo Viewing server trusted storage [servercomptranutil.exe -serverView !LMS_CFG_LICENSE_SRV_PORT!@!LMS_CFG_LICENSE_SRV_NAME!]     >> !REPORT_LOGFILE! 2>&1
 			if defined LMS_SERVERCOMTRANUTIL (
-				"!LMS_SERVERCOMTRANUTIL!" -serverView !LMS_CFG_LICENSE_SRV_PORT!@!LMS_CFG_LICENSE_SRV_NAME!                      >> !REPORT_LOGFILE! 2>&1
-				echo ==============================================================================                              >> !REPORT_LOGFILE! 2>&1
-				echo Start at !DATE! !TIME! ....                                                                                 >> !REPORT_LOGFILE! 2>&1
-				echo servercomptranutil.exe -serverView !LMS_CFG_LICENSE_SRV_PORT!@!LMS_CFG_LICENSE_SRV_NAME! format=full        >> !REPORT_LOGFILE! 2>&1
-				"!LMS_SERVERCOMTRANUTIL!" -serverView !LMS_CFG_LICENSE_SRV_PORT!@!LMS_CFG_LICENSE_SRV_NAME! format=full          >> !REPORT_LOGFILE! 2>&1
+				"!LMS_SERVERCOMTRANUTIL!" -serverView !LMS_CFG_LICENSE_SRV_PORT!@!LMS_CFG_LICENSE_SRV_NAME!                  >> !REPORT_LOGFILE! 2>&1
+				echo ==============================================================================                          >> !REPORT_LOGFILE! 2>&1
+				echo Start at !DATE! !TIME! ....                                                                             >> !REPORT_LOGFILE! 2>&1
+				echo servercomptranutil.exe -serverView !LMS_CFG_LICENSE_SRV_PORT!@!LMS_CFG_LICENSE_SRV_NAME! format=full    >> !REPORT_LOGFILE! 2>&1
+				"!LMS_SERVERCOMTRANUTIL!" -serverView !LMS_CFG_LICENSE_SRV_PORT!@!LMS_CFG_LICENSE_SRV_NAME! format=full      >> !REPORT_LOGFILE! 2>&1
 			) else (
-				echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                         >> !REPORT_LOGFILE! 2>&1
+				echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                     >> !REPORT_LOGFILE! 2>&1
 			)
-			echo ==============================================================================                                  >> !REPORT_LOGFILE! 2>&1
-			echo Start at !DATE! !TIME! ....                                                                                     >> !REPORT_LOGFILE! 2>&1
+			echo ==============================================================================                              >> !REPORT_LOGFILE! 2>&1
+			echo Start at !DATE! !TIME! ....                                                                                 >> !REPORT_LOGFILE! 2>&1
 
 			echo     viewing trusted storage in long format [appactutil.exe -serverview -commServer !LMS_CFG_LICENSE_SRV_PORT!@!LMS_CFG_LICENSE_SRV_NAME! -long] ...
 			echo Viewing trusted storage in long format [appactutil.exe -serverview -commServer !LMS_CFG_LICENSE_SRV_PORT!@!LMS_CFG_LICENSE_SRV_NAME! -long]     >> !REPORT_LOGFILE! 2>&1
 			if defined LMS_APPACTUTIL (
 				"!LMS_APPACTUTIL!" -serverview -commServer !LMS_CFG_LICENSE_SRV_PORT!@!LMS_CFG_LICENSE_SRV_NAME! -long  > !CHECKLMS_REPORT_LOG_PATH!\appactutil_serverViewLong_RemLicSrv.txt 2>&1
-				Echo     See "!CHECKLMS_REPORT_LOG_PATH!\appactutil_serverViewLong_RemLicSrv.txt" for more details.              >> !REPORT_LOGFILE! 2>&1
+				Echo     See "!CHECKLMS_REPORT_LOG_PATH!\appactutil_serverViewLong_RemLicSrv.txt" for more details.          >> !REPORT_LOGFILE! 2>&1
 			) else (
-				echo     appactutil.exe doesn't exist, cannot perform operation.                                                 >> !REPORT_LOGFILE! 2>&1
+				echo     appactutil.exe doesn't exist, cannot perform operation.                                             >> !REPORT_LOGFILE! 2>&1
 			)
 		) else (
-			echo Configured license server: localhost as server configured; do not perform operations.                           >> !REPORT_LOGFILE! 2>&1
+			echo Configured license server: localhost as server configured; do not perform operations.                       >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
-		echo Configured license server: no server configured; do not perform operations.                                         >> !REPORT_LOGFILE! 2>&1
+		echo Configured license server: no server configured; do not perform operations.                                     >> !REPORT_LOGFILE! 2>&1
 	)
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
 ) else (
 	rem LMS_SKIPREMLICSERV
 	echo !SHOW_YELLOW!    SKIPPED remote license server section. The script didn't execute the remote license server commands. !SHOW_NORMAL!
-	echo SKIPPED remote license server section. The script didn't execute the remote license server commands.                    >> !REPORT_LOGFILE! 2>&1
+	echo SKIPPED remote license server section. The script didn't execute the remote license server commands.                >> !REPORT_LOGFILE! 2>&1
+)
+echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
+echo =   O N L I N E   L I C E N S E   S E R V E R                                =                                          >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+echo ... analyze ONLINE licenses on '!LMS_CFG_LICENSE_SRV_NAME!' ...
+if not defined LMS_SKIPONLICSERV (
+	echo Request Mastership: [read with LmuTool /RMS]                                                                        >> !REPORT_LOGFILE! 2>&1
+	echo     Request Mastership: [read with LmuTool /RMS]
+	if /I !LMS_BUILD_VERSION! GEQ 858 (
+		"!LMS_LMUTOOL!" /RMS                                                                                                 >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo     This operation is not available with LMS !LMS_VERSION!, cannot perform operation.                           >> !REPORT_LOGFILE! 2>&1 
+	)
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+	echo List available online token files:                                                                                  >> !REPORT_LOGFILE! 2>&1
+	IF EXIST "!LMS_PROGRAMDATA!\OnlineCheckTokens" (
+		echo Content of folder: "!LMS_PROGRAMDATA!\OnlineCheckTokens"                                                        >> !REPORT_LOGFILE! 2>&1
+		dir /S /A /X /4 /W "!LMS_PROGRAMDATA!\OnlineCheckTokens"                                                             >> !REPORT_LOGFILE! 2>&1
+		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1 
+		FOR %%X IN (!LMS_PROGRAMDATA!\OnlineCheckTokens\*.json) DO ( 
+			echo '%%X':                                                                                                      >> !REPORT_LOGFILE! 2>&1 
+			powershell -command "& {Get-Content '%%X' | Select-Object -last !LOG_FILE_LINES!}"                               >> !REPORT_LOGFILE! 2>&1 
+			echo ----------------------------                                                                                >> !REPORT_LOGFILE! 2>&1 
+		)
+	) else (
+		echo     '!LMS_PROGRAMDATA!\OnlineCheckTokens' folder not found.                                                     >> !REPORT_LOGFILE! 2>&1
+	)
+) else (
+	rem LMS_SKIPONLICSERV
+	echo !SHOW_YELLOW!    SKIPPED online license server section. The script didn't execute the online license server commands. !SHOW_NORMAL!
+	echo SKIPPED online license server section. The script didn't execute the online license server commands.                >> !REPORT_LOGFILE! 2>&1
 )
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 echo =   L M S   C O N F I G U R A T I O N   F I L E S                            =                                          >> !REPORT_LOGFILE! 2>&1
@@ -6678,7 +6716,7 @@ if not defined LMS_SKIPSETUP (
 		echo Content of folder: "!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\Reports"                                                                                           >> !REPORT_LOGFILE! 2>&1
 		dir /S /A /X /4 /W "!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\Reports"                                                                                                >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo     !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\Reports not found.                                                                                                 >> !REPORT_LOGFILE! 2>&1
+		echo     '!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\Reports' folder not found.                                                                                        >> !REPORT_LOGFILE! 2>&1
 	)
 ) else (
 	rem LMS_SKIPSETUP
