@@ -16,6 +16,7 @@ rem     17-Aug-2022:
 rem        - Added LmuTool /RMS
 rem        - Show content of 'C:\ProgramData\Siemens\LMS\OnlineCheckTokens'
 rem        - Show content of all json files in 'C:\ProgramData\Siemens\LMS\OnlineCheckTokens'
+rem        - Added LmuTool /ONLINECHECK for all installed online licenses
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -6082,11 +6083,14 @@ if not defined LMS_SKIPONLICSERV (
 	IF EXIST "!LMS_PROGRAMDATA!\OnlineCheckTokens" (
 		echo Content of folder: "!LMS_PROGRAMDATA!\OnlineCheckTokens"                                                        >> !REPORT_LOGFILE! 2>&1
 		dir /S /A /X /4 /W "!LMS_PROGRAMDATA!\OnlineCheckTokens"                                                             >> !REPORT_LOGFILE! 2>&1
-		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1 
 		FOR %%X IN (!LMS_PROGRAMDATA!\OnlineCheckTokens\*.json) DO ( 
+			echo ----------------------------                                                                                >> !REPORT_LOGFILE! 2>&1 
 			echo '%%X':                                                                                                      >> !REPORT_LOGFILE! 2>&1 
 			powershell -command "& {Get-Content '%%X' | Select-Object -last !LOG_FILE_LINES!}"                               >> !REPORT_LOGFILE! 2>&1 
-			echo ----------------------------                                                                                >> !REPORT_LOGFILE! 2>&1 
+		)
+		FOR %%X IN (!LMS_PROGRAMDATA!\OnlineCheckTokens\*.json) DO ( 
+			echo -------------------------------------------------------                                                     >> !REPORT_LOGFILE! 2>&1 
+			"!LMS_LMUTOOL!" /ONLINECHECK:%%~nX                                                                               >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
 		echo     '!LMS_PROGRAMDATA!\OnlineCheckTokens' folder not found.                                                     >> !REPORT_LOGFILE! 2>&1
