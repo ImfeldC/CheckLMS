@@ -17,6 +17,14 @@ rem        - Added LmuTool /RMS
 rem        - Show content of 'C:\ProgramData\Siemens\LMS\OnlineCheckTokens'
 rem        - Show content of all json files in 'C:\ProgramData\Siemens\LMS\OnlineCheckTokens'
 rem        - Added LmuTool /ONLINECHECK for all installed online licenses
+rem     18-Aug-2022:
+rem        - Check: not 2.5.824 AND not 2.6.849 AND less or equal than 2.6.848  --> DEPRECATED (per Aug-2022)
+rem        - set most recent dongle driver version to 8.43 (per 18-Aug-2022, LMS 2.7)
+rem        - remove check for LMS_IS_VM, as it was not working properly on physical machines.
+rem     22-Aug-2022:
+rem        - reomove support for 'setbginfo.lock'; use registry key instead 'HKEY_LOCAL_MACHINE\SOFTWARE\Siemens\LMS\ShowBGInfo' instead
+rem        - Fixed minor issue: Handle handle 'HKLM\SOFTWARE\LicenseManagementSystem\IsInstalled' correct, as it never deleted by ATOS installation.
+rem        - Fixed minor issue: handle WMIC_Installed_SW_Report.log correct, consider new field 'IdentifyingNumber'
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -59,8 +67,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 17-Aug-2022"
-set LMS_SCRIPT_BUILD=20220817
+set LMS_SCRIPT_VERSION="CheckLMS Script 22-Aug-2022"
+set LMS_SCRIPT_BUILD=20220822
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -69,10 +77,10 @@ rem most recent lms field test version: 2.6.839 (per 07-Sep-2021)
 rem - if not set, it is not downloaded.
 rem set MOST_RECENT_FT_LMS_VERSION=2.6.839
 rem set MOST_RECENT_FT_LMS_BUILD=839
-rem most recent dongle driver version (per 15-Nov-2021, LMS 2.6)
-set MOST_RECENT_DONGLE_DRIVER_VERSION=8.31
+rem most recent dongle driver version (per 18-Aug-2022, LMS 2.7)
+set MOST_RECENT_DONGLE_DRIVER_VERSION=8.43
 set MOST_RECENT_DONGLE_DRIVER_MAJ_VERSION=8
-set MOST_RECENT_DONGLE_DRIVER_MIN_VERSION=31
+set MOST_RECENT_DONGLE_DRIVER_MIN_VERSION=43
 rem most recent BT ALM plugin (per 15-Nov-2021, LMS 2.6)
 set MOST_RECENT_BT_ALM_PLUGIN=1.1.43.0
 
@@ -674,8 +682,13 @@ set VALUE_NAME=SkipALMBtPluginInstallation
 for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
 	set LMS_SKIP_ALM_BT_PUGIN_INSTALLATION=%%A
 )
+set VALUE_NAME=ShowBGInfo
+for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
+	set LMS_SHOW_BGINFO=%%A
+)
 REM -- LMS Registry Keys (ATOS)
 rem "HKLM\SOFTWARE\LicenseManagementSystem\IsInstalled" is set to "1" if LMS has been installed by ATOS (2nd package of LMS 2.4.815)
+rem ... BUT is never removed again!
 set KEY_NAME=HKLM\SOFTWARE\LicenseManagementSystem
 set VALUE_NAME=IsInstalled
 for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
@@ -946,7 +959,6 @@ if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
 ) else (
 	echo =  Script started with : normal priviledge                                                                          >> !REPORT_LOGFILE! 2>&1
 )
-echo =  Hypervisor Present  : !LMS_IS_VM!                                                                                    >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 if defined LMS_SET_INFO (
 	echo Info: [!LMS_REPORT_START!] !LMS_SET_INFO! ....                                                                      >> !REPORT_LOGFILE! 2>&1
@@ -974,13 +986,12 @@ if NOT defined UNZIP_TOOL (
 )
 
 if "!LMS_BUILD_VERSION!" NEQ "N/A" (
-	REM Check: not 2.5.824 AND not 2.4.815 AND not 2.3.745 AND less or equal than 2.3.744  --> DEPRECATED (per Jan-2022)
+	REM Check: not 2.5.824 AND not 2.6.849 AND less or equal than 2.6.848  --> DEPRECATED (per Aug-2022)
 	REM See https://support.industry.siemens.com/cs/document/109738214/
 	if /I !LMS_BUILD_VERSION! NEQ 824 (
-		if /I !LMS_BUILD_VERSION! NEQ 815 (
-			if /I !LMS_BUILD_VERSION! NEQ 745 (
-				if /I !LMS_BUILD_VERSION! LEQ 744 (
-					REM LMS Version 2.3.744 or older (lower build number)
+		if /I !LMS_BUILD_VERSION! NEQ 849 (
+				if /I !LMS_BUILD_VERSION! LEQ 848 (
+					REM LMS Version 2.6.848 or older (lower build number)
 					echo !SHOW_RED!    NOTE: The LMS version !LMS_VERSION! which you are using is DEPRECATED, pls update your system. !SHOW_NORMAL!
 					echo NOTE: The LMS version !LMS_VERSION! which you are using is DEPRECATED, pls update your system.      >> !REPORT_LOGFILE! 2>&1
 				) else (
@@ -990,12 +1001,8 @@ if "!LMS_BUILD_VERSION!" NEQ "N/A" (
 						echo WARNING: The LMS version !LMS_VERSION! which you are using is a field test version, pls update your system as soon final version is available. >> !REPORT_LOGFILE! 2>&1
 					)
 				)
-			) else (
-				REM LMS Version 2.3.745
-				echo NOTE: The LMS version !LMS_VERSION! which you are using is officially supported. 						 >> !REPORT_LOGFILE! 2>&1
-			)
 		) else (
-			REM LMS Version 2.4.815
+			REM LMS Version 2.6.849
 			echo NOTE: The LMS version !LMS_VERSION! which you are using is officially supported. 							 >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
@@ -1221,7 +1228,6 @@ if defined LMS_SHOW_VERSION (
 	) else (
 		echo =  Script started with : normal priviledge          
 	)
-	echo =  Hypervisor Present  : !LMS_IS_VM!                                                                                    
 	echo ==============================================================================
 
 	goto script_end
@@ -1498,6 +1504,13 @@ if not defined LMS_SKIPDOWNLOAD (
 			rem Unzip BgInfo ZIP archive [as ZIP]
 			IF EXIST "!LMS_DOWNLOAD_PATH!\BgInfo.zip" (
 				if exist "!LMS_PROGRAMDATA!\BgInfo\setbginfo.lock" ( set LMS_UPDATE_BGINFO=1 )
+				if defined LMS_SHOW_BGINFO ( 
+					if "!LMS_SHOW_BGINFO!" EQU "true" ( 
+						echo Update BgInfo, because 'LMS_SHOW_BGINFO' is '!LMS_SHOW_BGINFO!'.              >> !REPORT_LOGFILE! 2>&1
+						set LMS_UPDATE_BGINFO=1 
+					) 
+				)
+				
 				rem clean first existing bginfo
 				IF EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\cleanbginfo.bat" (
 					call "!LMS_DOWNLOAD_PATH!\BgInfo\cleanbginfo.bat"                                      >> !REPORT_LOGFILE! 2>&1
@@ -1564,10 +1577,17 @@ if not defined LMS_SKIPDOWNLOAD (
 echo Start at !DATE! !TIME! ....                                                                   >> !REPORT_LOGFILE! 2>&1
 rem set background info; when ...
 rem [1] either /setbginfo option is set [-> LMS_SET_BGINFO]
-rem [2] or setbginfo.lock exists [=setbginfo.bat has been executed before]
-rem [3] or LMS_UPDATE_BGINFO has been set; because setbginfo.lock existed before clean-up (see above)
+rem [2] or setbginfo.lock exists [=setbginfo.bat - V1.02 or older - has been executed before]
+rem [3] or registry entry 'HKEY_LOCAL_MACHINE\SOFTWARE\Siemens\LMS\ShowBGInfo' is 'true' [=setbginfo.bat - V1.03 or nwewer - has been executed before]
+rem [4] or LMS_UPDATE_BGINFO has been set; because setbginfo.lock or registry entry existed before clean-up (see above)
 if defined LMS_SET_BGINFO ( set LMS_UPDATE_BGINFO=1 )
 if exist "!LMS_PROGRAMDATA!\BgInfo\setbginfo.lock" ( set LMS_UPDATE_BGINFO=1 )
+if defined LMS_SHOW_BGINFO ( 
+	if "!LMS_SHOW_BGINFO!" EQU "true" ( 
+		echo Update BgInfo, because 'LMS_SHOW_BGINFO' is '!LMS_SHOW_BGINFO!'.                      >> !REPORT_LOGFILE! 2>&1
+		set LMS_UPDATE_BGINFO=1 
+	) 
+)
 if defined LMS_UPDATE_BGINFO (
 	echo     Update BGInfo ...
 	IF EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat" (
@@ -2610,13 +2630,13 @@ if not defined LMS_SKIPWMIC (
 		if "%%C" == "Sentinel Runtime R01" (
 			set DONGLE_DRIVER_INSTALL_DATE=%%B
 			echo 'Dongle Driver' [Version=%%E] installation date: !DONGLE_DRIVER_INSTALL_DATE!                               >> !REPORT_LOGFILE! 2>&1
-			echo NOTE: There was a dongle driver update to version V7.81 at !DONGLE_DRIVER_INSTALL_DATE! provided by ATOS.   >> !REPORT_LOGFILE! 2>&1
+			echo NOTE: There was a dongle driver update to version V7.81 at '!DONGLE_DRIVER_INSTALL_DATE!' provided by ATOS. >> !REPORT_LOGFILE! 2>&1
 			echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                            >> !REPORT_LOGFILE! 2>&1
 		)
 		if "%%C" == "Sentinel License Manager R01" (
 			set DONGLE_DRIVER_INSTALL_DATE=%%B
 			echo 'Dongle Driver' [Version=%%E] installation date: !DONGLE_DRIVER_INSTALL_DATE!                               >> !REPORT_LOGFILE! 2>&1
-			echo NOTE: There was a dongle driver update to version V7.92 at !DONGLE_DRIVER_INSTALL_DATE! provided by ATOS.   >> !REPORT_LOGFILE! 2>&1
+			echo NOTE: There was a dongle driver update to version V7.92 at '!DONGLE_DRIVER_INSTALL_DATE!' provided by ATOS. >> !REPORT_LOGFILE! 2>&1
 			echo     [Installldate=%%B] / [App=%%C] / [Vendor=%%D] /[Version=%%E]                                            >> !REPORT_LOGFILE! 2>&1
 		)
 		if "%%C" == "Siemens Software Updater" (
@@ -2644,7 +2664,7 @@ if not defined LMS_SKIPWMIC (
 	)
 	if defined LMS_INSTALLED_BY_ATOS (
 		rem based on registry key: "HKLM\SOFTWARE\LicenseManagementSystem\IsInstalled"
-		echo NOTE: LMS has been installed at !LMS_INSTALL_DATE! via Software Center [provided by ATOS]                       >> !REPORT_LOGFILE! 2>&1
+		echo NOTE: LMS has been installed once or more in the past via Software Center [provided by ATOS] on this machine.   >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ---------------- analyze installed software [check number of installed Siemens Software]                            >> !REPORT_LOGFILE! 2>&1
 	set NUM_OF_INSTALLED_SW_FROM_SIEMENS=
@@ -2674,12 +2694,12 @@ if not defined LMS_SKIPWMIC (
 	Powershell -command "Get-Item HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*"                                                                                                                                                     > !CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport2.log 2>&1
 	rem type !CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport.log >> !REPORT_LOGFILE! 2>&1
 	echo     See full details in '!CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport1.log' and '!CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport2.log'!  >> !REPORT_LOGFILE! 2>&1
-	echo ---------------- wmic product get name, version, InstallDate, vendor                                                >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- wmic product get name, version, InstallDate, vendor, IdentifyingNumber                             >> !REPORT_LOGFILE! 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
 	echo     Read installed products and version [with wmic product get name, version, InstallDate, vendor, IdentifyingNumber]
 	echo Read installed products and version [with wmic]                                                                     >> !REPORT_LOGFILE! 2>&1
-	wmic /output:%REPORT_WMIC_INSTALLED_SW_LOGFILE% product get name, version, InstallDate, vendor, IdentifyingNumber        >> !REPORT_LOGFILE! 2>&1
-	type %REPORT_WMIC_INSTALLED_SW_LOGFILE%                                                                                  >> !REPORT_LOGFILE! 2>&1
+	wmic /output:!REPORT_WMIC_INSTALLED_SW_LOGFILE! product get name, version, InstallDate, vendor, IdentifyingNumber        >> !REPORT_LOGFILE! 2>&1
+	type !REPORT_WMIC_INSTALLED_SW_LOGFILE!                                                                                  >> !REPORT_LOGFILE! 2>&1
 	echo     Read installed products and version [with wmic *] 
 	echo Read installed products and version [with wmic *]                                                                   >> !REPORT_LOGFILE! 2>&1
 	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicproduct_fullList.txt product get /format:list                                >> !REPORT_LOGFILE! 2>&1
@@ -3178,16 +3198,7 @@ echo ===========================================================================
 echo Start at !DATE! !TIME! ....                                                                                      >> !REPORT_LOGFILE! 2>&1
 echo ... get information of virtual environment ...
 echo Get information of virtual environment ...                                                                       >> !REPORT_LOGFILE! 2>&1
-if /I "!LMS_IS_VM!"=="true" (
-	echo     Running on a virtual machine.
-	echo Running on a virtual machine. LMS_IS_VM=!LMS_IS_VM!                                                          >> !REPORT_LOGFILE! 2>&1
-) else if /I "!LMS_IS_VM!"=="false" (
-	echo     NOT running on a virtual machine.
-	echo NOT running on a virtual machine. LMS_IS_VM=!LMS_IS_VM!                                                      >> !REPORT_LOGFILE! 2>&1
-) else (
-	echo     Not clear if running on a virtual machine or not. LMS_IS_VM=!LMS_IS_VM!
-	echo Not clear if running on a virtual machine or not. LMS_IS_VM=!LMS_IS_VM!                                      >> !REPORT_LOGFILE! 2>&1
-)
+echo     Hypervisor Present  : !LMS_IS_VM!                                                                            >> !REPORT_LOGFILE! 2>&1
 echo ... retrieve virtualization settings (on Windows 10) ...
 echo ---------------- powershell -command "Get-ComputerInfo -property 'HyperV*'"                                      >> !REPORT_LOGFILE! 2>&1
 rem How to check if Intel Virtualization is enabled without going to BIOS in Windows 10
@@ -3229,114 +3240,112 @@ rem According to https://www.splunk.com/en_us/blog/tips-and-tricks/detecting-you
 echo ... retrieve Manufacturer of network adapters ...
 echo Retrieve Manufacturer of network adapters [using 'powershell -command "Get-NetIPAddress...."]:           >> !REPORT_LOGFILE! 2>&1
 powershell -command "Get-NetIPAddress | Where Prefix-Origin -ne 'WellKnown' | ` Select IPAddress,AddressFamily, ` @{n='MacAddress';e={(Get-NetAdapter -InterfaceIndex $_.ifIndex).MacAddress}}, ` @{n='Manufacturer';e={(Get-WmiObject -query 'SELECT * FROM Win32_ComputerSystem').Manufacturer}}"    >> !REPORT_LOGFILE! 2>&1
-if /I "!LMS_IS_VM!"=="true" (
-	rem call further commands only, when running on a virtual machine, wthin a hypervisor.
 
-	rem Read VM Generation Id
-	IF EXIST "!LMS_DOWNLOAD_PATH!\VMGENID.EXE" (
-		echo -------------------------------------------------------                                                  >> !REPORT_LOGFILE! 2>&1
-		echo ... read VM Generation Id [using VMGENID.EXE] ...
-		echo Read VM Generation Id [using VMGENID.EXE]:                                                               >> !REPORT_LOGFILE! 2>&1
-		"!LMS_DOWNLOAD_PATH!\VMGENID.EXE"                                                                             >> !REPORT_LOGFILE! 2>&1
-		echo .                                                                                                        >> !REPORT_LOGFILE! 2>&1
-	)
-	IF EXIST "!LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe" (
-		echo -------------------------------------------------------                                                  >> !REPORT_LOGFILE! 2>&1
-		if exist "C:\WINDOWS\system32\MSVCR120.dll" (
-			echo ... read VM Generation Id [using GetVMGenerationIdentifier.exe] ...
-			echo Read VM Generation Id [using GetVMGenerationIdentifier.exe]:                                         >> !REPORT_LOGFILE! 2>&1
-			"!LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe"                                                       >> !REPORT_LOGFILE! 2>&1
-			echo .                                                                                                    >> !REPORT_LOGFILE! 2>&1
-		) else (
-			echo ... read VM Generation Id [using GetVMGenerationIdentifier.exe], skipped because 'C:\WINDOWS\system32\MSVCR120.dll' doesn't exist.
-			echo Read VM Generation Id [using GetVMGenerationIdentifier.exe], skipped because 'C:\WINDOWS\system32\MSVCR120.dll' doesn't exist.      >> !REPORT_LOGFILE! 2>&1
-		)
-	)
-	
-	echo ==============================================================================                               >> !REPORT_LOGFILE! 2>&1
-	echo ... read AWS instance identity document ...
-	echo Read AWS instance identity document:                                                                         >> !REPORT_LOGFILE! 2>&1
-	if exist "!REPORT_LOG_PATH!\AWS_Latest.txt" (
-		for /f "tokens=1,2,3,4,* eol=@ delims=,/ " %%A in ('type !REPORT_LOG_PATH!\AWS_Latest.txt ^|find /I "AWS_ACCID"') do (
-			rem echo %%A / %%B / %%C // %%F
-			for /f "tokens=1,2 delims==" %%a in ("%%A") do set AWS_ACCID_PREV=%%b
-			for /f "tokens=1,2 delims==" %%a in ("%%B") do set AWS_IMGID_PREV=%%b
-			for /f "tokens=1,2 delims==" %%a in ("%%C") do set AWS_INSTID_PREV=%%b
-			for /f "tokens=1,2 delims==" %%a in ("%%D") do set AWS_PENTIME_PREV=%%b
-			set AWSINFO_PREV=%%E
-		)
-		echo Previous AWS instance identity document values, collected !AWSINFO_PREV!                                                                                >> !REPORT_LOGFILE! 2>&1
-		echo     AWS_ACCID_PREV=!AWS_ACCID_PREV! / AWS_IMGID_PREV=!AWS_IMGID_PREV! / AWS_INSTID_PREV=!AWS_INSTID_PREV! / AWS_PENTIME_PREV=!AWS_PENTIME_PREV!         >> !REPORT_LOGFILE! 2>&1   
-	)
-	rem get AWS instance identify document (see https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/instance-identity-documents.html )
-	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-	del !CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document_result.txt >nul 2>&1
-	powershell -Command "(New-Object Net.WebClient).DownloadFile('http://169.254.169.254/latest/dynamic/instance-identity/document', '!CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt')"  > !CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document_result.txt 2>&1
-	if exist "!CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt" (
-		echo AWS instance identity document retrieved:                                                                       >> !REPORT_LOGFILE! 2>&1
-		type "!CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt"                                                 >> !REPORT_LOGFILE! 2>&1
-		echo .                                                                                                               >> !REPORT_LOGFILE! 2>&1
-		for /f "tokens=1,2,3 eol=@ delims=, " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt ^|find /I "pendingTime"') do set "AWS_PENTIME=%%C"
-		for /f "tokens=1,2,3 eol=@ delims=, " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt ^|find /I "instanceId"') do set "AWS_INSTID=%%C"
-		for /f "tokens=1,2,3 eol=@ delims=, " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt ^|find /I "imageId"') do set "AWS_IMGID=%%C"
-		for /f "tokens=1,2,3 eol=@ delims=, " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt ^|find /I "accountId"') do set "AWS_ACCID=%%C"
-		echo     AWS_ACCID=!AWS_ACCID! / AWS_IMGID=!AWS_IMGID! / AWS_INSTID=!AWS_INSTID! / AWS_PENTIME=!AWS_PENTIME!   
-		echo     AWS_ACCID=!AWS_ACCID! / AWS_IMGID=!AWS_IMGID! / AWS_INSTID=!AWS_INSTID! / AWS_PENTIME=!AWS_PENTIME!         >> !REPORT_LOGFILE! 2>&1   
-		echo     AWS_ACCID=!AWS_ACCID! / AWS_IMGID=!AWS_IMGID! / AWS_INSTID=!AWS_INSTID! / AWS_PENTIME=!AWS_PENTIME!  at !DATE! / !TIME!  >> !REPORT_LOG_PATH!\AWS.txt 2>&1
-		echo     AWS_ACCID=!AWS_ACCID! / AWS_IMGID=!AWS_IMGID! / AWS_INSTID=!AWS_INSTID! / AWS_PENTIME=!AWS_PENTIME!  at !DATE! / !TIME!  >  !REPORT_LOG_PATH!\AWS_Latest.txt 2>&1
+rem Read VM Generation Id
+IF EXIST "!LMS_DOWNLOAD_PATH!\VMGENID.EXE" (
+	echo -------------------------------------------------------                                                  >> !REPORT_LOGFILE! 2>&1
+	echo ... read VM Generation Id [using VMGENID.EXE] ...
+	echo Read VM Generation Id [using VMGENID.EXE]:                                                               >> !REPORT_LOGFILE! 2>&1
+	"!LMS_DOWNLOAD_PATH!\VMGENID.EXE"                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo .                                                                                                        >> !REPORT_LOGFILE! 2>&1
+)
+IF EXIST "!LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe" (
+	echo -------------------------------------------------------                                                  >> !REPORT_LOGFILE! 2>&1
+	if exist "C:\WINDOWS\system32\MSVCR120.dll" (
+		echo ... read VM Generation Id [using GetVMGenerationIdentifier.exe] ...
+		echo Read VM Generation Id [using GetVMGenerationIdentifier.exe]:                                         >> !REPORT_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe"                                                       >> !REPORT_LOGFILE! 2>&1
+		echo .                                                                                                    >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo AWS instance identity document not found.                                                                       >> !REPORT_LOGFILE! 2>&1
-	)
-
-	echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
-	echo ... read AZURE instance identity document ...
-	echo Read AZURE instance identity document:                                                                              >> !REPORT_LOGFILE! 2>&1
-	rem get AZURE instance identify document (see https://docs.microsoft.com/en-us/azure/virtual-machines/windows/instance-metadata-service?tabs=windows )
-	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-	del !CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt >nul 2>&1
-	powershell -Command "Invoke-RestMethod -Headers @{'Metadata'='true'} -Method GET -Proxy $Null -Uri 'http://169.254.169.254/metadata/instance?api-version=2021-02-01' | ConvertTo-Json -Depth 64"  > !CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt 2>&1
-	if exist "!CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt" (
-		for /f "tokens=1,2,3 eol=@ delims=:, " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt ^|find /I "vmId"') do set "AZURE_VMID=%%B"
-		if defined AZURE_VMID (
-			echo     AZURE_VMID=!AZURE_VMID!    
-			echo     AZURE_VMID=!AZURE_VMID!                                                                                 >> !REPORT_LOGFILE! 2>&1   
-			echo     AZURE_VMID=!AZURE_VMID!  at !DATE! / !TIME!  >> !REPORT_LOG_PATH!\AZURE.txt 2>&1
-			echo     AZURE_VMID=!AZURE_VMID!  at !DATE! / !TIME!  >  !REPORT_LOG_PATH!\AZURE_Latest.txt 2>&1
-			echo AZURE instance identity document retrieved:                                                                 >> !REPORT_LOGFILE! 2>&1
-			type "!CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt"                                           >> !REPORT_LOGFILE! 2>&1
-			echo .                                                                                                           >> !REPORT_LOGFILE! 2>&1
-		) else (
-			echo AZURE instance identity document not valid. Check 'AZURE_instance-identity-document.txt'                    >> !REPORT_LOGFILE! 2>&1
-		)
-	) else (
-		echo AZURE instance identity document not found.                                                                     >> !REPORT_LOGFILE! 2>&1
-	)
-
-	echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
-	echo ... read GCP instance metadata ...
-	echo Read GCP instance metadata:                                                                                         >> !REPORT_LOGFILE! 2>&1
-	rem get GCP instance metadata document (see https://cloud.google.com/compute/docs/metadata/querying-metadata )
-	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-	del !CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt >nul 2>&1
-	rem *** Needs curl :-( ***  curl "http://metadata.google.internal/computeMetadata/v1/?recursive=true&alt=text" -o !CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt -H "Metadata-Flavor: Google"  >!CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document_output.txt 2>&1
-	powershell -Command "Invoke-RestMethod -Headers @{'Metadata-Flavor'='Google'} -Method GET -Proxy $Null -Uri 'http://metadata.google.internal/computeMetadata/v1/?recursive=true&alt=text'" > !CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt 2>&1
-	if exist "!CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt" (
-		for /f "tokens=1,2,3 eol=@ delims= " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt ^|find /I "instance/id"') do set "GCP_ID=%%B"
-		if defined GCP_ID (
-			echo     GCP_ID=!GCP_ID!    
-			echo     GCP_ID=!GCP_ID!                                                                                         >> !REPORT_LOGFILE! 2>&1   
-			echo     GCP_ID=!GCP_ID!  at !DATE! / !TIME!  >> !REPORT_LOG_PATH!\GCP.txt 2>&1
-			echo     GCP_ID=!GCP_ID!  at !DATE! / !TIME!  >  !REPORT_LOG_PATH!\GCP_Latest.txt 2>&1
-			echo GCP instance metadata document retrieved:                                                                   >> !REPORT_LOGFILE! 2>&1
-			type "!CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt"                                                      >> !REPORT_LOGFILE! 2>&1
-			echo .                                                                                                           >> !REPORT_LOGFILE! 2>&1
-		) else (
-			echo GCP instance metadata document not valid. Check 'GCP-metadata-documen.txt'                                  >> !REPORT_LOGFILE! 2>&1
-		)
-	) else (
-		echo GCP instance metadata document not found.                                                                       >> !REPORT_LOGFILE! 2>&1
+		echo ... read VM Generation Id [using GetVMGenerationIdentifier.exe], skipped because 'C:\WINDOWS\system32\MSVCR120.dll' doesn't exist.
+		echo Read VM Generation Id [using GetVMGenerationIdentifier.exe], skipped because 'C:\WINDOWS\system32\MSVCR120.dll' doesn't exist.      >> !REPORT_LOGFILE! 2>&1
 	)
 )
+
+echo ==============================================================================                               >> !REPORT_LOGFILE! 2>&1
+echo ... read AWS instance identity document ...
+echo Read AWS instance identity document:                                                                         >> !REPORT_LOGFILE! 2>&1
+if exist "!REPORT_LOG_PATH!\AWS_Latest.txt" (
+	for /f "tokens=1,2,3,4,* eol=@ delims=,/ " %%A in ('type !REPORT_LOG_PATH!\AWS_Latest.txt ^|find /I "AWS_ACCID"') do (
+		rem echo %%A / %%B / %%C // %%F
+		for /f "tokens=1,2 delims==" %%a in ("%%A") do set AWS_ACCID_PREV=%%b
+		for /f "tokens=1,2 delims==" %%a in ("%%B") do set AWS_IMGID_PREV=%%b
+		for /f "tokens=1,2 delims==" %%a in ("%%C") do set AWS_INSTID_PREV=%%b
+		for /f "tokens=1,2 delims==" %%a in ("%%D") do set AWS_PENTIME_PREV=%%b
+		set AWSINFO_PREV=%%E
+	)
+	echo Previous AWS instance identity document values, collected !AWSINFO_PREV!                                                                                >> !REPORT_LOGFILE! 2>&1
+	echo     AWS_ACCID_PREV=!AWS_ACCID_PREV! / AWS_IMGID_PREV=!AWS_IMGID_PREV! / AWS_INSTID_PREV=!AWS_INSTID_PREV! / AWS_PENTIME_PREV=!AWS_PENTIME_PREV!         >> !REPORT_LOGFILE! 2>&1   
+)
+rem get AWS instance identify document (see https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/instance-identity-documents.html )
+echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+del !CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document_result.txt >nul 2>&1
+powershell -Command "(New-Object Net.WebClient).DownloadFile('http://169.254.169.254/latest/dynamic/instance-identity/document', '!CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt')"  > !CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document_result.txt 2>&1
+if exist "!CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt" (
+	echo AWS instance identity document retrieved:                                                                       >> !REPORT_LOGFILE! 2>&1
+	type "!CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt"                                                 >> !REPORT_LOGFILE! 2>&1
+	echo .                                                                                                               >> !REPORT_LOGFILE! 2>&1
+	for /f "tokens=1,2,3 eol=@ delims=, " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt ^|find /I "pendingTime"') do set "AWS_PENTIME=%%C"
+	for /f "tokens=1,2,3 eol=@ delims=, " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt ^|find /I "instanceId"') do set "AWS_INSTID=%%C"
+	for /f "tokens=1,2,3 eol=@ delims=, " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt ^|find /I "imageId"') do set "AWS_IMGID=%%C"
+	for /f "tokens=1,2,3 eol=@ delims=, " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt ^|find /I "accountId"') do set "AWS_ACCID=%%C"
+	echo     AWS_ACCID=!AWS_ACCID! / AWS_IMGID=!AWS_IMGID! / AWS_INSTID=!AWS_INSTID! / AWS_PENTIME=!AWS_PENTIME!   
+	echo     AWS_ACCID=!AWS_ACCID! / AWS_IMGID=!AWS_IMGID! / AWS_INSTID=!AWS_INSTID! / AWS_PENTIME=!AWS_PENTIME!         >> !REPORT_LOGFILE! 2>&1   
+	echo     AWS_ACCID=!AWS_ACCID! / AWS_IMGID=!AWS_IMGID! / AWS_INSTID=!AWS_INSTID! / AWS_PENTIME=!AWS_PENTIME!  at !DATE! / !TIME!  >> !REPORT_LOG_PATH!\AWS.txt 2>&1
+	echo     AWS_ACCID=!AWS_ACCID! / AWS_IMGID=!AWS_IMGID! / AWS_INSTID=!AWS_INSTID! / AWS_PENTIME=!AWS_PENTIME!  at !DATE! / !TIME!  >  !REPORT_LOG_PATH!\AWS_Latest.txt 2>&1
+) else (
+	echo AWS instance identity document not found.                                                                       >> !REPORT_LOGFILE! 2>&1
+)
+
+echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
+echo ... read AZURE instance identity document ...
+echo Read AZURE instance identity document:                                                                              >> !REPORT_LOGFILE! 2>&1
+rem get AZURE instance identify document (see https://docs.microsoft.com/en-us/azure/virtual-machines/windows/instance-metadata-service?tabs=windows )
+echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+del !CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt >nul 2>&1
+powershell -Command "Invoke-RestMethod -Headers @{'Metadata'='true'} -Method GET -Proxy $Null -Uri 'http://169.254.169.254/metadata/instance?api-version=2021-02-01' | ConvertTo-Json -Depth 64"  > !CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt 2>&1
+if exist "!CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt" (
+	for /f "tokens=1,2,3 eol=@ delims=:, " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt ^|find /I "vmId"') do set "AZURE_VMID=%%B"
+	if defined AZURE_VMID (
+		echo     AZURE_VMID=!AZURE_VMID!    
+		echo     AZURE_VMID=!AZURE_VMID!                                                                                 >> !REPORT_LOGFILE! 2>&1   
+		echo     AZURE_VMID=!AZURE_VMID!  at !DATE! / !TIME!  >> !REPORT_LOG_PATH!\AZURE.txt 2>&1
+		echo     AZURE_VMID=!AZURE_VMID!  at !DATE! / !TIME!  >  !REPORT_LOG_PATH!\AZURE_Latest.txt 2>&1
+		echo AZURE instance identity document retrieved:                                                                 >> !REPORT_LOGFILE! 2>&1
+		type "!CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt"                                           >> !REPORT_LOGFILE! 2>&1
+		echo .                                                                                                           >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo AZURE instance identity document not valid. Check 'AZURE_instance-identity-document.txt'                    >> !REPORT_LOGFILE! 2>&1
+	)
+) else (
+	echo AZURE instance identity document not found.                                                                     >> !REPORT_LOGFILE! 2>&1
+)
+
+echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
+echo ... read GCP instance metadata ...
+echo Read GCP instance metadata:                                                                                         >> !REPORT_LOGFILE! 2>&1
+rem get GCP instance metadata document (see https://cloud.google.com/compute/docs/metadata/querying-metadata )
+echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+del !CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt >nul 2>&1
+rem *** Needs curl :-( ***  curl "http://metadata.google.internal/computeMetadata/v1/?recursive=true&alt=text" -o !CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt -H "Metadata-Flavor: Google"  >!CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document_output.txt 2>&1
+powershell -Command "Invoke-RestMethod -Headers @{'Metadata-Flavor'='Google'} -Method GET -Proxy $Null -Uri 'http://metadata.google.internal/computeMetadata/v1/?recursive=true&alt=text'" > !CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt 2>&1
+if exist "!CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt" (
+	for /f "tokens=1,2,3 eol=@ delims= " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt ^|find /I "instance/id"') do set "GCP_ID=%%B"
+	if defined GCP_ID (
+		echo     GCP_ID=!GCP_ID!    
+		echo     GCP_ID=!GCP_ID!                                                                                         >> !REPORT_LOGFILE! 2>&1   
+		echo     GCP_ID=!GCP_ID!  at !DATE! / !TIME!  >> !REPORT_LOG_PATH!\GCP.txt 2>&1
+		echo     GCP_ID=!GCP_ID!  at !DATE! / !TIME!  >  !REPORT_LOG_PATH!\GCP_Latest.txt 2>&1
+		echo GCP instance metadata document retrieved:                                                                   >> !REPORT_LOGFILE! 2>&1
+		type "!CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt"                                                      >> !REPORT_LOGFILE! 2>&1
+		echo .                                                                                                           >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo GCP instance metadata document not valid. Check 'GCP-metadata-documen.txt'                                  >> !REPORT_LOGFILE! 2>&1
+	)
+) else (
+	echo GCP instance metadata document not found.                                                                       >> !REPORT_LOGFILE! 2>&1
+)
+
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 echo =   L M S   S C H E D U L E D   T A S K S                                    =                                          >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
@@ -3812,16 +3821,19 @@ if not defined LMS_SKIPLMS (
 	) else (
 		echo ATTENTION: No Dongle Driver installed.                                                                              >> !REPORT_LOGFILE! 2>&1
 	)
-	rem analyse installed software; retrieved with 'wmic product get name, version, InstallDate, vendor'
+	rem analyse installed software; retrieved with 'with wmic product get name, version, InstallDate, vendor, IdentifyingNumber'
+	rem IdentifyingNumber                       InstallDate  Name                                                                           Vendor                                   Version           
+	rem {37E929BF-F5E3-4097-BF41-C1CE20CB797A}  20201125     Sentinel License Manager R01                                                   Thales                                   8.13.45217.60000  
+	rem ==> install date is second token.
 	set DONGLE_DRIVER_UPDATE_TO781_BY_ATOS=
-	IF EXIST "%REPORT_WMIC_INSTALLED_SW_LOGFILE%" for /f "tokens=1 eol=@ delims=<> " %%i in ('type %REPORT_WMIC_INSTALLED_SW_LOGFILE% ^|find /I "Sentinel Runtime R01"') do set DONGLE_DRIVER_UPDATE_TO781_BY_ATOS=%%i
+	IF EXIST "!REPORT_WMIC_INSTALLED_SW_LOGFILE!" for /f "tokens=2 eol=@ delims=<> " %%i in ('type !REPORT_WMIC_INSTALLED_SW_LOGFILE! ^|find /I "Sentinel Runtime R01"') do set DONGLE_DRIVER_UPDATE_TO781_BY_ATOS=%%i
 	set DONGLE_DRIVER_UPDATE_TO792_BY_ATOS=
-	IF EXIST "%REPORT_WMIC_INSTALLED_SW_LOGFILE%" for /f "tokens=1 eol=@ delims=<> " %%i in ('type %REPORT_WMIC_INSTALLED_SW_LOGFILE% ^|find /I "Sentinel License Manager R01"') do set DONGLE_DRIVER_UPDATE_TO792_BY_ATOS=%%i
+	IF EXIST "!REPORT_WMIC_INSTALLED_SW_LOGFILE!" for /f "tokens=2 eol=@ delims=<> " %%i in ('type !REPORT_WMIC_INSTALLED_SW_LOGFILE! ^|find /I "Sentinel License Manager R01"') do set DONGLE_DRIVER_UPDATE_TO792_BY_ATOS=%%i
 	if defined DONGLE_DRIVER_UPDATE_TO781_BY_ATOS (
-		echo     NOTE: There was a dongle driver update to version V7.81 at %DONGLE_DRIVER_UPDATE_TO781_BY_ATOS% provided by ATOS.    >> !REPORT_LOGFILE! 2>&1
+		echo     NOTE: There was a dongle driver update to version V7.81 at '!DONGLE_DRIVER_UPDATE_TO781_BY_ATOS!' provided by ATOS.  >> !REPORT_LOGFILE! 2>&1
 	)
 	if defined DONGLE_DRIVER_UPDATE_TO792_BY_ATOS (
-		echo     NOTE: There was a dongle driver update to version V7.92 at %DONGLE_DRIVER_UPDATE_TO792_BY_ATOS% provided by ATOS.    >> !REPORT_LOGFILE! 2>&1
+		echo     NOTE: There was a dongle driver update to version V7.92 at '!DONGLE_DRIVER_UPDATE_TO792_BY_ATOS!' provided by ATOS.  >> !REPORT_LOGFILE! 2>&1
 	)
 	IF EXIST C:\ccmcache\ (
 		rem search for dongle drivers downloaded by ATOS on C:\ccmcache\
@@ -7938,34 +7950,31 @@ if defined VMINFO_PREV (
 )
 
 set AWS_CHECK_STATUS=Unknown
-if /I "!LMS_IS_VM!"=="true" (
-	rem call further commands only, when running on a virtual machine, wthin a hypervisor.
 
-	echo     compare the AWS instance identify document values read from previous run ...
-	echo Compare the AWS instance identify document values read from previous run                                                >> !REPORT_LOGFILE! 2>&1
-	set AWS_CHECK_STATUS=Ok
+echo     compare the AWS instance identify document values read from previous run ...
+echo Compare the AWS instance identify document values read from previous run                                                >> !REPORT_LOGFILE! 2>&1
+set AWS_CHECK_STATUS=Ok
 
-	rem compare current AWS instance identify document values with previous values
-	if /I !AWS_ACCID! NEQ !AWS_ACCID_PREV! (
-		set AWS_CHECK_STATUS=Failed
-		echo !SHOW_RED!    ATTENTION: AWS Account ID differs between previous run = !AWS_ACCID_PREV! and current run = !AWS_ACCID! !SHOW_NORMAL!
-		echo     ATTENTION: AWS Account ID differs between previous run = !AWS_ACCID_PREV! and current run = !AWS_ACCID!         >> !REPORT_LOGFILE! 2>&1
-	)
-	if /I !AWS_IMGID! NEQ !AWS_IMGID_PREV! (
-		set AWS_CHECK_STATUS=Failed
-		echo !SHOW_RED!    ATTENTION: AWS Image ID differs between previous run = !AWS_IMGID_PREV! and current run = !AWS_IMGID! !SHOW_NORMAL!
-		echo     ATTENTION: AWS Image ID differs between previous run = !AWS_IMGID_PREV! and current run = !AWS_IMGID!           >> !REPORT_LOGFILE! 2>&1
-	)
-	if /I !AWS_INSTID! NEQ !AWS_INSTID_PREV! (
-		set AWS_CHECK_STATUS=Failed
-		echo !SHOW_RED!    ATTENTION: AWS Instance ID differs between previous run = !AWS_INSTID_PREV! and current run = !AWS_INSTID! !SHOW_NORMAL!
-		echo     ATTENTION: AWS Instance ID differs between previous run = !AWS_INSTID_PREV! and current run = !AWS_INSTID!      >> !REPORT_LOGFILE! 2>&1
-	)
-	if /I !AWS_PENTIME! NEQ !AWS_PENTIME_PREV! (
-		set AWS_CHECK_STATUS=Failed
-		echo !SHOW_RED!    ATTENTION: AWS Pending Time differs between previous run = !AWS_PENTIME_PREV! and current run = !AWS_PENTIME! !SHOW_NORMAL!
-		echo     ATTENTION: AWS Pending Time differs between previous run = !AWS_PENTIME_PREV! and current run = !AWS_PENTIME!   >> !REPORT_LOGFILE! 2>&1
-	)
+rem compare current AWS instance identify document values with previous values
+if /I !AWS_ACCID! NEQ !AWS_ACCID_PREV! (
+	set AWS_CHECK_STATUS=Failed
+	echo !SHOW_RED!    ATTENTION: AWS Account ID differs between previous run = !AWS_ACCID_PREV! and current run = !AWS_ACCID! !SHOW_NORMAL!
+	echo     ATTENTION: AWS Account ID differs between previous run = !AWS_ACCID_PREV! and current run = !AWS_ACCID!         >> !REPORT_LOGFILE! 2>&1
+)
+if /I !AWS_IMGID! NEQ !AWS_IMGID_PREV! (
+	set AWS_CHECK_STATUS=Failed
+	echo !SHOW_RED!    ATTENTION: AWS Image ID differs between previous run = !AWS_IMGID_PREV! and current run = !AWS_IMGID! !SHOW_NORMAL!
+	echo     ATTENTION: AWS Image ID differs between previous run = !AWS_IMGID_PREV! and current run = !AWS_IMGID!           >> !REPORT_LOGFILE! 2>&1
+)
+if /I !AWS_INSTID! NEQ !AWS_INSTID_PREV! (
+	set AWS_CHECK_STATUS=Failed
+	echo !SHOW_RED!    ATTENTION: AWS Instance ID differs between previous run = !AWS_INSTID_PREV! and current run = !AWS_INSTID! !SHOW_NORMAL!
+	echo     ATTENTION: AWS Instance ID differs between previous run = !AWS_INSTID_PREV! and current run = !AWS_INSTID!      >> !REPORT_LOGFILE! 2>&1
+)
+if /I !AWS_PENTIME! NEQ !AWS_PENTIME_PREV! (
+	set AWS_CHECK_STATUS=Failed
+	echo !SHOW_RED!    ATTENTION: AWS Pending Time differs between previous run = !AWS_PENTIME_PREV! and current run = !AWS_PENTIME! !SHOW_NORMAL!
+	echo     ATTENTION: AWS Pending Time differs between previous run = !AWS_PENTIME_PREV! and current run = !AWS_PENTIME!   >> !REPORT_LOGFILE! 2>&1
 )
 
 :send_statistic_data
@@ -7995,7 +8004,6 @@ echo     Date: !DATE! / Time: !TIME!                                            
 echo     LMS System Id: !LMS_SYSTEMID!                                                                                   >> !REPORT_LOGFILE! 2>&1
 echo     Machine GUID : %OS_MACHINEGUID%                                                                                 >> !REPORT_LOGFILE! 2>&1
 echo     Check Script Version: %LMS_SCRIPT_VERSION% [!LMS_SCRIPT_BUILD!]                                                 >> !REPORT_LOGFILE! 2>&1
-echo     Hypervisor Present  : !LMS_IS_VM!                                                                               >> !REPORT_LOGFILE! 2>&1
 echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 echo     PublisherId: !LMS_TS_PUBLISHER!  /  TS ClientVersion: !LMS_TS_CLIENT_VERSION!                                   >> !REPORT_LOGFILE! 2>&1
 echo     MachineIdentifier: !LMS_TS_MACHINE_IDENTIFIER!  /  TrustedStorageSerialNumber: !LMS_TS_SERIAL_NUMBER!           >> !REPORT_LOGFILE! 2>&1
@@ -8072,10 +8080,10 @@ if not defined LMS_CHECK_ID (
 			echo     ERROR: There is NO vendor file '!LMS_V2C_FILE! installed on the system. Pls install correct dongle driver.  >> !REPORT_LOGFILE! 2>&1
 		)
 		if defined DONGLE_DRIVER_UPDATE_TO781_BY_ATOS (
-			echo     NOTE: There was a dongle driver update to version V7.81 at %DONGLE_DRIVER_UPDATE_TO781_BY_ATOS% provided by ATOS.  >> !REPORT_LOGFILE! 2>&1
+			echo     NOTE: There was a dongle driver update to version V7.81 at '!DONGLE_DRIVER_UPDATE_TO781_BY_ATOS!' provided by ATOS.  >> !REPORT_LOGFILE! 2>&1
 		)
 		if defined DONGLE_DRIVER_UPDATE_TO792_BY_ATOS (
-			echo     NOTE: There was a dongle driver update to version V7.92 at %DONGLE_DRIVER_UPDATE_TO792_BY_ATOS% provided by ATOS.  >> !REPORT_LOGFILE! 2>&1
+			echo     NOTE: There was a dongle driver update to version V7.92 at '!DONGLE_DRIVER_UPDATE_TO792_BY_ATOS!' provided by ATOS.  >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
 		echo !SHOW_RED!    ATTENTION: No Dongle Driver installed. !SHOW_NORMAL!
