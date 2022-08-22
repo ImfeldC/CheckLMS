@@ -1287,5 +1287,21 @@ rem        - Added DataExecutionPrevention_Available & DataExecutionPrevention_S
 rem          See also https://docs.microsoft.com/en-us/troubleshoot/windows-client/performance/determine-hardware-dep-available
 rem     08-Jun-2022:
 rem        - Adjust, Search crash dump files [*.dmp]; copy only when /extend is set.
+rem     13-Jun-2022:
+rem        - Prepare for 2032330: CheckLMS: Publish script "XX-XXX-2022" as part of LMS 2.7.856 (Sprint 58)
+rem     17-Aug-2022:
+rem        - Added LmuTool /RMS
+rem        - Show content of 'C:\ProgramData\Siemens\LMS\OnlineCheckTokens'
+rem        - Show content of all json files in 'C:\ProgramData\Siemens\LMS\OnlineCheckTokens'
+rem        - Added LmuTool /ONLINECHECK for all installed online licenses
+rem     18-Aug-2022:
+rem        - Check: not 2.5.824 AND not 2.6.849 AND less or equal than 2.6.848  --> DEPRECATED (per Aug-2022)
+rem        - set most recent dongle driver version to 8.43 (per 18-Aug-2022, LMS 2.7)
+rem        - remove check for LMS_IS_VM, as it was not working properly on physical machines.
+rem     22-Aug-2022:
+rem        - remove support for 'setbginfo.lock'; use registry key instead 'HKEY_LOCAL_MACHINE\SOFTWARE\Siemens\LMS\ShowBGInfo' instead
+rem        - Fixed minor issue: Handle handle 'HKLM\SOFTWARE\LicenseManagementSystem\IsInstalled' correct, as it never deleted by ATOS installation.
+rem        - Fixed minor issue: handle WMIC_Installed_SW_Report.log correct, consider new field 'IdentifyingNumber'
+rem        - Publish CheckLMS "22-Aug-2022" to be part of LMS 2.7.859, collect all changes after "8-Jun-2022" up to "22-Aug-2022"
 rem 
 ```
