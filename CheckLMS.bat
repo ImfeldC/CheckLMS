@@ -12,6 +12,8 @@ rem     Full details see changelog.md (on https://github.com/ImfeldC/CheckLMS/bl
 rem
 rem     22-Aug-2022:
 rem        - Publish CheckLMS "22-Aug-2022" to be part of LMS 2.7.859, collect all changes after "8-Jun-2022" up to "22-Aug-2022"
+rem     31-Aug-2022:
+rem        - Add LmuToolError.log to general logfile
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -54,8 +56,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 22-Aug-2022"
-set LMS_SCRIPT_BUILD=20220822
+set LMS_SCRIPT_VERSION="CheckLMS Script 31-Aug-2022"
+set LMS_SCRIPT_BUILD=20220831
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -6753,6 +6755,13 @@ if not defined LMS_SKIPLOGS (
 		powershell -command "& {Get-Content '!REPORT_LOG_PATH!\LMUTool.log' | Select-Object -last !LOG_FILE_LINES!}"                                                                    >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo     !REPORT_LOG_PATH!\LMUTool.log not found.                                                                                                                               >> !REPORT_LOGFILE! 2>&1
+	)
+	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
+	echo LOG FILE: LMUToolError.log [last !LOG_FILE_LINES! lines]                                                                                                                       >> !REPORT_LOGFILE! 2>&1
+	IF EXIST "!REPORT_LOG_PATH!\LMUToolError.log" (
+		powershell -command "& {Get-Content '!REPORT_LOG_PATH!\LMUToolError.log' | Select-Object -last !LOG_FILE_LINES!}"                                                               >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo     !REPORT_LOG_PATH!\LMUToolError.log not found.                                                                                                                          >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
 	echo LOG FILE: LMUPowerShell.log [last !LOG_FILE_LINES! lines]                                                                                                                      >> !REPORT_LOGFILE! 2>&1
