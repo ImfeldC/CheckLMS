@@ -14,6 +14,11 @@ rem     22-Aug-2022:
 rem        - Publish CheckLMS "22-Aug-2022" to be part of LMS 2.7.859, collect all changes after "8-Jun-2022" up to "22-Aug-2022"
 rem     31-Aug-2022:
 rem        - Add LmuToolError.log to general logfile
+rem     02-Sep-2022:
+rem        - Analyze demo_debuglog.txt only with when /extend option is set.
+rem        - Analyze FNC Windows Client [FNC] content only when /extend option is set.
+rem        - Collection of additional logfiles for ALM skipped; only executed when /extend option is set.
+rem        - Add LMUError.log to general logfile
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -56,8 +61,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 31-Aug-2022"
-set LMS_SCRIPT_BUILD=20220831
+set LMS_SCRIPT_VERSION="CheckLMS Script 02-Sep-2022"
+set LMS_SCRIPT_BUILD=20220902
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -5549,65 +5554,69 @@ echo Start at !DATE! !TIME! ....                                                
 echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 echo Analyze 'demo_debuglog.txt' ...                                                                                         >> !REPORT_LOGFILE! 2>&1
 IF EXIST "!REPORT_LOG_PATH!\demo_debuglog.txt" (
-	rem This is the demo vendor daemon logfile, it is only available if demo vendor daemon has been started
-	FOR /F "usebackq" %%A IN ('!REPORT_LOG_PATH!\demo_debuglog.txt') DO set DEMOVDLOG_FILESIZE=%%~zA
-	echo     Filesize of demo_debuglog.txt is !DEMOVDLOG_FILESIZE! bytes !                                                   >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
-	if /I !DEMOVDLOG_FILESIZE! GEQ !LOG_FILESIZE_LIMIT! (
-		echo     ATTENTION: Filesize of demo_debuglog.txt with !DEMOVDLOG_FILESIZE! bytes, is exceeding critical limit of !LOG_FILESIZE_LIMIT! bytes!
+	if defined LMS_EXTENDED_CONTENT (
+		rem This is the demo vendor daemon logfile, it is only available if demo vendor daemon has been started
+		FOR /F "usebackq" %%A IN ('!REPORT_LOG_PATH!\demo_debuglog.txt') DO set DEMOVDLOG_FILESIZE=%%~zA
+		echo     Filesize of demo_debuglog.txt is !DEMOVDLOG_FILESIZE! bytes !                                                   >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+		if /I !DEMOVDLOG_FILESIZE! GEQ !LOG_FILESIZE_LIMIT! (
+			echo     ATTENTION: Filesize of demo_debuglog.txt with !DEMOVDLOG_FILESIZE! bytes, is exceeding critical limit of !LOG_FILESIZE_LIMIT! bytes!
 
-		echo     ATTENTION: Filesize of demo_debuglog.txt with !DEMOVDLOG_FILESIZE! bytes, is exceeding critical limit of !LOG_FILESIZE_LIMIT! bytes!   >> !REPORT_LOGFILE! 2>&1
-		echo     Because filesize of demo_debuglog.txt with !DEMOVDLOG_FILESIZE! bytes exceeds critical limit it is not further processed!              >> !REPORT_LOGFILE! 2>&1
-	) else (
-		rem Extract important identifiers from demo_debuglog.txt
-		for /f "tokens=3* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\demo_debuglog.txt ^|find /I "Host used in license file"') do for /f "tokens=5* eol=@ delims=: " %%A in ("%%B") do set LMS_DEMOVD_HOSTNAME=%%B
-		for /f "tokens=3* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\demo_debuglog.txt ^|find /I "Running on Hypervisor"') do for /f "tokens=3* eol=@ delims=: " %%A in ("%%B") do set LMS_DEMOVD_HYPERVISOR=%%B
-		for /f "tokens=3* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\demo_debuglog.txt ^|find /I "HostID of the License Server"') do for /f "tokens=5* eol=@ delims=: " %%A in ("%%B") do set LMS_DEMOVD_HOSTIDS=%%B
-		for /f "tokens=3* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\demo_debuglog.txt ^|find /I "Start-Date"') do for /f "tokens=1* eol=@ delims=: " %%A in ("%%B") do set LMS_DEMOVD_STARTTIME=%%B
-		echo LMS_DEMOVD_HOSTNAME=!LMS_DEMOVD_HOSTNAME! / LMS_DEMOVD_HYPERVISOR=!LMS_DEMOVD_HYPERVISOR! / LMS_DEMOVD_HOSTIDS=!LMS_DEMOVD_HOSTIDS! / LMS_DEMOVD_STARTTIME='!LMS_DEMOVD_STARTTIME!'    >> !REPORT_LOGFILE! 2>&1
+			echo     ATTENTION: Filesize of demo_debuglog.txt with !DEMOVDLOG_FILESIZE! bytes, is exceeding critical limit of !LOG_FILESIZE_LIMIT! bytes!   >> !REPORT_LOGFILE! 2>&1
+			echo     Because filesize of demo_debuglog.txt with !DEMOVDLOG_FILESIZE! bytes exceeds critical limit it is not further processed!              >> !REPORT_LOGFILE! 2>&1
+		) else (
+			rem Extract important identifiers from demo_debuglog.txt
+			for /f "tokens=3* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\demo_debuglog.txt ^|find /I "Host used in license file"') do for /f "tokens=5* eol=@ delims=: " %%A in ("%%B") do set LMS_DEMOVD_HOSTNAME=%%B
+			for /f "tokens=3* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\demo_debuglog.txt ^|find /I "Running on Hypervisor"') do for /f "tokens=3* eol=@ delims=: " %%A in ("%%B") do set LMS_DEMOVD_HYPERVISOR=%%B
+			for /f "tokens=3* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\demo_debuglog.txt ^|find /I "HostID of the License Server"') do for /f "tokens=5* eol=@ delims=: " %%A in ("%%B") do set LMS_DEMOVD_HOSTIDS=%%B
+			for /f "tokens=3* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\demo_debuglog.txt ^|find /I "Start-Date"') do for /f "tokens=1* eol=@ delims=: " %%A in ("%%B") do set LMS_DEMOVD_STARTTIME=%%B
+			echo LMS_DEMOVD_HOSTNAME=!LMS_DEMOVD_HOSTNAME! / LMS_DEMOVD_HYPERVISOR=!LMS_DEMOVD_HYPERVISOR! / LMS_DEMOVD_HOSTIDS=!LMS_DEMOVD_HOSTIDS! / LMS_DEMOVD_STARTTIME='!LMS_DEMOVD_STARTTIME!'    >> !REPORT_LOGFILE! 2>&1
 
-		echo -- extract ERROR messages from demo_debuglog.txt [start] --                                                     >> !REPORT_LOGFILE! 2>&1
-		Type "!REPORT_LOG_PATH!\demo_debuglog.txt" | findstr "ERROR:"                                                        >> !REPORT_LOGFILE! 2>&1
-		echo -- extract ERROR messages from demo_debuglog.txt [end] --                                                       >> !REPORT_LOGFILE! 2>&1
-		echo Start at !DATE! !TIME! ....                                                                                     >> !REPORT_LOGFILE! 2>&1
+			echo -- extract ERROR messages from demo_debuglog.txt [start] --                                                     >> !REPORT_LOGFILE! 2>&1
+			Type "!REPORT_LOG_PATH!\demo_debuglog.txt" | findstr "ERROR:"                                                        >> !REPORT_LOGFILE! 2>&1
+			echo -- extract ERROR messages from demo_debuglog.txt [end] --                                                       >> !REPORT_LOGFILE! 2>&1
+			echo Start at !DATE! !TIME! ....                                                                                     >> !REPORT_LOGFILE! 2>&1
 
-		if not defined LMS_CHECK_ID (
-			rem Extract "Host Info"
-			rem NOTE: The implementation below is VERY slow, we should move this part into /extend mode :-)
-			Set LMS_START_LOG=0
-			del "!CHECKLMS_REPORT_LOG_PATH!\DEMOVD_HostInfo.txt" >nul 2>&1
-			FOR /F "eol=@ delims=" %%i IN ('type !REPORT_LOG_PATH!\demo_debuglog.txt') DO ( 
-				ECHO "%%i" | FINDSTR /C:"=== Host Info ===" 1>nul 
-				if !ERRORLEVEL!==0 (
-					echo Start of 'Host Info' section found ... > !CHECKLMS_REPORT_LOG_PATH!\DEMOVD_HostInfo.txt 2>&1
-					Set LMS_START_LOG=1
-				)
-				if !LMS_START_LOG!==1 (
-					echo %%i                                    >> !CHECKLMS_REPORT_LOG_PATH!\DEMOVD_HostInfo.txt 2>&1
-					
-					rem check for end of 'Host Info' block
-					ECHO "%%i" | FINDSTR /C:"===============================================" 1>nul 
+			if not defined LMS_CHECK_ID (
+				rem Extract "Host Info"
+				rem NOTE: The implementation below is VERY slow, we should move this part into /extend mode :-)
+				Set LMS_START_LOG=0
+				del "!CHECKLMS_REPORT_LOG_PATH!\DEMOVD_HostInfo.txt" >nul 2>&1
+				FOR /F "eol=@ delims=" %%i IN ('type !REPORT_LOG_PATH!\demo_debuglog.txt') DO ( 
+					ECHO "%%i" | FINDSTR /C:"=== Host Info ===" 1>nul 
 					if !ERRORLEVEL!==0 (
-						echo End of 'Host Info' section found ...   >> !CHECKLMS_REPORT_LOG_PATH!\DEMOVD_HostInfo.txt 2>&1
-						Set LMS_START_LOG=0
+						echo Start of 'Host Info' section found ... > !CHECKLMS_REPORT_LOG_PATH!\DEMOVD_HostInfo.txt 2>&1
+						Set LMS_START_LOG=1
+					)
+					if !LMS_START_LOG!==1 (
+						echo %%i                                    >> !CHECKLMS_REPORT_LOG_PATH!\DEMOVD_HostInfo.txt 2>&1
+						
+						rem check for end of 'Host Info' block
+						ECHO "%%i" | FINDSTR /C:"===============================================" 1>nul 
+						if !ERRORLEVEL!==0 (
+							echo End of 'Host Info' section found ...   >> !CHECKLMS_REPORT_LOG_PATH!\DEMOVD_HostInfo.txt 2>&1
+							Set LMS_START_LOG=0
+						)
 					)
 				)
-			)
-			IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\DEMOVD_HostInfo.txt" (
-				type "!CHECKLMS_REPORT_LOG_PATH!\DEMOVD_HostInfo.txt"                                                        >> !REPORT_LOGFILE! 2>&1
-			) else (
-				echo     ATTENTION: No 'Host Info' found in '!REPORT_LOG_PATH!\demo_debuglog.txt'!                           >> !REPORT_LOGFILE! 2>&1
-			)
+				IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\DEMOVD_HostInfo.txt" (
+					type "!CHECKLMS_REPORT_LOG_PATH!\DEMOVD_HostInfo.txt"                                                        >> !REPORT_LOGFILE! 2>&1
+				) else (
+					echo     ATTENTION: No 'Host Info' found in '!REPORT_LOG_PATH!\demo_debuglog.txt'!                           >> !REPORT_LOGFILE! 2>&1
+				)
 
-			rem demo_debuglog.txt
-			echo Start at !DATE! !TIME! ....                                                                                 >> !REPORT_LOGFILE! 2>&1
-			echo LOG FILE: demo_debuglog.txt [last !LOG_FILE_LINES! lines]                                                          >> !REPORT_LOGFILE! 2>&1
-			powershell -command "& {Get-Content '!REPORT_LOG_PATH!\demo_debuglog.txt' | Select-Object -last !LOG_FILE_LINES!}"      >> !REPORT_LOGFILE! 2>&1
+				rem demo_debuglog.txt
+				echo Start at !DATE! !TIME! ....                                                                                 >> !REPORT_LOGFILE! 2>&1
+				echo LOG FILE: demo_debuglog.txt [last !LOG_FILE_LINES! lines]                                                          >> !REPORT_LOGFILE! 2>&1
+				powershell -command "& {Get-Content '!REPORT_LOG_PATH!\demo_debuglog.txt' | Select-Object -last !LOG_FILE_LINES!}"      >> !REPORT_LOGFILE! 2>&1
+			)
 		)
+	) else (
+		echo Existing '!REPORT_LOG_PATH!\demo_debuglog.txt' not analyzed, start script with option '/extend' to enable extended content. >> !REPORT_LOGFILE! 2>&1
 	)
 
 ) else (
-	echo     !REPORT_LOG_PATH!\demo_debuglog.txt not found.                                                                         >> !REPORT_LOGFILE! 2>&1
+	echo     '!REPORT_LOG_PATH!\demo_debuglog.txt' not found.                                                                >> !REPORT_LOGFILE! 2>&1
 )
 echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
@@ -6522,45 +6531,49 @@ if not defined LMS_SKIPSSU (
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 	echo **** FNC Windows Client [FNC] ****                                                                                      >> !REPORT_LOGFILE! 2>&1
-	echo ... read products registered for updates [via FNC] ...
-	echo Products Registered for Updates [via FNC]                                                                               >> !REPORT_LOGFILE! 2>&1
-	IF EXIST "!ALLUSERSPROFILE!\FLEXnet\Connect\Database\" (
-		echo Content of folder: !ALLUSERSPROFILE!\FLEXnet\Connect\Database                                                       >> !REPORT_LOGFILE! 2>&1
-		dir /S /A /X /4 /W "!ALLUSERSPROFILE!\FLEXnet\Connect\Database"                                                          >> !REPORT_LOGFILE! 2>&1
+	if defined LMS_EXTENDED_CONTENT (
+		echo ... read products registered for updates [via FNC] ...
+		echo Products Registered for Updates [via FNC]                                                                           >> !REPORT_LOGFILE! 2>&1
+		IF EXIST "!ALLUSERSPROFILE!\FLEXnet\Connect\Database\" (
+			echo Content of folder: !ALLUSERSPROFILE!\FLEXnet\Connect\Database                                                   >> !REPORT_LOGFILE! 2>&1
+			dir /S /A /X /4 /W "!ALLUSERSPROFILE!\FLEXnet\Connect\Database"                                                      >> !REPORT_LOGFILE! 2>&1
 
-		IF EXIST "!ALLUSERSPROFILE!\FLEXnet\Connect\Database\update.ini" (
-			Type "%APPDATA%\FLEXnet\Connect\Database\update.ini" | findstr "UserID="                                             >> !REPORT_LOGFILE! 2>&1
-			FOR %%i IN ("!ALLUSERSPROFILE!\FLEXnet\Connect\Database\*.ini") DO (
+			IF EXIST "!ALLUSERSPROFILE!\FLEXnet\Connect\Database\update.ini" (
+				Type "%APPDATA%\FLEXnet\Connect\Database\update.ini" | findstr "UserID="                                         >> !REPORT_LOGFILE! 2>&1
+				FOR %%i IN ("!ALLUSERSPROFILE!\FLEXnet\Connect\Database\*.ini") DO (
+					echo -------------------------------------------------------                                                 >> !REPORT_LOGFILE! 2>&1
+					echo %%i:                                                                                                    >> !REPORT_LOGFILE! 2>&1
+					Type %%i                                                                                                     >> !REPORT_LOGFILE! 2>&1
+				)
+			) else (
+				echo     No User FNC Database found [!ALLUSERSPROFILE!\FLEXnet\Connect\Database\update.ini].                     >> !REPORT_LOGFILE! 2>&1
+			)
+		) else (
+			echo     No User FNC Database found [!ALLUSERSPROFILE!\FLEXnet\Connect\Database\].                                   >> !REPORT_LOGFILE! 2>&1
+		)
+		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+		IF EXIST "%APPDATA%\FLEXnet\Connect\Database\" (
+			echo Content of folder: %APPDATA%\FLEXnet\Connect\Database\                                                          >> !REPORT_LOGFILE! 2>&1
+			dir /S /A /X /4 /W "%APPDATA%\FLEXnet\Connect\Database\"                                                             >> !REPORT_LOGFILE! 2>&1
+			FOR %%i IN ("%APPDATA%\FLEXnet\Connect\Database\*.ini") DO (
 				echo -------------------------------------------------------                                                     >> !REPORT_LOGFILE! 2>&1
 				echo %%i:                                                                                                        >> !REPORT_LOGFILE! 2>&1
 				Type %%i                                                                                                         >> !REPORT_LOGFILE! 2>&1
 			)
 		) else (
-			echo     No User FNC Database found [!ALLUSERSPROFILE!\FLEXnet\Connect\Database\update.ini].                         >> !REPORT_LOGFILE! 2>&1
+			echo     No Application FNC Database found [%APPDATA%\FLEXnet\Connect\Database\].                                    >> !REPORT_LOGFILE! 2>&1
+		)
+		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+		echo Check FNC Test Mode [for windows-based FNC agents]                                                                  >> !REPORT_LOGFILE! 2>&1
+		IF EXIST "c:\FCTest.ini" (
+			echo FNC Test file found, see c:\FCTest.ini                                                                          >> !REPORT_LOGFILE! 2>&1
+			Type "c:\FCTest.ini"                                                                                                 >> !REPORT_LOGFILE! 2>&1
+			echo .                                                                                                               >> !REPORT_LOGFILE! 2>&1
+		) else (
+			echo     No FNC Test file [FCTest.ini] found.                                                                        >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
-		echo     No User FNC Database found [!ALLUSERSPROFILE!\FLEXnet\Connect\Database\].                                       >> !REPORT_LOGFILE! 2>&1
-	)
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	IF EXIST "%APPDATA%\FLEXnet\Connect\Database\" (
-		echo Content of folder: %APPDATA%\FLEXnet\Connect\Database\                                                              >> !REPORT_LOGFILE! 2>&1
-		dir /S /A /X /4 /W "%APPDATA%\FLEXnet\Connect\Database\"                                                                 >> !REPORT_LOGFILE! 2>&1
-		FOR %%i IN ("%APPDATA%\FLEXnet\Connect\Database\*.ini") DO (
-			echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
-			echo %%i:                                                                                                            >> !REPORT_LOGFILE! 2>&1
-			Type %%i                                                                                                             >> !REPORT_LOGFILE! 2>&1
-		)
-	) else (
-		echo     No Application FNC Database found [%APPDATA%\FLEXnet\Connect\Database\].                                        >> !REPORT_LOGFILE! 2>&1
-	)
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	echo Check FNC Test Mode [for windows-based FNC agents]                                                                      >> !REPORT_LOGFILE! 2>&1
-	IF EXIST "c:\FCTest.ini" (
-		echo FNC Test file found, see c:\FCTest.ini                                                                              >> !REPORT_LOGFILE! 2>&1
-		Type "c:\FCTest.ini"                                                                                                     >> !REPORT_LOGFILE! 2>&1
-		echo .                                                                                                                   >> !REPORT_LOGFILE! 2>&1
-	) else (
-		echo     No FNC Test file [FCTest.ini] found.                                                                            >> !REPORT_LOGFILE! 2>&1
+		echo Collection of additional logfiles for FNC Windows Client [FNC] skipped, start script with option '/extend' to enable extended content.  >> !REPORT_LOGFILE! 2>&1
 	)
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 ) else (
@@ -6743,6 +6756,13 @@ if not defined LMS_SKIPLOGS (
 		echo     !REPORT_LOG_PATH!\LMU.log not found.                                                                                                                                   >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
+	echo LOG FILE: LMUError.log [last !LOG_FILE_LINES! lines]                                                                                                                           >> !REPORT_LOGFILE! 2>&1
+	IF EXIST "!REPORT_LOG_PATH!\LMUError.log" (
+		powershell -command "& {Get-Content '!REPORT_LOG_PATH!\LMUError.log' | Select-Object -last !LOG_FILE_LINES!}"                                                                   >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo     !REPORT_LOG_PATH!\LMUError.log not found.                                                                                                                              >> !REPORT_LOGFILE! 2>&1
+	)
+	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
 	echo LOG FILE: licenf.log [last !LOG_FILE_LINES! lines]                                                                                                                             >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!REPORT_LOG_PATH!\licenf.log" (
 		powershell -command "& {Get-Content '!REPORT_LOG_PATH!\licenf.log' | Select-Object -last !LOG_FILE_LINES!}"                                                                     >> !REPORT_LOGFILE! 2>&1
@@ -6797,29 +6817,33 @@ if not defined LMS_SKIPLOGS (
 		echo     !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\logging\alm_service_log not found.                                                                     >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
-	echo LOG FILE: Copy all files from !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\*  to  !CHECKLMS_ALM_PATH!\Automation License Manager\                           >> !REPORT_LOGFILE! 2>&1
-	IF EXIST "!ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\" (
-		mkdir "!CHECKLMS_ALM_PATH!\Automation License Manager\"  >nul 2>&1
-		xcopy "!ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\*" "!CHECKLMS_ALM_PATH!\Automation License Manager\" /E /Y /H /I                                         >> !REPORT_LOGFILE! 2>&1 
-		echo --- Files automatically copied from !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\* to !CHECKLMS_ALM_PATH!\Automation License Manager\ --- > "!CHECKLMS_ALM_PATH!\Automation License Manager\__README.txt" 2>&1
+	if defined LMS_EXTENDED_CONTENT (
+		echo LOG FILE: Copy all files from !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\*  to  !CHECKLMS_ALM_PATH!\Automation License Manager\                       >> !REPORT_LOGFILE! 2>&1
+		IF EXIST "!ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\" (
+			mkdir "!CHECKLMS_ALM_PATH!\Automation License Manager\"  >nul 2>&1
+			xcopy "!ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\*" "!CHECKLMS_ALM_PATH!\Automation License Manager\" /E /Y /H /I                                     >> !REPORT_LOGFILE! 2>&1 
+			echo --- Files automatically copied from !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\* to !CHECKLMS_ALM_PATH!\Automation License Manager\ --- > "!CHECKLMS_ALM_PATH!\Automation License Manager\__README.txt" 2>&1
+		) else (
+			echo     !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\ folder not found.                                                                                 >> !REPORT_LOGFILE! 2>&1
+		)
+		echo LOG FILE: Copy all files from !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\*  to  !CHECKLMS_ALM_PATH!\Logfiles\                                                           >> !REPORT_LOGFILE! 2>&1
+		IF EXIST "!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\" (
+			mkdir "!CHECKLMS_ALM_PATH!\Logfiles\"  >nul 2>&1
+			xcopy "!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\*" "!CHECKLMS_ALM_PATH!\Logfiles\" /E /Y /H /I                                                                         >> !REPORT_LOGFILE! 2>&1 
+			echo --- Files automatically copied from !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\* to !CHECKLMS_ALM_PATH!\Logfiles\ --- > "!CHECKLMS_ALM_PATH!\Logfiles\__README.txt" 2>&1
+		) else (
+			echo     !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\ folder not found.                                                                                                   >> !REPORT_LOGFILE! 2>&1
+		)
+		echo LOG FILE: Copy all files from !ALLUSERSPROFILE!\Siemens\Automation\sws\*  to  !CHECKLMS_ALM_PATH!\sws\                                                                     >> !REPORT_LOGFILE! 2>&1
+		IF EXIST "!ALLUSERSPROFILE!\Siemens\Automation\sws\" (
+			mkdir !CHECKLMS_ALM_PATH!\sws\  >nul 2>&1
+			xcopy "!ALLUSERSPROFILE!\Siemens\Automation\sws\*" !CHECKLMS_ALM_PATH!\sws\ /E /Y /H /I                                                                                     >> !REPORT_LOGFILE! 2>&1 
+			echo --- Files automatically copied from !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\sws\* to !CHECKLMS_ALM_PATH!\sws\ --- > !CHECKLMS_ALM_PATH!\sws\__README.txt 2>&1
+		) else (
+			echo     !ALLUSERSPROFILE!\Siemens\Automation\sws\ folder not found.                                                                                                        >> !REPORT_LOGFILE! 2>&1
+		)
 	) else (
-		echo     !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\ folder not found.                                                                                     >> !REPORT_LOGFILE! 2>&1
-	)
-	echo LOG FILE: Copy all files from !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\*  to  !CHECKLMS_ALM_PATH!\Logfiles\                                                               >> !REPORT_LOGFILE! 2>&1
-	IF EXIST "!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\" (
-		mkdir "!CHECKLMS_ALM_PATH!\Logfiles\"  >nul 2>&1
-		xcopy "!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\*" "!CHECKLMS_ALM_PATH!\Logfiles\" /E /Y /H /I                                                                             >> !REPORT_LOGFILE! 2>&1 
-		echo --- Files automatically copied from !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\* to !CHECKLMS_ALM_PATH!\Logfiles\ --- > "!CHECKLMS_ALM_PATH!\Logfiles\__README.txt" 2>&1
-	) else (
-		echo     !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\ folder not found.                                                                                                       >> !REPORT_LOGFILE! 2>&1
-	)
-	echo LOG FILE: Copy all files from !ALLUSERSPROFILE!\Siemens\Automation\sws\*  to  !CHECKLMS_ALM_PATH!\sws\                                                                         >> !REPORT_LOGFILE! 2>&1
-	IF EXIST "!ALLUSERSPROFILE!\Siemens\Automation\sws\" (
-		mkdir !CHECKLMS_ALM_PATH!\sws\  >nul 2>&1
-		xcopy "!ALLUSERSPROFILE!\Siemens\Automation\sws\*" !CHECKLMS_ALM_PATH!\sws\ /E /Y /H /I                                                                                         >> !REPORT_LOGFILE! 2>&1 
-		echo --- Files automatically copied from !ALLUSERSPROFILE!\Siemens\Automation\Automation License Manager\sws\* to !CHECKLMS_ALM_PATH!\sws\ --- > !CHECKLMS_ALM_PATH!\sws\__README.txt 2>&1
-	) else (
-		echo     !ALLUSERSPROFILE!\Siemens\Automation\sws\ folder not found.                                                                                                            >> !REPORT_LOGFILE! 2>&1
+		echo Collection of additional logfiles for ALM skipped, start script with option '/extend' to enable extended content.                                                          >> !REPORT_LOGFILE! 2>&1
 	)
 ) else (
 	rem LMS_SKIPLOGS
