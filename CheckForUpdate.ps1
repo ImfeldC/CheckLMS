@@ -3,6 +3,7 @@ param(
 	[string]$operatingsystem = 'Windows10',
 	[string]$language = 'en-us',
 	[bool]$SkipSiemensSoftware = $true,
+	[bool]$DownloadSoftware = $false,
 	[bool]$Verbose = $true,
 	[string]$productversion = '',
 	[string]$productcode = ''
@@ -18,6 +19,8 @@ param(
 # '20220516': Add <date> and <time> information of script execution to logfile output.
 #             Add script version to logfile output.
 # '20220905': Add new command line parameters: productversion & productcode
+#             Add new command line option: DownloadSoftware (default: 0), if set it downloads the software
+#             Adjust the message output, display most only when 'Verbose' option is set
 $scriptVersion = '20220905'
 
 
@@ -36,7 +39,9 @@ function Log-Message
 }
 
 Log-Message "Script Execution started ..."
-Log-Message "Parameters: operatingsystem=$operatingsystem / language=$language / SkipSiemensSoftware=$SkipSiemensSoftware / Verbose=$Verbose / productversion=$productversion / productcode=$productcode"
+if( $Verbose ) {
+	Log-Message "Parameters: operatingsystem=$operatingsystem / language=$language / SkipSiemensSoftware=$SkipSiemensSoftware / DownloadSoftware=$DownloadSoftware / Verbose=$Verbose / productversion=$productversion / productcode=$productcode"
+}
 
 $ExitCode=0
 # Old API URL -> $OSD_APIURL="https://www.automation.siemens.com/softwareupdater/public/api/updates"
@@ -128,12 +133,45 @@ Try {
 	$reader.DiscardBufferedData()
 	$reader.ReadToEnd() | ConvertFrom-Json
 }
-if ( $Verbose ) {
+if( $Verbose ) {
 	Log-Message "Message Response ..."
 	$response | ConvertTo-Json -depth 100
 }
 
+if( $DownloadSoftware ) {
+	if( $response ) {
+		# start further processing or repsone, e.g. extract  "downloadURL"
+		if( $Verbose ) {
+			Log-Message "Start to analyze the Response ..."
+		}
+		
+		foreach ($swupdate in $response.softwareUpdates) {
+			if( $Verbose ) {
+				Log-Message "Software Update: $swupdate"  
+			}
+			
+			$title = $swupdate.title
+			$description = $swupdate.description
+			$downloadurl = [URI]$swupdate.downloadURL
+			$Path = $env:ProgramData + '\Siemens\LMS\Download'
+			$finalurl, $options = ($downloadurl -Split '\?')[0,1]
+			if( $Verbose ) {
+				Log-Message "Title: $title / Description: $description / Download URL: $downloadurl / options: $options"
+			}
+			
+			if( $downloadurl ) {
+				# download the software udpate
+				Log-Message "Start to download ... '$finalurl' to '$Path'"
+				Start-BitsTransfer -Source "$finalurl" -Destination "$Path"
+			}
+		}	
+	}
+}
+
 if (-not $SkipSiemensSoftware) {
+	if ( $Verbose ) {
+		Log-Message "Retrieve installed Siemens Software ... "
+	}
 	# Read-out installed Siemens software and convert then into json 
 	$SiemensInstalledSoftware1 = Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate, PSChildName | Where-Object{$_.Publisher -like '*Siemens*'} | ConvertTo-Json
 	$SiemensInstalledSoftware2 = Get-CimInstance Win32_Product | Sort-Object -property Name | Where-Object{$_.Vendor -like '*Siemens*'} | Select-Object Name, Version, InstallDate, Vendor, IdentifyingNumber | ConvertTo-Json
@@ -154,7 +192,7 @@ if (-not $SkipSiemensSoftware) {
 	}"
 
 	if ( $Verbose ) {
-		Log-Message "Message Body ... `n'$body'"
+		Log-Message "Message Body (with Siemens Software) ... `n'$body'"
 	}
 	Try {
 		$response = Invoke-RestMethod $OSD_APIURL -Method 'POST' -Headers $headers -Body $body
@@ -175,7 +213,7 @@ if (-not $SkipSiemensSoftware) {
 		$reader.ReadToEnd() | ConvertFrom-Json
 	}
 	if ( $Verbose ) {
-		Log-Message "Message Response ..."
+		Log-Message "Message Response (after sending Siemens Software) ..."
 		$response | ConvertTo-Json -depth 100
 	}
 }
