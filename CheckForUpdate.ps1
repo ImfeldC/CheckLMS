@@ -3,7 +3,9 @@ param(
 	[string]$operatingsystem = 'Windows10',
 	[string]$language = 'en-us',
 	[bool]$SkipSiemensSoftware = $true,
-	[bool]$Verbose = $true
+	[bool]$Verbose = $true,
+	[string]$productversion = '',
+	[string]$productcode = ''
 )
 #endregion
 
@@ -15,7 +17,8 @@ param(
 # '20220506': Use new API URL: https://osd-ak.automation.siemens.com/softwareupdater/public/api/updates
 # '20220516': Add <date> and <time> information of script execution to logfile output.
 #             Add script version to logfile output.
-$scriptVersion = '20220516'
+# '20220905': Add new command line parameters: productversion & productcode
+$scriptVersion = '20220905'
 
 
 # Function to print-out messages, including <date> and <time> information.
@@ -33,7 +36,7 @@ function Log-Message
 }
 
 Log-Message "Script Execution started ..."
-Log-Message "Parameters: operatingsystem=$operatingsystem / language=$language / SkipSiemensSoftware=$SkipSiemensSoftware / Verbose=$Verbose"
+Log-Message "Parameters: operatingsystem=$operatingsystem / language=$language / SkipSiemensSoftware=$SkipSiemensSoftware / Verbose=$Verbose / productversion=$productversion / productcode=$productcode"
 
 $ExitCode=0
 # Old API URL -> $OSD_APIURL="https://www.automation.siemens.com/softwareupdater/public/api/updates"
@@ -44,11 +47,17 @@ $headers.Add("Content-Type", "application/json")
 
 # set client type ..
 $clientType = 'CheckForUpdate'
-$clientVersion = '20220516'
+$clientVersion = $scriptVersion
 
 # retrieve product information ...
-$productcode = get-lms -ProductCode | select -expand Guid
-$productversion = get-lms -LMSVersion
+if ( $productcode -eq '' )
+{
+	$productcode = get-lms -ProductCode | select -expand Guid
+}
+if ( $productversion -eq '' )
+{
+	$productversion = get-lms -LMSVersion
+}
 $lmssystemid = get-lms -SystemId
 
 # retrieve standard client info ....
