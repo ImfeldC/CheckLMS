@@ -1303,5 +1303,14 @@ rem        - remove support for 'setbginfo.lock'; use registry key instead 'HKEY
 rem        - Fixed minor issue: Handle handle 'HKLM\SOFTWARE\LicenseManagementSystem\IsInstalled' correct, as it never deleted by ATOS installation.
 rem        - Fixed minor issue: handle WMIC_Installed_SW_Report.log correct, consider new field 'IdentifyingNumber'
 rem        - Publish CheckLMS "22-Aug-2022" to be part of LMS 2.7.859, collect all changes after "8-Jun-2022" up to "22-Aug-2022"
-rem 
+rem     31-Aug-2022:
+rem        - Add LmuToolError.log to general logfile
+rem     02-Sep-2022:
+rem        - Analyze demo_debuglog.txt only with when /extend option is set.
+rem        - Analyze FNC Windows Client [FNC] content only when /extend option is set.
+rem        - Collection of additional logfiles for ALM skipped; only executed when /extend option is set.
+rem        - Add LMUError.log to general logfile
+rem     05-Sep-2022:
+rem        - Use CheckForUpdate.ps1 script to download newest CheckLMS script.
+rem        - Publish CheckLMS "05-Sep-2022" to be part of LMS 2.7.860, collect all changes after "22-Aug-2022" up to "05-Sep-2022"rem 
 ```

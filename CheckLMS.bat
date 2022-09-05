@@ -10,15 +10,8 @@ rem        - Final script, released for LMS 2.6
 rem 
 rem     Full details see changelog.md (on https://github.com/ImfeldC/CheckLMS/blob/master/changelog.md )
 rem
-rem     22-Aug-2022:
-rem        - Publish CheckLMS "22-Aug-2022" to be part of LMS 2.7.859, collect all changes after "8-Jun-2022" up to "22-Aug-2022"
-rem     31-Aug-2022:
-rem        - Add LmuToolError.log to general logfile
-rem     02-Sep-2022:
-rem        - Analyze demo_debuglog.txt only with when /extend option is set.
-rem        - Analyze FNC Windows Client [FNC] content only when /extend option is set.
-rem        - Collection of additional logfiles for ALM skipped; only executed when /extend option is set.
-rem        - Add LMUError.log to general logfile
+rem     05-Sep-2022:
+rem        - Publish CheckLMS "05-Sep-2022" to be part of LMS 2.7.860, collect all changes after "22-Aug-2022" up to "05-Sep-2022"
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -61,8 +54,9 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 02-Sep-2022"
-set LMS_SCRIPT_BUILD=20220902
+set LMS_SCRIPT_VERSION="CheckLMS Script 05-Sep-2022"
+set LMS_SCRIPT_BUILD=20220905
+set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -1097,7 +1091,6 @@ if not defined LMS_SKIPDOWNLOAD (
 				IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat" (
 					rem CheckLMS.bat has been downloaded from github
 					for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_GIT set LMS_SCRIPT_BUILD_DOWNLOAD_GIT=%%i
-					echo     Check script downloaded from github. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_GIT!, Running script version: !LMS_SCRIPT_BUILD!.
 					echo     Check script downloaded from github. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_GIT!, Running script version: !LMS_SCRIPT_BUILD!.                    >> !REPORT_LOGFILE! 2>&1
 					IF defined LMS_SCRIPT_BUILD_DOWNLOAD (
 						if /I !LMS_SCRIPT_BUILD_DOWNLOAD_GIT! GTR !LMS_SCRIPT_BUILD_DOWNLOAD! (
@@ -1131,9 +1124,8 @@ if not defined LMS_SKIPDOWNLOAD (
 					echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                                                                          >> !REPORT_LOGFILE! 2>&1
 				)
 			 	IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\bat\CheckLMS.bat" (
-					rem CheckLMS.bat has been downloaded from github
+					rem CheckLMS.bat has been downloaded from share
 					for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS\bat\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_BAT set LMS_SCRIPT_BUILD_DOWNLOAD_BAT=%%i
-					echo     Check script downloaded from download share. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_BAT!, Running script version: !LMS_SCRIPT_BUILD!.
 					echo     Check script downloaded from download share. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_BAT!, Running script version: !LMS_SCRIPT_BUILD!.            >> !REPORT_LOGFILE! 2>&1
 					IF defined LMS_SCRIPT_BUILD_DOWNLOAD (
 						if /I !LMS_SCRIPT_BUILD_DOWNLOAD_BAT! GTR !LMS_SCRIPT_BUILD_DOWNLOAD! (
@@ -1152,6 +1144,31 @@ if not defined LMS_SKIPDOWNLOAD (
 
 		)
 	)
+	
+	rem Download newest LMS check script from OSD
+	IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1" (
+		del "!LMS_DOWNLOAD_PATH!\CheckLMS.bat" >nul 2>&1
+		echo RUN: powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -Command "& '!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1' -SkipSiemensSoftware 1 -verbose 1 -DownloadSoftware 1 -productversion '!LMS_SCRIPT_BUILD!' -productcode '!LMS_SCRIPT_PRODUCTID!'; exit $LASTEXITCODE"         >> !REPORT_LOGFILE! 2>&1
+		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -Command "& '!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1' -SkipSiemensSoftware 1 -verbose 1 -DownloadSoftware 1 -productversion '!LMS_SCRIPT_BUILD!' -productcode '!LMS_SCRIPT_PRODUCTID!'; exit $LASTEXITCODE"                   >> !REPORT_LOGFILE! 2>&1
+		IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS.bat" (
+			rem CheckLMS.bat has been downloaded from OSD server
+			for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_OSD set LMS_SCRIPT_BUILD_DOWNLOAD_OSD=%%i
+			echo     Check script downloaded from OSD. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_OSD!, Running script version: !LMS_SCRIPT_BUILD!.            >> !REPORT_LOGFILE! 2>&1
+			IF defined LMS_SCRIPT_BUILD_DOWNLOAD (
+				if /I !LMS_SCRIPT_BUILD_DOWNLOAD_OSD! GTR !LMS_SCRIPT_BUILD_DOWNLOAD! (
+					echo Newer check script copied. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_OSD!, Previous script version: !LMS_SCRIPT_BUILD_DOWNLOAD!.     >> !REPORT_LOGFILE! 2>&1
+					copy /Y "!LMS_DOWNLOAD_PATH!\CheckLMS.bat" "!LMS_DOWNLOAD_PATH!\CheckLMS\"                                                                          >> !REPORT_LOGFILE! 2>&1
+					set LMS_SCRIPT_BUILD_DOWNLOAD=!LMS_SCRIPT_BUILD_DOWNLOAD_OSD!
+				)
+			) else (
+				copy /Y "!LMS_DOWNLOAD_PATH!\CheckLMS.bat" "!LMS_DOWNLOAD_PATH!\CheckLMS\"                                                                              >> !REPORT_LOGFILE! 2>&1
+				set LMS_SCRIPT_BUILD_DOWNLOAD=!LMS_SCRIPT_BUILD_DOWNLOAD_OSD!
+			)
+		)
+	) else (
+		echo ERROR: Cannot execute powershell script 'CheckForUpdate.ps1', it doesn't exist '!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1'.                    >> !REPORT_LOGFILE! 2>&1
+	)
+	
 )
 
 if not defined LMS_DONOTSTARTNEWERSCRIPT (
@@ -1159,19 +1176,20 @@ if not defined LMS_DONOTSTARTNEWERSCRIPT (
 	rem Check if newer CheckLMS.bat is available in !LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat (even if connection test doesn't run succesful)
 	IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat" (
 		echo     Check script on '!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat' ... 
-		echo Check script on '!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat' ...                                                                                               >> !REPORT_LOGFILE! 2>&1
+		echo Check script on '!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat' ...                                                                                            >> !REPORT_LOGFILE! 2>&1
 		set LMS_SCRIPT_BUILD_DOWNLOAD=
 		for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD set LMS_SCRIPT_BUILD_DOWNLOAD=%%i
-		echo     Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD!, Running script version: !LMS_SCRIPT_BUILD!.                                                         >> !REPORT_LOGFILE! 2>&1
+		echo     Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD!, Running script version: !LMS_SCRIPT_BUILD!.                                                      >> !REPORT_LOGFILE! 2>&1
 		if /I !LMS_SCRIPT_BUILD_DOWNLOAD! GTR !LMS_SCRIPT_BUILD! (
 			echo     Newer check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD!, Running script version: !LMS_SCRIPT_BUILD!.
-			echo Newer check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD!, Running script version: !LMS_SCRIPT_BUILD!.                          >> !REPORT_LOGFILE! 2>&1
+			echo Newer check script downloaded. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD!, Running script version: !LMS_SCRIPT_BUILD!.                       >> !REPORT_LOGFILE! 2>&1
 			set LMS_SCRIPT_BUILD_DOWNLOAD_TO_START=!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat
 		)
 	)	
 ) else (
-	echo SKIPPED check for newer script. Command line option "Do not start new script" is set.                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo SKIPPED check for newer script. Command line option "Do not start new script" is set.                                                                          >> !REPORT_LOGFILE! 2>&1
 )
+echo Download Summary, newest downloaded script version '!LMS_SCRIPT_BUILD_DOWNLOAD!'.  From GIT: !LMS_SCRIPT_BUILD_DOWNLOAD_GIT! /  From Share: !LMS_SCRIPT_BUILD_DOWNLOAD_BAT! /  From OSD: !LMS_SCRIPT_BUILD_DOWNLOAD_OSD! /  Running script version: !LMS_SCRIPT_BUILD!.  >> !REPORT_LOGFILE! 2>&1
 
 if defined LMS_SCRIPT_BUILD_DOWNLOAD_TO_START (
 	if not defined LMS_DONOTSTARTNEWERSCRIPT (
