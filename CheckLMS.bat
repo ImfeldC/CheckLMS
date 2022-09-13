@@ -12,6 +12,11 @@ rem     Full details see changelog.md (on https://github.com/ImfeldC/CheckLMS/bl
 rem
 rem     05-Sep-2022:
 rem        - Publish CheckLMS "05-Sep-2022" to be part of LMS 2.7.860, collect all changes after "22-Aug-2022" up to "05-Sep-2022"
+rem     12-Sep-2022:
+rem        - Adjust 'No GMS installation' message; see '2088686: Wrong message in CheckLMS; ALLUSERSPROFILE is not correct written.'
+rem        - Move 'Several event viewer exports made [based on UCMS-LogcollectorDWP.ini]' into extended section, only executed when /extend option is set.
+rem        - Adjust 'Retrieve Windows Update Log' funtion, pass robocopy path variables within ""
+rem        - Add progress information to 'analyze crash dump files'
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -54,9 +59,13 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 05-Sep-2022"
-set LMS_SCRIPT_BUILD=20220905
+set LMS_SCRIPT_VERSION="CheckLMS Script 12-Sep-2022"
+set LMS_SCRIPT_BUILD=20220912
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
+
+rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
+set CHECKLMS_SCRIPT_DRIVE=%~d0
+set CHECKLMS_SCRIPT_PATH=%~p0
 
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
@@ -2902,18 +2911,18 @@ if not defined LMS_SKIPWINDOWS (
 	if exist "%desktop%\WindowsUpdate.log" (
 		rem echo ---------------- %desktop%\WindowsUpdate.log:                                                                                                       >> !REPORT_LOGFILE! 2>&1
 		rem type "%desktop%\WindowsUpdate.log"                                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		robocopy.exe %desktop%  "!CHECKLMS_REPORT_LOG_PATH!" WindowsUpdate.log /MOV /NP /R:1 /W:1 /LOG+:!CHECKLMS_REPORT_LOG_PATH!\robocopy.log                      >> !REPORT_LOGFILE! 2>&1
-		echo See !CHECKLMS_REPORT_LOG_PATH!\WindowsUpdate.log                                                                                                        >> !REPORT_LOGFILE! 2>&1
+		robocopy.exe "%desktop%"  "!CHECKLMS_REPORT_LOG_PATH!" WindowsUpdate.log /MOV /NP /R:1 /W:1 /LOG+:!CHECKLMS_REPORT_LOG_PATH!\robocopy.log                    >> !REPORT_LOGFILE! 2>&1
+		echo See '!CHECKLMS_REPORT_LOG_PATH!\WindowsUpdate.log', moved from '%desktop%' [desktop]                                                                    >> !REPORT_LOGFILE! 2>&1
 	) else (
 		if exist "%DESKTOP_FOLDER%\WindowsUpdate.log" (
 			rem echo ---------------- %DESKTOP_FOLDER%\WindowsUpdate.log:                                                                                            >> !REPORT_LOGFILE! 2>&1
-			robocopy.exe %DESKTOP_FOLDER% "!CHECKLMS_REPORT_LOG_PATH!" WindowsUpdate.log /MOV /NP /R:1 /W:1 /LOG+:!CHECKLMS_REPORT_LOG_PATH!\robocopy.log            >> !REPORT_LOGFILE! 2>&1
-			echo See !CHECKLMS_REPORT_LOG_PATH!\WindowsUpdate.log                                                                                                    >> !REPORT_LOGFILE! 2>&1
+			robocopy.exe "%DESKTOP_FOLDER%" "!CHECKLMS_REPORT_LOG_PATH!" WindowsUpdate.log /MOV /NP /R:1 /W:1 /LOG+:!CHECKLMS_REPORT_LOG_PATH!\robocopy.log          >> !REPORT_LOGFILE! 2>&1
+			echo See '!CHECKLMS_REPORT_LOG_PATH!\WindowsUpdate.log', moved from '%DESKTOP_FOLDER%' [DESKTOP_FOLDER]                                                  >> !REPORT_LOGFILE! 2>&1
 		) else (
 			if exist "%userprofile%\desktop\WindowsUpdate.log" (
 				rem echo ---------------- %userprofile%\desktop\WindowsUpdate.log:                                                                                   >> !REPORT_LOGFILE! 2>&1
-				robocopy.exe %userprofile%\desktop "!CHECKLMS_REPORT_LOG_PATH!" WindowsUpdate.log /MOV /NP /R:1 /W:1 /LOG+:!CHECKLMS_REPORT_LOG_PATH!\robocopy.log   >> !REPORT_LOGFILE! 2>&1
-				echo See !CHECKLMS_REPORT_LOG_PATH!\WindowsUpdate.log                                                                                                >> !REPORT_LOGFILE! 2>&1
+				robocopy.exe "%userprofile%\desktop" "!CHECKLMS_REPORT_LOG_PATH!" WindowsUpdate.log /MOV /NP /R:1 /W:1 /LOG+:!CHECKLMS_REPORT_LOG_PATH!\robocopy.log >> !REPORT_LOGFILE! 2>&1
+				echo See '!CHECKLMS_REPORT_LOG_PATH!\WindowsUpdate.log', moved from '%userprofile%\desktop' [userprofile\desktop\]                                   >> !REPORT_LOGFILE! 2>&1
 			) else (
 				echo WARNING: The logfile 'WindowsUpdate.log' wasn't found; cannot copy it!                                                                          >> !REPORT_LOGFILE! 2>&1
 				echo          It wasn't found at: [desktop]='%desktop%' / [DESKTOP_FOLDER]='%DESKTOP_FOLDER%' / [userprofile\desktop\]='%userprofile%\desktop\'.     >> !REPORT_LOGFILE! 2>&1
@@ -3391,9 +3400,9 @@ echo ===========================================================================
 echo =   W I N D O W S   E R R O R   R E P O R T I N G  (W E R)                   =                                          >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
-echo ... get crash dump settings ...
-echo Get crash dump settings ...                                                                                             >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPWER (
+	echo ... get crash dump settings ...
+	echo Get crash dump settings ...                                                                                         >> !REPORT_LOGFILE! 2>&1
 	REM -- WER "DumpType" Registry Key
 	set KEY_NAME=HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps
 	set VALUE_NAME=DumpType
@@ -3402,17 +3411,20 @@ if not defined LMS_SKIPWER (
 	)
 	if defined WER_DUMPTYPE (
 		echo     Dump type is !WER_DUMPTYPE! [0=Custom dump, 1=Mini dump, 2=Full dump]
-		echo Dump type is !WER_DUMPTYPE! [0=Custom dump, 1=Mini dump, 2=Full dump]                                               >> !REPORT_LOGFILE! 2>&1
+		echo Dump type is !WER_DUMPTYPE! [0=Custom dump, 1=Mini dump, 2=Full dump]                                           >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo     Dump type is NOT DEFINED, crash dumps are NOT enabled.
 		echo     More information available on https://wiki.siemens.com/x/DiCNBg
-		echo Dump type is NOT DEFINED, crash dumps are NOT enabled.                                                              >> !REPORT_LOGFILE! 2>&1
-		echo More information available on https://wiki.siemens.com/x/DiCNBg                                                     >> !REPORT_LOGFILE! 2>&1
+		echo Dump type is NOT DEFINED, crash dumps are NOT enabled.                                                          >> !REPORT_LOGFILE! 2>&1
+		echo More information available on https://wiki.siemens.com/x/DiCNBg                                                 >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ... search crash dump files [*.dmp] [on c:\ only] ...
-	echo Search crash dump files [*.dmp] [on c:\ only]:                                                                        >> !REPORT_LOGFILE! 2>&1
+	echo Search crash dump files [*.dmp] [on c:\ only]:                                                                      >> !REPORT_LOGFILE! 2>&1
 	del !CHECKLMS_CRASH_DUMP_PATH!\CrashDumpFilesFound.txt >nul 2>&1
 	FOR /r C:\ %%X IN (*.dmp) DO if "%%~dpX" NEQ "!CHECKLMS_CRASH_DUMP_PATH!\" echo %%~dpnxX >> !CHECKLMS_CRASH_DUMP_PATH!\CrashDumpFilesFound.txt
+	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+	echo ... analyze crash dump files [*.dmp] ...
+	echo Analyze crash dump files [*.dmp]:                                                                                   >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!CHECKLMS_CRASH_DUMP_PATH!\CrashDumpFilesFound.txt" (
 		set CRASHDUMP_FILE_COUNT=0
 		set CRASHDUMP_FILE_COPY=0
@@ -3420,6 +3432,9 @@ if not defined LMS_SKIPWER (
 		FOR /F "eol=@ delims=@" %%i IN (!CHECKLMS_CRASH_DUMP_PATH!\CrashDumpFilesFound.txt) DO ( 
 			set name=%%~nxi
 			set /A CRASHDUMP_TOTAL_FILE_COUNT += 1
+
+			echo     analyze crash dump file: [!CRASHDUMP_TOTAL_FILE_COUNT!] !name!
+			echo     analyze crash dump file: [!CRASHDUMP_TOTAL_FILE_COUNT!] !name!  at !DATE! !TIME!                        >> !REPORT_LOGFILE! 2>&1
 
 			set "first=!name:~0,3!"
 			if /I "!first!" EQU "alm" (
@@ -5280,19 +5295,24 @@ if not defined LMS_SKIPFNP (
 	dir /S /A /X /4 /W "!ALLUSERSPROFILE!\FLEXnet"                                                                               >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1 
 	echo ... search trusted store files ...
-	echo Search trusted store files:                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Search trusted store files [on '!ALLUSERSPROFILE!\FLEXnet\']:                                                           >> !REPORT_LOGFILE! 2>&1
 	if exist "!ALLUSERSPROFILE!\FLEXnet\" (
 		del !CHECKLMS_REPORT_LOG_PATH!\tfsFilesFound.txt >nul 2>&1
-		cd !ALLUSERSPROFILE!\FLEXnet\
-		FOR /r %ALLUSERSPROFILE%\FLEXnet\ %%X IN (*tsf.data) DO echo %%~dpnxX >> !CHECKLMS_REPORT_LOG_PATH!\tfsFilesFound.txt
-		Type !CHECKLMS_REPORT_LOG_PATH!\tfsFilesFound.txt                                                                        >> !REPORT_LOGFILE! 2>&1
+		cd "!ALLUSERSPROFILE!\FLEXnet\"                                                                                          >> !REPORT_LOGFILE! 2>&1
+		rem do not replace % with !, this doesn't work within for /r
+		FOR /r "%ALLUSERSPROFILE%\FLEXnet\" %%X IN (*tsf.data) DO echo %%~dpnxX >> !CHECKLMS_REPORT_LOG_PATH!\tfsFilesFound.txt
+		if exist "!CHECKLMS_REPORT_LOG_PATH!\tfsFilesFound.txt" (
+			Type !CHECKLMS_REPORT_LOG_PATH!\tfsFilesFound.txt                                                                    >> !REPORT_LOGFILE! 2>&1
+		) else (
+			echo     No files found, the file '!CHECKLMS_REPORT_LOG_PATH!\tfsFilesFound.txt' doesn't exist.                      >> !REPORT_LOGFILE! 2>&1
+		)
 	) else (
 		echo     No files found, the directory '!ALLUSERSPROFILE!\FLEXnet\' doesn't exist.                                       >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 	echo ... decrypt Flexera logfiles ... 
-	echo Decrypt Flexera logfiles:                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Decrypt Flexera logfiles:                                                                                               >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_TSACTDIAGSSVR (
 		echo Call "!LMS_TSACTDIAGSSVR! --output !REPORT_LOG_PATH!\FlexeraDecryptedEventlog.log" to decrypt ....                  >> !REPORT_LOGFILE! 2>&1
 		"!LMS_TSACTDIAGSSVR!" --output !REPORT_LOG_PATH!\FlexeraDecryptedEventlog.log
@@ -5473,9 +5493,14 @@ if not defined LMS_SKIPFNP (
 	echo Search Flexera logfiles:                                                                                                >> !REPORT_LOGFILE! 2>&1
 	if exist "!ALLUSERSPROFILE!\FLEXnet\" (
 		del !CHECKLMS_REPORT_LOG_PATH!\FlexeraLogFilesFound.txt >nul 2>&1
-		cd !ALLUSERSPROFILE!\FLEXnet\
-		FOR /r %ALLUSERSPROFILE%\FLEXnet\ %%X IN (*.log) DO echo %%~dpnxX >> !CHECKLMS_REPORT_LOG_PATH!\FlexeraLogFilesFound.txt
-		Type !CHECKLMS_REPORT_LOG_PATH!\FlexeraLogFilesFound.txt                                                                 >> !REPORT_LOGFILE! 2>&1
+		cd "!ALLUSERSPROFILE!\FLEXnet\"
+		rem do not replace % with !, this doesn't work within for /r
+		FOR /r "%ALLUSERSPROFILE%\FLEXnet\" %%X IN (*.log) DO echo %%~dpnxX >> !CHECKLMS_REPORT_LOG_PATH!\FlexeraLogFilesFound.txt
+		if exist "!CHECKLMS_REPORT_LOG_PATH!\FlexeraLogFilesFound.txt" (
+			Type !CHECKLMS_REPORT_LOG_PATH!\FlexeraLogFilesFound.txt                                                             >> !REPORT_LOGFILE! 2>&1
+		) else (
+			echo     No Flexera logfiles found, the file '!CHECKLMS_REPORT_LOG_PATH!\FlexeraLogFilesFound.txt' doesn't exist.    >> !REPORT_LOGFILE! 2>&1
+		)
 		FOR %%X IN (!ALLUSERSPROFILE!\FLEXnet\*.log) DO ( 
 			echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1 
 			echo %%X                                                                                                             >> !REPORT_LOGFILE! 2>&1 
@@ -5483,7 +5508,7 @@ if not defined LMS_SKIPFNP (
 			copy %%X !CHECKLMS_REPORT_LOG_PATH!\                                                                                 >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
-		echo     No files found, the directory '!ALLUSERSPROFILE!\FLEXnet\' doesn't exist.                                       >> !REPORT_LOGFILE! 2>&1
+		echo     No Flexera logfiles found, the directory '!ALLUSERSPROFILE!\FLEXnet\' doesn't exist.                            >> !REPORT_LOGFILE! 2>&1
 	)
 ) else (
 	echo !SHOW_YELLOW!    SKIPPED FNP section. The script didn't execute the FNP commands. !SHOW_NORMAL!
@@ -6708,44 +6733,43 @@ if not defined LMS_SKIPSETUP (
 		copy !temp!\setup_LMS_x64.log !CHECKLMS_SETUP_LOG_PATH!\                                                             >> !REPORT_LOGFILE! 2>&1
 		echo --- File automatically copied from !temp!\setup_LMS_x64.log to !CHECKLMS_SETUP_LOG_PATH!\ ---  >> !CHECKLMS_SETUP_LOG_PATH!\setup_LMS_x64.log 2>&1
 	) else (
-		echo     !temp!\setup_LMS_x64.log not found.                                                                         >> !REPORT_LOGFILE! 2>&1
+		echo     '!temp!\setup_LMS_x64.log' not found.                                                                       >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\" (
 		IF EXIST "!ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log" (
-			echo !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log found.                                                                   >> !REPORT_LOGFILE! 2>&1
+			echo '!ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log' found.                                                                 >> !REPORT_LOGFILE! 2>&1
 			copy !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log !CHECKLMS_SETUP_LOG_PATH!\                                               >> !REPORT_LOGFILE! 2>&1
 			echo --- File automatically copied from !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log to !CHECKLMS_SETUP_LOG_PATH!\ ---  >> !CHECKLMS_SETUP_LOG_PATH!\LMSSetupIS.log 2>&1
 		) else (
-			echo     !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log not found.                                                           >> !REPORT_LOGFILE! 2>&1
+			echo     '!ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupIS.log' not found.                                                         >> !REPORT_LOGFILE! 2>&1
 		)
 		echo -------------------------------------------------------                                                                                                                    >> !REPORT_LOGFILE! 2>&1
 		IF EXIST "!ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log" (
-			echo !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log found.                                                                  >> !REPORT_LOGFILE! 2>&1
+			echo '!ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log' found.                                                                >> !REPORT_LOGFILE! 2>&1
 			copy !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log !CHECKLMS_SETUP_LOG_PATH!\                                              >> !REPORT_LOGFILE! 2>&1
 			echo --- File automatically copied from !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log to !CHECKLMS_SETUP_LOG_PATH!\ ---  >> !CHECKLMS_SETUP_LOG_PATH!\LMSSetupMSI.log 2>&1
 		) else (
-			echo      !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log not found.                                                         >> !REPORT_LOGFILE! 2>&1
+			echo      '!ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\LMSSetupMSI.log' not found.                                                       >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
-		rem echo     No GMS installation! Folder !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\ not found.
-		echo No GMS installation! Folder !ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\ not found.                                                     >> !REPORT_LOGFILE! 2>&1
+		echo     No GMS installation. Folder '!ALLUSERSPROFILE!\Siemens\GMS\InstallerFramework\GMS_Prerequisites_Install_Log\' not found.                                               >> !REPORT_LOGFILE! 2>&1
 	)	
 	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log" (
-		echo !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log found.                                                                                                  >> !REPORT_LOGFILE! 2>&1
+		echo '!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log' found.                                                                                                >> !REPORT_LOGFILE! 2>&1
 		copy !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log !CHECKLMS_SETUP_LOG_PATH!\                                                                              >> !REPORT_LOGFILE! 2>&1
 		echo --- File automatically copied from !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log to !CHECKLMS_SETUP_LOG_PATH!\ ---   >> !CHECKLMS_SETUP_LOG_PATH!\LMSSetupIS.log 2>&1
 	) else (
-		echo     !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log not found.                                                                                          >> !REPORT_LOGFILE! 2>&1
+		echo     '!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupIS.log' not found.                                                                                        >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log" (
-		echo !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log found.                                                                                                 >> !REPORT_LOGFILE! 2>&1
+		echo '!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log' found.                                                                                               >> !REPORT_LOGFILE! 2>&1
 		copy !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log !CHECKLMS_SETUP_LOG_PATH!\                                                                             >> !REPORT_LOGFILE! 2>&1
 		echo --- File automatically copied from !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log to !CHECKLMS_SETUP_LOG_PATH!\ ---  >> !CHECKLMS_SETUP_LOG_PATH!\LMSSetupMSI.log 2>&1
 	) else (
-		echo     !ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log not found.                                                                                         >> !REPORT_LOGFILE! 2>&1
+		echo     '!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\LMSSetupMSI.log' not found.                                                                                       >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!ALLUSERSPROFILE!\Siemens\Automation\Logfiles\Setup\Reports" (
@@ -7121,18 +7145,22 @@ if not defined LMS_SKIPWINEVENT (
 	echo     see !CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_full.txt                                                                                                                                               >> !REPORT_LOGFILE! 2>&1
 	WEVTUtil query-events System /count:%LOG_EVENTLOG_FULL_EVENTS% /rd:true /format:text > !CHECKLMS_REPORT_LOG_PATH!\eventlog_sys_full.txt 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                                                                                                            >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
-	rem copied from UCMS-LogcollectorDWP.ini
-	echo Several event viewer exports made [based on UCMS-LogcollectorDWP.ini] ...                                                                                             >> !REPORT_LOGFILE! 2>&1
-	wevtutil epl System         "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_System.evtx"      /ow:true /q:"*[System[TimeCreated[timediff(@SystemTime) <= 1296000000]]]"    >> !REPORT_LOGFILE! 2>&1
-	wevtutil epl Application    "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_Application.evtx" /ow:true /q:"*[System[TimeCreated[timediff(@SystemTime) <= 1296000000]]]"    >> !REPORT_LOGFILE! 2>&1
-	wevtutil epl Microsoft-Windows-NetworkProfile/Operational       "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_NetworkProfile.evtx" /ow:true                              >> !REPORT_LOGFILE! 2>&1
-	wevtutil epl Microsoft-Windows-NTLM/Operational                 "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_NTLM.evtx" /ow:true                                        >> !REPORT_LOGFILE! 2>&1
-	wevtutil epl Microsoft-Windows-WindowsUpdateClient/Operational  "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_WindowsUpdateClient.evtx" /ow:true                         >> !REPORT_LOGFILE! 2>&1
-	wevtutil epl Microsoft-Windows-Wired-AutoConfig/Operational     "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_Wired-AutoConfig.evtx" /ow:true                            >> !REPORT_LOGFILE! 2>&1
-	wevtutil epl Microsoft-Windows-WLAN-AutoConfig/Operational      "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_WLAN-AutoConfig.evtx" /ow:true                             >> !REPORT_LOGFILE! 2>&1
-	wevtutil epl "Microsoft-Windows-Folder Redirection/Operational" "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_FolderRedirection.evtx" /ow:true                           >> !REPORT_LOGFILE! 2>&1
-	echo     see folder '!CHECKLMS_REPORT_LOG_PATH!\UCMS\' for more details.                                                                                                   >> !REPORT_LOGFILE! 2>&1
+	if defined LMS_EXTENDED_CONTENT (
+		echo -------------------------------------------------------                                                                                                               >> !REPORT_LOGFILE! 2>&1
+		rem copied from UCMS-LogcollectorDWP.ini
+		echo Several event viewer exports made [based on UCMS-LogcollectorDWP.ini] ...                                                                                             >> !REPORT_LOGFILE! 2>&1
+		wevtutil epl System         "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_System.evtx"      /ow:true /q:"*[System[TimeCreated[timediff(@SystemTime) <= 1296000000]]]"    >> !REPORT_LOGFILE! 2>&1
+		wevtutil epl Application    "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_Application.evtx" /ow:true /q:"*[System[TimeCreated[timediff(@SystemTime) <= 1296000000]]]"    >> !REPORT_LOGFILE! 2>&1
+		wevtutil epl Microsoft-Windows-NetworkProfile/Operational       "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_NetworkProfile.evtx" /ow:true                              >> !REPORT_LOGFILE! 2>&1
+		wevtutil epl Microsoft-Windows-NTLM/Operational                 "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_NTLM.evtx" /ow:true                                        >> !REPORT_LOGFILE! 2>&1
+		wevtutil epl Microsoft-Windows-WindowsUpdateClient/Operational  "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_WindowsUpdateClient.evtx" /ow:true                         >> !REPORT_LOGFILE! 2>&1
+		wevtutil epl Microsoft-Windows-Wired-AutoConfig/Operational     "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_Wired-AutoConfig.evtx" /ow:true                            >> !REPORT_LOGFILE! 2>&1
+		wevtutil epl Microsoft-Windows-WLAN-AutoConfig/Operational      "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_WLAN-AutoConfig.evtx" /ow:true                             >> !REPORT_LOGFILE! 2>&1
+		wevtutil epl "Microsoft-Windows-Folder Redirection/Operational" "!CHECKLMS_REPORT_LOG_PATH!\UCMS\!COMPUTERNAME!_FolderRedirection.evtx" /ow:true                           >> !REPORT_LOGFILE! 2>&1
+		echo     see folder '!CHECKLMS_REPORT_LOG_PATH!\UCMS\' for more details.                                                                                                   >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo Collection of event logs [based on UCMS-LogcollectorDWP.ini] skipped, start script with option '/extend' to enable extended content.                                  >> !REPORT_LOGFILE! 2>&1
+	)
 ) else (
 	rem LMS_SKIPWINEVENT
 	echo !SHOW_YELLOW!    SKIPPED Windows Events section. The script didn't execute the Windows Events commands. !SHOW_NORMAL!
