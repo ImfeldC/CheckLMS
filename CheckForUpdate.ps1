@@ -21,7 +21,8 @@ param(
 # '20220905': Add new command line parameters: productversion & productcode
 #             Add new command line option: DownloadSoftware (default: 0), if set it downloads the software
 #             Adjust the message output, display most only when 'Verbose' option is set
-$scriptVersion = '20220905'
+# '20220905': Fix issue in case product version is not available.
+$scriptVersion = '20220914'
 
 
 # Function to print-out messages, including <date> and <time> information.
@@ -118,24 +119,27 @@ if ( $Verbose ) {
 Try {
 	$response = Invoke-RestMethod $OSD_APIURL -Method 'POST' -Headers $headers -Body $body
 } Catch {
-	Log-Message "Error Response ..."
-	Log-Message "StatusCode:" $_.Exception.Response.StatusCode.value__
-	Log-Message "StatusDescription:" $_.Exception.Response.StatusDescription
 	$ExitCode=$_.Exception.Response.StatusCode.value__
+	Log-Message "Error Response ... Error Code: $ExitCode"
+	#Log-Message "StatusCode: $_.Exception.Response.StatusCode.value__"
+	#Log-Message "StatusDescription: $_.Exception.Response.StatusDescription"
     if($_.ErrorDetails.Message) {
-        Log-Message $_.ErrorDetails.Message
+        Log-Message "$_.ErrorDetails.Message"
     } else {
-        Log-Message $_
+        Log-Message "$_"
     }
 	# read addtional data, see https://github.com/MicrosoftDocs/PowerShell-Docs/issues/4456
 	$reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
 	$reader.BaseStream.Position = 0
 	$reader.DiscardBufferedData()
-	$reader.ReadToEnd() | ConvertFrom-Json
+	$reader.ReadToEnd() 
 }
+
 if( $Verbose ) {
-	Log-Message "Message Response ..."
-	$response | ConvertTo-Json -depth 100
+	if( $response ) {
+		Log-Message "Message Response ..."
+		$response | ConvertTo-Json -depth 100
+	}
 }
 
 if( $DownloadSoftware ) {
@@ -165,6 +169,8 @@ if( $DownloadSoftware ) {
 				Start-BitsTransfer -Source "$finalurl" -Destination "$Path"
 			}
 		}	
+	} else {
+		Log-Message "Skip download, no valid response received ..."
 	}
 }
 
@@ -197,20 +203,20 @@ if (-not $SkipSiemensSoftware) {
 	Try {
 		$response = Invoke-RestMethod $OSD_APIURL -Method 'POST' -Headers $headers -Body $body
 	} Catch {
-		Log-Message "Error Response ..."
-		Log-Message "StatusCode:" $_.Exception.Response.StatusCode.value__
-		Log-Message "StatusDescription:" $_.Exception.Response.StatusDescription
 		$ExitCode=$_.Exception.Response.StatusCode.value__
+		Log-Message "Error Response (after sending Siemens Software) ... Error Code: $ExitCode"
+		#Log-Message "StatusCode: $_.Exception.Response.StatusCode.value__"
+		#Log-Message "StatusDescription: $_.Exception.Response.StatusDescription"
 		if($_.ErrorDetails.Message) {
-			Log-Message $_.ErrorDetails.Message
+			Log-Message "$_.ErrorDetails.Message"
 		} else {
-			Log-Message $_
+			Log-Message "$_"
 		}
 		# read addtional data, see https://github.com/MicrosoftDocs/PowerShell-Docs/issues/4456
 		$reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
 		$reader.BaseStream.Position = 0
 		$reader.DiscardBufferedData()
-		$reader.ReadToEnd() | ConvertFrom-Json
+		$reader.ReadToEnd() 
 	}
 	if ( $Verbose ) {
 		Log-Message "Message Response (after sending Siemens Software) ..."
