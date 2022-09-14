@@ -17,6 +17,8 @@ rem        - Adjust 'No GMS installation' message; see '2088686: Wrong message i
 rem        - Move 'Several event viewer exports made [based on UCMS-LogcollectorDWP.ini]' into extended section, only executed when /extend option is set.
 rem        - Adjust 'Retrieve Windows Update Log' funtion, pass robocopy path variables within ""
 rem        - Add progress information to 'analyze crash dump files'
+rem     13-Sep-2022:
+rem        - Add more output in case dongel driver files do not exist. See 'Defect 1570582'
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -59,8 +61,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 12-Sep-2022"
-set LMS_SCRIPT_BUILD=20220912
+set LMS_SCRIPT_VERSION="CheckLMS Script 13-Sep-2022"
+set LMS_SCRIPT_BUILD=20220913
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -3865,57 +3867,67 @@ if not defined LMS_SKIPLMS (
 	IF EXIST C:\ccmcache\ (
 		rem search for dongle drivers downloaded by ATOS on C:\ccmcache\
 		rem NOTE: the ccmcache has an overall size of xx GB. If this size is full, oldest downloaded packages will be erased automatically
-		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-		echo Dongle Driver: Search on C:\ccmcache\ for drivers deliverd by ATOS.                                                 >> !REPORT_LOGFILE! 2>&1
-		FOR /r C:\ccmcache %%X IN (HASP*) DO dir %%~dpX                                                                          >> !REPORT_LOGFILE! 2>&1
+		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Dongle Driver: Search on C:\ccmcache\ for drivers deliverd by ATOS.                                             >> !REPORT_LOGFILE! 2>&1
+		FOR /r C:\ccmcache %%X IN (HASP*) DO dir %%~dpX                                                                      >> !REPORT_LOGFILE! 2>&1
 	)
 	IF EXIST C:\ccmcache\ (
 		rem search for LMS setup downloaded by ATOS on C:\ccmcache\
 		rem NOTE: the ccmcache has an overall size of xx GB. If this size is full, oldest downloaded packages will be erased automatically
-		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-		echo LMS Setup: Search on C:\ccmcache\ for drivers deliverd by ATOS [via Software Center].                               >> !REPORT_LOGFILE! 2>&1
-		FOR /r C:\ccmcache %%X IN (*.msi) DO if "%%~nxX"=="Siemens License Management.msi" dir %%~dpX                            >> !REPORT_LOGFILE! 2>&1
+		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
+		echo LMS Setup: Search on C:\ccmcache\ for drivers deliverd by ATOS [via Software Center].                           >> !REPORT_LOGFILE! 2>&1
+		FOR /r C:\ccmcache %%X IN (*.msi) DO if "%%~nxX"=="Siemens License Management.msi" dir %%~dpX                        >> !REPORT_LOGFILE! 2>&1
 	)
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	echo LMS_HASPDRIVER_FOLDER='!LMS_HASPDRIVER_FOLDER!'                                                                         >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+	echo LMS_HASPDRIVER_FOLDER='!LMS_HASPDRIVER_FOLDER!'                                                                     >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!LMS_HASPDRIVER_FOLDER!\lic_names.dat" (
-		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-		echo !LMS_HASPDRIVER_FOLDER!\lic_names.dat:                                                                              >> !REPORT_LOGFILE! 2>&1
-		type "!LMS_HASPDRIVER_FOLDER!\\lic_names.dat"                                                                            >> !REPORT_LOGFILE! 2>&1
+		echo !LMS_HASPDRIVER_FOLDER!\lic_names.dat:                                                                          >> !REPORT_LOGFILE! 2>&1
+		type "!LMS_HASPDRIVER_FOLDER!\\lic_names.dat"                                                                        >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo     File '!LMS_HASPDRIVER_FOLDER!\lic_names.dat' does not exist.                                                >> !REPORT_LOGFILE! 2>&1
 	)
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!LMS_HASPDRIVER_FOLDER!\hasplm.ini" (
-		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-		echo !LMS_HASPDRIVER_FOLDER!\hasplm.ini:                                                                                 >> !REPORT_LOGFILE! 2>&1
-		type "!LMS_HASPDRIVER_FOLDER!\\hasplm.ini"                                                                               >> !REPORT_LOGFILE! 2>&1
+		echo !LMS_HASPDRIVER_FOLDER!\hasplm.ini:                                                                             >> !REPORT_LOGFILE! 2>&1
+		type "!LMS_HASPDRIVER_FOLDER!\\hasplm.ini"                                                                           >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo     File '!LMS_HASPDRIVER_FOLDER!\hasplm.ini' does not exist.                                                   >> !REPORT_LOGFILE! 2>&1
 	)
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!LMS_HASPDRIVER_FOLDER!\hasplm.pid" (
-		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-		echo !LMS_HASPDRIVER_FOLDER!\hasplm.pid:                                                                                 >> !REPORT_LOGFILE! 2>&1
-		type "!LMS_HASPDRIVER_FOLDER!\\hasplm.pid"                                                                               >> !REPORT_LOGFILE! 2>&1
+		echo !LMS_HASPDRIVER_FOLDER!\hasplm.pid:                                                                             >> !REPORT_LOGFILE! 2>&1
+		type "!LMS_HASPDRIVER_FOLDER!\\hasplm.pid"                                                                           >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo     File '!LMS_HASPDRIVER_FOLDER!\hasplm.pid' does not exist.                                                   >> !REPORT_LOGFILE! 2>&1
 	)
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!LMS_HASPDRIVER_FOLDER!\error.log" (
-		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-		echo '!LMS_HASPDRIVER_FOLDER!\error.log', copied to '!CHECKLMS_REPORT_LOG_PATH!\hasp_error.log':                         >> !REPORT_LOGFILE! 2>&1
-		copy /Y "!LMS_HASPDRIVER_FOLDER!\error.log" "!CHECKLMS_REPORT_LOG_PATH!\hasp_error.log"                                  >> !REPORT_LOGFILE! 2>&1
+		echo '!LMS_HASPDRIVER_FOLDER!\error.log', copied to '!CHECKLMS_REPORT_LOG_PATH!\hasp_error.log':                     >> !REPORT_LOGFILE! 2>&1
+		copy /Y "!LMS_HASPDRIVER_FOLDER!\error.log" "!CHECKLMS_REPORT_LOG_PATH!\hasp_error.log"                              >> !REPORT_LOGFILE! 2>&1
 		echo --- File automatically copied from !LMS_HASPDRIVER_FOLDER!\error.log to !CHECKLMS_REPORT_LOG_PATH!\hasp_error.log --- >> !CHECKLMS_REPORT_LOG_PATH!\hasp_error.log 2>&1
-		powershell -command "& {Get-Content '!LMS_HASPDRIVER_FOLDER!\error.log' | Select-Object -last !LOG_FILE_SNIPPET!}"       >> !REPORT_LOGFILE! 2>&1
+		powershell -command "& {Get-Content '!LMS_HASPDRIVER_FOLDER!\error.log' | Select-Object -last !LOG_FILE_SNIPPET!}"   >> !REPORT_LOGFILE! 2>&1
 		rem type "!LMS_HASPDRIVER_FOLDER!\\error.log"                                                                                >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo     File '!LMS_HASPDRIVER_FOLDER!\error.log' does not exist.                                                    >> !REPORT_LOGFILE! 2>&1
 	)
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!LMS_HASPDRIVER_FOLDER!\access.log" (
-		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-		echo '!LMS_HASPDRIVER_FOLDER!\access.log', copied to '!CHECKLMS_REPORT_LOG_PATH!\hasp_access.log':                       >> !REPORT_LOGFILE! 2>&1
-		copy /Y "!LMS_HASPDRIVER_FOLDER!\access.log" "!CHECKLMS_REPORT_LOG_PATH!\hasp_access.log"                                >> !REPORT_LOGFILE! 2>&1
+		echo '!LMS_HASPDRIVER_FOLDER!\access.log', copied to '!CHECKLMS_REPORT_LOG_PATH!\hasp_access.log':                   >> !REPORT_LOGFILE! 2>&1
+		copy /Y "!LMS_HASPDRIVER_FOLDER!\access.log" "!CHECKLMS_REPORT_LOG_PATH!\hasp_access.log"                            >> !REPORT_LOGFILE! 2>&1
 		echo --- File automatically copied from !LMS_HASPDRIVER_FOLDER!\access.log to !CHECKLMS_REPORT_LOG_PATH!\hasp_access.log --- >> !CHECKLMS_REPORT_LOG_PATH!\hasp_access.log 2>&1
-		powershell -command "& {Get-Content '!LMS_HASPDRIVER_FOLDER!\access.log' | Select-Object -last !LOG_FILE_SNIPPET!}"      >> !REPORT_LOGFILE! 2>&1
+		powershell -command "& {Get-Content '!LMS_HASPDRIVER_FOLDER!\access.log' | Select-Object -last !LOG_FILE_SNIPPET!}"  >> !REPORT_LOGFILE! 2>&1
 		rem type "!LMS_HASPDRIVER_FOLDER!\\access.log"                                                                                >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo     File '!LMS_HASPDRIVER_FOLDER!\access.log' does not exist.                                                   >> !REPORT_LOGFILE! 2>&1
 	)
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	echo LMS_V2C_FOLDER='!LMS_V2C_FOLDER!' / LMS_V2C_FILE='!LMS_V2C_FILE!'                                                       >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+	echo LMS_V2C_FOLDER='!LMS_V2C_FOLDER!' / LMS_V2C_FILE='!LMS_V2C_FILE!'                                                   >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!LMS_V2C_FOLDER!\!LMS_V2C_FILE!" (
-		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-		echo !LMS_V2C_FOLDER!\!LMS_V2C_FILE!:                                                                                    >> !REPORT_LOGFILE! 2>&1
-		type "!LMS_V2C_FOLDER!\\!LMS_V2C_FILE!"                                                                                  >> !REPORT_LOGFILE! 2>&1
-		echo .                                                                                                                   >> !REPORT_LOGFILE! 2>&1
+		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
+		echo !LMS_V2C_FOLDER!\!LMS_V2C_FILE!:                                                                                >> !REPORT_LOGFILE! 2>&1
+		type "!LMS_V2C_FOLDER!\\!LMS_V2C_FILE!"                                                                              >> !REPORT_LOGFILE! 2>&1
+		echo .                                                                                                               >> !REPORT_LOGFILE! 2>&1
 	) else (
 		set LMS_V2C_FILE_NOT_INSTALLED=1
 		if defined LMS_V2C_FILE_NOT_INSTALLED (
@@ -3923,23 +3935,23 @@ if not defined LMS_SKIPLMS (
 			echo     ERROR: There is NO vendor file '!LMS_V2C_FILE! installed on the system. Pls install correct dongle driver.  >> !REPORT_LOGFILE! 2>&1
 		)
 	)
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	echo Display the connected dongles, with LmuTool.exe /DONGLES                                                                >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Display the connected dongles, with LmuTool.exe /DONGLES                                                            >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_LMUTOOL (
 		if /I !LMS_BUILD_VERSION! NEQ 721 (
 			if /I !LMS_BUILD_VERSION! NEQ 610 (
-				"!LMS_LMUTOOL!" /DONGLES                                                                                         >> !REPORT_LOGFILE! 2>&1
+				"!LMS_LMUTOOL!" /DONGLES                                                                                     >> !REPORT_LOGFILE! 2>&1
 			) else (
-				echo     This operation is not available with LMS !LMS_VERSION!, cannot perform operation.                       >> !REPORT_LOGFILE! 2>&1 
+				echo     This operation is not available with LMS !LMS_VERSION!, cannot perform operation.                   >> !REPORT_LOGFILE! 2>&1 
 			)
 		) else (
-			echo     This operation is not available with LMS !LMS_VERSION!, cannot perform operation.                           >> !REPORT_LOGFILE! 2>&1 
+			echo     This operation is not available with LMS !LMS_VERSION!, cannot perform operation.                       >> !REPORT_LOGFILE! 2>&1 
 		)
 	) else (
-		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> !REPORT_LOGFILE! 2>&1 
+		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                  >> !REPORT_LOGFILE! 2>&1 
 	)
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
 	rem Retrieve diagnostic information from dongle driver "Sentinel LDK License Manager"
 	rem Out of the available "pages" - see below - only diagnostics.html can be retrieved programmatically
 	rem Diagnostic:     about.html, diag.html, diagnostics.html, log.html
