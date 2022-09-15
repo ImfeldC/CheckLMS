@@ -83,7 +83,7 @@ $OS_MAJ_VERSION = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\Cu
 $OS_MIN_VERSION = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'CurrentMinorVersionNumber' | select -expand CurrentMinorVersionNumber
 $OS_BUILD_NUM = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'CurrentBuildNumber' | select -expand CurrentBuildNumber
 
-# retrieve product information ...
+# retrieve operating system information ...
 if ( $operatingsystem -eq '' )
 {
 	#determine correct OS string, and map to https://wiki.siemens.com/display/en/OSD+Types
@@ -94,8 +94,11 @@ if ( $operatingsystem -eq '' )
 		$operatingsystem = "Windows11"
 	} elseif ( $OS_PRODUCTNAME.Contains("Windows 10") ) { 
 		$operatingsystem = "Windows10"
+	} elseif ( $OS_PRODUCTNAME.Contains("Windows Server 2022") ) { 
+		$operatingsystem = "WindowsServer2022"
 	} elseif ( $OS_PRODUCTNAME.Contains("Windows Server 2019") ) { 
-		$operatingsystem = "WindowsServer2019"
+		# this is the only exception, where OS identifier contains spaces
+		$operatingsystem = "Windows Server 2019"
 	} elseif ( $OS_PRODUCTNAME.Contains("Windows Server 2016") ) { 
 		$operatingsystem = "WindowsServer2016"
 	} elseif ( $OS_PRODUCTNAME.Contains("Windows Server 2012 R2") ) { 
