@@ -1,6 +1,6 @@
 #region Parameters
 param(
-	[string]$operatingsystem = 'Windows10',
+	[string]$operatingsystem = '',
 	[string]$language = 'en-us',
 	[bool]$SkipSiemensSoftware = $true,
 	[bool]$DownloadSoftware = $false,
@@ -22,7 +22,9 @@ param(
 #             Add new command line option: DownloadSoftware (default: 0), if set it downloads the software
 #             Adjust the message output, display most only when 'Verbose' option is set
 # '20220905': Fix issue in case product version is not available.
-$scriptVersion = '20220914'
+# '20220915': Add $OS_BUILD_NUM to request
+#             Add mapping for OS identifiers, see https://wiki.siemens.com/display/en/Points+to+consider+when+configuring+update+in+OSD & https://wiki.siemens.com/display/en/OSD+Types
+$scriptVersion = '20220915'
 
 
 # Function to print-out messages, including <date> and <time> information.
@@ -79,6 +81,35 @@ $OS_PRODUCTNAME = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\Cu
 $OS_VERSION = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'CurrentVersion' | select -expand CurrentVersion
 $OS_MAJ_VERSION = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'CurrentMajorVersionNumber' | select -expand CurrentMajorVersionNumber
 $OS_MIN_VERSION = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'CurrentMinorVersionNumber' | select -expand CurrentMinorVersionNumber
+$OS_BUILD_NUM = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'CurrentBuildNumber' | select -expand CurrentBuildNumber
+
+# retrieve product information ...
+if ( $operatingsystem -eq '' )
+{
+	#determine correct OS string, and map to https://wiki.siemens.com/display/en/OSD+Types
+	if ( $OS_BUILD_NUM -eq 22000 ) {
+		# For Windows 11, the ProductName is not unique so instead of comparing the ProductName , we get the CurrentBuildNumber from registry: HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\CurrentBuildNumber  and compare it.
+		# The CurrentBuildNumber for Windows 11 is 22000
+		# For more information on Windows 11 refer the release notes:  https://docs.microsoft.com/en-us/windows/release-health/windows11-release-information
+		$operatingsystem = "Windows11"
+	} elseif ( $OS_PRODUCTNAME.Contains("Windows 10") ) { 
+		$operatingsystem = "Windows10"
+	} elseif ( $OS_PRODUCTNAME.Contains("Windows Server 2019") ) { 
+		$operatingsystem = "WindowsServer2019"
+	} elseif ( $OS_PRODUCTNAME.Contains("Windows Server 2016") ) { 
+		$operatingsystem = "WindowsServer2016"
+	} elseif ( $OS_PRODUCTNAME.Contains("Windows Server 2012 R2") ) { 
+		$operatingsystem = "WindowsServer2012R2"
+	} elseif ( $OS_PRODUCTNAME.Contains("Windows Server 2012") ) { 
+		$operatingsystem = "WindowsServer2012"
+	} elseif ( $OS_PRODUCTNAME.Contains("Windows 8.1") ) { 
+		$operatingsystem = "Windows8.1"
+	} elseif ( $OS_PRODUCTNAME.Contains("Windows 7") ) { 
+		$operatingsystem = "Windows7"
+	} elseif ( $operatingsystem -eq '' ) {
+		$operatingsystem = $OS_PRODUCTNAME
+	}
+}
 
 # Determine hypervisor (using SIEMBT logfile)
 $A = Get-ChildItem -Path C:\ProgramData\Siemens\LMS\Logs\SIEMBT.log | Select-String -Pattern 'Running on Hypervisor:(.+)'
@@ -109,6 +140,7 @@ $body = "{
         `"OS_VERSION`":`"$OS_VERSION`",
         `"OS_MAJ_VERSION`":`"$OS_MAJ_VERSION`",
         `"OS_MIN_VERSION`":`"$OS_MIN_VERSION`",
+        `"OS_BUILD_NUM`":`"$OS_BUILD_NUM`",
         `"OS_MACHINEGUID`":`"$OS_MACHINEGUID`"
     }
 }"
