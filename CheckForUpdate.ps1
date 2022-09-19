@@ -24,7 +24,15 @@ param(
 # '20220905': Fix issue in case product version is not available.
 # '20220915': Add $OS_BUILD_NUM to request
 #             Add mapping for OS identifiers, see https://wiki.siemens.com/display/en/Points+to+consider+when+configuring+update+in+OSD & https://wiki.siemens.com/display/en/OSD+Types
-$scriptVersion = '20220915'
+# '20220919': Implement automatimac retrieval for SSU and LMS for product code and version. The same script can be used for both products.
+$scriptVersion = '20220919'
+
+$global:ExitCode=0
+# Old API URL -> $OSD_APIURL="https://www.automation.siemens.com/softwareupdater/public/api/updates"
+$OSD_APIURL="https://osd-ak.automation.siemens.com/softwareupdater/public/api/updates"
+
+$headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
+$headers.Add("Content-Type", "application/json")
 
 
 # Function to print-out messages, including <date> and <time> information.
@@ -41,32 +49,148 @@ function Log-Message
     Write-Output ("[$scriptName/$scriptVersion] {0} - {1}" -f (Get-Date), $LogMessage)
 }
 
-Log-Message "Script Execution started ..."
+# Function to send request to OSD server
+function Invoke-OSDRequest
+{
+    [CmdletBinding()]
+    Param
+    (
+        [Parameter(Mandatory=$true, Position=0)]
+        [string]$body,
+        [Parameter(Mandatory=$true, Position=1)]
+        [string]$header
+    )
+
+	if ( $Verbose ) {
+		Log-Message "Message Body ... `n'$body'"
+	}
+	Try {
+		$response = Invoke-RestMethod $OSD_APIURL -Method 'POST' -Headers $headers -Body $body
+	} Catch {
+		$global:ExitCode=$_.Exception.Response.StatusCode.value__
+		Log-Message "Error Response ... Error Code: $ExitCode"
+		#Log-Message "StatusCode: $_.Exception.Response.StatusCode.value__"
+		#Log-Message "StatusDescription: $_.Exception.Response.StatusDescription"
+		if($_.ErrorDetails.Message) {
+			Log-Message "$_.ErrorDetails.Message"
+		} else {
+			Log-Message "$_"
+		}
+		# read addtional data, see https://github.com/MicrosoftDocs/PowerShell-Docs/issues/4456
+		$reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
+		$reader.BaseStream.Position = 0
+		$reader.DiscardBufferedData()
+		$reader.ReadToEnd() 
+	}
+	if ( $Verbose ) {
+		if( $response ) {
+			Log-Message "Message Response ..."
+			$response | ConvertTo-Json -depth 100
+		}
+	}
+}
+
+#Function to read installed software incl. product GUID
+function Get-InstalledSoftware {
+    <#
+    .SYNOPSIS
+        Retrieves a list of all software installed
+    .EXAMPLE
+        Get-InstalledSoftware
+    .PARAMETER Name
+        The software title you'd like to limit the query to.
+    #>
+    [OutputType([System.Management.Automation.PSObject])]
+    [CmdletBinding()]
+    param (
+        [Parameter()]
+        [ValidateNotNullOrEmpty()]
+        [string]$Name
+    )
+    $UninstallKeys = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall", "HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
+    $null = New-PSDrive -Name HKU -PSProvider Registry -Root Registry::HKEY_USERS
+    $UninstallKeys += Get-ChildItem HKU: -ErrorAction SilentlyContinue | Where-Object { $_.Name -match 'S-\d-\d+-(\d+-){1,14}\d+$' } | ForEach-Object { "HKU:\$($_.PSChildName)\Software\Microsoft\Windows\CurrentVersion\Uninstall" }
+    if (-not $UninstallKeys) {
+        Write-Verbose -Message 'No software registry keys found'
+    } else {
+        foreach ($UninstallKey in $UninstallKeys) {
+            if ($PSBoundParameters.ContainsKey('Name')) {
+                $WhereBlock = { ($_.PSChildName -match '^{[A-Z0-9]{8}-([A-Z0-9]{4}-){3}[A-Z0-9]{12}}$') -and ($_.GetValue('DisplayName') -like "$Name*") -and ($_.GetValue('DisplayVersion').Substring(0, ($_.GetValue('DisplayVersion')).IndexOf('.')) -gt 1.3)}
+            } else {
+                $WhereBlock = { ($_.PSChildName -match '^{[A-Z0-9]{8}-([A-Z0-9]{4}-){3}[A-Z0-9]{12}}$') -and ($_.GetValue('DisplayName'))}
+            }
+            $gciParams = @{
+                Path        = $UninstallKey
+                ErrorAction = 'SilentlyContinue'
+            }
+            $selectProperties =
+            @{
+                n='GUID'; e={$_.PSChildName}
+            }
+            Get-ChildItem @gciParams | Where $WhereBlock | Select-Object -Property $selectProperties
+        }
+    }
+}
+
+
+
+# start logging
+Log-Message "Script Execution started from path '$PSScriptRoot' ..."
 if( $Verbose ) {
 	Log-Message "Parameters: operatingsystem=$operatingsystem / language=$language / SkipSiemensSoftware=$SkipSiemensSoftware / DownloadSoftware=$DownloadSoftware / Verbose=$Verbose / productversion=$productversion / productcode=$productcode"
 }
-
-$ExitCode=0
-# Old API URL -> $OSD_APIURL="https://www.automation.siemens.com/softwareupdater/public/api/updates"
-$OSD_APIURL="https://osd-ak.automation.siemens.com/softwareupdater/public/api/updates"
-
-$headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
-$headers.Add("Content-Type", "application/json")
 
 # set client type ..
 $clientType = 'CheckForUpdate'
 $clientVersion = $scriptVersion
 
-# retrieve product information ...
+# determine for which product this script is running ...
+if( $PSScriptRoot.Contains("\Siemens\LMS\") ) { 
+	# retrieve LMS client info ....
+	$lmsproductcode = get-lms -ProductCode | select -expand Guid
+	$lmsproductversion = get-lms -LMSVersion
+	$lmssystemid = get-lms -SystemId
+	if( $Verbose ) {
+		Log-Message "LMS Client Info: lmsproductversion=$lmsproductversion / lmsproductcode=$lmsproductcode / lmssystemid=$lmssystemid"
+	}
+	if ( $productcode -eq '' )
+	{
+		$productcode = $lmsproductcode
+	}
+	if ( $productversion -eq '' )
+	{
+		$productversion = $lmsproductversion
+	}
+	$systemid = $lmssystemid
+} elseif ( $PSScriptRoot.Contains("\Siemens\SSU\") ) { 
+	# retrieve SSU client info ....
+	$TEMPPRODUCTCODE = Get-InstalledSoftware  -Name 'Siemens Software Updater' 
+	$ssuproductcode = $TEMPPRODUCTCODE.GUID-replace '\{(.*)\}','$1';
+	$ssuproductversion = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Siemens\SSU' -Name 'Version' | select -expand Version
+	$ssusystemid = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Siemens\SSU' -Name 'SystemId' | select -expand SystemId
+	if( $Verbose ) {
+		Log-Message "SSU Client Info: ssuproductversion=$ssuproductversion / ssuproductcode=$ssuproductcode / ssusystemid=$ssusystemid"
+	}
+	if ( $productcode -eq '' )
+	{
+		$productcode = $ssuproductcode
+	}
+	if ( $productversion -eq '' )
+	{
+		$productversion = $ssuproductversion
+	}
+	$systemid = $ssusystemid
+}
+
+# check product code and version ...
 if ( $productcode -eq '' )
 {
-	$productcode = get-lms -ProductCode | select -expand Guid
+	Log-Message "Warning! Product code not defined."
 }
 if ( $productversion -eq '' )
 {
-	$productversion = get-lms -LMSVersion
+	Log-Message "Warning! Product version not defined."
 }
-$lmssystemid = get-lms -SystemId
 
 # retrieve standard client info ....
 $timezone_displayname = Get-TimeZone | select -expand DisplayName
@@ -82,6 +206,9 @@ $OS_VERSION = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\Curren
 $OS_MAJ_VERSION = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'CurrentMajorVersionNumber' | select -expand CurrentMajorVersionNumber
 $OS_MIN_VERSION = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'CurrentMinorVersionNumber' | select -expand CurrentMinorVersionNumber
 $OS_BUILD_NUM = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'CurrentBuildNumber' | select -expand CurrentBuildNumber
+$SSU_UPDATE_INTERVAL = Get-ItemProperty -Path 'HKCU:\SOFTWARE\Siemens\SSU' -Name 'InstallUpdateType' | select -expand InstallUpdateType
+$SSU_UPDATE_TYPE =  Get-ItemProperty -Path 'HKCU:\SOFTWARE\Siemens\SSU' -Name 'InstallUpdateType' | select -expand InstallUpdateType
+$SSU_UPDATE_TIME = (Get-ScheduledTask SSUScheduledTask | Get-ScheduledTaskInfo).NextRunTime.DateTime.split(' ')[4] 
 
 # retrieve operating system information ...
 if ( $operatingsystem -eq '' )
@@ -121,7 +248,7 @@ if( $A[0] -match 'Running on Hypervisor:\s(?<Hypervisor>.+)' )
 	$LMS_SIEMBT_HYPERVISOR = $Matches.Hypervisor
 }
 
-Log-Message "Check for updates on client '$lmssystemid' for '$operatingsystem', for product '$productcode' with version '$productversion' ..."
+Log-Message "Check for updates on client '$systemid' for '$operatingsystem', for product '$productcode' with version '$productversion' ..."
 
 $body = "{
     `"ProductCode`": `"$productcode`",
@@ -130,12 +257,15 @@ $body = "{
     `"Language`": `"$language`",
     `"clientType`":`"$clientType`",
     `"clientVersion`":`"$clientVersion`",
-    `"clientGUID`":`"$lmssystemid`",
+    `"clientGUID`":`"$systemid`",
     `"clientInfo`":
     {
         `"timeZone`":`"$timezone_displayname`",
         `"region`":`"$region`",
         `"language`":`"$display_language`",
+        `"ssuupdateinterval`":`"$SSU_UPDATE_INTERVAL`",
+        `"ssuupdatetime`":`"$SSU_UPDATE_TIME`",
+        `"ssuupdatetype`":`"$SSU_UPDATE_TYPE`",
         `"CSID`":`"$LMS_PS_CSID`",
         `"LMS_IS_VM`":`"$LMS_IS_VM`",
         `"LMS_SIEMBT_HYPERVISOR`":`"$LMS_SIEMBT_HYPERVISOR`",
@@ -148,27 +278,8 @@ $body = "{
     }
 }"
 
-if ( $Verbose ) {
-	Log-Message "Message Body ... `n'$body'"
-}
-Try {
-	$response = Invoke-RestMethod $OSD_APIURL -Method 'POST' -Headers $headers -Body $body
-} Catch {
-	$ExitCode=$_.Exception.Response.StatusCode.value__
-	Log-Message "Error Response ... Error Code: $ExitCode"
-	#Log-Message "StatusCode: $_.Exception.Response.StatusCode.value__"
-	#Log-Message "StatusDescription: $_.Exception.Response.StatusDescription"
-    if($_.ErrorDetails.Message) {
-        Log-Message "$_.ErrorDetails.Message"
-    } else {
-        Log-Message "$_"
-    }
-	# read addtional data, see https://github.com/MicrosoftDocs/PowerShell-Docs/issues/4456
-	$reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
-	$reader.BaseStream.Position = 0
-	$reader.DiscardBufferedData()
-	$reader.ReadToEnd() 
-}
+# send (first) request to OSD server
+Invoke-OSDRequest $body $headers
 
 if( $Verbose ) {
 	if( $response ) {
@@ -232,31 +343,8 @@ if (-not $SkipSiemensSoftware) {
 		}
 	}"
 
-	if ( $Verbose ) {
-		Log-Message "Message Body (with Siemens Software) ... `n'$body'"
-	}
-	Try {
-		$response = Invoke-RestMethod $OSD_APIURL -Method 'POST' -Headers $headers -Body $body
-	} Catch {
-		$ExitCode=$_.Exception.Response.StatusCode.value__
-		Log-Message "Error Response (after sending Siemens Software) ... Error Code: $ExitCode"
-		#Log-Message "StatusCode: $_.Exception.Response.StatusCode.value__"
-		#Log-Message "StatusDescription: $_.Exception.Response.StatusDescription"
-		if($_.ErrorDetails.Message) {
-			Log-Message "$_.ErrorDetails.Message"
-		} else {
-			Log-Message "$_"
-		}
-		# read addtional data, see https://github.com/MicrosoftDocs/PowerShell-Docs/issues/4456
-		$reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
-		$reader.BaseStream.Position = 0
-		$reader.DiscardBufferedData()
-		$reader.ReadToEnd() 
-	}
-	if ( $Verbose ) {
-		Log-Message "Message Response (after sending Siemens Software) ..."
-		$response | ConvertTo-Json -depth 100
-	}
+	# send (second) request to OSD server
+	Invoke-OSDRequest $body $headers
 }
 
 Log-Message "Script Execution ended ..."
