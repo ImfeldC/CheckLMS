@@ -1312,5 +1312,14 @@ rem        - Collection of additional logfiles for ALM skipped; only executed wh
 rem        - Add LMUError.log to general logfile
 rem     05-Sep-2022:
 rem        - Use CheckForUpdate.ps1 script to download newest CheckLMS script.
-rem        - Publish CheckLMS "05-Sep-2022" to be part of LMS 2.7.860, collect all changes after "22-Aug-2022" up to "05-Sep-2022"rem 
+rem        - Publish CheckLMS "05-Sep-2022" to be part of LMS 2.7.860, collect all changes after "22-Aug-2022" up to "05-Sep-2022"
+rem     12-Sep-2022:
+rem        - Adjust 'No GMS installation' message; see '2088686: Wrong message in CheckLMS; ALLUSERSPROFILE is not correct written.'
+rem        - Move 'Several event viewer exports made [based on UCMS-LogcollectorDWP.ini]' into extended section, only executed when /extend option is set.
+rem        - Adjust 'Retrieve Windows Update Log' funtion, pass robocopy path variables within ""
+rem        - Add progress information to 'analyze crash dump files'
+rem     13-Sep-2022:
+rem        - Add more output in case dongle driver files do not exist. See 'Defect 1570582'
+rem     20-Sep-2022:
+rem        - Publish CheckLMS "20-Sep-2022" to be part of LMS 2.7.861, collect all changes after "05-Sep-2022" up to "20-Sep-2022"
 ```

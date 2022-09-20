@@ -10,15 +10,8 @@ rem        - Final script, released for LMS 2.6
 rem 
 rem     Full details see changelog.md (on https://github.com/ImfeldC/CheckLMS/blob/master/changelog.md )
 rem
-rem     05-Sep-2022:
-rem        - Publish CheckLMS "05-Sep-2022" to be part of LMS 2.7.860, collect all changes after "22-Aug-2022" up to "05-Sep-2022"
-rem     12-Sep-2022:
-rem        - Adjust 'No GMS installation' message; see '2088686: Wrong message in CheckLMS; ALLUSERSPROFILE is not correct written.'
-rem        - Move 'Several event viewer exports made [based on UCMS-LogcollectorDWP.ini]' into extended section, only executed when /extend option is set.
-rem        - Adjust 'Retrieve Windows Update Log' funtion, pass robocopy path variables within ""
-rem        - Add progress information to 'analyze crash dump files'
-rem     13-Sep-2022:
-rem        - Add more output in case dongel driver files do not exist. See 'Defect 1570582'
+rem     20-Sep-2022:
+rem        - Publish CheckLMS "20-Sep-2022" to be part of LMS 2.7.861, collect all changes after "05-Sep-2022" up to "20-Sep-2022"
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -61,8 +54,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 13-Sep-2022"
-set LMS_SCRIPT_BUILD=20220913
+set LMS_SCRIPT_VERSION="CheckLMS Script 20-Sep-2022"
+set LMS_SCRIPT_BUILD=20220920
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
