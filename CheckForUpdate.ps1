@@ -24,8 +24,9 @@ param(
 # '20220905': Fix issue in case product version is not available.
 # '20220915': Add $OS_BUILD_NUM to request
 #             Add mapping for OS identifiers, see https://wiki.siemens.com/display/en/Points+to+consider+when+configuring+update+in+OSD & https://wiki.siemens.com/display/en/OSD+Types
-# '20220919': Implement automatimac retrieval for SSU and LMS for product code and version. The same script can be used for both products.
-$scriptVersion = '20220919'
+# '20220919': Implement automatic retrieval for SSU and LMS for product code and version. The same script can be used for both products.
+# '20220920': Finalize, to include in LMS 2.7.861
+$scriptVersion = '20220920'
 
 $global:ExitCode=0
 # Old API URL -> $OSD_APIURL="https://www.automation.siemens.com/softwareupdater/public/api/updates"
@@ -65,7 +66,7 @@ function Invoke-OSDRequest
 		Log-Message "Message Body ... `n'$body'"
 	}
 	Try {
-		$response = Invoke-RestMethod $OSD_APIURL -Method 'POST' -Headers $headers -Body $body
+		$global:response = Invoke-RestMethod $OSD_APIURL -Method 'POST' -Headers $headers -Body $body
 	} Catch {
 		$global:ExitCode=$_.Exception.Response.StatusCode.value__
 		Log-Message "Error Response ... Error Code: $ExitCode"
@@ -280,13 +281,6 @@ $body = "{
 
 # send (first) request to OSD server
 Invoke-OSDRequest $body $headers
-
-if( $Verbose ) {
-	if( $response ) {
-		Log-Message "Message Response ..."
-		$response | ConvertTo-Json -depth 100
-	}
-}
 
 if( $DownloadSoftware ) {
 	if( $response ) {
