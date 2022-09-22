@@ -27,6 +27,7 @@ param(
 # '20220919': Implement automatic retrieval for SSU and LMS for product code and version. The same script can be used for both products.
 # '20220920': Finalize, to include in LMS 2.7.861
 # '20220922': Consider Widnows 11 22H2 with build number 22621
+#             Determine "ssuupdateinterval" correct on trigger settings of scheduled task "SSUScheduledTask"
 $scriptVersion = '20220922'
 
 $global:ExitCode=0
@@ -208,7 +209,19 @@ $OS_VERSION = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\Curren
 $OS_MAJ_VERSION = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'CurrentMajorVersionNumber' | select -expand CurrentMajorVersionNumber
 $OS_MIN_VERSION = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'CurrentMinorVersionNumber' | select -expand CurrentMinorVersionNumber
 $OS_BUILD_NUM = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'CurrentBuildNumber' | select -expand CurrentBuildNumber
-$SSU_UPDATE_INTERVAL = Get-ItemProperty -Path 'HKCU:\SOFTWARE\Siemens\SSU' -Name 'InstallUpdateType' | select -expand InstallUpdateType
+
+$SSU_UPDATE_ENABLED = (ScheduledTask -TaskName "SSUScheduledTask").Triggers.Enabled
+if( $SSU_UPDATE_ENABLED -eq "True" )
+{
+	if( (ScheduledTask -TaskName "SSUScheduledTask").Triggers.DaysInterval -eq 1 ) {
+		# Daily
+		$SSU_UPDATE_INTERVAL = "Daily"
+	} elseif ( (ScheduledTask -TaskName "SSUScheduledTask").Triggers.WeeksInterval -eq 1 ) {
+		$SSU_UPDATE_INTERVAL = "Weekly"
+	} else {
+		$SSU_UPDATE_INTERVAL = "Monthly"
+	}
+}
 $SSU_UPDATE_TYPE =  Get-ItemProperty -Path 'HKCU:\SOFTWARE\Siemens\SSU' -Name 'InstallUpdateType' | select -expand InstallUpdateType
 $SSU_UPDATE_TIME = (Get-ScheduledTask SSUScheduledTask | Get-ScheduledTaskInfo).NextRunTime.DateTime.split(' ')[4] 
 
