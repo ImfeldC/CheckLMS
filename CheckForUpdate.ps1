@@ -26,7 +26,8 @@ param(
 #             Add mapping for OS identifiers, see https://wiki.siemens.com/display/en/Points+to+consider+when+configuring+update+in+OSD & https://wiki.siemens.com/display/en/OSD+Types
 # '20220919': Implement automatic retrieval for SSU and LMS for product code and version. The same script can be used for both products.
 # '20220920': Finalize, to include in LMS 2.7.861
-$scriptVersion = '20220920'
+# '20220922': Consider Widnows 11 22H2 with build number 22621
+$scriptVersion = '20220922'
 
 $global:ExitCode=0
 # Old API URL -> $OSD_APIURL="https://www.automation.siemens.com/softwareupdater/public/api/updates"
@@ -215,10 +216,14 @@ $SSU_UPDATE_TIME = (Get-ScheduledTask SSUScheduledTask | Get-ScheduledTaskInfo).
 if ( $operatingsystem -eq '' )
 {
 	#determine correct OS string, and map to https://wiki.siemens.com/display/en/OSD+Types
-	if ( $OS_BUILD_NUM -eq 22000 ) {
-		# For Windows 11, the ProductName is not unique so instead of comparing the ProductName , we get the CurrentBuildNumber from registry: HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\CurrentBuildNumber  and compare it.
-		# The CurrentBuildNumber for Windows 11 is 22000
-		# For more information on Windows 11 refer the release notes:  https://docs.microsoft.com/en-us/windows/release-health/windows11-release-information
+
+	# For Windows 11, the ProductName is not unique so instead of comparing the ProductName , we get the CurrentBuildNumber from registry: HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\CurrentBuildNumber  and compare it.
+	# For more information on Windows 11 refer the release notes:  https://docs.microsoft.com/en-us/windows/release-health/windows11-release-information
+	if ( $OS_BUILD_NUM -eq 22621 ) {
+		# 22H2
+		$operatingsystem = "Windows11"
+	} elseif ( $OS_BUILD_NUM -eq 22000 ) {
+		# 21H2 (original release)
 		$operatingsystem = "Windows11"
 	} elseif ( $OS_PRODUCTNAME.Contains("Windows 10") ) { 
 		$operatingsystem = "Windows10"
