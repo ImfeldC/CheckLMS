@@ -12,6 +12,8 @@ rem     Full details see changelog.md (on https://github.com/ImfeldC/CheckLMS/bl
 rem
 rem     20-Sep-2022:
 rem        - Publish CheckLMS "20-Sep-2022" to be part of LMS 2.7.861, collect all changes after "05-Sep-2022" up to "20-Sep-2022"
+rem     22-Sep-2022:
+rem        - Use new 'https://ipinfo.io/org' instead of 'https://www.whoismyisp.org/' to retrieve ISP name
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -54,8 +56,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 20-Sep-2022"
-set LMS_SCRIPT_BUILD=20220920
+set LMS_SCRIPT_VERSION="CheckLMS Script 22-Sep-2022"
+set LMS_SCRIPT_BUILD=20220922
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -2991,7 +2993,6 @@ if not defined LMS_SKIPWINDOWS (
 	echo     Displays Windows IP Configuration: ipconfig /all
 	ipconfig /all                                                                                  >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- Retrieve public IP address: from http://ip4only.me/api/                  >> !REPORT_LOGFILE! 2>&1
-	rem Connection Test to http://ip4only.me/api/
 	powershell -Command "(New-Object Net.WebClient).DownloadFile('http://ip4only.me/api/', '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ip4only.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_ip4only_log.txt 2>&1
 	if !ERRORLEVEL!==0 (
 		rem Connection Test: PASSED
@@ -3005,7 +3006,6 @@ if not defined LMS_SKIPWINDOWS (
 		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_ip4only_log.txt                            >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ---------------- Retrieve public IP address: from https://api.ipify.org                   >> !REPORT_LOGFILE! 2>&1
-	rem Connection Test to https://api.ipify.org  
 	powershell -Command "(New-Object Net.WebClient).DownloadFile('https://api.ipify.org', '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ipify.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_ipify_log.txt 2>&1
 	if !ERRORLEVEL!==0 (
 		rem Connection Test: PASSED
@@ -3020,7 +3020,6 @@ if not defined LMS_SKIPWINDOWS (
 		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_ipify_log.txt                              >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ---------------- Retrieve public IP address: from http://www.ifconfig.io/                 >> !REPORT_LOGFILE! 2>&1
-	rem Connection Test to http://www.ifconfig.io/
 	powershell -Command "(New-Object Net.WebClient).DownloadFile('http://www.ifconfig.io/', '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ifconfig.html')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_ifconfig_log.txt 2>&1
 	if !ERRORLEVEL!==0 (
 		rem Connection Test: PASSED
@@ -3033,19 +3032,18 @@ if not defined LMS_SKIPWINDOWS (
 		echo Connection Test FAILED, cannot access http://www.ifconfig.io/                         >> !REPORT_LOGFILE! 2>&1
 		echo     Details, see '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ifconfig_log.txt'        >> !REPORT_LOGFILE! 2>&1
 	)
-	echo ---------------- Retrieve public IP address: from https://www.whoismyisp.org/             >> !REPORT_LOGFILE! 2>&1
-	rem Connection Test to http://www.ifconfig.io/
-	powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.whoismyisp.org/', '!CHECKLMS_REPORT_LOG_PATH!\connection_test_whoismyisp.html')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_whoismyisp_log.txt 2>&1
+	echo ---------------- Retrieve ISP name: from https://ipinfo.io/org                            >> !REPORT_LOGFILE! 2>&1
+	powershell -Command "(New-Object Net.WebClient).DownloadFile('https://ipinfo.io/org', '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ipinfo.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_ipinfo_log.txt 2>&1
 	if !ERRORLEVEL!==0 (
 		rem Connection Test: PASSED
-		echo     Connection Test PASSED, can access https://www.whoismyisp.org/
-		echo Connection Test PASSED, can access https://www.whoismyisp.org/                        >> !REPORT_LOGFILE! 2>&1
-		echo     Details, see '!CHECKLMS_REPORT_LOG_PATH!\connection_test_whoismyisp.html'         >> !REPORT_LOGFILE! 2>&1
+		echo     Connection Test PASSED, can access https://ipinfo.io/org
+		echo Connection Test PASSED, can access https://ipinfo.io/org                              >> !REPORT_LOGFILE! 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_ipinfo.txt                                 >> !REPORT_LOGFILE! 2>&1
 	) else if !ERRORLEVEL!==1 (
 		rem Connection Test: FAILED
-		echo     Connection Test FAILED, cannot access https://www.whoismyisp.org/
-		echo Connection Test FAILED, cannot access https://www.whoismyisp.org/                     >> !REPORT_LOGFILE! 2>&1
-		echo     Details, see '!CHECKLMS_REPORT_LOG_PATH!\connection_test_whoismyisp_log.txt'      >> !REPORT_LOGFILE! 2>&1
+		echo     Connection Test FAILED, cannot access https://ipinfo.io/org
+		echo Connection Test FAILED, cannot access https://ipinfo.io/org                           >> !REPORT_LOGFILE! 2>&1
+		echo     Details, see '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ipinfo_log.txt'          >> !REPORT_LOGFILE! 2>&1
 	)
 	echo Start at !DATE! !TIME! ....                                                               >> !REPORT_LOGFILE! 2>&1
 ) else (
