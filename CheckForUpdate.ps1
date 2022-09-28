@@ -28,7 +28,8 @@ param(
 # '20220920': Finalize, to include in LMS 2.7.861
 # '20220922': Consider Widnows 11 22H2 with build number 22621
 #             Determine "ssuupdateinterval" correct on trigger settings of scheduled task "SSUScheduledTask"
-$scriptVersion = '20220922'
+# '20220928': Check if regsitry key 'HKCU:\SOFTWARE\Siemens\SSU' exists (Fix: Defect 2113818)
+$scriptVersion = '20220928'
 
 $global:ExitCode=0
 # Old API URL -> $OSD_APIURL="https://www.automation.siemens.com/softwareupdater/public/api/updates"
@@ -222,7 +223,12 @@ if( $SSU_UPDATE_ENABLED -eq "True" )
 		$SSU_UPDATE_INTERVAL = "Monthly"
 	}
 }
-$SSU_UPDATE_TYPE =  Get-ItemProperty -Path 'HKCU:\SOFTWARE\Siemens\SSU' -Name 'InstallUpdateType' | select -expand InstallUpdateType
+if ( Test-Path 'HKCU:\SOFTWARE\Siemens\SSU' ) {
+	$SSU_UPDATE_TYPE =  Get-ItemProperty -Path 'HKCU:\SOFTWARE\Siemens\SSU' -Name 'InstallUpdateType' | select -expand InstallUpdateType
+} else {
+	# Default: 'Automatic', see https://wiki.siemens.com/pages/viewpage.action?pageId=390630467
+	$SSU_UPDATE_TYPE = "Automatic"
+}
 $SSU_UPDATE_TIME = (Get-ScheduledTask SSUScheduledTask | Get-ScheduledTaskInfo).NextRunTime.DateTime.split(' ')[4] 
 
 # retrieve operating system information ...
