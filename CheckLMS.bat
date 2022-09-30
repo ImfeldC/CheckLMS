@@ -6390,7 +6390,7 @@ if not defined LMS_SKIPSSU (
 	echo -------------------------------------------------------                                  >> !REPORT_LOGFILE! 2>&1
 	Powershell -command "Get-ItemProperty 'HKCU:\SOFTWARE\Siemens\SSU' | Format-List" > !CHECKLMS_SSU_PATH!\ssu_hkcu_registry.txt 2>&1
 	echo Content of registry key: 'HKCU:\SOFTWARE\Siemens\SSU' ...                                >> !REPORT_LOGFILE! 2>&1
-	for /f "tokens=1 delims= eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\ssu_hkcu_registry.txt ^|find /I ": ObjectNotFound:"') do set LMS_REG_KEY_DOESNT_EXISTS=1
+	for /f "tokens=1 delims= eol=@" %%i in ('type !CHECKLMS_SSU_PATH!\ssu_hkcu_registry.txt ^|find /I ": ObjectNotFound:"') do set LMS_REG_KEY_DOESNT_EXISTS=1
 	if defined LMS_REG_KEY_DOESNT_EXISTS (
 		echo     Registry key 'HKCU:\SOFTWARE\Siemens\SSU' doesn't exists.                        >> !REPORT_LOGFILE! 2>&1
 	) else (
@@ -7058,7 +7058,7 @@ if not defined LMS_SKIPLOGS (
 		echo Search McAfee logfiles [on !McAfeeDirName!]:                                                                              >> !REPORT_LOGFILE! 2>&1
 
 		echo Content of folder: !McAfeeDirName!                                                                                        >> !REPORT_LOGFILE! 2>&1
-		dir /S /A /X /4 /W "!McAfeeDirName!" > !CHECKLMS_REPORT_LOG_PATH!\McAfee\mcafee_logfolder.log
+		dir /S /A /X /4 /W "!McAfeeDirName!" > !CHECKLMS_REPORT_LOG_PATH!\McAfee\mcafee_logfolder.log 2>&1
 		echo     see !CHECKLMS_REPORT_LOG_PATH!\McAfee\mcafee_logfolder.log                                                            >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                                   >> !REPORT_LOGFILE! 2>&1
 
