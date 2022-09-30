@@ -14,6 +14,12 @@ rem     20-Sep-2022:
 rem        - Publish CheckLMS "20-Sep-2022" to be part of LMS 2.7.861, collect all changes after "05-Sep-2022" up to "20-Sep-2022"
 rem     22-Sep-2022:
 rem        - Use new 'https://ipinfo.io/org' instead of 'https://www.whoismyisp.org/' to retrieve ISP name
+rem     30-Sep-2022:
+rem        - Check existence of 'HKCU:\SOFTWARE\Siemens\SSU' (Fix: Defect 2114646)
+rem        - Download LMS SDK only for official supported versions. (Fix: Defect 2114776)
+rem        - Add content of '!ALLUSERSPROFILE!\FLEXnet\Connect\Database\umupdts.log' to main logfile.
+rem        - Disable 'analyze crash dump file' message on command shell window
+rem        - Disable 'Pending request '%%A' found from' message on command shell window
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -56,8 +62,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 22-Sep-2022"
-set LMS_SCRIPT_BUILD=20220922
+set LMS_SCRIPT_VERSION="CheckLMS Script 30-Sep-2022"
+set LMS_SCRIPT_BUILD=20220930
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -998,10 +1004,12 @@ if "!LMS_BUILD_VERSION!" NEQ "N/A" (
 		) else (
 			REM LMS Version 2.6.849
 			echo NOTE: The LMS version !LMS_VERSION! which you are using is officially supported. 							 >> !REPORT_LOGFILE! 2>&1
+			do set LMS_VERSION_IS_SUPPORTED=1
 		)
 	) else (
 		REM LMS Version 2.5.824
 		echo NOTE: The LMS version !LMS_VERSION! which you are using is officially supported. 								 >> !REPORT_LOGFILE! 2>&1
+		do set LMS_VERSION_IS_SUPPORTED=1
 	)
 ) else (
 	REM LMS Version not defined
@@ -1367,13 +1375,18 @@ if not defined LMS_SKIPDOWNLOAD (
 					rem echo Create new folder: !LMS_DOWNLOAD_PATH!\SDK\!MOST_RECENT_LMS_VERSION!
 					mkdir !LMS_DOWNLOAD_PATH!\SDK\!LMS_VERSION! >nul 2>&1
 				)
-				set LMS_SDK_DOWNLOAD_LINK=!CHECKLMS_EXTERNAL_SHARE!lms/LMSSetup!LMS_VERSION!/LMS_Enforcement_SDK_.zip
-				echo     Download latest released LMS SDK [!LMS_VERSION!]: !LMS_SDK_ZIP!
-				echo Download latest released LMS SDK [!LMS_VERSION!]: !LMS_SDK_ZIP!                                      >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_SDK_DOWNLOAD_LINK!', '!LMS_SDK_ZIP!')" >> !REPORT_LOGFILE! 2>&1
+				if defined LMS_VERSION_IS_SUPPORTED (
+					set LMS_SDK_DOWNLOAD_LINK=!CHECKLMS_EXTERNAL_SHARE!lms/LMSSetup!LMS_VERSION!/LMS_Enforcement_SDK_.zip
+					echo     Download latest released LMS SDK [!LMS_VERSION!]: !LMS_SDK_ZIP!
+					echo Download latest released LMS SDK [!LMS_VERSION!]: !LMS_SDK_ZIP!                                         >> !REPORT_LOGFILE! 2>&1
+					powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_SDK_DOWNLOAD_LINK!', '!LMS_SDK_ZIP!')"    >> !REPORT_LOGFILE! 2>&1
+				) else (
+					rem echo     Don't download latest released LMS SDK [!LMS_VERSION!], because it exist already: !LMS_SDK_ZIP!
+					echo Don't download LMS SDK for this version [!LMS_VERSION!], because this version is not supported anymore. >> !REPORT_LOGFILE! 2>&1
+				)
 			) else (
 				rem echo     Don't download latest released LMS SDK [!LMS_VERSION!], because it exist already: !LMS_SDK_ZIP!
-				echo Don't download latest released LMS SDK [!LMS_VERSION!], because it exist already: !LMS_SDK_ZIP!      >> !REPORT_LOGFILE! 2>&1
+				echo Don't download latest released LMS SDK [!LMS_VERSION!], because it exist already: !LMS_SDK_ZIP!             >> !REPORT_LOGFILE! 2>&1
 			)
 			
 			if defined MOST_RECENT_FT_LMS_BUILD (
@@ -3426,7 +3439,7 @@ if not defined LMS_SKIPWER (
 			set name=%%~nxi
 			set /A CRASHDUMP_TOTAL_FILE_COUNT += 1
 
-			echo     analyze crash dump file: [!CRASHDUMP_TOTAL_FILE_COUNT!] !name!
+			rem echo     analyze crash dump file: [!CRASHDUMP_TOTAL_FILE_COUNT!] !name!
 			echo     analyze crash dump file: [!CRASHDUMP_TOTAL_FILE_COUNT!] !name!  at !DATE! !TIME!                        >> !REPORT_LOGFILE! 2>&1
 
 			set "first=!name:~0,3!"
@@ -5680,7 +5693,7 @@ if not defined LMS_SKIPLICSERV (
 		Type "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_listRequests_simple.xml" | findstr "Pending"                         >> !REPORT_LOGFILE! 2>&1
 		echo -- extract pending requests [end] --                                                                                >> !REPORT_LOGFILE! 2>&1
 		for /f "tokens=1,2,3,4 eol=@ delims== " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_listRequests_simple.xml') do if "%%B" EQU "Pending" (
-			echo     Pending request '%%A' found from %%C %%D
+			rem echo     Pending request '%%A' found from %%C %%D
 			if not exist !CHECKLMS_REPORT_LOG_PATH!\pending_request_%%A_%%C.xml (
 				echo     Pending request '%%A' found from %%C %%D, retrieve this request information in !CHECKLMS_REPORT_LOG_PATH!\pending_request_%%A_%%C.xml   >> !REPORT_LOGFILE! 2>&1
 				"!LMS_SERVERCOMTRANUTIL!" -stored !CHECKLMS_REPORT_LOG_PATH!\pending_request_%%A_%%C.xml request=%%A                                             >> !REPORT_LOGFILE! 2>&1
@@ -6342,42 +6355,47 @@ if not defined LMS_SKIPSSU (
 		)
 	)
 	IF EXIST "!CHECKLMS_SSU_PATH!\MSISetupLogFilesFound.txt" (
-		echo MSI setup logfiles [MSI*.log] [on !temp!]:                                                                          >> !REPORT_LOGFILE! 2>&1
-		Type !CHECKLMS_SSU_PATH!\MSISetupLogFilesFound.txt                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1 
+		echo MSI setup logfiles [MSI*.log] [on !temp!]:                                           >> !REPORT_LOGFILE! 2>&1
+		Type !CHECKLMS_SSU_PATH!\MSISetupLogFilesFound.txt                                        >> !REPORT_LOGFILE! 2>&1
+		echo -------------------------------------------------------                              >> !REPORT_LOGFILE! 2>&1 
 	) else (
-		echo     No MSI setup logfile [MSI*.log] found on !temp!.                                                                >> !REPORT_LOGFILE! 2>&1                                                                
+		echo     No MSI setup logfile [MSI*.log] found on !temp!.                                 >> !REPORT_LOGFILE! 2>&1                                                                
 	)
 	IF EXIST "!CHECKLMS_SSU_PATH!\SSUSetupLogFilesFound.txt" (
-		echo SSU setup logfiles [MSI*.log] [on !temp!]:                                                                          >> !REPORT_LOGFILE! 2>&1
-		Type !CHECKLMS_SSU_PATH!\SSUSetupLogFilesFound.txt                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1 
+		echo SSU setup logfiles [MSI*.log] [on !temp!]:                                           >> !REPORT_LOGFILE! 2>&1
+		Type !CHECKLMS_SSU_PATH!\SSUSetupLogFilesFound.txt                                        >> !REPORT_LOGFILE! 2>&1
+		echo -------------------------------------------------------                              >> !REPORT_LOGFILE! 2>&1 
 		set LOG_FILE_COUNT=0
 		FOR /F "eol=@ delims=@" %%i IN (!CHECKLMS_SSU_PATH!\SSUSetupLogFilesFound.txt) DO ( 
 			set /A LOG_FILE_COUNT += 1
-			echo copy '%%i' to '!CHECKLMS_SSU_PATH!\%%~nxi' ...                                                                  >> !REPORT_LOGFILE! 2>&1   
-			copy /Y "%%i" !CHECKLMS_SSU_PATH!\%%~nxi                                                                             >> !REPORT_LOGFILE! 2>&1
-			rem powershell -command "& {Get-Content '%%i' | Select-Object -last !LOG_FILE_LINES!}"                                   >> !REPORT_LOGFILE! 2>&1 
-			rem Type "%%i"                                                                                                           >> !REPORT_LOGFILE! 2>&1 
-			powershell -command "& {Get-Content '%%i' | Select-Object -last !LOG_FILE_SNIPPET!}"                                 >> !REPORT_LOGFILE! 2>&1 
-			echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1 
+			echo copy '%%i' to '!CHECKLMS_SSU_PATH!\%%~nxi' ...                                   >> !REPORT_LOGFILE! 2>&1   
+			copy /Y "%%i" !CHECKLMS_SSU_PATH!\%%~nxi                                              >> !REPORT_LOGFILE! 2>&1
+			rem powershell -command "& {Get-Content '%%i' | Select-Object -last !LOG_FILE_LINES!}"    >> !REPORT_LOGFILE! 2>&1 
+			rem Type "%%i"                                                                            >> !REPORT_LOGFILE! 2>&1 
+			powershell -command "& {Get-Content '%%i' | Select-Object -last !LOG_FILE_SNIPPET!}"  >> !REPORT_LOGFILE! 2>&1 
+			echo -------------------------------------------------------                          >> !REPORT_LOGFILE! 2>&1 
 		)
-		echo     !LOG_FILE_COUNT! SSU setup logfile [MSI*.log] found on !temp!.                                                  >> !REPORT_LOGFILE! 2>&1
+		echo     !LOG_FILE_COUNT! SSU setup logfile [MSI*.log] found on !temp!.                   >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo     No SSU setup logfile [MSI*.log] found on !temp!.                                                                >> !REPORT_LOGFILE! 2>&1
+		echo     No SSU setup logfile [MSI*.log] found on !temp!.                                 >> !REPORT_LOGFILE! 2>&1
 	)
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                  >> !REPORT_LOGFILE! 2>&1
 	echo ... check SSU registry permission ...
 	echo Retrieve registry permissison for !SSU_MAIN_REGISTRY_KEY! [with "Get-Acl HKLM:\SOFTWARE\Siemens\SSU | Format-List"]     >> !REPORT_LOGFILE! 2>&1
-	Powershell -command "Get-Acl HKLM:\SOFTWARE\Siemens\SSU | Format-List"                                                       >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+	Powershell -command "Get-Acl HKLM:\SOFTWARE\Siemens\SSU | Format-List"                        >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                  >> !REPORT_LOGFILE! 2>&1
 	Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\Siemens\SSU' | Format-List" > !CHECKLMS_SSU_PATH!\ssu_hklm_registry.txt 2>&1
-	echo Content of registry key: "HKLM:\SOFTWARE\Siemens\SSU" ...                                                               >> !REPORT_LOGFILE! 2>&1
-	type !CHECKLMS_SSU_PATH!\ssu_hklm_registry.txt                                                                               >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo Content of registry key: "HKLM:\SOFTWARE\Siemens\SSU" ...                                >> !REPORT_LOGFILE! 2>&1
+	type !CHECKLMS_SSU_PATH!\ssu_hklm_registry.txt                                                >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                  >> !REPORT_LOGFILE! 2>&1
 	Powershell -command "Get-ItemProperty 'HKCU:\SOFTWARE\Siemens\SSU' | Format-List" > !CHECKLMS_SSU_PATH!\ssu_hkcu_registry.txt 2>&1
-	echo Content of registry key: "HKCU:\SOFTWARE\Siemens\SSU" ...                                                               >> !REPORT_LOGFILE! 2>&1
-	type !CHECKLMS_SSU_PATH!\ssu_hkcu_registry.txt                                                                               >> !REPORT_LOGFILE! 2>&1
+	echo Content of registry key: 'HKCU:\SOFTWARE\Siemens\SSU' ...                                >> !REPORT_LOGFILE! 2>&1
+	for /f "tokens=1 delims= eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\ssu_hkcu_registry.txt ^|find /I ": ObjectNotFound:"') do set LMS_REG_KEY_DOESNT_EXISTS=1
+	if defined LMS_REG_KEY_DOESNT_EXISTS (
+		echo     Registry key 'HKCU:\SOFTWARE\Siemens\SSU' doesn't exists.                        >> !REPORT_LOGFILE! 2>&1
+	) else (
+		type !CHECKLMS_SSU_PATH!\ssu_hkcu_registry.txt                                            >> !REPORT_LOGFILE! 2>&1
+	)
 	echo -------------------------------------------------------                                  >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_EXTENDED_CONTENT (
 		echo ... test connection to OSD server [using https/443 port] ...
@@ -6577,6 +6595,26 @@ if not defined LMS_SKIPSSU (
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 	echo **** FNC Windows Client [FNC] ****                                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo ... check if FNC content is available ...
+	echo FNC Content:                                                                                                            >> !REPORT_LOGFILE! 2>&1
+	IF EXIST "!ALLUSERSPROFILE!\FLEXnet\Connect\Database\" (
+		echo     User FNC Database found [!ALLUSERSPROFILE!\FLEXnet\Connect\Database\].                                          >> !REPORT_LOGFILE! 2>&1
+		IF EXIST "!ALLUSERSPROFILE!\FLEXnet\Connect\Database\{2BA4F03E-3B47-4ed2-BA5E-A44DECC8A182}.ini" (
+			echo     Registration for 'FNC Native Client' with V13.6 found. See {2BA4F03E-3B47-4ed2-BA5E-A44DECC8A182}.ini       >> !REPORT_LOGFILE! 2>&1
+		)
+	) else (
+		echo     No User FNC Database found [!ALLUSERSPROFILE!\FLEXnet\Connect\Database\].                                       >> !REPORT_LOGFILE! 2>&1
+	)
+	IF EXIST "%APPDATA%\FLEXnet\Connect\Database\" (
+		echo     Application FNC Database found [%APPDATA%\FLEXnet\Connect\Database\].                                           >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo     No Application FNC Database found [%APPDATA%\FLEXnet\Connect\Database\].                                        >> !REPORT_LOGFILE! 2>&1
+	)
+	IF EXIST "c:\FCTest.ini" (
+		echo     FNC Test file [FCTest.ini] found.                                                                               >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo     No FNC Test file [FCTest.ini] found.                                                                            >> !REPORT_LOGFILE! 2>&1
+	)
 	if defined LMS_EXTENDED_CONTENT (
 		echo ... read products registered for updates [via FNC] ...
 		echo Products Registered for Updates [via FNC]                                                                           >> !REPORT_LOGFILE! 2>&1
@@ -6620,6 +6658,12 @@ if not defined LMS_SKIPSSU (
 		)
 	) else (
 		echo Collection of additional logfiles for FNC Windows Client [FNC] skipped, start script with option '/extend' to enable extended content.  >> !REPORT_LOGFILE! 2>&1
+	)
+	IF EXIST "!ALLUSERSPROFILE!\FLEXnet\Connect\Database\umupdts.log" (
+		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+		echo Content of '!ALLUSERSPROFILE!\FLEXnet\Connect\Database\umupdts.log':                                                >> !REPORT_LOGFILE! 2>&1
+		Type "!ALLUSERSPROFILE!\FLEXnet\Connect\Database\umupdts.log"                                                            >> !REPORT_LOGFILE! 2>&1
+		echo .                                                                                                                   >> !REPORT_LOGFILE! 2>&1
 	)
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 ) else (
