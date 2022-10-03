@@ -20,6 +20,8 @@ rem        - Download LMS SDK only for official supported versions. (Fix: Defect
 rem        - Add content of '!ALLUSERSPROFILE!\FLEXnet\Connect\Database\umupdts.log' to main logfile.
 rem        - Disable 'analyze crash dump file' message on command shell window
 rem        - Disable 'Pending request '%%A' found from' message on command shell window
+rem     02-Oct-2022:
+rem        - Shorten scetion to retrieve McAfee logfile.
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -62,8 +64,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 30-Sep-2022"
-set LMS_SCRIPT_BUILD=20220930
+set LMS_SCRIPT_VERSION="CheckLMS Script 02-Oct-2022"
+set LMS_SCRIPT_BUILD=20221002
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -1382,7 +1384,7 @@ if not defined LMS_SKIPDOWNLOAD (
 					powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_SDK_DOWNLOAD_LINK!', '!LMS_SDK_ZIP!')"    >> !REPORT_LOGFILE! 2>&1
 				) else (
 					rem echo     Don't download latest released LMS SDK [!LMS_VERSION!], because it exist already: !LMS_SDK_ZIP!
-					echo Don't download LMS SDK for this version [!LMS_VERSION!], because this version is not supported anymore. >> !REPORT_LOGFILE! 2>&1
+					echo Don't download LMS SDK for this version [!LMS_VERSION!], because this version is not officially supported. >> !REPORT_LOGFILE! 2>&1
 				)
 			) else (
 				rem echo     Don't download latest released LMS SDK [!LMS_VERSION!], because it exist already: !LMS_SDK_ZIP!
@@ -6390,11 +6392,10 @@ if not defined LMS_SKIPSSU (
 	echo -------------------------------------------------------                                  >> !REPORT_LOGFILE! 2>&1
 	Powershell -command "Get-ItemProperty 'HKCU:\SOFTWARE\Siemens\SSU' | Format-List" > !CHECKLMS_SSU_PATH!\ssu_hkcu_registry.txt 2>&1
 	echo Content of registry key: 'HKCU:\SOFTWARE\Siemens\SSU' ...                                >> !REPORT_LOGFILE! 2>&1
-	for /f "tokens=1 delims= eol=@" %%i in ('type !CHECKLMS_SSU_PATH!\ssu_hkcu_registry.txt ^|find /I ": ObjectNotFound:"') do set LMS_REG_KEY_DOESNT_EXISTS=1
-	if defined LMS_REG_KEY_DOESNT_EXISTS (
-		echo     Registry key 'HKCU:\SOFTWARE\Siemens\SSU' doesn't exists.                        >> !REPORT_LOGFILE! 2>&1
-	) else (
+	if exist "!CHECKLMS_SSU_PATH!\ssu_hkcu_registry.txt" (
 		type !CHECKLMS_SSU_PATH!\ssu_hkcu_registry.txt                                            >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo     Registry key 'HKCU:\SOFTWARE\Siemens\SSU' doesn't exists.                        >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                  >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_EXTENDED_CONTENT (
@@ -7046,39 +7047,27 @@ if not defined LMS_SKIPDDSETUP (
 	echo !SHOW_YELLOW!    SKIPPED dongle driver setup section. The script didn't execute the dongle driver setup commands. !SHOW_NORMAL!
 	echo SKIPPED dongle driver setup section. The script didn't execute the dongle driver setup commands.                                                                           >> !REPORT_LOGFILE! 2>&1
 )
-echo ==============================================================================                >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================                                                >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPLOGS (
-	rem Check if folder exists, see https://superuser.com/questions/219050/how-to-check-if-a-directory-exists-in-windows
+	rem serach for C:\ProgramData\McAfee\Endpoint Security\Logs\FirewallEventMonitor.log
 	set McAfeeDirName=%programdata%\McAfee\Endpoint Security\Logs\
-	dir /A:D !McAfeeDirName! >nul 2>&1
-	if ERRORLEVEL 1 (
+	echo ... search McAfee logfiles [on !McAfeeDirName!] ...
+	echo Search McAfee logfiles [on !McAfeeDirName!]:                                                                              >> !REPORT_LOGFILE! 2>&1
+	IF EXIST "!McAfeeDirName!FirewallEventMonitor.log" (
 		mkdir !CHECKLMS_REPORT_LOG_PATH!\McAfee\  >nul 2>&1
-		rem serach for C:\ProgramData\McAfee\Endpoint Security\Logs\FirewallEventMonitor.log
-		echo ... search McAfee logfiles [on !McAfeeDirName!] ...
-		echo Search McAfee logfiles [on !McAfeeDirName!]:                                                                              >> !REPORT_LOGFILE! 2>&1
-
-		echo Content of folder: !McAfeeDirName!                                                                                        >> !REPORT_LOGFILE! 2>&1
-		dir /S /A /X /4 /W "!McAfeeDirName!" > !CHECKLMS_REPORT_LOG_PATH!\McAfee\mcafee_logfolder.log 2>&1
-		echo     see !CHECKLMS_REPORT_LOG_PATH!\McAfee\mcafee_logfolder.log                                                            >> !REPORT_LOGFILE! 2>&1
-		echo -------------------------------------------------------                                                                   >> !REPORT_LOGFILE! 2>&1
-
-		IF EXIST "!McAfeeDirName!FirewallEventMonitor.log" (
-			powershell -command "& {Get-Content '!McAfeeDirName!FirewallEventMonitor.log' | Select-Object -last !LOG_FILE_SNIPPET!}"   >> !REPORT_LOGFILE! 2>&1
-			copy "!McAfeeDirName!FirewallEventMonitor.log" "!CHECKLMS_REPORT_LOG_PATH!\McAfee\"                                        >> !REPORT_LOGFILE! 2>&1
-			echo --- File automatically copied from !McAfeeDirName!FirewallEventMonitor.log to !CHECKLMS_REPORT_LOG_PATH!\McAfee\ ---  >> !CHECKLMS_REPORT_LOG_PATH!\McAfee\FirewallEventMonitor.log 2>&1
-			echo     see '!CHECKLMS_REPORT_LOG_PATH!\McAfee\FirewallEventMonitor.log' for full logfile.                                >> !REPORT_LOGFILE! 2>&1
-		) else (
-			echo     Logfile '!McAfeeDirName!FirewallEventMonitor.log' not found.                                                      >> !REPORT_LOGFILE! 2>&1
-		)
+		powershell -command "& {Get-Content '!McAfeeDirName!FirewallEventMonitor.log' | Select-Object -last !LOG_FILE_SNIPPET!}"   >> !REPORT_LOGFILE! 2>&1
+		copy "!McAfeeDirName!FirewallEventMonitor.log" "!CHECKLMS_REPORT_LOG_PATH!\McAfee\"                                        >> !REPORT_LOGFILE! 2>&1
+		echo --- File automatically copied from !McAfeeDirName!FirewallEventMonitor.log to !CHECKLMS_REPORT_LOG_PATH!\McAfee\ ---  >> !CHECKLMS_REPORT_LOG_PATH!\McAfee\FirewallEventMonitor.log 2>&1
+		echo     see '!CHECKLMS_REPORT_LOG_PATH!\McAfee\FirewallEventMonitor.log' for full logfile.                                >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo No McAfee logfiles found [on !McAfeeDirName!]:                                                                            >> !REPORT_LOGFILE! 2>&1
+		echo     Logfile '!McAfeeDirName!FirewallEventMonitor.log' not found.                                                      >> !REPORT_LOGFILE! 2>&1
 	)
 ) else (
 	rem LMS_SKIPLOGS
 	echo !SHOW_YELLOW!    SKIPPED search McAfee logfiles section.  !SHOW_NORMAL!
-	echo SKIPPED search McAfee logfiles section.                                                                                       >> !REPORT_LOGFILE! 2>&1
+	echo SKIPPED search McAfee logfiles section.                                                                                   >> !REPORT_LOGFILE! 2>&1
 )
-echo ==============================================================================                                                    >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================                                                >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPUCMS (
 	if defined LMS_EXTENDED_CONTENT (
 		rem copied from UCMS-LogcollectorDWP.ini
