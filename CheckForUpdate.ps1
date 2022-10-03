@@ -29,7 +29,9 @@ param(
 # '20220922': Consider Widnows 11 22H2 with build number 22621
 #             Determine "ssuupdateinterval" correct on trigger settings of scheduled task "SSUScheduledTask"
 # '20220928': Check if regsitry key 'HKCU:\SOFTWARE\Siemens\SSU' exists (Fix: Defect 2113818)
-$scriptVersion = '20220928'
+# '20221003': Check if 'SIEMBT.log' exists (Fix: Defect 2116265)
+#             Check that 'get-lms' commandlet is available (Fix: Defect 2116265)
+$scriptVersion = '20221003'
 
 $global:ExitCode=0
 # Old API URL -> $OSD_APIURL="https://www.automation.siemens.com/softwareupdater/public/api/updates"
@@ -202,7 +204,11 @@ $region = Get-WinHomeLocation | select -expand HomeLocation
 $display_language = Get-Culture | select -expand Name
 
 # retrieve client info ....
-$LMS_PS_CSID = get-lms -Csid
+if( Get-Command 'get-lms' -errorAction SilentlyContinue ) {
+	$LMS_PS_CSID = get-lms -Csid
+} else {
+	$LMS_PS_CSID = "n/a"
+}
 $LMS_IS_VM = (gcim Win32_ComputerSystem).HypervisorPresent
 $OS_MACHINEGUID = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Cryptography' -Name 'MachineGuid' | select -expand MachineGuid
 $OS_PRODUCTNAME = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'ProductName' | select -expand ProductName
@@ -267,12 +273,15 @@ if ( $operatingsystem -eq '' )
 }
 
 # Determine hypervisor (using SIEMBT logfile)
-$A = Get-ChildItem -Path C:\ProgramData\Siemens\LMS\Logs\SIEMBT.log | Select-String -Pattern 'Running on Hypervisor:(.+)'
-if( $A[0] -match 'Running on Hypervisor:\s(?<Hypervisor>.+)' )
-{
-	$LMS_SIEMBT_HYPERVISOR = $Matches.Hypervisor
+if ( Test-Path 'C:\ProgramData\Siemens\LMS\Logs\SIEMBT.log' ) {
+	$A = Get-ChildItem -Path C:\ProgramData\Siemens\LMS\Logs\SIEMBT.log | Select-String -Pattern 'Running on Hypervisor:(.+)'
+	if( $A[0] -match 'Running on Hypervisor:\s(?<Hypervisor>.+)' )
+	{
+		$LMS_SIEMBT_HYPERVISOR = $Matches.Hypervisor
+	}
+} else {
+	$LMS_SIEMBT_HYPERVISOR = "n/a"
 }
-
 Log-Message "Check for updates on client '$systemid' for '$operatingsystem', for product '$productcode' with version '$productversion' ..."
 
 $body = "{
