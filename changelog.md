@@ -1322,4 +1322,16 @@ rem     13-Sep-2022:
 rem        - Add more output in case dongle driver files do not exist. See 'Defect 1570582'
 rem     20-Sep-2022:
 rem        - Publish CheckLMS "20-Sep-2022" to be part of LMS 2.7.861, collect all changes after "05-Sep-2022" up to "20-Sep-2022"
+rem     22-Sep-2022:
+rem        - Use new 'https://ipinfo.io/org' instead of 'https://www.whoismyisp.org/' to retrieve ISP name
+rem     30-Sep-2022:
+rem        - Check existence of 'HKCU:\SOFTWARE\Siemens\SSU' (Fix: Defect 2114646)
+rem        - Download LMS SDK only for official supported versions. (Fix: Defect 2114776)
+rem        - Add content of '!ALLUSERSPROFILE!\FLEXnet\Connect\Database\umupdts.log' to main logfile.
+rem        - Disable 'analyze crash dump file' message on command shell window
+rem        - Disable 'Pending request '%%A' found from' message on command shell window
+rem     02-Oct-2022:
+rem        - Shorten scetion to retrieve McAfee logfile.
+rem     03-Oct-2022:
+rem        - Show content of AWS_EXECUTION_ENV
 ```

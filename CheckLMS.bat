@@ -10,18 +10,8 @@ rem        - Final script, released for LMS 2.6
 rem 
 rem     Full details see changelog.md (on https://github.com/ImfeldC/CheckLMS/blob/master/changelog.md )
 rem
-rem     20-Sep-2022:
-rem        - Publish CheckLMS "20-Sep-2022" to be part of LMS 2.7.861, collect all changes after "05-Sep-2022" up to "20-Sep-2022"
-rem     22-Sep-2022:
-rem        - Use new 'https://ipinfo.io/org' instead of 'https://www.whoismyisp.org/' to retrieve ISP name
-rem     30-Sep-2022:
-rem        - Check existence of 'HKCU:\SOFTWARE\Siemens\SSU' (Fix: Defect 2114646)
-rem        - Download LMS SDK only for official supported versions. (Fix: Defect 2114776)
-rem        - Add content of '!ALLUSERSPROFILE!\FLEXnet\Connect\Database\umupdts.log' to main logfile.
-rem        - Disable 'analyze crash dump file' message on command shell window
-rem        - Disable 'Pending request '%%A' found from' message on command shell window
-rem     02-Oct-2022:
-rem        - Shorten scetion to retrieve McAfee logfile.
+rem     04-Oct-2022:
+rem        - Publish CheckLMS "04-Oct-2022" to be part of LMS 2.7.862, collect all changes after "20-Sep-2022" up to "04-Oct-2022"
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -64,8 +54,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 02-Oct-2022"
-set LMS_SCRIPT_BUILD=20221002
+set LMS_SCRIPT_VERSION="CheckLMS Script 04-Oct-2022"
+set LMS_SCRIPT_BUILD=20221004
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -3272,28 +3262,28 @@ powershell -command "Get-NetIPAddress | Where Prefix-Origin -ne 'WellKnown' | ` 
 
 rem Read VM Generation Id
 IF EXIST "!LMS_DOWNLOAD_PATH!\VMGENID.EXE" (
-	echo -------------------------------------------------------                                                  >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                      >> !REPORT_LOGFILE! 2>&1
 	echo ... read VM Generation Id [using VMGENID.EXE] ...
-	echo Read VM Generation Id [using VMGENID.EXE]:                                                               >> !REPORT_LOGFILE! 2>&1
-	"!LMS_DOWNLOAD_PATH!\VMGENID.EXE"                                                                             >> !REPORT_LOGFILE! 2>&1
-	echo .                                                                                                        >> !REPORT_LOGFILE! 2>&1
+	echo Read VM Generation Id [using VMGENID.EXE]:                                                   >> !REPORT_LOGFILE! 2>&1
+	"!LMS_DOWNLOAD_PATH!\VMGENID.EXE"                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo .                                                                                            >> !REPORT_LOGFILE! 2>&1
 )
 IF EXIST "!LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe" (
-	echo -------------------------------------------------------                                                  >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                      >> !REPORT_LOGFILE! 2>&1
 	if exist "C:\WINDOWS\system32\MSVCR120.dll" (
 		echo ... read VM Generation Id [using GetVMGenerationIdentifier.exe] ...
-		echo Read VM Generation Id [using GetVMGenerationIdentifier.exe]:                                         >> !REPORT_LOGFILE! 2>&1
-		"!LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe"                                                       >> !REPORT_LOGFILE! 2>&1
-		echo .                                                                                                    >> !REPORT_LOGFILE! 2>&1
+		echo Read VM Generation Id [using GetVMGenerationIdentifier.exe]:                             >> !REPORT_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\GetVMGenerationIdentifier.exe"                                           >> !REPORT_LOGFILE! 2>&1
+		echo .                                                                                        >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo ... read VM Generation Id [using GetVMGenerationIdentifier.exe], skipped because 'C:\WINDOWS\system32\MSVCR120.dll' doesn't exist.
 		echo Read VM Generation Id [using GetVMGenerationIdentifier.exe], skipped because 'C:\WINDOWS\system32\MSVCR120.dll' doesn't exist.      >> !REPORT_LOGFILE! 2>&1
 	)
 )
 
-echo ==============================================================================                               >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
 echo ... read AWS instance identity document ...
-echo Read AWS instance identity document:                                                                         >> !REPORT_LOGFILE! 2>&1
+echo Read AWS instance identity document:                                                             >> !REPORT_LOGFILE! 2>&1
 if exist "!REPORT_LOG_PATH!\AWS_Latest.txt" (
 	for /f "tokens=1,2,3,4,* eol=@ delims=,/ " %%A in ('type !REPORT_LOG_PATH!\AWS_Latest.txt ^|find /I "AWS_ACCID"') do (
 		rem echo %%A / %%B / %%C // %%F
@@ -3306,55 +3296,58 @@ if exist "!REPORT_LOG_PATH!\AWS_Latest.txt" (
 	echo Previous AWS instance identity document values, collected !AWSINFO_PREV!                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     AWS_ACCID_PREV=!AWS_ACCID_PREV! / AWS_IMGID_PREV=!AWS_IMGID_PREV! / AWS_INSTID_PREV=!AWS_INSTID_PREV! / AWS_PENTIME_PREV=!AWS_PENTIME_PREV!         >> !REPORT_LOGFILE! 2>&1   
 )
+if defined AWS_EXECUTION_ENV (
+	echo -------------------------------------------------------                                      >> !REPORT_LOGFILE! 2>&1
+	echo AWS_EXECUTION_ENV=!AWS_EXECUTION_ENV!                                                        >> !REPORT_LOGFILE! 2>&1
+)
 rem get AWS instance identify document (see https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/instance-identity-documents.html )
-echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+echo -------------------------------------------------------                                          >> !REPORT_LOGFILE! 2>&1
 del !CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document_result.txt >nul 2>&1
 powershell -Command "(New-Object Net.WebClient).DownloadFile('http://169.254.169.254/latest/dynamic/instance-identity/document', '!CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt')"  > !CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document_result.txt 2>&1
 if exist "!CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt" (
-	echo AWS instance identity document retrieved:                                                                       >> !REPORT_LOGFILE! 2>&1
-	type "!CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt"                                                 >> !REPORT_LOGFILE! 2>&1
-	echo .                                                                                                               >> !REPORT_LOGFILE! 2>&1
+	echo AWS instance identity document retrieved:                                                    >> !REPORT_LOGFILE! 2>&1
+	type "!CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt"                              >> !REPORT_LOGFILE! 2>&1
+	echo .                                                                                            >> !REPORT_LOGFILE! 2>&1
 	for /f "tokens=1,2,3 eol=@ delims=, " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt ^|find /I "pendingTime"') do set "AWS_PENTIME=%%C"
 	for /f "tokens=1,2,3 eol=@ delims=, " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt ^|find /I "instanceId"') do set "AWS_INSTID=%%C"
 	for /f "tokens=1,2,3 eol=@ delims=, " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt ^|find /I "imageId"') do set "AWS_IMGID=%%C"
 	for /f "tokens=1,2,3 eol=@ delims=, " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\AWS_instance-identity-document.txt ^|find /I "accountId"') do set "AWS_ACCID=%%C"
 	echo     AWS_ACCID=!AWS_ACCID! / AWS_IMGID=!AWS_IMGID! / AWS_INSTID=!AWS_INSTID! / AWS_PENTIME=!AWS_PENTIME!   
-	echo     AWS_ACCID=!AWS_ACCID! / AWS_IMGID=!AWS_IMGID! / AWS_INSTID=!AWS_INSTID! / AWS_PENTIME=!AWS_PENTIME!         >> !REPORT_LOGFILE! 2>&1   
+	echo     AWS_ACCID=!AWS_ACCID! / AWS_IMGID=!AWS_IMGID! / AWS_INSTID=!AWS_INSTID! / AWS_PENTIME=!AWS_PENTIME!  >> !REPORT_LOGFILE! 2>&1   
 	echo     AWS_ACCID=!AWS_ACCID! / AWS_IMGID=!AWS_IMGID! / AWS_INSTID=!AWS_INSTID! / AWS_PENTIME=!AWS_PENTIME!  at !DATE! / !TIME!  >> !REPORT_LOG_PATH!\AWS.txt 2>&1
 	echo     AWS_ACCID=!AWS_ACCID! / AWS_IMGID=!AWS_IMGID! / AWS_INSTID=!AWS_INSTID! / AWS_PENTIME=!AWS_PENTIME!  at !DATE! / !TIME!  >  !REPORT_LOG_PATH!\AWS_Latest.txt 2>&1
 ) else (
-	echo AWS instance identity document not found.                                                                       >> !REPORT_LOGFILE! 2>&1
+	echo AWS instance identity document not found.                                                    >> !REPORT_LOGFILE! 2>&1
 )
-
-echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
 echo ... read AZURE instance identity document ...
-echo Read AZURE instance identity document:                                                                              >> !REPORT_LOGFILE! 2>&1
+echo Read AZURE instance identity document:                                                           >> !REPORT_LOGFILE! 2>&1
 rem get AZURE instance identify document (see https://docs.microsoft.com/en-us/azure/virtual-machines/windows/instance-metadata-service?tabs=windows )
-echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+echo -------------------------------------------------------                                          >> !REPORT_LOGFILE! 2>&1
 del !CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt >nul 2>&1
 powershell -Command "Invoke-RestMethod -Headers @{'Metadata'='true'} -Method GET -Proxy $Null -Uri 'http://169.254.169.254/metadata/instance?api-version=2021-02-01' | ConvertTo-Json -Depth 64"  > !CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt 2>&1
 if exist "!CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt" (
 	for /f "tokens=1,2,3 eol=@ delims=:, " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt ^|find /I "vmId"') do set "AZURE_VMID=%%B"
 	if defined AZURE_VMID (
 		echo     AZURE_VMID=!AZURE_VMID!    
-		echo     AZURE_VMID=!AZURE_VMID!                                                                                 >> !REPORT_LOGFILE! 2>&1   
+		echo     AZURE_VMID=!AZURE_VMID!                                                              >> !REPORT_LOGFILE! 2>&1   
 		echo     AZURE_VMID=!AZURE_VMID!  at !DATE! / !TIME!  >> !REPORT_LOG_PATH!\AZURE.txt 2>&1
 		echo     AZURE_VMID=!AZURE_VMID!  at !DATE! / !TIME!  >  !REPORT_LOG_PATH!\AZURE_Latest.txt 2>&1
-		echo AZURE instance identity document retrieved:                                                                 >> !REPORT_LOGFILE! 2>&1
-		type "!CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt"                                           >> !REPORT_LOGFILE! 2>&1
-		echo .                                                                                                           >> !REPORT_LOGFILE! 2>&1
+		echo AZURE instance identity document retrieved:                                              >> !REPORT_LOGFILE! 2>&1
+		type "!CHECKLMS_REPORT_LOG_PATH!\AZURE_instance-identity-document.txt"                        >> !REPORT_LOGFILE! 2>&1
+		echo .                                                                                        >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo AZURE instance identity document not valid. Check 'AZURE_instance-identity-document.txt'                    >> !REPORT_LOGFILE! 2>&1
+		echo AZURE instance identity document not valid. Check 'AZURE_instance-identity-document.txt' >> !REPORT_LOGFILE! 2>&1
 	)
 ) else (
-	echo AZURE instance identity document not found.                                                                     >> !REPORT_LOGFILE! 2>&1
+	echo AZURE instance identity document not found.                                                  >> !REPORT_LOGFILE! 2>&1
 )
 
-echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
 echo ... read GCP instance metadata ...
-echo Read GCP instance metadata:                                                                                         >> !REPORT_LOGFILE! 2>&1
+echo Read GCP instance metadata:                                                                      >> !REPORT_LOGFILE! 2>&1
 rem get GCP instance metadata document (see https://cloud.google.com/compute/docs/metadata/querying-metadata )
-echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+echo -------------------------------------------------------                                          >> !REPORT_LOGFILE! 2>&1
 del !CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt >nul 2>&1
 rem *** Needs curl :-( ***  curl "http://metadata.google.internal/computeMetadata/v1/?recursive=true&alt=text" -o !CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt -H "Metadata-Flavor: Google"  >!CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document_output.txt 2>&1
 powershell -Command "Invoke-RestMethod -Headers @{'Metadata-Flavor'='Google'} -Method GET -Proxy $Null -Uri 'http://metadata.google.internal/computeMetadata/v1/?recursive=true&alt=text'" > !CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt 2>&1
@@ -3362,55 +3355,55 @@ if exist "!CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt" (
 	for /f "tokens=1,2,3 eol=@ delims= " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt ^|find /I "instance/id"') do set "GCP_ID=%%B"
 	if defined GCP_ID (
 		echo     GCP_ID=!GCP_ID!    
-		echo     GCP_ID=!GCP_ID!                                                                                         >> !REPORT_LOGFILE! 2>&1   
+		echo     GCP_ID=!GCP_ID!                                                                      >> !REPORT_LOGFILE! 2>&1   
 		echo     GCP_ID=!GCP_ID!  at !DATE! / !TIME!  >> !REPORT_LOG_PATH!\GCP.txt 2>&1
 		echo     GCP_ID=!GCP_ID!  at !DATE! / !TIME!  >  !REPORT_LOG_PATH!\GCP_Latest.txt 2>&1
-		echo GCP instance metadata document retrieved:                                                                   >> !REPORT_LOGFILE! 2>&1
-		type "!CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt"                                                      >> !REPORT_LOGFILE! 2>&1
-		echo .                                                                                                           >> !REPORT_LOGFILE! 2>&1
+		echo GCP instance metadata document retrieved:                                                >> !REPORT_LOGFILE! 2>&1
+		type "!CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt"                                   >> !REPORT_LOGFILE! 2>&1
+		echo .                                                                                        >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo GCP instance metadata document not valid. Check 'GCP-metadata-documen.txt'                                  >> !REPORT_LOGFILE! 2>&1
+		echo GCP instance metadata document not valid. Check 'GCP-metadata-documen.txt'               >> !REPORT_LOGFILE! 2>&1
 	)
 ) else (
-	echo GCP instance metadata document not found.                                                                       >> !REPORT_LOGFILE! 2>&1
+	echo GCP instance metadata document not found.                                                    >> !REPORT_LOGFILE! 2>&1
 )
 
-echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-echo =   L M S   S C H E D U L E D   T A S K S                                    =                                          >> !REPORT_LOGFILE! 2>&1
-echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
+echo =   L M S   S C H E D U L E D   T A S K S                                    =                   >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
 echo ... collect scheduled tasks defintions ...
 if not defined LMS_SKIPSCHEDTASK (
 	schtasks /Query /V > "!CHECKLMS_REPORT_LOG_PATH!\schtasks.log" 2>&1
 	schtasks /QUERY /V /TN \Siemens\ > "!CHECKLMS_REPORT_LOG_PATH!\schtasks_siemens.log" 2>&1
-	echo Scheduled Tasks Definitions [for Siemens]                                                                           >> !REPORT_LOGFILE! 2>&1
+	echo Scheduled Tasks Definitions [for Siemens]                                                    >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\schtasks_siemens.log" (
-		Type "!CHECKLMS_REPORT_LOG_PATH!\schtasks_siemens.log"                                                               >> !REPORT_LOGFILE! 2>&1
-		echo .                                                                                                               >> !REPORT_LOGFILE! 2>&1
+		Type "!CHECKLMS_REPORT_LOG_PATH!\schtasks_siemens.log"                                        >> !REPORT_LOGFILE! 2>&1
+		echo .                                                                                        >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo     No scheduled task found.                                                                                    >> !REPORT_LOGFILE! 2>&1
+		echo     No scheduled task found.                                                             >> !REPORT_LOGFILE! 2>&1
 	)
-	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                      >> !REPORT_LOGFILE! 2>&1
 	echo ... get details for 'OnStartup' scheduled task ...
-	echo Get details for 'OnStartup' scheduled task ...                                                                      >> !REPORT_LOGFILE! 2>&1
-	schtasks /query /FO LIST /V /tn "\Siemens\Lms\OnStartup"                                                                 >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Get details for 'OnStartup' scheduled task ...                                               >> !REPORT_LOGFILE! 2>&1
+	schtasks /query /FO LIST /V /tn "\Siemens\Lms\OnStartup"                                          >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                      >> !REPORT_LOGFILE! 2>&1
 	echo ... get details for 'WeeklyTask' scheduled task ...
-	echo Get details for 'WeeklyTask' scheduled task ...                                                                     >> !REPORT_LOGFILE! 2>&1
-	schtasks /query /FO LIST /V /tn "\Siemens\Lms\WeeklyTask"                                                                >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+	echo Get details for 'WeeklyTask' scheduled task ...                                              >> !REPORT_LOGFILE! 2>&1
+	schtasks /query /FO LIST /V /tn "\Siemens\Lms\WeeklyTask"                                         >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                                  >> !REPORT_LOGFILE! 2>&1
 ) else (
 	echo !SHOW_YELLOW!    SKIPPED scheduled task section. The script didn't execute the scheduled task commands. !SHOW_NORMAL!
-	echo SKIPPED scheduled task section. The script didn't execute the scheduled task commands.                              >> !REPORT_LOGFILE! 2>&1
+	echo SKIPPED scheduled task section. The script didn't execute the scheduled task commands.       >> !REPORT_LOGFILE! 2>&1
 )
 :windows_error_reporting
-echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-echo =   W I N D O W S   E R R O R   R E P O R T I N G  (W E R)                   =                                          >> !REPORT_LOGFILE! 2>&1
-echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
+echo =   W I N D O W S   E R R O R   R E P O R T I N G  (W E R)                   =                   >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPWER (
 	echo ... get crash dump settings ...
-	echo Get crash dump settings ...                                                                                         >> !REPORT_LOGFILE! 2>&1
+	echo Get crash dump settings ...                                                                  >> !REPORT_LOGFILE! 2>&1
 	REM -- WER "DumpType" Registry Key
 	set KEY_NAME=HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps
 	set VALUE_NAME=DumpType
@@ -3419,20 +3412,20 @@ if not defined LMS_SKIPWER (
 	)
 	if defined WER_DUMPTYPE (
 		echo     Dump type is !WER_DUMPTYPE! [0=Custom dump, 1=Mini dump, 2=Full dump]
-		echo Dump type is !WER_DUMPTYPE! [0=Custom dump, 1=Mini dump, 2=Full dump]                                           >> !REPORT_LOGFILE! 2>&1
+		echo Dump type is !WER_DUMPTYPE! [0=Custom dump, 1=Mini dump, 2=Full dump]                    >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo     Dump type is NOT DEFINED, crash dumps are NOT enabled.
 		echo     More information available on https://wiki.siemens.com/x/DiCNBg
-		echo Dump type is NOT DEFINED, crash dumps are NOT enabled.                                                          >> !REPORT_LOGFILE! 2>&1
-		echo More information available on https://wiki.siemens.com/x/DiCNBg                                                 >> !REPORT_LOGFILE! 2>&1
+		echo Dump type is NOT DEFINED, crash dumps are NOT enabled.                                   >> !REPORT_LOGFILE! 2>&1
+		echo More information available on https://wiki.siemens.com/x/DiCNBg                          >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ... search crash dump files [*.dmp] [on c:\ only] ...
-	echo Search crash dump files [*.dmp] [on c:\ only]:                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo Search crash dump files [*.dmp] [on c:\ only]:                                               >> !REPORT_LOGFILE! 2>&1
 	del !CHECKLMS_CRASH_DUMP_PATH!\CrashDumpFilesFound.txt >nul 2>&1
 	FOR /r C:\ %%X IN (*.dmp) DO if "%%~dpX" NEQ "!CHECKLMS_CRASH_DUMP_PATH!\" echo %%~dpnxX >> !CHECKLMS_CRASH_DUMP_PATH!\CrashDumpFilesFound.txt
-	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                                  >> !REPORT_LOGFILE! 2>&1
 	echo ... analyze crash dump files [*.dmp] ...
-	echo Analyze crash dump files [*.dmp]:                                                                                   >> !REPORT_LOGFILE! 2>&1
+	echo Analyze crash dump files [*.dmp]:                                                            >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!CHECKLMS_CRASH_DUMP_PATH!\CrashDumpFilesFound.txt" (
 		set CRASHDUMP_FILE_COUNT=0
 		set CRASHDUMP_FILE_COPY=0
@@ -3442,7 +3435,7 @@ if not defined LMS_SKIPWER (
 			set /A CRASHDUMP_TOTAL_FILE_COUNT += 1
 
 			rem echo     analyze crash dump file: [!CRASHDUMP_TOTAL_FILE_COUNT!] !name!
-			echo     analyze crash dump file: [!CRASHDUMP_TOTAL_FILE_COUNT!] !name!  at !DATE! !TIME!                        >> !REPORT_LOGFILE! 2>&1
+			echo     analyze crash dump file: [!CRASHDUMP_TOTAL_FILE_COUNT!] !name!  at !DATE! !TIME! >> !REPORT_LOGFILE! 2>&1
 
 			set "first=!name:~0,3!"
 			if /I "!first!" EQU "alm" (
@@ -4149,7 +4142,7 @@ if not defined LMS_SKIPSIGCHECK (
 		!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "!ProgramFiles_x86!\Siemens\LMS\bin\LicEnf.dll"                                   >> !REPORT_LOGFILE! 2>&1
 		!SIGCHECK_TOOL! !SIGCHECK_OPTIONS! "!ProgramFiles_x86!\Siemens\LMS\bin\Siemens.Gms.ApplicationFramework.exe"         >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo     No LMS binary 32-bit folder found.                                                                          >> !REPORT_LOGFILE! 2>&1
+		echo     No LMS binary 32-bit folder [!ProgramFiles_x86!\Siemens\LMS\bin] found.                                     >> !REPORT_LOGFILE! 2>&1
 	)
 	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
 ) else (
