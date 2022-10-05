@@ -31,7 +31,8 @@ param(
 # '20220928': Check if regsitry key 'HKCU:\SOFTWARE\Siemens\SSU' exists (Fix: Defect 2113818)
 # '20221003': Check if 'SIEMBT.log' exists (Fix: Defect 2116265)
 #             Check that 'get-lms' commandlet is available (Fix: Defect 2116265)
-$scriptVersion = '20221003'
+# '20221005': Use Net.WebClient to download file from OSD, instead of Start-BitsTransfer
+$scriptVersion = '20221005'
 
 $global:ExitCode=0
 # Old API URL -> $OSD_APIURL="https://www.automation.siemens.com/softwareupdater/public/api/updates"
@@ -331,15 +332,18 @@ if( $DownloadSoftware ) {
 			$description = $swupdate.description
 			$downloadurl = [URI]$swupdate.downloadURL
 			$Path = $env:ProgramData + '\Siemens\LMS\Download'
-			$finalurl, $options = ($downloadurl -Split '\?')[0,1]
+			$shorturl, $options = ($downloadurl -Split '\?')[0,1]
+			$filename = ($shorturl -Split '/')[-1]
 			if( $Verbose ) {
-				Log-Message "Title: $title / Description: $description / Download URL: $downloadurl / options: $options"
+				Log-Message "Title: $title / Description: $description / Download URL: $shorturl / filename: $filename / options: $options"
 			}
 			
 			if( $downloadurl ) {
 				# download the software udpate
-				Log-Message "Start to download ... '$finalurl' to '$Path'"
-				Start-BitsTransfer -Source "$finalurl" -Destination "$Path"
+				Log-Message "Start to download ... '$downloadurl' to '$Path\$filename'"
+				#Start-BitsTransfer -Source "$downloadurl" -Destination "$Path"
+				(New-Object Net.WebClient).DownloadFile($downloadurl, $Path + "\\" + $filename)
+				Log-Message "End of download ..."
 			}
 		}	
 	} else {
