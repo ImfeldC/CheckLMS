@@ -12,6 +12,9 @@ rem     Full details see changelog.md (on https://github.com/ImfeldC/CheckLMS/bl
 rem
 rem     04-Oct-2022:
 rem        - Publish CheckLMS "04-Oct-2022" to be part of LMS 2.7.862, collect all changes after "20-Sep-2022" up to "04-Oct-2022"
+rem     07-Oct-2022:
+rem        - Do not install dongle driver automatically, when no dongle driver is installed.
+rem        - Support new dongle driver (NEW: https://licensemanagementsystem.s3.eu-west-1.amazonaws.com/lms/hasp/8.43/DongleDriver.zip) (Fix: Defect 2118970)
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -54,8 +57,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 04-Oct-2022"
-set LMS_SCRIPT_BUILD=20221004
+set LMS_SCRIPT_VERSION="CheckLMS Script 07-Oct-2022"
+set LMS_SCRIPT_BUILD=20221007
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -1465,29 +1468,35 @@ if not defined LMS_SKIPDOWNLOAD (
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/FNP/ECMCommonUtil_DevMar2022.exe', '!LMS_DOWNLOAD_PATH!\ECMCommonUtil_DevMar2022.exe')"   >> !REPORT_LOGFILE! 2>&1
 			)
 			
+			rem Download newest Dongle Driver
 			set LMS_DOWNLOAD_PATH_HASPDRIVER=!LMS_DOWNLOAD_PATH!\hasp\!MOST_RECENT_DONGLE_DRIVER_VERSION!
-			if not exist "!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe" (
+			if not exist "!LMS_DOWNLOAD_PATH_HASPDRIVER!\DongleDriver.zip" (
 				mkdir !LMS_DOWNLOAD_PATH!\hasp\ >nul 2>&1
 				mkdir !LMS_DOWNLOAD_PATH!\hasp\!MOST_RECENT_DONGLE_DRIVER_VERSION!\ >nul 2>&1
 
 				rem Download newest dongle driver
-				echo     Download newest dongle driver: !LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe [!MOST_RECENT_DONGLE_DRIVER_VERSION!] ...
-				echo Download newest dongle driver: !LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe [!MOST_RECENT_DONGLE_DRIVER_VERSION!] ...             >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/hasp/!MOST_RECENT_DONGLE_DRIVER_VERSION!/haspdinst.exe', '!LMS_DOWNLOAD_PATH!\hasp\!MOST_RECENT_DONGLE_DRIVER_VERSION!\haspdinst.exe')"   >> !REPORT_LOGFILE! 2>&1
+				echo     Download newest dongle driver: !LMS_DOWNLOAD_PATH_HASPDRIVER!\DongleDriver.zip [!MOST_RECENT_DONGLE_DRIVER_VERSION!] ...
+				echo Download newest dongle driver: !LMS_DOWNLOAD_PATH_HASPDRIVER!\DongleDriver.zip [!MOST_RECENT_DONGLE_DRIVER_VERSION!] ...             >> !REPORT_LOGFILE! 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/hasp/!MOST_RECENT_DONGLE_DRIVER_VERSION!/DongleDriver.zip', '!LMS_DOWNLOAD_PATH_HASPDRIVER!\DongleDriver.zip')"   >> !REPORT_LOGFILE! 2>&1
 			) else (
-				rem echo     Don't download newest dongle driver [!MOST_RECENT_DONGLE_DRIVER_VERSION!], because it exist already: !LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe
-				echo Don't download newest dongle driver [!MOST_RECENT_DONGLE_DRIVER_VERSION!], because it exist already: !LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe      >> !REPORT_LOGFILE! 2>&1
+				rem echo     Don't download newest dongle driver [!MOST_RECENT_DONGLE_DRIVER_VERSION!], because it exist already: !LMS_DOWNLOAD_PATH_HASPDRIVER!\DongleDriver.zip
+				echo Don't download newest dongle driver [!MOST_RECENT_DONGLE_DRIVER_VERSION!], because it exist already: !LMS_DOWNLOAD_PATH_HASPDRIVER!\DongleDriver.zip      >> !REPORT_LOGFILE! 2>&1
 			)
-			if exist "!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe" (
-
-				set TARGETFILE=!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe
-				set TARGETFILE=!TARGETFILE:\=\\!
-				wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
-				IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "haspdinstVersion=%%i"
-				echo     Newest dongle driver: !LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe [!haspdinstVersion!] downloaded!
-				echo     Newest dongle driver: !LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe [!haspdinstVersion!] downloaded!                       >> !REPORT_LOGFILE! 2>&1
+			if exist "!LMS_DOWNLOAD_PATH_HASPDRIVER!\DongleDriver.zip" (
+				echo     Extract dongle driver: '!LMS_DOWNLOAD_PATH_HASPDRIVER!\DongleDriver.zip'
+				echo Extract dongle driver: '!LMS_DOWNLOAD_PATH_HASPDRIVER!\DongleDriver.zip'                                           >> !REPORT_LOGFILE! 2>&1
+				"!UNZIP_TOOL!" x -y -spe -o"!LMS_DOWNLOAD_PATH!\hasp\!MOST_RECENT_DONGLE_DRIVER_VERSION!\" "!LMS_DOWNLOAD_PATH_HASPDRIVER!\DongleDriver.zip" > !CHECKLMS_REPORT_LOG_PATH!\unzip_DongleDriver_zip.txt 2>&1
+				
+				if exist "!LMS_DOWNLOAD_PATH!\hasp\!MOST_RECENT_DONGLE_DRIVER_VERSION!\haspdinst.exe" (
+					set TARGETFILE=!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe
+					set TARGETFILE=!TARGETFILE:\=\\!
+					wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
+					IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "haspdinstVersion=%%i"
+					echo     Newest dongle driver: !LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe [!haspdinstVersion!] downloaded!
+					echo     Newest dongle driver: !LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe [!haspdinstVersion!] downloaded!        >> !REPORT_LOGFILE! 2>&1
+				)
 			) else (
-				echo     Download of dongle driver: '!CHECKLMS_EXTERNAL_SHARE!lms/hasp/!MOST_RECENT_DONGLE_DRIVER_VERSION!/haspdinst.exe' [!haspdinstVersion!] FAILED.   >> !REPORT_LOGFILE! 2>&1
+				echo     Download of dongle driver: '!LMS_DOWNLOAD_PATH_HASPDRIVER!/DongleDriver.zip' FAILED.                           >> !REPORT_LOGFILE! 2>&1
 			)
 			
 			rem Download AccessChk tool
@@ -2205,65 +2214,78 @@ if defined LMS_REMOVE_LMS_CLIENT (
 	echo Remove LMS Client ... NO                                                                                                >> !REPORT_LOGFILE! 2>&1
 )
 
+rem set correct dongel driver path 
+if exist "!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe" (
+	set LMS_DONGLE_DRIVER_PATH=!LMS_DOWNLOAD_PATH_HASPDRIVER!
+) else (
+	if exist "!LMS_PROGRAMDATA!\DongleDriver\haspdinst.exe" (
+		rem use pre-installed dongle driver instead
+		set LMS_DONGLE_DRIVER_PATH=!LMS_PROGRAMDATA!\DongleDriver
+	)
+)
+
 if defined LMS_INSTALL_DONGLE_DRIVER (
 	echo Dongle Driver: !DONGLE_DRIVER_VERSION! [!DONGLE_DRIVER_PKG_VERSION!] / Major=[!DONGLE_DRIVER_MAJ_VERSION!] / Minor=[!DONGLE_DRIVER_MIN_VERSION!] / installed !DONGLE_DRIVER_INST_COUNT! times     >> !REPORT_LOGFILE! 2>&1
-	rem The same code block is again at script end (was introduced in an earlier script version and kept for "backward" compatibility)
-	if exist "!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe" (
-		set TARGETFILE=!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe
+	
+	rem Install donwloaded driver from !LMS_DONGLE_DRIVER_PATH!\haspdinst.exe
+	if exist "!LMS_DONGLE_DRIVER_PATH!\haspdinst.exe" (
+		set TARGETFILE=!LMS_DONGLE_DRIVER_PATH!\haspdinst.exe
 		set TARGETFILE=!TARGETFILE:\=\\!
 		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
 		IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "haspdinstVersion=%%i"
-		echo     Dongle driver: !LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe [!haspdinstVersion!] available 
-		echo Dongle driver: !LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe [!haspdinstVersion!] available                                     >> !REPORT_LOGFILE! 2>&1
+		echo     Dongle driver: !LMS_DONGLE_DRIVER_PATH!\haspdinst.exe [!haspdinstVersion!] available 
+		echo Dongle driver: !LMS_DONGLE_DRIVER_PATH!\haspdinst.exe [!haspdinstVersion!] available                          >> !REPORT_LOGFILE! 2>&1
 		if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
 			rem install dongle driver downloaded by this script
-			echo !SHOW_RED!    --- Install newest dongle driver !haspdinstVersion! just downloaded by this script. !SHOW_NORMAL!
-			echo --- Install newest dongle driver !haspdinstVersion! just downloaded by this script.                             >> !REPORT_LOGFILE! 2>&1
-			start "Install dongle driver" "!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe" -install -killprocess 
-			echo --- Installation started in an own process/shell.                                                               >> !REPORT_LOGFILE! 2>&1
+			echo !SHOW_RED!    --- Install newest dongle driver !haspdinstVersion! by this script. !SHOW_NORMAL! 
+			echo --- Install newest dongle driver !haspdinstVersion! by this script.                                       >> !REPORT_LOGFILE! 2>&1
+			start "Install dongle driver" "!LMS_DONGLE_DRIVER_PATH!\haspdinst.exe" -install -killprocess 
+			echo --- Installation started in an own process/shell.                                                         >> !REPORT_LOGFILE! 2>&1
 		) else (
 			echo !SHOW_YELLOW!    WARNING: Cannot install dongle driver, start script with administrator priviledge. !SHOW_NORMAL!
-			echo WARNING: Cannot install dongle driver, start script with administrator priviledge.                              >> !REPORT_LOGFILE! 2>&1
+			echo WARNING: Cannot install dongle driver, start script with administrator priviledge.                        >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
-		echo !SHOW_YELLOW!    WARNING: Cannot install dongle driver, file '!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe' doesn't exist. !SHOW_NORMAL!
-		echo WARNING: Cannot install dongle driver, file '!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe' doesn't exist.                      >> !REPORT_LOGFILE! 2>&1
+		echo !SHOW_YELLOW!    WARNING: Cannot install dongle driver, file '!LMS_DONGLE_DRIVER_PATH!\haspdinst.exe' doesn't exist. !SHOW_NORMAL!
+		echo WARNING: Cannot install dongle driver, file '!LMS_DONGLE_DRIVER_PATH!\haspdinst.exe' doesn't exist.           >> !REPORT_LOGFILE! 2>&1
 	)
 	
 	goto script_end
 	rem STOP EXECUTION HERE
 ) else (
-	echo Install Dongle Driver ... NO                                                                                            >> !REPORT_LOGFILE! 2>&1
+	echo Install Dongle Driver ... NO                                                                                      >> !REPORT_LOGFILE! 2>&1
 )
 if defined LMS_REMOVE_DONGLE_DRIVER (
 	echo Dongle Driver: !DONGLE_DRIVER_VERSION! [!DONGLE_DRIVER_PKG_VERSION!] / Major=[!DONGLE_DRIVER_MAJ_VERSION!] / Minor=[!DONGLE_DRIVER_MIN_VERSION!] / installed !DONGLE_DRIVER_INST_COUNT! times     >> !REPORT_LOGFILE! 2>&1
-	if exist "!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe" (
-		set TARGETFILE=!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe
+	
+	rem Uninstall (remove) dongel driver, usign downloaded package from !LMS_DONGLE_DRIVER_PATH!\haspdinst.exe 
+	if exist "!LMS_DONGLE_DRIVER_PATH!\haspdinst.exe" (
+		set TARGETFILE=!LMS_DONGLE_DRIVER_PATH!\haspdinst.exe
 		set TARGETFILE=!TARGETFILE:\=\\!
 		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
 		IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "haspdinstVersion=%%i"
-		echo     Dongle driver: !LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe [!haspdinstVersion!] available 
-		echo Dongle driver: !LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe [!haspdinstVersion!] available                                     >> !REPORT_LOGFILE! 2>&1
+		echo     Dongle driver: !LMS_DONGLE_DRIVER_PATH!\haspdinst.exe [!haspdinstVersion!] available 
+		echo Dongle driver: !LMS_DONGLE_DRIVER_PATH!\haspdinst.exe [!haspdinstVersion!] available                          >> !REPORT_LOGFILE! 2>&1
 		if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
-			echo !SHOW_RED!    --- Remove installed dongle driver !haspdinstVersion!. !SHOW_NORMAL!
+			echo !SHOW_RED!    --- Remove installed dongle driver !haspdinstVersion!. !SHOW_NORMAL! 
 			rem reset installation counter to make sure that dongle driver get removed!
-			reg add "HKLM\SOFTWARE\Aladdin Knowledge Systems\HASP\Driver\Installer" /v "InstCount" /t REG_DWORD /d 1 /f          >> !REPORT_LOGFILE! 2>&1
-			echo --- Remove installed dongle driver !haspdinstVersion!.                                                          >> !REPORT_LOGFILE! 2>&1
-			start "Remove dongle driver" "!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe" -remove -killprocess 
-			echo --- Remove started in an own process/shell.                                                                     >> !REPORT_LOGFILE! 2>&1
+			reg add "HKLM\SOFTWARE\Aladdin Knowledge Systems\HASP\Driver\Installer" /v "InstCount" /t REG_DWORD /d 1 /f    >> !REPORT_LOGFILE! 2>&1
+			echo --- Remove installed dongle driver !haspdinstVersion!.                                                    >> !REPORT_LOGFILE! 2>&1
+			start "Remove dongle driver" "!LMS_DONGLE_DRIVER_PATH!\haspdinst.exe" -remove -killprocess 
+			echo --- Remove started in an own process/shell.                                                               >> !REPORT_LOGFILE! 2>&1
 		) else (
 			echo !SHOW_YELLOW!    WARNING: Cannot remove dongle driver, start script with administrator priviledge. !SHOW_NORMAL!
-			echo WARNING: Cannot remove dongle driver, start script with administrator priviledge.                               >> !REPORT_LOGFILE! 2>&1
+			echo WARNING: Cannot remove dongle driver, start script with administrator priviledge.                         >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
-		echo !SHOW_YELLOW!    WARNING: Cannot remove dongle driver, file '!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe' doesn't exist. !SHOW_NORMAL!
-		echo WARNING: Cannot remove dongle driver, file '!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe' doesn't exist.                       >> !REPORT_LOGFILE! 2>&1
+		echo !SHOW_YELLOW!    WARNING: Cannot remove dongle driver, file '!LMS_DONGLE_DRIVER_PATH!\haspdinst.exe' doesn't exist. !SHOW_NORMAL!
+		echo WARNING: Cannot remove dongle driver, file '!LMS_DONGLE_DRIVER_PATH!\haspdinst.exe' doesn't exist.            >> !REPORT_LOGFILE! 2>&1
 	)
 
 	goto script_end
 	rem STOP EXECUTION HERE
 ) else (
-	echo Remove Dongle Driver ... NO                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Remove Dongle Driver ... NO                                                                                       >> !REPORT_LOGFILE! 2>&1
 )
 
 if defined LMS_SET_CHECK_ID_TASK (
@@ -8183,28 +8205,6 @@ if not defined LMS_CHECK_ID (
 	) else (
 		echo !SHOW_RED!    ATTENTION: No Dongle Driver installed. !SHOW_NORMAL!
 		echo ATTENTION: No Dongle Driver installed.                                                                          >> !REPORT_LOGFILE! 2>&1
-
-		if exist "!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe" (
-			set TARGETFILE=!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe
-			set TARGETFILE=!TARGETFILE:\=\\!
-			wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
-			IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "haspdinstVersion=%%i"
-			echo     Dongle driver: !LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe [!haspdinstVersion!] available 
-			echo Dongle driver: !LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe [!haspdinstVersion!] available                             >> !REPORT_LOGFILE! 2>&1
-			if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
-				rem install dongle driver downloaded by this script
-				echo !SHOW_RED!    --- Install newest dongle driver !haspdinstVersion! just downloaded by this script. !SHOW_NORMAL!
-				echo --- Install newest dongle driver !haspdinstVersion! just downloaded by this script.                     >> !REPORT_LOGFILE! 2>&1
-				start "Install dongle driver" "!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe" -install -killprocess
-				echo --- Installation started in an own process/shell.                                                       >> !REPORT_LOGFILE! 2>&1
-			) else (
-				rem show message to install dongle driver downloaded by this script
-				echo !SHOW_RED!    --- Install newest dongle driver !haspdinstVersion! just downloaded by this script. !SHOW_NORMAL!
-				echo !SHOW_RED!    --- Execute '"!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe" -install -killprocess' with administrator priviledge. !SHOW_NORMAL!
-				echo --- Install newest dongle driver !haspdinstVersion! just downloaded by this script.                     >> !REPORT_LOGFILE! 2>&1
-				echo --- Execute '"!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe" -install -killprocess' with administrator priviledge.  >> !REPORT_LOGFILE! 2>&1
-			)
-		)
 	)
 )
 if defined ALM_VERSION_STRING (
