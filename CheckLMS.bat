@@ -16,7 +16,9 @@ rem     07-Oct-2022:
 rem        - Do not install dongle driver automatically, when no dongle driver is installed.
 rem        - Support new dongle driver (NEW: https://licensemanagementsystem.s3.eu-west-1.amazonaws.com/lms/hasp/8.43/DongleDriver.zip) (Fix: Defect 2118970)
 rem     09-Oct-2022:
-rem        - Support 'CheckForUpdate.ps1' also delivered with SSU client, stored in C:\Program Files\Siemens\SSU\bin
+rem        - Support 'CheckForUpdate.ps1' also delivered with SSU client, stored in C:\Program Files\Siemens\SSU\bin (Fix: Defect 2116265)
+rem     10-Oct-2022:
+rem        - Fix issue to set LMS_VERSION_IS_SUPPORTED correct 
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -59,8 +61,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 09-Oct-2022"
-set LMS_SCRIPT_BUILD=20221009
+set LMS_SCRIPT_VERSION="CheckLMS Script 10-Oct-2022"
+set LMS_SCRIPT_BUILD=20221010
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -1001,12 +1003,12 @@ if "!LMS_BUILD_VERSION!" NEQ "N/A" (
 		) else (
 			REM LMS Version 2.6.849
 			echo NOTE: The LMS version !LMS_VERSION! which you are using is officially supported. 							 >> !REPORT_LOGFILE! 2>&1
-			do set LMS_VERSION_IS_SUPPORTED=1
+			set LMS_VERSION_IS_SUPPORTED=1
 		)
 	) else (
 		REM LMS Version 2.5.824
 		echo NOTE: The LMS version !LMS_VERSION! which you are using is officially supported. 								 >> !REPORT_LOGFILE! 2>&1
-		do set LMS_VERSION_IS_SUPPORTED=1
+		set LMS_VERSION_IS_SUPPORTED=1
 	)
 ) else (
 	REM LMS Version not defined
