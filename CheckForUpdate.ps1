@@ -34,6 +34,7 @@ param(
 # '20221005': Use Net.WebClient to download file from OSD, instead of Start-BitsTransfer
 # '20221012': Check existence of several registry keys. (Fix: Defect 2122172)
 #             Determine systemid (if not already done) (Fix: Defect 2117302)
+#             Use '-ErrorAction SilentlyContinue' when reading registry value to suppress any error.
 $scriptVersion = '20221012'
 
 $global:ExitCode=0
@@ -142,7 +143,6 @@ function Get-InstalledSoftware {
 }
 
 
-
 # start logging
 Log-Message "Script Execution started from path '$PSScriptRoot' ..."
 if( $Verbose ) {
@@ -192,16 +192,21 @@ if( $PSScriptRoot.Contains("\Siemens\LMS\") ) {
 }
 
 #determine systemid (if not already done)
-if ( $systemid -eq '' ) {
-	if ( Test-Path 'HKLM:\SOFTWARE\Siemens\SSU\SystemId' ) {
+if ( $systemid -eq $null ) {
+	if ( $systemid -eq $null ) {
 		# SSU system id exists ...
-		$systemid =  Get-ItemProperty -Path 'HKLM:\SOFTWARE\Siemens\SSU' -Name 'SystemId' | select -expand SystemId
-	} elseif ( Test-Path 'HKLM:\SOFTWARE\Siemens\LMS\SystemId' ) {
+		$systemid =  Get-ItemProperty -Path 'HKLM:\SOFTWARE\Siemens\SSU' -Name 'SystemId' -ErrorAction SilentlyContinue | select -expand SystemId
+		Log-Message "System Id found: $systemid [SSU\SystemId]"
+	}
+	if ( $systemid -eq $null ) {
 		# LMS system id exists ...
-		$systemid =  Get-ItemProperty -Path 'HKLM:\SOFTWARE\Siemens\LMS' -Name 'SystemId' | select -expand SystemId
-	} else {
+		$systemid =  Get-ItemProperty -Path 'HKLM:\SOFTWARE\Siemens\LMS' -Name 'SystemId' -ErrorAction SilentlyContinue | select -expand SystemId
+		Log-Message "System Id found: $systemid [LMS\SystemId]"
+	}
+	if ( $systemid -eq $null ) {
 		# use machine id (as final default)
-		$systemid = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Cryptography' -Name 'MachineGuid' | select -expand MachineGuid
+		$systemid = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Cryptography' -Name 'MachineGuid' -ErrorAction SilentlyContinue | select -expand MachineGuid
+		Log-Message "System Id found: $systemid [MachineGuid]"
 	}
 }
 
@@ -230,16 +235,8 @@ $LMS_IS_VM = (gcim Win32_ComputerSystem).HypervisorPresent
 $OS_MACHINEGUID = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Cryptography' -Name 'MachineGuid' | select -expand MachineGuid
 $OS_PRODUCTNAME = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'ProductName' | select -expand ProductName
 $OS_VERSION = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'CurrentVersion' | select -expand CurrentVersion
-if ( Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\CurrentMajorVersionNumber' ) {
-	$OS_MAJ_VERSION = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'CurrentMajorVersionNumber' | select -expand CurrentMajorVersionNumber
-} else {
-	$OS_MAJ_VERSION = "n/a"
-}
-if ( Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\CurrentMinorVersionNumber' ) {
-	$OS_MIN_VERSION = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'CurrentMinorVersionNumber' | select -expand CurrentMinorVersionNumber
-} else {
-	$OS_MIN_VERSION = "n/a"
-}
+$OS_MAJ_VERSION = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'CurrentMajorVersionNumber' -ErrorAction SilentlyContinue | select -expand CurrentMajorVersionNumber
+$OS_MIN_VERSION = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'CurrentMinorVersionNumber' -ErrorAction SilentlyContinue | select -expand CurrentMinorVersionNumber
 $OS_BUILD_NUM = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'CurrentBuildNumber' | select -expand CurrentBuildNumber
 
 $SSU_UPDATE_ENABLED = (ScheduledTask -TaskName "SSUScheduledTask").Triggers.Enabled
@@ -254,9 +251,8 @@ if( $SSU_UPDATE_ENABLED -eq "True" )
 		$SSU_UPDATE_INTERVAL = "Monthly"
 	}
 }
-if ( Test-Path 'HKCU:\SOFTWARE\Siemens\SSU\InstallUpdateType' ) {
-	$SSU_UPDATE_TYPE =  Get-ItemProperty -Path 'HKCU:\SOFTWARE\Siemens\SSU' -Name 'InstallUpdateType' | select -expand InstallUpdateType
-} else {
+$SSU_UPDATE_TYPE =  Get-ItemProperty -Path 'HKCU:\SOFTWARE\Siemens\SSU' -Name 'InstallUpdateType' -ErrorAction SilentlyContinue | select -expand InstallUpdateType
+if( $SSU_UPDATE_TYPE -eq $null ) {
 	# Default: 'Automatic', see https://wiki.siemens.com/pages/viewpage.action?pageId=390630467
 	$SSU_UPDATE_TYPE = "Automatic"
 }
