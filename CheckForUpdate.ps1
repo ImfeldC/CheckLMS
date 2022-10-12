@@ -33,6 +33,7 @@ param(
 #             Check that 'get-lms' commandlet is available (Fix: Defect 2116265)
 # '20221005': Use Net.WebClient to download file from OSD, instead of Start-BitsTransfer
 # '20221012': Check existence of several registry keys. (Fix: Defect 2122172)
+#             Determine systemid (if not already done) (Fix: Defect 2117302)
 $scriptVersion = '20221012'
 
 $global:ExitCode=0
@@ -188,6 +189,20 @@ if( $PSScriptRoot.Contains("\Siemens\LMS\") ) {
 		$productversion = $ssuproductversion
 	}
 	$systemid = $ssusystemid
+}
+
+#determine systemid (if not already done)
+if ( $systemid -eq '' ) {
+	if ( Test-Path 'HKLM:\SOFTWARE\Siemens\SSU\SystemId' ) {
+		# SSU system id exists ...
+		$systemid =  Get-ItemProperty -Path 'HKLM:\SOFTWARE\Siemens\SSU' -Name 'SystemId' | select -expand SystemId
+	} elseif ( Test-Path 'HKLM:\SOFTWARE\Siemens\LMS\SystemId' ) {
+		# LMS system id exists ...
+		$systemid =  Get-ItemProperty -Path 'HKLM:\SOFTWARE\Siemens\LMS' -Name 'SystemId' | select -expand SystemId
+	} else {
+		# use machine id (as final default)
+		$systemid = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Cryptography' -Name 'MachineGuid' | select -expand MachineGuid
+	}
 }
 
 # check product code and version ...
