@@ -19,6 +19,10 @@ rem     09-Oct-2022:
 rem        - Support 'CheckForUpdate.ps1' also delivered with SSU client, stored in C:\Program Files\Siemens\SSU\bin (Fix: Defect 2116265)
 rem     10-Oct-2022:
 rem        - Fix issue to set LMS_VERSION_IS_SUPPORTED correct 
+rem     12-Oct-2022:
+rem        - Adjust 'Test connection to OSD software update server', do not show full error, when it fails.
+rem        - Issue in script of '09-Oct-2022'; fixed now: Support 'CheckForUpdate.ps1' also delivered with SSU client, stored in C:\Program Files\Siemens\SSU\bin (Fix: Defect 2116265)
+rem        - Use script 'CheckForUpdate.ps1' delivered with SSU client, to perform connection test; this allows to check if messages and/or updates are available for the SSU client.
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -61,8 +65,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 10-Oct-2022"
-set LMS_SCRIPT_BUILD=20221010
+set LMS_SCRIPT_VERSION="CheckLMS Script 12-Oct-2022"
+set LMS_SCRIPT_BUILD=20221012
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -1162,7 +1166,7 @@ if not defined LMS_SKIPDOWNLOAD (
 	IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1" (
 		set LMS_CHECKFORUPDATE_SCRIPT=!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1
 	) else (
-		IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1" (
+		IF EXIST "!ProgramFiles!\Siemens\SSU\bin\CheckForUpdate.ps1" (
 			set LMS_CHECKFORUPDATE_SCRIPT=!ProgramFiles!\Siemens\SSU\bin\CheckForUpdate.ps1
 		)
 	)
@@ -6482,8 +6486,9 @@ if not defined LMS_SKIPSSU (
 	) else if !ERRORLEVEL!==1 (
 		rem Connection Test: FAILED
 		echo     Connection Test FAILED, cannot access https://softwareupdater.osd.universe.eb.siemens.cloud/servertest.aspx
-		echo Connection Test FAILED, cannot access https://softwareupdater.osd.universe.eb.siemens.cloud/servertest.aspx         >> !REPORT_LOGFILE! 2>&1                       
-		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_softwareupdate.txt                                                   >> !REPORT_LOGFILE! 2>&1
+		echo Connection Test FAILED, cannot access https://softwareupdater.osd.universe.eb.siemens.cloud/servertest.aspx         >> !REPORT_LOGFILE! 2>&1
+		echo     This connection test works ONLY within Siemens intranet.                                                        >> !REPORT_LOGFILE! 2>&1		
+		rem type !CHECKLMS_REPORT_LOG_PATH!\connection_test_osd_softwareupdate.txt                                                   >> !REPORT_LOGFILE! 2>&1
 		set OSDSoftwareUpdateServerConnectionTestStatus=Failed
 	)
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1 
@@ -6491,9 +6496,9 @@ if not defined LMS_SKIPSSU (
 	echo ... test connection to OSD software update server  [using API URL] ...
 	echo Test connection to OSD software update server  [using API URL]                                                          >> !REPORT_LOGFILE! 2>&1                                                                                            
 	rem Connection Test to OSD software update server
-	IF EXIST "!LMS_CHECKFORUPDATE_SCRIPT!" (
-		echo RUN: powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -Command "& '!LMS_CHECKFORUPDATE_SCRIPT!' -SkipSiemensSoftware 1; exit $LASTEXITCODE"  >> !REPORT_LOGFILE! 2>&1
-		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -Command "& '!LMS_CHECKFORUPDATE_SCRIPT!' -SkipSiemensSoftware 1; exit $LASTEXITCODE"            >> !REPORT_LOGFILE! 2>&1
+	IF EXIST "!ProgramFiles!\Siemens\SSU\bin\CheckForUpdate.ps1" (
+		echo RUN: powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -Command "& '!ProgramFiles!\Siemens\SSU\bin\CheckForUpdate.ps1' -SkipSiemensSoftware 1; exit $LASTEXITCODE"  >> !REPORT_LOGFILE! 2>&1
+		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -Command "& '!ProgramFiles!\Siemens\SSU\bin\CheckForUpdate.ps1' -SkipSiemensSoftware 1; exit $LASTEXITCODE"            >> !REPORT_LOGFILE! 2>&1
 		if !ERRORLEVEL!==0 (
 			rem Connection Test: PASSED
 			echo     Connection Test PASSED, can access OSD software update server  [using API URL]
@@ -6508,7 +6513,7 @@ if not defined LMS_SKIPSSU (
 			echo Connection Test FAILED, cannot access OSD software update server  [using API URL] [Exit Code: !ERRORLEVEL!]     >> !REPORT_LOGFILE! 2>&1                       
 		)
 	) else (
-		echo ERROR: Cannot execute powershell script 'CheckForUpdate.ps1', it doesn't exist at '!LMS_CHECKFORUPDATE_SCRIPT!'.    >> !REPORT_LOGFILE! 2>&1
+		echo ERROR: Cannot execute powershell script 'CheckForUpdate.ps1', it doesn't exist at '!ProgramFiles!\Siemens\SSU\bin\CheckForUpdate.ps1'.    >> !REPORT_LOGFILE! 2>&1
 	)
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
