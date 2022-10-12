@@ -193,22 +193,18 @@ if( $PSScriptRoot.Contains("\Siemens\LMS\") ) {
 
 #determine systemid (if not already done)
 if ( $systemid -eq $null ) {
-	if ( $systemid -eq $null ) {
-		# SSU system id exists ...
-		$systemid =  Get-ItemProperty -Path 'HKLM:\SOFTWARE\Siemens\SSU' -Name 'SystemId' -ErrorAction SilentlyContinue | select -expand SystemId
-		Log-Message "System Id found: $systemid [SSU\SystemId]"
-	}
-	if ( $systemid -eq $null ) {
-		# LMS system id exists ...
-		$systemid =  Get-ItemProperty -Path 'HKLM:\SOFTWARE\Siemens\LMS' -Name 'SystemId' -ErrorAction SilentlyContinue | select -expand SystemId
-		Log-Message "System Id found: $systemid [LMS\SystemId]"
-	}
-	if ( $systemid -eq $null ) {
-		# use machine id (as final default)
-		$systemid = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Cryptography' -Name 'MachineGuid' -ErrorAction SilentlyContinue | select -expand MachineGuid
-		Log-Message "System Id found: $systemid [MachineGuid]"
-	}
+	# SSU system id exists ...
+	$systemid =  Get-ItemProperty -Path 'HKLM:\SOFTWARE\Siemens\SSU' -Name 'SystemId' -ErrorAction SilentlyContinue | select -expand SystemId
 }
+if ( $systemid -eq $null ) {
+	# LMS system id exists ...
+	$systemid =  Get-ItemProperty -Path 'HKLM:\SOFTWARE\Siemens\LMS' -Name 'SystemId' -ErrorAction SilentlyContinue | select -expand SystemId
+}
+if ( $systemid -eq $null ) {
+	# use machine id (as final default)
+	$systemid = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Cryptography' -Name 'MachineGuid' -ErrorAction SilentlyContinue | select -expand MachineGuid
+}
+Log-Message "System Id: $systemid"
 
 # check product code and version ...
 if ( $productcode -eq '' )
