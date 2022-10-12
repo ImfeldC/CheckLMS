@@ -32,7 +32,8 @@ param(
 # '20221003': Check if 'SIEMBT.log' exists (Fix: Defect 2116265)
 #             Check that 'get-lms' commandlet is available (Fix: Defect 2116265)
 # '20221005': Use Net.WebClient to download file from OSD, instead of Start-BitsTransfer
-$scriptVersion = '20221005'
+# '20221012': Check existence of several registry keys. (Fix: Defect 2122172)
+$scriptVersion = '20221012'
 
 $global:ExitCode=0
 # Old API URL -> $OSD_APIURL="https://www.automation.siemens.com/softwareupdater/public/api/updates"
@@ -214,8 +215,16 @@ $LMS_IS_VM = (gcim Win32_ComputerSystem).HypervisorPresent
 $OS_MACHINEGUID = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Cryptography' -Name 'MachineGuid' | select -expand MachineGuid
 $OS_PRODUCTNAME = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'ProductName' | select -expand ProductName
 $OS_VERSION = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'CurrentVersion' | select -expand CurrentVersion
-$OS_MAJ_VERSION = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'CurrentMajorVersionNumber' | select -expand CurrentMajorVersionNumber
-$OS_MIN_VERSION = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'CurrentMinorVersionNumber' | select -expand CurrentMinorVersionNumber
+if ( Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\CurrentMajorVersionNumber' ) {
+	$OS_MAJ_VERSION = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'CurrentMajorVersionNumber' | select -expand CurrentMajorVersionNumber
+} else {
+	$OS_MAJ_VERSION = "n/a"
+}
+if ( Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\CurrentMinorVersionNumber' ) {
+	$OS_MIN_VERSION = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'CurrentMinorVersionNumber' | select -expand CurrentMinorVersionNumber
+} else {
+	$OS_MIN_VERSION = "n/a"
+}
 $OS_BUILD_NUM = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'CurrentBuildNumber' | select -expand CurrentBuildNumber
 
 $SSU_UPDATE_ENABLED = (ScheduledTask -TaskName "SSUScheduledTask").Triggers.Enabled
@@ -230,7 +239,7 @@ if( $SSU_UPDATE_ENABLED -eq "True" )
 		$SSU_UPDATE_INTERVAL = "Monthly"
 	}
 }
-if ( Test-Path 'HKCU:\SOFTWARE\Siemens\SSU' ) {
+if ( Test-Path 'HKCU:\SOFTWARE\Siemens\SSU\InstallUpdateType' ) {
 	$SSU_UPDATE_TYPE =  Get-ItemProperty -Path 'HKCU:\SOFTWARE\Siemens\SSU' -Name 'InstallUpdateType' | select -expand InstallUpdateType
 } else {
 	# Default: 'Automatic', see https://wiki.siemens.com/pages/viewpage.action?pageId=390630467
