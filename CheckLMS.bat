@@ -23,6 +23,10 @@ rem     12-Oct-2022:
 rem        - Adjust 'Test connection to OSD software update server', do not show full error, when it fails.
 rem        - Issue in script of '09-Oct-2022'; fixed now: Support 'CheckForUpdate.ps1' also delivered with SSU client, stored in C:\Program Files\Siemens\SSU\bin (Fix: Defect 2116265)
 rem        - Use script 'CheckForUpdate.ps1' delivered with SSU client, to perform connection test; this allows to check if messages and/or updates are available for the SSU client.
+rem     13-Oct-2022:
+rem        - Simplify check on LMS_BUILD_VERSION for LmuTool operations.
+rem        - Check return value when getting product upgrades and maintenance. (Fix: Defect 2116121)
+rem        - Suppress error message with '-ErrorAction SilentlyContinue' when getting registry key with Get-ItemProperty.
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -65,8 +69,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 12-Oct-2022"
-set LMS_SCRIPT_BUILD=20221012
+set LMS_SCRIPT_VERSION="CheckLMS Script 13-Oct-2022"
+set LMS_SCRIPT_BUILD=20221013
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -2668,7 +2672,7 @@ if not defined LMS_SKIPWMIC (
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	echo ... read installed products and version for vendor=Siemens [from registry] ...
 	echo Read installed products and version for vendor=Siemens [from registry]                                              >> !REPORT_LOGFILE! 2>&1
-	Powershell -command "Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate, InstallSource, ModifyPath, UninstallString, PSChildName | Where-Object{$_.Publisher -like '*Siemens*'} | Format-Table | Out-File -Width 1024 '!CHECKLMS_REPORT_LOG_PATH!\InstalledSiemensProgramsReport.log'" >> !REPORT_LOGFILE! 2>&1
+	Powershell -command "Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* -ErrorAction SilentlyContinue | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate, InstallSource, ModifyPath, UninstallString, PSChildName | Where-Object{$_.Publisher -like '*Siemens*'} | Format-Table | Out-File -Width 1024 '!CHECKLMS_REPORT_LOG_PATH!\InstalledSiemensProgramsReport.log'" >> !REPORT_LOGFILE! 2>&1
 	type !CHECKLMS_REPORT_LOG_PATH!\InstalledSiemensProgramsReport.log                                                       >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- wmic product get name, version, InstallDate, vendor [with vendor=Siemens]                          >> !REPORT_LOGFILE! 2>&1
 	echo ... read installed products and version [with wmic] ...
@@ -2750,7 +2754,7 @@ if not defined LMS_SKIPWMIC (
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	echo ... read installed products and version [from registry] ...
 	echo Read installed products and version [from registry]                                                                 >> !REPORT_LOGFILE! 2>&1
-	Powershell -command "Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate, InstallSource, ModifyPath, UninstallString, PSChildName | Format-Table | Out-File -Width 1024 '!CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport1.log'" >> !REPORT_LOGFILE! 2>&1
+	Powershell -command "Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* -ErrorAction SilentlyContinue | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate, InstallSource, ModifyPath, UninstallString, PSChildName | Format-Table | Out-File -Width 1024 '!CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport1.log'" >> !REPORT_LOGFILE! 2>&1
 	Powershell -command "Get-Item HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*"                                                                                                                                                     > !CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport2.log 2>&1
 	rem type !CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport.log >> !REPORT_LOGFILE! 2>&1
 	echo     See full details in '!CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport1.log' and '!CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport2.log'!  >> !REPORT_LOGFILE! 2>&1
@@ -2831,7 +2835,7 @@ if not defined LMS_SKIPWINDOWS (
 	echo ---------------- powershell -command "Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\.NetFramework\v4.0.30319' ..."   >> !REPORT_LOGFILE! 2>&1
 	echo ... retrieve regitry key 'SchUseStrongCrypto' ...
 	echo Retrieve regitry key 'SchUseStrongCrypto' [using 'powershell -command "Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\.NetFramework\v4.0.30319' ..."']: >> !REPORT_LOGFILE! 2>&1
-	powershell -Command "Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\.NetFramework\v4.0.30319' -Name 'SchUseStrongCrypto'"  >> !REPORT_LOGFILE! 2>&1
+	powershell -Command "Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\.NetFramework\v4.0.30319' -Name 'SchUseStrongCrypto' -ErrorAction SilentlyContinue"  >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- powershell -command "Get-ExecutionPolicy"                                                              >> !REPORT_LOGFILE! 2>&1
 	echo ... retrieve powershell execution policy ...
 	echo Retrieve powershell execution policy [using 'powershell -command "Get-ExecutionPolicy"']:                           >> !REPORT_LOGFILE! 2>&1
@@ -2878,19 +2882,19 @@ if not defined LMS_SKIPWINDOWS (
 		echo ATTENTION: Only !PROC_FOUND! relevant services found.                                                               >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	Powershell -command "Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\FlexNet Licensing Service' | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_fnls.txt 2>&1
+	Powershell -command "Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\FlexNet Licensing Service' -ErrorAction SilentlyContinue | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_fnls.txt 2>&1
 	echo Content of registry key: "HKLM:\SYSTEM\CurrentControlSet\Services\FlexNet Licensing Service" ...                        >> !REPORT_LOGFILE! 2>&1
 	type !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_fnls.txt                                                                            >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	Powershell -command "Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\FlexNet Licensing Service 64' | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_fnls64.txt 2>&1
+	Powershell -command "Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\FlexNet Licensing Service 64' -ErrorAction SilentlyContinue | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_fnls64.txt 2>&1
 	echo Content of registry key: "HKLM:\SYSTEM\CurrentControlSet\Services\FlexNet Licensing Service 64" ...                     >> !REPORT_LOGFILE! 2>&1
 	type !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_fnls64.txt                                                                          >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	Powershell -command "Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\Siemens BT Licensing Server' | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_siembtvd.txt 2>&1
+	Powershell -command "Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\Siemens BT Licensing Server' -ErrorAction SilentlyContinue | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_siembtvd.txt 2>&1
 	echo Content of registry key: "HKLM:\SYSTEM\CurrentControlSet\Services\Siemens BT Licensing Server" ...                      >> !REPORT_LOGFILE! 2>&1
 	type !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_siembtvd.txt                                                                        >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	Powershell -command "Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\hasplms' | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_hasplms.txt 2>&1
+	Powershell -command "Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\hasplms' -ErrorAction SilentlyContinue | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_hasplms.txt 2>&1
 	echo Content of registry key: "HKLM:\SYSTEM\CurrentControlSet\Services\Sentinel LDK License Manager" ...                     >> !REPORT_LOGFILE! 2>&1
 	type !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_hasplms.txt                                                                         >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
@@ -3709,65 +3713,77 @@ if not defined LMS_SKIPLMS (
 			for /f %%i in ('powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -Token}"') do set LMS_PS_TOKEN=%%i                >> !REPORT_LOGFILE! 2>&1
 			rem remove spaces within LMS_PS_TOKEN
 			if "!LMS_PS_TOKEN!" NEQ "" set LMS_PS_TOKEN=!LMS_PS_TOKEN: =!
-			echo LMS_PS_TOKEN=[!LMS_PS_TOKEN!]                                                                                                                             >> !REPORT_LOGFILE! 2>&1
+			echo LMS_PS_TOKEN=[!LMS_PS_TOKEN!]                                                                                   >> !REPORT_LOGFILE! 2>&1
 			echo !SHOW_GREEN!    FIXED: Configured access token has been set to [!LMS_PS_TOKEN!]  !SHOW_NORMAL!
-			echo FIXED: Configured access token has been set to [!LMS_PS_TOKEN!]                                                                                           >> !REPORT_LOGFILE! 2>&1
+			echo FIXED: Configured access token has been set to [!LMS_PS_TOKEN!]                                                 >> !REPORT_LOGFILE! 2>&1
 		)
 		if "!LMS_PS_TOKEN!" EQU "act_imhg05mh_dmg4ufrigv03" (
-			echo NOTE: The configured access token [!LMS_PS_TOKEN!] is the known default token!                                                                            >> !REPORT_LOGFILE! 2>&1
+			echo NOTE: The configured access token [!LMS_PS_TOKEN!] is the known default token!                                  >> !REPORT_LOGFILE! 2>&1
 		) else (
-			echo NOTE: The configured access token [!LMS_PS_TOKEN!] is NOT the known default token!                                                                        >> !REPORT_LOGFILE! 2>&1
+			echo NOTE: The configured access token [!LMS_PS_TOKEN!] is NOT the known default token!                              >> !REPORT_LOGFILE! 2>&1
 		)
-		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo LMS "Can Notify": [read with LMU PowerShell command: get-lms -CanNotify]                                                                                      >> !REPORT_LOGFILE! 2>&1
+		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+		echo LMS "Can Notify": [read with LMU PowerShell command: get-lms -CanNotify]                                            >> !REPORT_LOGFILE! 2>&1
 		echo     LMS "Can Notify": [read with LMU PowerShell command: get-lms -CanNotify]
-		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -CanNotify}"                                                     >> !REPORT_LOGFILE! 2>&1
-		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -CanNotify}"                                                          >> !REPORT_LOGFILE! 2>&1 
-		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo LMS Notification Period: [read with LMU PowerShell command: get-lms -NotificationPeriod]                                                                      >> !REPORT_LOGFILE! 2>&1
+		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -CanNotify}"           >> !REPORT_LOGFILE! 2>&1
+		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -CanNotify}"                >> !REPORT_LOGFILE! 2>&1 
+		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+		echo LMS Notification Period: [read with LMU PowerShell command: get-lms -NotificationPeriod]                            >> !REPORT_LOGFILE! 2>&1
 		echo     LMS Notification Period: [read with LMU PowerShell command: get-lms -NotificationPeriod]
-		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -NotificationPeriod}"                                            >> !REPORT_LOGFILE! 2>&1
-		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -NotificationPeriod}"                                                 >> !REPORT_LOGFILE! 2>&1 
-		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo LMS Is SIEMBT Ready: [read with LMU PowerShell command: get-lms -IsSiembtReady]                                                                               >> !REPORT_LOGFILE! 2>&1
+		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -NotificationPeriod}"  >> !REPORT_LOGFILE! 2>&1
+		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -NotificationPeriod}"       >> !REPORT_LOGFILE! 2>&1 
+		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+		echo LMS Is SIEMBT Ready: [read with LMU PowerShell command: get-lms -IsSiembtReady]                                     >> !REPORT_LOGFILE! 2>&1
 		echo     LMS Is SIEMBT Ready: [read with LMU PowerShell command: get-lms -IsSiembtReady]
-		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -IsSiembtReady}"                                                 >> !REPORT_LOGFILE! 2>&1
-		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -IsSiembtReady}"                                                      >> !REPORT_LOGFILE! 2>&1 
-		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo Is transfer of client info at activation disabled: [read with LMU PowerShell command: get-lms -DisableClientInfo]                                             >> !REPORT_LOGFILE! 2>&1
+		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -IsSiembtReady}"       >> !REPORT_LOGFILE! 2>&1
+		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -IsSiembtReady}"            >> !REPORT_LOGFILE! 2>&1 
+		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+		echo Is transfer of client info at activation disabled: [read with LMU PowerShell command: get-lms -DisableClientInfo]   >> !REPORT_LOGFILE! 2>&1
 		echo     Is transfer of client info at activation disabled: [read with LMU PowerShell command: get-lms -DisableClientInfo]
-		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -DisableClientInfo}"                                             >> !REPORT_LOGFILE! 2>&1
-		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -DisableClientInfo}"                                                  >> !REPORT_LOGFILE! 2>&1 
-		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo Number of 'Borrow' days: [read with LMU PowerShell command: get-lms -BorrowDays]                                                                              >> !REPORT_LOGFILE! 2>&1
+		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -DisableClientInfo}"   >> !REPORT_LOGFILE! 2>&1
+		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -DisableClientInfo}"        >> !REPORT_LOGFILE! 2>&1 
+		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+		echo Number of 'Borrow' days: [read with LMU PowerShell command: get-lms -BorrowDays]                                    >> !REPORT_LOGFILE! 2>&1
 		echo     Number of 'Borrow' days: [read with LMU PowerShell command: get-lms -BorrowDays]
-		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -BorrowDays}"                                                    >> !REPORT_LOGFILE! 2>&1
-		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -BorrowDays}"                                                         >> !REPORT_LOGFILE! 2>&1 
-		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo Get LMS Application state: [read with LMU PowerShell command: get-lms -LMUWsState]                                                                            >> !REPORT_LOGFILE! 2>&1
+		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -BorrowDays}"          >> !REPORT_LOGFILE! 2>&1
+		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -BorrowDays}"               >> !REPORT_LOGFILE! 2>&1 
+		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+		echo Get LMS Application state: [read with LMU PowerShell command: get-lms -LMUWsState]                                  >> !REPORT_LOGFILE! 2>&1
 		echo     Get LMS Application state: [read with LMU PowerShell command: get-lms -LMUWsState]
-		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -LMUWsState}"                                                    >> !REPORT_LOGFILE! 2>&1
-		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -LMUWsState}"                                                         >> !REPORT_LOGFILE! 2>&1 
+		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -LMUWsState}"          >> !REPORT_LOGFILE! 2>&1
+		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -LMUWsState}"               >> !REPORT_LOGFILE! 2>&1 
 		for /f %%i in ('powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -LMUWsState}"') do set LMS_PS_LMUWSSTATE=%%i          >> !REPORT_LOGFILE! 2>&1
 		if "!LMS_PS_LMUWSSTATE!" NEQ "" set LMS_PS_LMUWSSTATE=!LMS_PS_LMUWSSTATE: =!
-		echo LMS_PS_LMUWSSTATE=[!LMS_PS_LMUWSSTATE!]                                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo Start at !DATE! !TIME! ....                                                                                                                                   >> !REPORT_LOGFILE! 2>&1
-		echo Get Product List: [read with LMU PowerShell command: Select-Product -report -all]                                                                             >> !REPORT_LOGFILE! 2>&1
+		echo LMS_PS_LMUWSSTATE=[!LMS_PS_LMUWSSTATE!]                                                                             >> !REPORT_LOGFILE! 2>&1
+		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Get Product List: [read with LMU PowerShell command: Select-Product -report -all]                                   >> !REPORT_LOGFILE! 2>&1
 		echo     Get Product List: [read with LMU PowerShell command: Select-Product -report -all]
-		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -all}"                                            >> !REPORT_LOGFILE! 2>&1
-		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -all}"                                                 >> !REPORT_LOGFILE! 2>&1 
-		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo Start at !DATE! !TIME! ....                                                                                                                                   >> !REPORT_LOGFILE! 2>&1
-		echo Get Product Upgrades: [read with LMU PowerShell command: Select-Product -report -upgrades]                                                                    >> !REPORT_LOGFILE! 2>&1
+		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -all}"  >> !REPORT_LOGFILE! 2>&1
+		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -all}"       >> !REPORT_LOGFILE! 2>&1 
+		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Get Product Upgrades: [read with LMU PowerShell command: Select-Product -report -upgrades]                          >> !REPORT_LOGFILE! 2>&1
 		echo     Get Product Upgrades: [read with LMU PowerShell command: Select-Product -report -upgrades]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -upgrades}"                                       >> !REPORT_LOGFILE! 2>&1
-		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -upgrades}"                                            >> !REPORT_LOGFILE! 2>&1 
-		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
-		echo Start at !DATE! !TIME! ....                                                                                                                                   >> !REPORT_LOGFILE! 2>&1
-		echo Get Product Maintenance: [read with LMU PowerShell command]                                                                                                   >> !REPORT_LOGFILE! 2>&1
+		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -upgrades}"  >!CHECKLMS_REPORT_LOG_PATH!\GetProductUpgrades.txt 2>&1
+		findstr /m /c:"Error loading licensed products" "!CHECKLMS_REPORT_LOG_PATH!\GetProductUpgrades.txt"                      >> !REPORT_LOGFILE! 2>&1
+		if !ERRORLEVEL!==0 (
+			echo     No Product Upgrades found.                                                                                  >> !REPORT_LOGFILE! 2>&1
+		) else (
+			type !CHECKLMS_REPORT_LOG_PATH!\GetProductUpgrades.txt                                                               >> !REPORT_LOGFILE! 2>&1
+		)
+		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Get Product Maintenance: [read with LMU PowerShell command]                                                         >> !REPORT_LOGFILE! 2>&1
 		echo     Get Product Maintenance: [read with LMU PowerShell command]
-		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {(Select-Product -report -upgrades)[0].Maintenance}"                           >> !REPORT_LOGFILE! 2>&1 
+		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {(Select-Product -report -upgrades)[0].Maintenance}" >!CHECKLMS_REPORT_LOG_PATH!\GetProductMaintenance.txt 2>&1 
+		findstr /m /c:"Error loading licensed products" "!CHECKLMS_REPORT_LOG_PATH!\GetProductMaintenance.txt"                   >> !REPORT_LOGFILE! 2>&1
+		if !ERRORLEVEL!==0 (
+			echo     No Product Maintenance found.                                                                               >> !REPORT_LOGFILE! 2>&1
+		) else (
+			type !CHECKLMS_REPORT_LOG_PATH!\GetProductMaintenance.txt                                                            >> !REPORT_LOGFILE! 2>&1
+		)
 	) else (
 		echo !SHOW_RED!    ERROR: Cannot execute powershell commands due missing "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1".  !SHOW_NORMAL!
 		echo ERROR: Cannot execute powershell commands due missing "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1".                >> !REPORT_LOGFILE! 2>&1
@@ -3789,14 +3805,10 @@ if not defined LMS_SKIPLMS (
 	echo Read-out "SUR expiration date" for this system, with LmuTool.exe /SUREDATE                                              >> !REPORT_LOGFILE! 2>&1
 	echo     Read-out "SUR expiration date" for this system, with LmuTool.exe /SUREDATE
 	if defined LMS_LMUTOOL (
-		if /I !LMS_BUILD_VERSION! NEQ 721 (
-			if /I !LMS_BUILD_VERSION! NEQ 610 (
-				"!LMS_LMUTOOL!" /SUREDATE                                                                                        >> !REPORT_LOGFILE! 2>&1
-			) else (
-				echo     This operation is not available with LMS !LMS_VERSION!, cannot perform operation.                       >> !REPORT_LOGFILE! 2>&1 
-			)
+		if /I !LMS_BUILD_VERSION! GEQ 745 (
+			"!LMS_LMUTOOL!" /SUREDATE                                                                                            >> !REPORT_LOGFILE! 2>&1
 		) else (
-			echo     This operation is not available with LMS !LMS_VERSION!, cannot perform operation.                           >> !REPORT_LOGFILE! 2>&1 
+			echo     LmuTool.exe /SUREDATE operation is not available with LMS !LMS_VERSION!, cannot perform operation.          >> !REPORT_LOGFILE! 2>&1 
 		)
 	) else (
 		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> !REPORT_LOGFILE! 2>&1 
@@ -3811,14 +3823,10 @@ if not defined LMS_SKIPLMS (
 	echo Read-out "site value" for this system, with LmuTool.exe /SITEVALUE                                                      >> !REPORT_LOGFILE! 2>&1
 	echo     Read-out "site value" for this system, with LmuTool.exe /SITEVALUE
 	if defined LMS_LMUTOOL (
-		if /I !LMS_BUILD_VERSION! NEQ 721 (
-			if /I !LMS_BUILD_VERSION! NEQ 610 (
-				"!LMS_LMUTOOL!" /SITEVALUE                                                                                       >> !REPORT_LOGFILE! 2>&1
-			) else (
-				echo     This operation is not available with LMS !LMS_VERSION!, cannot perform operation.                       >> !REPORT_LOGFILE! 2>&1 
-			)
+		if /I !LMS_BUILD_VERSION! GEQ 745 (
+			"!LMS_LMUTOOL!" /SITEVALUE                                                                                           >> !REPORT_LOGFILE! 2>&1
 		) else (
-			echo     This operation is not available with LMS !LMS_VERSION!, cannot perform operation.                           >> !REPORT_LOGFILE! 2>&1 
+			echo     LmuTool.exe /healthcheck operation is not available with LMS !LMS_VERSION!, cannot perform operation.       >> !REPORT_LOGFILE! 2>&1 
 		)
 	) else (
 		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> !REPORT_LOGFILE! 2>&1 
@@ -3828,14 +3836,10 @@ if not defined LMS_SKIPLMS (
 	echo Run health check, with LmuTool.exe /healthcheck                                                                         >> !REPORT_LOGFILE! 2>&1
 	echo     Run health check, with LmuTool.exe /healthcheck
 	if defined LMS_LMUTOOL (
-		if /I !LMS_BUILD_VERSION! NEQ 721 (
-			if /I !LMS_BUILD_VERSION! NEQ 610 (
-				"!LMS_LMUTOOL!" /healthcheck                                                                                     >> !REPORT_LOGFILE! 2>&1
-			) else (
-				echo     This operation is not available with LMS !LMS_VERSION!, cannot perform operation.                       >> !REPORT_LOGFILE! 2>&1 
-			)
+		if /I !LMS_BUILD_VERSION! GEQ 745 (
+			"!LMS_LMUTOOL!" /healthcheck                                                                                         >> !REPORT_LOGFILE! 2>&1
 		) else (
-			echo     This operation is not available with LMS !LMS_VERSION!, cannot perform operation.                           >> !REPORT_LOGFILE! 2>&1 
+			echo     LmuTool.exe /healthcheck operation is not available with LMS !LMS_VERSION!, cannot perform operation.       >> !REPORT_LOGFILE! 2>&1 
 		)
 	) else (
 		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> !REPORT_LOGFILE! 2>&1 
@@ -3848,7 +3852,7 @@ if not defined LMS_SKIPLMS (
 		if /I !LMS_BUILD_VERSION! GEQ 800 (
 			"!LMS_LMUTOOL!" /cleants                                                                                             >> !REPORT_LOGFILE! 2>&1
 		) else (
-			echo     This operation is not available with LMS !LMS_VERSION!, cannot perform operation.                           >> !REPORT_LOGFILE! 2>&1 
+			echo     LmuTool /cleants operation is not available with LMS !LMS_VERSION!, cannot perform operation.               >> !REPORT_LOGFILE! 2>&1 
 		)
 	) else (
 		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> !REPORT_LOGFILE! 2>&1 
@@ -6219,7 +6223,7 @@ if not defined LMS_CHECK_ID (
 	)
 	echo .                                                                                                                       >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\Siemens\LMS' | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_registry.txt 2>&1
+	Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\Siemens\LMS' -ErrorAction SilentlyContinue | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_registry.txt 2>&1
 	echo Content of registry key: "HKLM:\SOFTWARE\Siemens\LMS" ...                                                               >> !REPORT_LOGFILE! 2>&1
 	type !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_registry.txt                                                                        >> !REPORT_LOGFILE! 2>&1
 	rem echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
@@ -6416,17 +6420,13 @@ if not defined LMS_SKIPSSU (
 	echo Retrieve registry permissison for !SSU_MAIN_REGISTRY_KEY! [with "Get-Acl HKLM:\SOFTWARE\Siemens\SSU | Format-List"]     >> !REPORT_LOGFILE! 2>&1
 	Powershell -command "Get-Acl HKLM:\SOFTWARE\Siemens\SSU | Format-List"                        >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                  >> !REPORT_LOGFILE! 2>&1
-	Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\Siemens\SSU' | Format-List" > !CHECKLMS_SSU_PATH!\ssu_hklm_registry.txt 2>&1
+	Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\Siemens\SSU' -ErrorAction SilentlyContinue | Format-List" > !CHECKLMS_SSU_PATH!\ssu_hklm_registry.txt 2>&1
 	echo Content of registry key: "HKLM:\SOFTWARE\Siemens\SSU" ...                                >> !REPORT_LOGFILE! 2>&1
 	type !CHECKLMS_SSU_PATH!\ssu_hklm_registry.txt                                                >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                  >> !REPORT_LOGFILE! 2>&1
-	Powershell -command "Get-ItemProperty 'HKCU:\SOFTWARE\Siemens\SSU' | Format-List" > !CHECKLMS_SSU_PATH!\ssu_hkcu_registry.txt 2>&1
+	Powershell -command "Get-ItemProperty 'HKCU:\SOFTWARE\Siemens\SSU' -ErrorAction SilentlyContinue | Format-List" > !CHECKLMS_SSU_PATH!\ssu_hkcu_registry.txt 2>&1
 	echo Content of registry key: 'HKCU:\SOFTWARE\Siemens\SSU' ...                                >> !REPORT_LOGFILE! 2>&1
-	if exist "!CHECKLMS_SSU_PATH!\ssu_hkcu_registry.txt" (
-		type !CHECKLMS_SSU_PATH!\ssu_hkcu_registry.txt                                            >> !REPORT_LOGFILE! 2>&1
-	) else (
-		echo     Registry key 'HKCU:\SOFTWARE\Siemens\SSU' doesn't exists.                        >> !REPORT_LOGFILE! 2>&1
-	)
+	type !CHECKLMS_SSU_PATH!\ssu_hkcu_registry.txt                                                >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                  >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_EXTENDED_CONTENT (
 		echo ... test connection to OSD server [using https/443 port] ...
@@ -7555,7 +7555,7 @@ if not defined LMS_SKIPPRODUCTS (
 			echo Create folder: '!CHECKLMS_GMS_PATH!\'           >> !REPORT_LOGFILE! 2>&1
 			mkdir "!CHECKLMS_GMS_PATH!\"                         >> !REPORT_LOGFILE! 2>&1
 		)
-		Powershell -command "Get-ItemProperty HKLM:\SOFTWARE\Siemens\Siemens_GMS | Format-List" > !CHECKLMS_GMS_PATH!\desigocc_registry.txt 2>&1
+		Powershell -command "Get-ItemProperty HKLM:\SOFTWARE\Siemens\Siemens_GMS -ErrorAction SilentlyContinue | Format-List" > !CHECKLMS_GMS_PATH!\desigocc_registry.txt 2>&1
 		IF EXIST "!CHECKLMS_GMS_PATH!\desigocc_registry.txt" (
 			for /f "tokens=1* eol=@ delims=<>: " %%A in ('type !CHECKLMS_GMS_PATH!\desigocc_registry.txt ^|find /I "GMSActiveProject"') do set GMS_ActiveProject=%%B
 			for /f "tokens=1* eol=@ delims=<>: " %%A in ('type !CHECKLMS_GMS_PATH!\desigocc_registry.txt ^|find /I "InstallDir"') do set GMS_InstallDir=%%B
@@ -7573,7 +7573,7 @@ if not defined LMS_SKIPPRODUCTS (
 		echo -------------------------------------------------------                                            >> !REPORT_LOGFILE! 2>&1
 		echo     Read list of installed Extensions Modules of Desigo CC from registry ...
 		echo Read list of installed Extensions Modules of Desigo CC from registry                                            >> !REPORT_LOGFILE! 2>&1
-		Powershell -command "Get-ItemProperty HKLM:\Software\Siemens\Siemens_GMS\EM\* | Select-Object DisplayName, DisplayVersion, ExtensionSuite, InstallationMode, IsEMWithoutMsi | Format-List" > !CHECKLMS_GMS_PATH!\desigocc_installed_EM.txt 2>&1
+		Powershell -command "Get-ItemProperty HKLM:\Software\Siemens\Siemens_GMS\EM\* -ErrorAction SilentlyContinue | Select-Object DisplayName, DisplayVersion, ExtensionSuite, InstallationMode, IsEMWithoutMsi | Format-List" > !CHECKLMS_GMS_PATH!\desigocc_installed_EM.txt 2>&1
 		type !CHECKLMS_GMS_PATH!\desigocc_installed_EM.txt >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
 		echo     Search for desigo cc logfiles [PVSS_II.log, WCCOActrl253.log] [in '!GMS_InstallDir!'] ...
@@ -7629,7 +7629,7 @@ if not defined LMS_SKIPPRODUCTS (
 		echo Sentron powermanager [!PM_VERSION!] found ...                                                                   >> !REPORT_LOGFILE! 2>&1
 		echo Sentron powermanager Version: !PM_VERSION!                                                                      >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
-		Powershell -command "Get-ItemProperty HKLM:\SOFTWARE\Siemens\powermanager\V4.20 | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\pm_installed_versions.txt 2>&1
+		Powershell -command "Get-ItemProperty HKLM:\SOFTWARE\Siemens\powermanager\V4.20 -ErrorAction SilentlyContinue | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\pm_installed_versions.txt 2>&1
 		type !CHECKLMS_REPORT_LOG_PATH!\pm_installed_versions.txt >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
 		echo Content of folder: "%programdata%\\Siemens Energy\powermanager\Logs\" incl. sub-folders                         >> !REPORT_LOGFILE! 2>&1
@@ -7652,7 +7652,7 @@ if not defined LMS_SKIPPRODUCTS (
 		echo XWorksPlus XWP [!XWP_VERSION!] found ...                                                                        >> !REPORT_LOGFILE! 2>&1
 		echo XWorks Plus [XWP] Version: !XWP_VERSION!                                                                        >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
-		Powershell -command "Get-ItemProperty HKLM:\SOFTWARE\WOW6432Node\Siemens\DESIGO\XWP | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\xwp_installed_versions.txt 2>&1
+		Powershell -command "Get-ItemProperty HKLM:\SOFTWARE\WOW6432Node\Siemens\DESIGO\XWP -ErrorAction SilentlyContinue | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\xwp_installed_versions.txt 2>&1
 		type !CHECKLMS_REPORT_LOG_PATH!\xwp_installed_versions.txt >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
 		echo Content of folder: "!temp!\setup*.log"                                                                          >> !REPORT_LOGFILE! 2>&1
@@ -7683,7 +7683,7 @@ if not defined LMS_SKIPPRODUCTS (
 		)
 		echo Automation Building Tool [ABT] Version: !ABT_VERSION_STRING! [!ABT_VERSION!]                                    >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
-		Powershell -command "Get-ItemProperty HKLM:\SOFTWARE\Siemens\ABTSite | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\abt_installed_versions.txt 2>&1
+		Powershell -command "Get-ItemProperty HKLM:\SOFTWARE\Siemens\ABTSite -ErrorAction SilentlyContinue | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\abt_installed_versions.txt 2>&1
 		type !CHECKLMS_REPORT_LOG_PATH!\abt_installed_versions.txt >> !REPORT_LOGFILE! 2>&1
 		echo Start at !DATE! !TIME! ....                                                                                     >> !REPORT_LOGFILE! 2>&1
 	) else (
@@ -7755,11 +7755,11 @@ if not defined LMS_SKIPPRODUCTS (
 		echo SiPass version             : !SIPASS_VERSION!                                                                   >> !REPORT_LOGFILE! 2>&1
 		
 		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
-		Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\Wow6432Node\Landis & Staefa\ADVANTAGE\Version4\Server' | Format-List" > !CHECKLMS_SIPASS_PATH!\sipass_registry.txt 2>&1
+		Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\Wow6432Node\Landis & Staefa\ADVANTAGE\Version4\Server' -ErrorAction SilentlyContinue | Format-List" > !CHECKLMS_SIPASS_PATH!\sipass_registry.txt 2>&1
 		echo Content of registry key: "HKLM:\SOFTWARE\Wow6432Node\Landis & Staefa\ADVANTAGE\Version4\Server" ...             >> !REPORT_LOGFILE! 2>&1
 		type !CHECKLMS_SIPASS_PATH!\sipass_registry.txt                                                                      >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
-		Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\Wow6432Node\Landis & Staefa\ADVANTAGE\Version4\Server\ServerConfigurations\!SIPASS_CONFIGURATION!' | Format-List" > !CHECKLMS_SIPASS_PATH!\sipass_configuration_registry.txt 2>&1
+		Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\Wow6432Node\Landis & Staefa\ADVANTAGE\Version4\Server\ServerConfigurations\!SIPASS_CONFIGURATION!' -ErrorAction SilentlyContinue | Format-List" > !CHECKLMS_SIPASS_PATH!\sipass_configuration_registry.txt 2>&1
 		echo Content of registry key: "HKLM:\SOFTWARE\Wow6432Node\Landis & Staefa\ADVANTAGE\Version4\Server\ServerConfigurations\!SIPASS_CONFIGURATION!" ... >> !REPORT_LOGFILE! 2>&1
 		type !CHECKLMS_SIPASS_PATH!\sipass_configuration_registry.txt                                                        >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
@@ -7789,7 +7789,7 @@ if not defined LMS_SKIPPRODUCTS (
 		echo Desigo Insight [!INSIGHT_PROJECTNAME!] found ...                                                                >> !REPORT_LOGFILE! 2>&1
 		echo Desigo Insight Project: !INSIGHT_PROJECTNAME!                                                                   >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
-		Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\Landis & Staefa\Licenses' | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\insight_registry.txt 2>&1
+		Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\Landis & Staefa\Licenses' -ErrorAction SilentlyContinue | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\insight_registry.txt 2>&1
 		type !CHECKLMS_REPORT_LOG_PATH!\insight_registry.txt >> !REPORT_LOGFILE! 2>&1
 
 	) else (
@@ -7831,11 +7831,11 @@ if not defined LMS_SKIPPRODUCTS (
 		echo Apogee Datamate Advanced [DMA] directory   : !DMA_DIRECTORY!                                                    >> !REPORT_LOGFILE! 2>&1
 		echo Apogee Datamate Advanced [DMA] version     : !DMA_VERSION!                                                      >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
-		Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\LANDIS & GYR\Insight\CurrentVersion\Configuration' | Format-List" > !CHECKLMS_DMA_PATH!\dma_configuration_registry.txt 2>&1
+		Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\LANDIS & GYR\Insight\CurrentVersion\Configuration' -ErrorAction SilentlyContinue | Format-List" > !CHECKLMS_DMA_PATH!\dma_configuration_registry.txt 2>&1
 		echo Content of registry key: "HKLM:\SOFTWARE\WOW6432Node\LANDIS & GYR\Insight\CurrentVersion\Configuration" ...     >> !REPORT_LOGFILE! 2>&1
 		type !CHECKLMS_DMA_PATH!\dma_configuration_registry.txt                                                              >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
-		Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\LANDIS & GYR\Insight\CurrentVersion\Setup' | Format-List" > !CHECKLMS_DMA_PATH!\dma_setup_registry.txt 2>&1
+		Powershell -command "Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\LANDIS & GYR\Insight\CurrentVersion\Setup' -ErrorAction SilentlyContinue | Format-List" > !CHECKLMS_DMA_PATH!\dma_setup_registry.txt 2>&1
 		echo Content of registry key: "HKLM:\SOFTWARE\WOW6432Node\LANDIS & GYR\Insight\CurrentVersion\Setup" ...             >> !REPORT_LOGFILE! 2>&1
 		type !CHECKLMS_DMA_PATH!\dma_setup_registry.txt                                                                      >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
