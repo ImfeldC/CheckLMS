@@ -27,6 +27,10 @@ rem     13-Oct-2022:
 rem        - Simplify check on LMS_BUILD_VERSION for LmuTool operations.
 rem        - Check return value when getting product upgrades and maintenance. (Fix: Defect 2116121)
 rem        - Suppress error message with '-ErrorAction SilentlyContinue' when getting registry key with Get-ItemProperty.
+rem     14-Oct-2022:
+rem        - remove dependency to 'lmu.psc1' when calling CheckForUpdate powershell.
+rem        - in case when !ALLUSERSPROFILE!\Siemens\LMS doesn't exist, create them. To better support machines w/o LMS installed.
+rem        - Added the content of several logfile folders of ABT to the CheckLMS logfile
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -69,8 +73,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 13-Oct-2022"
-set LMS_SCRIPT_BUILD=20221013
+set LMS_SCRIPT_VERSION="CheckLMS Script 14-Oct-2022"
+set LMS_SCRIPT_BUILD=20221014
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -164,8 +168,13 @@ rem Check report log path
 set LMS_PROGRAMDATA=!ALLUSERSPROFILE!\Siemens\LMS
 set REPORT_LOG_PATH=!LMS_PROGRAMDATA!\Logs
 IF NOT EXIST "!REPORT_LOG_PATH!\" (
-    set REPORT_LOG_PATH=!temp!
-    echo This is not a valid LMS Installation, use !temp! as path to store log files 
+	rem echo Create new folder: !REPORT_LOG_PATH!\
+    mkdir !REPORT_LOG_PATH!\ >nul 2>&1
+
+	IF NOT EXIST "!REPORT_LOG_PATH!\" (
+		set REPORT_LOG_PATH=!temp!
+		echo This is not a valid LMS Installation, use !temp! as path to store log files 
+	)
 )
 set CHECKLMS_REPORT_LOG_PATH=!REPORT_LOG_PATH!\CheckLMSLogs
 IF NOT EXIST "!CHECKLMS_REPORT_LOG_PATH!\" (
@@ -1176,8 +1185,8 @@ if not defined LMS_SKIPDOWNLOAD (
 	)
 	IF EXIST "!LMS_CHECKFORUPDATE_SCRIPT!" (
 		del "!LMS_DOWNLOAD_PATH!\CheckLMS.bat" >nul 2>&1
-		echo RUN: powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -Command "& '!LMS_CHECKFORUPDATE_SCRIPT!' -SkipSiemensSoftware 1 -verbose 1 -DownloadSoftware 1 -productversion '!LMS_SCRIPT_BUILD!' -productcode '!LMS_SCRIPT_PRODUCTID!'; exit $LASTEXITCODE"         >> !REPORT_LOGFILE! 2>&1
-		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -Command "& '!LMS_CHECKFORUPDATE_SCRIPT!' -SkipSiemensSoftware 1 -verbose 1 -DownloadSoftware 1 -productversion '!LMS_SCRIPT_BUILD!' -productcode '!LMS_SCRIPT_PRODUCTID!'; exit $LASTEXITCODE"                   >> !REPORT_LOGFILE! 2>&1
+		echo RUN: powershell -Command "& '!LMS_CHECKFORUPDATE_SCRIPT!' -SkipSiemensSoftware 1 -verbose 1 -DownloadSoftware 1 -productversion '!LMS_SCRIPT_BUILD!' -productcode '!LMS_SCRIPT_PRODUCTID!'; exit $LASTEXITCODE"         >> !REPORT_LOGFILE! 2>&1
+		powershell -Command "& '!LMS_CHECKFORUPDATE_SCRIPT!' -SkipSiemensSoftware 1 -verbose 1 -DownloadSoftware 1 -productversion '!LMS_SCRIPT_BUILD!' -productcode '!LMS_SCRIPT_PRODUCTID!'; exit $LASTEXITCODE"                   >> !REPORT_LOGFILE! 2>&1
 		IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS.bat" (
 			rem CheckLMS.bat has been downloaded from OSD server
 			for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_OSD set LMS_SCRIPT_BUILD_DOWNLOAD_OSD=%%i
@@ -6497,8 +6506,8 @@ if not defined LMS_SKIPSSU (
 	echo Test connection to OSD software update server  [using API URL]                                                          >> !REPORT_LOGFILE! 2>&1                                                                                            
 	rem Connection Test to OSD software update server
 	IF EXIST "!ProgramFiles!\Siemens\SSU\bin\CheckForUpdate.ps1" (
-		echo RUN: powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -Command "& '!ProgramFiles!\Siemens\SSU\bin\CheckForUpdate.ps1' -SkipSiemensSoftware 1; exit $LASTEXITCODE"  >> !REPORT_LOGFILE! 2>&1
-		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -Command "& '!ProgramFiles!\Siemens\SSU\bin\CheckForUpdate.ps1' -SkipSiemensSoftware 1; exit $LASTEXITCODE"            >> !REPORT_LOGFILE! 2>&1
+		echo RUN: powershell -Command "& '!ProgramFiles!\Siemens\SSU\bin\CheckForUpdate.ps1' -SkipSiemensSoftware 1; exit $LASTEXITCODE"  >> !REPORT_LOGFILE! 2>&1
+		powershell -Command "& '!ProgramFiles!\Siemens\SSU\bin\CheckForUpdate.ps1' -SkipSiemensSoftware 1; exit $LASTEXITCODE"            >> !REPORT_LOGFILE! 2>&1
 		if !ERRORLEVEL!==0 (
 			rem Connection Test: PASSED
 			echo     Connection Test PASSED, can access OSD software update server  [using API URL]
@@ -7686,6 +7695,15 @@ if not defined LMS_SKIPPRODUCTS (
 		Powershell -command "Get-ItemProperty HKLM:\SOFTWARE\Siemens\ABTSite -ErrorAction SilentlyContinue | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\abt_installed_versions.txt 2>&1
 		type !CHECKLMS_REPORT_LOG_PATH!\abt_installed_versions.txt >> !REPORT_LOGFILE! 2>&1
 		echo Start at !DATE! !TIME! ....                                                                                     >> !REPORT_LOGFILE! 2>&1
+		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Content of folder: "%programdata%\Siemens\Automation\Logfiles\ABTInstaller\*.log"                               >> !REPORT_LOGFILE! 2>&1
+		dir /A /X /4 /W "%programdata%\Siemens\Automation\Logfiles\ABTInstaller\*.log"                                       >> !REPORT_LOGFILE! 2>&1
+		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Content of folder: "%programdata%\Siemens\Automation\Logfiles\Setup\*.log"                                      >> !REPORT_LOGFILE! 2>&1
+		dir /A /X /4 /W "%programdata%\Siemens\Automation\Logfiles\Setup\*.log"                                              >> !REPORT_LOGFILE! 2>&1
+		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Content of folder: "%programdata%\Siemens\Automation\Logfiles\BTBundleInstaller\*.log"                          >> !REPORT_LOGFILE! 2>&1
+		dir /A /X /4 /W "%programdata%\Siemens\Automation\Logfiles\BTBundleInstaller\*.log"                                  >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo Automation Building Tool [ABT] not installed on this machine.                                                   >> !REPORT_LOGFILE! 2>&1
 	)
@@ -8120,8 +8138,8 @@ echo Start at !DATE! !TIME! ....                                                
 echo Check for software updates or messages: [read with 'CheckForUpdate.ps1' script from OSD server]                     >> !REPORT_LOGFILE! 2>&1
 echo     Check for software updates or messages: [read with 'CheckForUpdate.ps1' script from OSD server]
 IF EXIST "!LMS_CHECKFORUPDATE_SCRIPT!" (
-	echo RUN: powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -Command "& '!LMS_CHECKFORUPDATE_SCRIPT!'" >> !REPORT_LOGFILE! 2>&1
-	powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -Command "& '!LMS_CHECKFORUPDATE_SCRIPT!'"           >> !REPORT_LOGFILE! 2>&1
+	echo RUN: powershell -Command "& '!LMS_CHECKFORUPDATE_SCRIPT!'"                                                      >> !REPORT_LOGFILE! 2>&1
+	powershell -Command "& '!LMS_CHECKFORUPDATE_SCRIPT!'"                                                                >> !REPORT_LOGFILE! 2>&1
 ) else (
 	echo ERROR: Cannot execute powershell script 'CheckForUpdate.ps1', it doesn't exist at '!LMS_CHECKFORUPDATE_SCRIPT!'.        >> !REPORT_LOGFILE! 2>&1
 )
