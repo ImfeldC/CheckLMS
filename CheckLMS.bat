@@ -31,6 +31,7 @@ rem     14-Oct-2022:
 rem        - remove dependency to 'lmu.psc1' when calling CheckForUpdate powershell.
 rem        - in case when !ALLUSERSPROFILE!\Siemens\LMS doesn't exist, create them. To better support machines w/o LMS installed.
 rem        - Added the content of several logfile folders of ABT to the CheckLMS logfile
+rem        - in case 'Get-WindowsUpdateLog' doesn't work, do not show full error output, just mention to check dedicated logfile.
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -2979,8 +2980,9 @@ if not defined LMS_SKIPWINDOWS (
 				echo WARNING: The logfile 'WindowsUpdate.log' wasn't found; cannot copy it!                                                                          >> !REPORT_LOGFILE! 2>&1
 				echo          It wasn't found at: [desktop]='%desktop%' / [DESKTOP_FOLDER]='%DESKTOP_FOLDER%' / [userprofile\desktop\]='%userprofile%\desktop\'.     >> !REPORT_LOGFILE! 2>&1
 				if exist "!CHECKLMS_REPORT_LOG_PATH!\Get-WindowsUpdateLog.log" (
-					echo Output of 'powershell -command "Get-WindowsUpdateLog"' ...                                                                                  >> !REPORT_LOGFILE! 2>&1
-					type "!CHECKLMS_REPORT_LOG_PATH!\Get-WindowsUpdateLog.log"                                                                                       >> !REPORT_LOGFILE! 2>&1
+					rem echo Output of 'powershell -command "Get-WindowsUpdateLog"' ...                                                                                  >> !REPORT_LOGFILE! 2>&1
+					rem type "!CHECKLMS_REPORT_LOG_PATH!\Get-WindowsUpdateLog.log"                                                                                       >> !REPORT_LOGFILE! 2>&1
+					echo For more details check '!CHECKLMS_REPORT_LOG_PATH!\Get-WindowsUpdateLog.log' ...                                                            >> !REPORT_LOGFILE! 2>&1
 				) else (
 					echo WARNING: The output file '!CHECKLMS_REPORT_LOG_PATH!\Get-WindowsUpdateLog.log' doesn't exists; cannot display it!                           >> !REPORT_LOGFILE! 2>&1
 				)
