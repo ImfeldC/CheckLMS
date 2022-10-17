@@ -1334,4 +1334,26 @@ rem     02-Oct-2022:
 rem        - Shorten scetion to retrieve McAfee logfile.
 rem     03-Oct-2022:
 rem        - Show content of AWS_EXECUTION_ENV
+rem     04-Oct-2022:
+rem        - Publish CheckLMS "04-Oct-2022" to be part of LMS 2.7.862, collect all changes after "20-Sep-2022" up to "04-Oct-2022"
+rem     07-Oct-2022:
+rem        - Do not install dongle driver automatically, when no dongle driver is installed.
+rem        - Support new dongle driver (NEW: https://licensemanagementsystem.s3.eu-west-1.amazonaws.com/lms/hasp/8.43/DongleDriver.zip) (Fix: Defect 2118970)
+rem     09-Oct-2022:
+rem        - Support 'CheckForUpdate.ps1' also delivered with SSU client, stored in C:\Program Files\Siemens\SSU\bin (Fix: Defect 2116265)
+rem     10-Oct-2022:
+rem        - Fix issue to set LMS_VERSION_IS_SUPPORTED correct 
+rem     12-Oct-2022:
+rem        - Adjust 'Test connection to OSD software update server', do not show full error, when it fails.
+rem        - Issue in script of '09-Oct-2022'; fixed now: Support 'CheckForUpdate.ps1' also delivered with SSU client, stored in C:\Program Files\Siemens\SSU\bin (Fix: Defect 2116265)
+rem        - Use script 'CheckForUpdate.ps1' delivered with SSU client, to perform connection test; this allows to check if messages and/or updates are available for the SSU client.
+rem     13-Oct-2022:
+rem        - Simplify check on LMS_BUILD_VERSION for LmuTool operations.
+rem        - Check return value when getting product upgrades and maintenance. (Fix: Defect 2116121)
+rem        - Suppress error message with '-ErrorAction SilentlyContinue' when getting registry key with Get-ItemProperty.
+rem     14-Oct-2022:
+rem        - remove dependency to 'lmu.psc1' when calling CheckForUpdate powershell.
+rem        - in case when !ALLUSERSPROFILE!\Siemens\LMS doesn't exist, create them. To better support machines w/o LMS installed.
+rem        - Added the content of several logfile folders of ABT to the CheckLMS logfile
+rem        - in case 'Get-WindowsUpdateLog' doesn't work, do not show full error output, just mention to check dedicated logfile.
 ```
