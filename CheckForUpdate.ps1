@@ -35,7 +35,8 @@ param(
 # '20221012': Check existence of several registry keys. (Fix: Defect 2122172)
 #             Determine systemid (if not already done) (Fix: Defect 2117302)
 #             Use '-ErrorAction SilentlyContinue' when reading registry value to suppress any error.
-$scriptVersion = '20221012'
+# '20221024': Check that 'get-lms' commandlet is available (Fix: Defect 2129454)
+$scriptVersion = '20221024'
 
 $global:ExitCode=0
 # Old API URL -> $OSD_APIURL="https://www.automation.siemens.com/softwareupdater/public/api/updates"
@@ -155,22 +156,26 @@ $clientVersion = $scriptVersion
 
 # determine for which product this script is running ...
 if( $PSScriptRoot.Contains("\Siemens\LMS\") ) { 
-	# retrieve LMS client info ....
-	$lmsproductcode = get-lms -ProductCode | select -expand Guid
-	$lmsproductversion = get-lms -LMSVersion
-	$lmssystemid = get-lms -SystemId
-	if( $Verbose ) {
-		Log-Message "LMS Client Info: lmsproductversion=$lmsproductversion / lmsproductcode=$lmsproductcode / lmssystemid=$lmssystemid"
+	if( Get-Command 'get-lms' -errorAction SilentlyContinue ) {
+		# retrieve LMS client info ....
+		$lmsproductcode = get-lms -ProductCode | select -expand Guid
+		$lmsproductversion = get-lms -LMSVersion
+		$lmssystemid = get-lms -SystemId
+		if( $Verbose ) {
+			Log-Message "LMS Client Info: lmsproductversion=$lmsproductversion / lmsproductcode=$lmsproductcode / lmssystemid=$lmssystemid"
+		}
+		if ( $productcode -eq '' )
+		{
+			$productcode = $lmsproductcode
+		}
+		if ( $productversion -eq '' )
+		{
+			$productversion = $lmsproductversion
+		}
+		$systemid = $lmssystemid
+	} else {
+		Log-Message "LMS Client Info: Cannot retrieve LMS client information, because 'get-lms' commandlet is not available."
 	}
-	if ( $productcode -eq '' )
-	{
-		$productcode = $lmsproductcode
-	}
-	if ( $productversion -eq '' )
-	{
-		$productversion = $lmsproductversion
-	}
-	$systemid = $lmssystemid
 } elseif ( $PSScriptRoot.Contains("\Siemens\SSU\") ) { 
 	# retrieve SSU client info ....
 	$TEMPPRODUCTCODE = Get-InstalledSoftware  -Name 'Siemens Software Updater' 
