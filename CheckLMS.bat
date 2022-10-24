@@ -12,6 +12,8 @@ rem     Full details see changelog.md (on https://github.com/ImfeldC/CheckLMS/bl
 rem
 rem     17-Oct-2022:
 rem        - Publish CheckLMS "17-Oct-2022" to be part of LMS 2.7.863, collect all changes after "04-Oct-2022" up to "17-Oct-2022" 
+rem     24-Oct-2022:
+rem        - Pass correct options when starting CheckForUpdate.ps1 (see LMS_CHECKFORUPDATE_OPTIONS) (Fix: Defect 2129454)
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -54,8 +56,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 17-Oct-2022"
-set LMS_SCRIPT_BUILD=20221017
+set LMS_SCRIPT_VERSION="CheckLMS Script 24-Oct-2022"
+set LMS_SCRIPT_BUILD=20221024
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -1158,16 +1160,20 @@ if not defined LMS_SKIPDOWNLOAD (
 	
 	rem Download newest LMS check script from OSD
 	IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1" (
+		rem Start CheckForUpdate.ps1 script within LMS environment.
 		set LMS_CHECKFORUPDATE_SCRIPT=!ProgramFiles!\Siemens\LMS\scripts\CheckForUpdate.ps1
+		set LMS_CHECKFORUPDATE_OPTIONS=-PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1"
 	) else (
 		IF EXIST "!ProgramFiles!\Siemens\SSU\bin\CheckForUpdate.ps1" (
+			rem Start CheckForUpdate.ps1 script within SSU environment.
 			set LMS_CHECKFORUPDATE_SCRIPT=!ProgramFiles!\Siemens\SSU\bin\CheckForUpdate.ps1
+			set LMS_CHECKFORUPDATE_OPTIONS=
 		)
 	)
 	IF EXIST "!LMS_CHECKFORUPDATE_SCRIPT!" (
 		del "!LMS_DOWNLOAD_PATH!\CheckLMS.bat" >nul 2>&1
-		echo RUN: powershell -Command "& '!LMS_CHECKFORUPDATE_SCRIPT!' -SkipSiemensSoftware 1 -verbose 1 -DownloadSoftware 1 -productversion '!LMS_SCRIPT_BUILD!' -productcode '!LMS_SCRIPT_PRODUCTID!'; exit $LASTEXITCODE"         >> !REPORT_LOGFILE! 2>&1
-		powershell -Command "& '!LMS_CHECKFORUPDATE_SCRIPT!' -SkipSiemensSoftware 1 -verbose 1 -DownloadSoftware 1 -productversion '!LMS_SCRIPT_BUILD!' -productcode '!LMS_SCRIPT_PRODUCTID!'; exit $LASTEXITCODE"                   >> !REPORT_LOGFILE! 2>&1
+		echo RUN: powershell !LMS_CHECKFORUPDATE_OPTIONS! -Command "& '!LMS_CHECKFORUPDATE_SCRIPT!' -SkipSiemensSoftware 1 -verbose 1 -DownloadSoftware 1 -productversion '!LMS_SCRIPT_BUILD!' -productcode '!LMS_SCRIPT_PRODUCTID!'; exit $LASTEXITCODE"         >> !REPORT_LOGFILE! 2>&1
+		powershell !LMS_CHECKFORUPDATE_OPTIONS! -Command "& '!LMS_CHECKFORUPDATE_SCRIPT!' -SkipSiemensSoftware 1 -verbose 1 -DownloadSoftware 1 -productversion '!LMS_SCRIPT_BUILD!' -productcode '!LMS_SCRIPT_PRODUCTID!'; exit $LASTEXITCODE"                   >> !REPORT_LOGFILE! 2>&1
 		IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS.bat" (
 			rem CheckLMS.bat has been downloaded from OSD server
 			for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_OSD set LMS_SCRIPT_BUILD_DOWNLOAD_OSD=%%i
@@ -8120,8 +8126,8 @@ echo Start at !DATE! !TIME! ....                                                
 echo Check for software updates or messages: [read with 'CheckForUpdate.ps1' script from OSD server]                     >> !REPORT_LOGFILE! 2>&1
 echo     Check for software updates or messages: [read with 'CheckForUpdate.ps1' script from OSD server]
 IF EXIST "!LMS_CHECKFORUPDATE_SCRIPT!" (
-	echo RUN: powershell -Command "& '!LMS_CHECKFORUPDATE_SCRIPT!'"                                                      >> !REPORT_LOGFILE! 2>&1
-	powershell -Command "& '!LMS_CHECKFORUPDATE_SCRIPT!'"                                                                >> !REPORT_LOGFILE! 2>&1
+	echo RUN: powershell !LMS_CHECKFORUPDATE_OPTIONS! -Command "& '!LMS_CHECKFORUPDATE_SCRIPT!'"                                                      >> !REPORT_LOGFILE! 2>&1
+	powershell !LMS_CHECKFORUPDATE_OPTIONS! -Command "& '!LMS_CHECKFORUPDATE_SCRIPT!'"                                                                >> !REPORT_LOGFILE! 2>&1
 ) else (
 	echo ERROR: Cannot execute powershell script 'CheckForUpdate.ps1', it doesn't exist at '!LMS_CHECKFORUPDATE_SCRIPT!'.        >> !REPORT_LOGFILE! 2>&1
 )
