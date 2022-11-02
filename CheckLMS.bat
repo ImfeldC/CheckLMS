@@ -14,6 +14,8 @@ rem     17-Oct-2022:
 rem        - Publish CheckLMS "17-Oct-2022" to be part of LMS 2.7.863, collect all changes after "04-Oct-2022" up to "17-Oct-2022" 
 rem     24-Oct-2022:
 rem        - Pass correct options when starting CheckForUpdate.ps1 (see LMS_CHECKFORUPDATE_OPTIONS) (Fix: Defect 2129454)
+rem     02-Nov-2022:
+rem        - Publish CheckLMS "02-Nov-2022" to be part of LMS 2.7.865, collect all changes after "17-Oct-2022" up to "02-Nov-2022" 
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -56,8 +58,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 24-Oct-2022"
-set LMS_SCRIPT_BUILD=20221024
+set LMS_SCRIPT_VERSION="CheckLMS Script 02-Nov-2022"
+set LMS_SCRIPT_BUILD=20221102
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
