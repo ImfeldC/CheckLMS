@@ -10,12 +10,9 @@ rem        - Final script, released for LMS 2.6
 rem 
 rem     Full details see changelog.md (on https://github.com/ImfeldC/CheckLMS/blob/master/changelog.md )
 rem
-rem     17-Oct-2022:
-rem        - Publish CheckLMS "17-Oct-2022" to be part of LMS 2.7.863, collect all changes after "04-Oct-2022" up to "17-Oct-2022" 
-rem     24-Oct-2022:
-rem        - Pass correct options when starting CheckForUpdate.ps1 (see LMS_CHECKFORUPDATE_OPTIONS) (Fix: Defect 2129454)
-rem     02-Nov-2022:
-rem        - Publish CheckLMS "02-Nov-2022" to be part of LMS 2.7.865, collect all changes after "17-Oct-2022" up to "02-Nov-2022" 
+rem     14-Nov-2022:
+rem        - Add (new) comment {get-lms -ClientID}
+rem        - Publish CheckLMS "14-Nov-2022" to be part of LMS 2.7.867, collect all changes after "02-Nov-2022" up to "14-Nov-2022" 
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -58,8 +55,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 02-Nov-2022"
-set LMS_SCRIPT_BUILD=20221102
+set LMS_SCRIPT_VERSION="CheckLMS Script 14-Nov-2022"
+set LMS_SCRIPT_BUILD=20221114
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -3557,6 +3554,18 @@ if not defined LMS_SKIPLMS (
 		for /f %%i in ('powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -SystemId}"') do set LMS_PS_SYSTEMID=%%i              >> !REPORT_LOGFILE! 2>&1
 		if "!LMS_PS_SYSTEMID!" NEQ "" set LMS_PS_SYSTEMID=!LMS_PS_SYSTEMID: =!
 		echo LMS_PS_SYSTEMID=[!LMS_PS_SYSTEMID!]                                                                                                                           >> !REPORT_LOGFILE! 2>&1
+		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
+		echo LMS Client ID: [read with LMU PowerShell command: get-lms -ClientID]                                                                                          >> !REPORT_LOGFILE! 2>&1
+		echo     LMS Client ID: [read with LMU PowerShell command: get-lms -ClientID]
+		if /I !LMS_BUILD_VERSION! GEQ 867 (
+			echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -ClientID}"                                                  >> !REPORT_LOGFILE! 2>&1
+			powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -ClientID}"                                                       >> !REPORT_LOGFILE! 2>&1 
+			for /f %%i in ('powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -ClientID}"') do set LMS_PS_CLIENTID=%%i          >> !REPORT_LOGFILE! 2>&1
+			if "!LMS_PS_CLIENTID!" NEQ "" set LMS_PS_CLIENTID=!LMS_PS_CLIENTID: =!
+		) else (
+			echo     This operation is not available with LMS !LMS_VERSION!, don't perform operation.                                                                      >> !REPORT_LOGFILE! 2>&1 
+		)
+		echo LMS_PS_CLIENTID=[!LMS_PS_CLIENTID!]                                                                                                                           >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                                                                       >> !REPORT_LOGFILE! 2>&1
 		echo LMS Version: [read with LMU PowerShell command: get-lms -LMSVersion]                                                                                          >> !REPORT_LOGFILE! 2>&1
 		echo     LMS Version: [read with LMU PowerShell command: get-lms -LMSVersion]

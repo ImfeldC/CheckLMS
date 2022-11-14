@@ -1356,4 +1356,10 @@ rem        - remove dependency to 'lmu.psc1' when calling CheckForUpdate powersh
 rem        - in case when !ALLUSERSPROFILE!\Siemens\LMS doesn't exist, create them. To better support machines w/o LMS installed.
 rem        - Added the content of several logfile folders of ABT to the CheckLMS logfile
 rem        - in case 'Get-WindowsUpdateLog' doesn't work, do not show full error output, just mention to check dedicated logfile.
+rem     17-Oct-2022:
+rem        - Publish CheckLMS "17-Oct-2022" to be part of LMS 2.7.863, collect all changes after "04-Oct-2022" up to "17-Oct-2022" 
+rem     24-Oct-2022:
+rem        - Pass correct options when starting CheckForUpdate.ps1 (see LMS_CHECKFORUPDATE_OPTIONS) (Fix: Defect 2129454)
+rem     02-Nov-2022:
+rem        - Publish CheckLMS "02-Nov-2022" to be part of LMS 2.7.865, collect all changes after "17-Oct-2022" up to "02-Nov-2022" 
 ```
