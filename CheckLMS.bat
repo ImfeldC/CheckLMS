@@ -13,6 +13,12 @@ rem
 rem     14-Nov-2022:
 rem        - Add (new) comment {get-lms -ClientID}
 rem        - Publish CheckLMS "14-Nov-2022" to be part of LMS 2.7.867, collect all changes after "02-Nov-2022" up to "14-Nov-2022" 
+rem     24-Nov-2022:
+rem        - Add serialnumber to wmic OS get Caption,CSDVersion,OSArchitecture,Version, serialnumber
+rem        - Add Machine ID, using reg query HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\SQMClient /v MachineId
+rem        - Add CurrentClockSpeed & MaxClockSpeed to wmic CPU get Name,NumberOfCores,NumberOfLogicalProcessors, CurrentClockSpeed, MaxClockSpeed
+rem          for more info, check https://www.nextofwindows.com/the-best-way-to-uniquely-identify-a-windows-machine
+rem                         and https://stackoverflow.com/questions/47603786/where-do-windows-product-id-and-device-id-values-come-from-are-they-useful
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -55,8 +61,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 14-Nov-2022"
-set LMS_SCRIPT_BUILD=20221114
+set LMS_SCRIPT_VERSION="CheckLMS Script 24-Nov-2022"
+set LMS_SCRIPT_BUILD=20221124
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -2549,10 +2555,16 @@ rem 	) else (
 rem 		echo     works only on "known" languages, for languages !OS_LANGUAGE! check output of systeminfo further down.       >> !REPORT_LOGFILE! 2>&1
 rem 	)
 rem )
-echo Collect information from windows [wmic] ...                                                                             >> !REPORT_LOGFILE! 2>&1
-echo ... collect information from windows [wmic] ...
+
+echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+echo Collect information from windows ...                                                                                    >> !REPORT_LOGFILE! 2>&1
+echo ... collect information from windows ...
+echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+echo Machine ID [using: reg query HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\SQMClient /v MachineId]:                             >> !REPORT_LOGFILE! 2>&1
+reg query HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\SQMClient /v MachineId                                                       >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPWMIC (
-	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+	echo Collect information from windows [wmic] ...                                                                         >> !REPORT_LOGFILE! 2>&1
+	echo ... collect information from windows [wmic] ...
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	echo Read-out wmic information with WmiRead.exe:                                                                         >> !REPORT_LOGFILE! 2>&1
 	if exist "!LMS_DOWNLOAD_PATH!\WmiRead.exe" (
@@ -2601,10 +2613,10 @@ if not defined LMS_SKIPWMIC (
 	echo     wmic csproduct get *
 	wmic /output:!REPORT_WMIC_LOGFILE! csproduct get * /format:list                    
 	type !REPORT_WMIC_LOGFILE!                                                                                               >> !REPORT_LOGFILE! 2>&1
-	echo ---------------- wmic OS get Caption,CSDVersion,OSArchitecture,Version                                              >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- wmic OS get Caption,CSDVersion,OSArchitecture,Version, serialnumber                                >> !REPORT_LOGFILE! 2>&1
 	echo     More information to Windows Version, see https://en.wikipedia.org/wiki/Windows_10_version_history               >> !REPORT_LOGFILE! 2>&1
-	echo     wmic OS get Caption,CSDVersion,OSArchitecture,Version
-	wmic /output:!REPORT_WMIC_LOGFILE! OS get Caption,CSDVersion,OSArchitecture,Version /format:list                    
+	echo     wmic OS get Caption,CSDVersion,OSArchitecture,Version, serialnumber
+	wmic /output:!REPORT_WMIC_LOGFILE! OS get Caption,CSDVersion,OSArchitecture,Version, serialnumber /format:list                    
 	type !REPORT_WMIC_LOGFILE!                                                                                               >> !REPORT_LOGFILE! 2>&1
 	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicOS_fullList.txt OS get /format:list                                          >> !REPORT_LOGFILE! 2>&1                    
 	echo ---------------- wmic BIOS get Manufacturer,Name,SMBIOSBIOSVersion,Version,BuildNumber,InstallDate,SerialNumber,Description                         >> !REPORT_LOGFILE! 2>&1
@@ -2612,9 +2624,9 @@ if not defined LMS_SKIPWMIC (
 	wmic /output:!REPORT_WMIC_LOGFILE! BIOS get Manufacturer,Name,SMBIOSBIOSVersion,Version,BuildNumber,InstallDate,SerialNumber,Description  /format:list   >> !REPORT_LOGFILE! 2>&1
 	type !REPORT_WMIC_LOGFILE!                                                                                               >> !REPORT_LOGFILE! 2>&1
 	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicBIOS_fullList.txt BIOS get /format:list                                      >> !REPORT_LOGFILE! 2>&1             
-	echo ---------------- wmic CPU get Name,NumberOfCores,NumberOfLogicalProcessors                                          >> !REPORT_LOGFILE! 2>&1
-	echo     wmic CPU get Name,NumberOfCores,NumberOfLogicalProcessors
-	wmic /output:!REPORT_WMIC_LOGFILE! CPU get Name,NumberOfCores,NumberOfLogicalProcessors /format:list                     >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- wmic CPU get Name,NumberOfCores,NumberOfLogicalProcessors, CurrentClockSpeed, MaxClockSpeed        >> !REPORT_LOGFILE! 2>&1
+	echo     wmic CPU get Name,NumberOfCores,NumberOfLogicalProcessors, CurrentClockSpeed, MaxClockSpeed
+	wmic /output:!REPORT_WMIC_LOGFILE! CPU get Name,NumberOfCores,NumberOfLogicalProcessors, CurrentClockSpeed, MaxClockSpeed /format:list                   >> !REPORT_LOGFILE! 2>&1
 	type !REPORT_WMIC_LOGFILE!                                                                                               >> !REPORT_LOGFILE! 2>&1
 	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicCPU_fullList.txt CPU get /format:list                                        >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- wmic MEMPHYSICAL get MaxCapacity                                                                   >> !REPORT_LOGFILE! 2>&1
