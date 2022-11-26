@@ -19,6 +19,10 @@ rem        - Add Machine ID, using reg query HKEY_LOCAL_MACHINE\SOFTWARE\Microso
 rem        - Add CurrentClockSpeed & MaxClockSpeed to wmic CPU get Name,NumberOfCores,NumberOfLogicalProcessors, CurrentClockSpeed, MaxClockSpeed
 rem          for more info, check https://www.nextofwindows.com/the-best-way-to-uniquely-identify-a-windows-machine
 rem                         and https://stackoverflow.com/questions/47603786/where-do-windows-product-id-and-device-id-values-come-from-are-they-useful
+rem     25-Nov-2022:
+rem        - Add several commands to get status nad jobs of BITS downloader (fix: Defect 2145133)
+rem        - Add new option /cleanup to remove all running BITS jobs.
+rem        - Fix typo: priviledge -> privilege
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -32,6 +36,7 @@ rem              - /showversion                 shows the script version. NOTE: 
 rem              - /info "Any text"             Adds this text to the output, e.g. reference to field issue /info "SR1-XXXX"
 rem              - /nouserinput                 supresses any user input (mainly the stop command at the end of the script)
 rem              - /nowait                      supresses any user input and any further "wait" commands 
+rem              - /cleanup                     starts additional clean-up commands.
 rem              - /logfilename <logfilename>   specifies the name and location of the logfile
 rem              - /skipdownload                skip section which performs download.
 rem              - /skipnetstat                 skip section which performs netstat commands. 
@@ -61,8 +66,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 24-Nov-2022"
-set LMS_SCRIPT_BUILD=20221124
+set LMS_SCRIPT_VERSION="CheckLMS Script 25-Nov-2022"
+set LMS_SCRIPT_BUILD=20221125
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -129,17 +134,17 @@ rem Store report start date & time
 set LMS_REPORT_START=!DATE! !TIME!
 echo Report Start at !LMS_REPORT_START! ....
 
-rem check administrator priviledge (see https://stackoverflow.com/questions/4051883/batch-script-how-to-check-for-admin-rights)
+rem check administrator privilege (see https://stackoverflow.com/questions/4051883/batch-script-how-to-check-for-admin-rights)
 set guid=%random%%random%-%random%-%random%-%random%-%random%%random%%random%
 mkdir %WINDIR%\%guid%>nul 2>&1
 rmdir %WINDIR%\%guid%>nul 2>&1
 IF !ERRORLEVEL!==0 (
     rem ECHO PRIVILEGED! (%guid%)
-    echo This script runs with administrator priviledge. 
+    echo This script runs with administrator privilege. 
 	set LMS_SCRIPT_RUN_AS_ADMINISTRATOR=1
 ) ELSE (
     rem ECHO NOT PRIVILEGED!  (%guid%)
-    echo This script runs with NO administrator priviledge. 
+    echo This script runs with NO administrator privilege. 
 )
 
 rem Retrieve desktop folder
@@ -352,6 +357,9 @@ FOR %%A IN (%*) DO (
 		)
 		if "!var!"=="nowait" (
 			set LMS_NOUSERINPUT=1
+		)
+		if "!var!"=="cleanup" (
+			set LMS_CLEANUP=1
 		)
 		if "!var!"=="logfilename" (
 			set LMS_LOGFILENAME=1
@@ -959,9 +967,9 @@ IF "%~1"=="" (
 	echo =  Command Line Options: %*                                                                                         >> !REPORT_LOGFILE! 2>&1
 )
 if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
-	echo =  Script started with : Administrator priviledge                                                                   >> !REPORT_LOGFILE! 2>&1
+	echo =  Script started with : Administrator privilege                                                                   >> !REPORT_LOGFILE! 2>&1
 ) else (
-	echo =  Script started with : normal priviledge                                                                          >> !REPORT_LOGFILE! 2>&1
+	echo =  Script started with : normal privilege                                                                          >> !REPORT_LOGFILE! 2>&1
 )
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 if defined LMS_SET_INFO (
@@ -1265,9 +1273,9 @@ if defined LMS_SHOW_VERSION (
 		echo =  Command Line Options: %*                 
 	)
 	if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
-		echo =  Script started with : Administrator priviledge   
+		echo =  Script started with : Administrator privilege   
 	) else (
-		echo =  Script started with : normal priviledge          
+		echo =  Script started with : normal privilege          
 	)
 	echo ==============================================================================
 
@@ -2093,8 +2101,8 @@ if defined LMS_SET_FIREWALL (
 		echo     DONE
 		echo Set firewall settings ... DONE                                                                                                                   >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo !SHOW_YELLOW!    WARNING: Cannot set firewall settings, start script with administrator priviledge. !SHOW_NORMAL!
-		echo WARNING: Cannot set firewall settings, start script with administrator priviledge.                                                           >> !REPORT_LOGFILE! 2>&1
+		echo !SHOW_YELLOW!    WARNING: Cannot set firewall settings, start script with administrator privilege. !SHOW_NORMAL!
+		echo WARNING: Cannot set firewall settings, start script with administrator privilege.                                                           >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                               >> !REPORT_LOGFILE! 2>&1
 	Powershell -command "Show-NetFirewallRule"  > !CHECKLMS_REPORT_LOG_PATH!\firewall_rules_PS.txt 2>&1
@@ -2190,8 +2198,8 @@ if defined LMS_INSTALL_VERSION (
 					start "Install LMS client" "!LMS_SETUP_EXECUTABLE!"  
 					echo --- Installation started in an own process/shell.                                                       >> !REPORT_LOGFILE! 2>&1
 				) else (
-					echo !SHOW_YELLOW!    WARNING: Cannot install or update LMS client to !LMS_INSTALL_VERSION!, start script with administrator priviledge. !SHOW_NORMAL!
-					echo WARNING: Cannot install or update LMS client to !LMS_INSTALL_VERSION!, start script with administrator priviledge.                      >> !REPORT_LOGFILE! 2>&1
+					echo !SHOW_YELLOW!    WARNING: Cannot install or update LMS client to !LMS_INSTALL_VERSION!, start script with administrator privilege. !SHOW_NORMAL!
+					echo WARNING: Cannot install or update LMS client to !LMS_INSTALL_VERSION!, start script with administrator privilege.                      >> !REPORT_LOGFILE! 2>&1
 				)
 			) else (
 				echo !SHOW_YELLOW!    WARNING: Cannot install or update LMS client to !LMS_INSTALL_VERSION!, file '!LMS_SETUP_EXECUTABLE!' doesn't exist. !SHOW_NORMAL!
@@ -2224,8 +2232,8 @@ if defined LMS_REMOVE_LMS_CLIENT (
 		wmic product where name="Siemens License Management" call uninstall                                                      >> !REPORT_LOGFILE! 2>&1
 		echo --- Remove LMS client, FINISHED.                                                                                    >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo !SHOW_YELLOW!    WARNING: You cannot remove LMS client '!LMS_VERSION!' from this machine, start script with administrator priviledge. !SHOW_NORMAL!
-		echo WARNING: You cannot remove LMS client '!LMS_VERSION!' from this machine, start script with administrator priviledge.   >> !REPORT_LOGFILE! 2>&1
+		echo !SHOW_YELLOW!    WARNING: You cannot remove LMS client '!LMS_VERSION!' from this machine, start script with administrator privilege. !SHOW_NORMAL!
+		echo WARNING: You cannot remove LMS client '!LMS_VERSION!' from this machine, start script with administrator privilege.   >> !REPORT_LOGFILE! 2>&1
 	)
 
 	goto script_end
@@ -2262,8 +2270,8 @@ if defined LMS_INSTALL_DONGLE_DRIVER (
 			start "Install dongle driver" "!LMS_DONGLE_DRIVER_PATH!\haspdinst.exe" -install -killprocess 
 			echo --- Installation started in an own process/shell.                                                         >> !REPORT_LOGFILE! 2>&1
 		) else (
-			echo !SHOW_YELLOW!    WARNING: Cannot install dongle driver, start script with administrator priviledge. !SHOW_NORMAL!
-			echo WARNING: Cannot install dongle driver, start script with administrator priviledge.                        >> !REPORT_LOGFILE! 2>&1
+			echo !SHOW_YELLOW!    WARNING: Cannot install dongle driver, start script with administrator privilege. !SHOW_NORMAL!
+			echo WARNING: Cannot install dongle driver, start script with administrator privilege.                        >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
 		echo !SHOW_YELLOW!    WARNING: Cannot install dongle driver, file '!LMS_DONGLE_DRIVER_PATH!\haspdinst.exe' doesn't exist. !SHOW_NORMAL!
@@ -2294,8 +2302,8 @@ if defined LMS_REMOVE_DONGLE_DRIVER (
 			start "Remove dongle driver" "!LMS_DONGLE_DRIVER_PATH!\haspdinst.exe" -remove -killprocess 
 			echo --- Remove started in an own process/shell.                                                               >> !REPORT_LOGFILE! 2>&1
 		) else (
-			echo !SHOW_YELLOW!    WARNING: Cannot remove dongle driver, start script with administrator priviledge. !SHOW_NORMAL!
-			echo WARNING: Cannot remove dongle driver, start script with administrator priviledge.                         >> !REPORT_LOGFILE! 2>&1
+			echo !SHOW_YELLOW!    WARNING: Cannot remove dongle driver, start script with administrator privilege. !SHOW_NORMAL!
+			echo WARNING: Cannot remove dongle driver, start script with administrator privilege.                         >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
 		echo !SHOW_YELLOW!    WARNING: Cannot remove dongle driver, file '!LMS_DONGLE_DRIVER_PATH!\haspdinst.exe' doesn't exist. !SHOW_NORMAL!
@@ -2371,8 +2379,8 @@ if defined LMS_START_DEMO_VD (
 				"!LMS_SERVERTOOL_PATH!\lmgrd.exe" -c "!LMS_DOWNLOAD_PATH!\counted.lic" -l "!REPORT_LOG_PATH!\demo_debuglog.txt"  >> !REPORT_LOGFILE! 2>&1
 			)
 		) else (
-			echo !SHOW_YELLOW!    WARNING: Cannot start Demo Vendor Daemon, start script with administrator priviledge. !SHOW_NORMAL!
-			echo WARNING: Cannot start Demo Vendor Daemon, start script with administrator priviledge.                       >> !REPORT_LOGFILE! 2>&1
+			echo !SHOW_YELLOW!    WARNING: Cannot start Demo Vendor Daemon, start script with administrator privilege. !SHOW_NORMAL!
+			echo WARNING: Cannot start Demo Vendor Daemon, start script with administrator privilege.                       >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
 		echo !SHOW_YELLOW!    WARNING: Cannot start Demo Vendor Daemon, file '!LMS_DEMOLF_VD!' doesn't exist. !SHOW_NORMAL!
@@ -2413,8 +2421,8 @@ if defined LMS_STOP_DEMO_VD (
 				echo WARNING: Cannot stop Demo Vendor Daemon, file '!LMS_LMDOWN!' doesn't exist.                             >> !REPORT_LOGFILE! 2>&1
 			)
 		) else (
-			echo !SHOW_YELLOW!    WARNING: Cannot stop Demo Vendor Daemon, start script with administrator priviledge. !SHOW_NORMAL!
-			echo WARNING: Cannot stop Demo Vendor Daemon, start script with administrator priviledge.                        >> !REPORT_LOGFILE! 2>&1
+			echo !SHOW_YELLOW!    WARNING: Cannot stop Demo Vendor Daemon, start script with administrator privilege. !SHOW_NORMAL!
+			echo WARNING: Cannot stop Demo Vendor Daemon, start script with administrator privilege.                        >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
 		echo !SHOW_YELLOW!    WARNING: Cannot stop Demo Vendor Daemon, file '!LMS_SERVERTOOL_PATH!\demo.exe' doesn't exist. !SHOW_NORMAL!
@@ -3280,14 +3288,14 @@ if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
 	echo Retrieve virtualization settings [using 'powershell -command "Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V"']:   >> !REPORT_LOGFILE! 2>&1
 	powershell -command "Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V"                           >> !REPORT_LOGFILE! 2>&1
 ) else (
-	echo WARNING: Cannot retrieve virtualization settings, start script with administrator priviledge.                >> !REPORT_LOGFILE! 2>&1
+	echo WARNING: Cannot retrieve virtualization settings, start script with administrator privilege.                >> !REPORT_LOGFILE! 2>&1
 )
 echo ---------------- powershell -command "Get-WindowsOptionalFeature -Online -FeatureName *Hyper-V*"                 >> !REPORT_LOGFILE! 2>&1
 if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
 	echo Retrieve virtualization settings [using 'powershell -command "Get-WindowsOptionalFeature -Online -FeatureName *Hyper-V*"']:   >> !REPORT_LOGFILE! 2>&1
 	powershell -command "Get-WindowsOptionalFeature -Online -FeatureName *Hyper-V*"                                   >> !REPORT_LOGFILE! 2>&1
 ) else (
-	echo WARNING: Cannot retrieve virtualization settings, start script with administrator priviledge.                >> !REPORT_LOGFILE! 2>&1
+	echo WARNING: Cannot retrieve virtualization settings, start script with administrator privilege.                >> !REPORT_LOGFILE! 2>&1
 )
 echo ---------------- powershell -command "get-service | findstr vmcompute"                                           >> !REPORT_LOGFILE! 2>&1
 rem  https://superuser.com/questions/1026651/how-to-find-out-whether-hyper-v-is-currently-enabled-running
@@ -3301,7 +3309,7 @@ if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
 	WEVTUtil query-events Microsoft-Windows-Hyper-V-Compute-Operational /count:%LOG_EVENTLOG_EVENTS% /rd:true /format:text /query:"*[System[Provider[@Name='Microsoft-Windows-Hyper-V-Compute']]]" > !CHECKLMS_REPORT_LOG_PATH!\eventlog_hyperv_operational.txt 2>&1
 	powershell -command "& {Get-Content '!CHECKLMS_REPORT_LOG_PATH!\eventlog_hyperv_operational.txt' | Select-Object -first !LOG_FILE_LINES!}" >> !REPORT_LOGFILE! 2>&1
 ) else (
-	echo WARNING: Windows Event Log: Microsoft-Windows-Hyper-V-Compute-Operational, start script with administrator priviledge. >> !REPORT_LOGFILE! 2>&1
+	echo WARNING: Windows Event Log: Microsoft-Windows-Hyper-V-Compute-Operational, start script with administrator privilege. >> !REPORT_LOGFILE! 2>&1
 )
 echo ---------------- powershell -command "Get-NetIPAddress...."                                              >> !REPORT_LOGFILE! 2>&1
 rem According to https://www.splunk.com/en_us/blog/tips-and-tricks/detecting-your-hypervisor-from-within-a-windows-guest-os.html
@@ -6375,20 +6383,43 @@ if not defined LMS_CHECK_ID (
 	echo SKIPPED LMS config section. The script didn't execute the LMS config commands.                                      >> !REPORT_LOGFILE! 2>&1
 )
 :ssu_update_information
-echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-echo =   S O F T W A R E   U P D A T E   I N F O R M A T I O N                    =                                          >> !REPORT_LOGFILE! 2>&1
-echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
-echo UserID=8:%SSU_SYSTEMID%                                                                                                 >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================               >> !REPORT_LOGFILE! 2>&1
+echo =   S O F T W A R E   U P D A T E   I N F O R M A T I O N                    =               >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================               >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! ....                                                                  >> !REPORT_LOGFILE! 2>&1
+echo UserID=8:%SSU_SYSTEMID%                                                                      >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPSSU (
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                  >> !REPORT_LOGFILE! 2>&1
+	echo Check that BITS service is available [with: powershell -Command "Get-Service BITS"]      >> !REPORT_LOGFILE! 2>&1
+	powershell -Command "Get-Service BITS"                                                        >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                  >> !REPORT_LOGFILE! 2>&1
+	echo List all BITS jobs [with: powershell -Command "Get-BitsTransfer -AllUsers"]              >> !REPORT_LOGFILE! 2>&1
+	if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
+		powershell -Command "Get-BitsTransfer -AllUsers"                                          >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo Cannot list all BITS jobs, start script with administrator privilege.               >> !REPORT_LOGFILE! 2>&1
+	)
+	echo -------------------------------------------------------                                  >> !REPORT_LOGFILE! 2>&1
+	echo Clean-up all BITS jobs [with: powershell -Command "Get-BitsTransfer -AllUsers |  Remove-BitsTransfer"]      >> !REPORT_LOGFILE! 2>&1
+	if defined LMS_CLEANUP (
+		if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
+			powershell -Command "Get-BitsTransfer -AllUsers |  Remove-BitsTransfer"              >> !REPORT_LOGFILE! 2>&1
+			echo -------------------------------------------------------                         >> !REPORT_LOGFILE! 2>&1
+			powershell -Command "Get-BitsTransfer -AllUsers"                                     >> !REPORT_LOGFILE! 2>&1
+		) else (
+			echo Cannot clean-up all BITS jobs, start script with administrator privilege.      >> !REPORT_LOGFILE! 2>&1
+		)
+	) else (
+			echo Skip clean-up of all BITS jobs, start script with /cleanup option an with administrator privilege.      >> !REPORT_LOGFILE! 2>&1
+	)
+	echo -------------------------------------------------------                                  >> !REPORT_LOGFILE! 2>&1
 	echo ... get content of SSU log-file folder ...
-	echo Content of folder: !ALLUSERSPROFILE!\Siemens\SSU\Logs                                                                   >> !REPORT_LOGFILE! 2>&1
-	dir /S /A /X /4 /W "!ALLUSERSPROFILE!\Siemens\SSU\Logs"                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo Content of folder: !ALLUSERSPROFILE!\Siemens\SSU\Logs                                    >> !REPORT_LOGFILE! 2>&1
+	dir /S /A /X /4 /W "!ALLUSERSPROFILE!\Siemens\SSU\Logs"                                       >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!ALLUSERSPROFILE!\Siemens\SSU\Logs\SSUSetup.log" (
-		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-		echo SSU - setup log-file found in !ALLUSERSPROFILE!\Siemens\SSU\Logs\SSUSetup.log                                       >> !REPORT_LOGFILE! 2>&1
-		Type "!ALLUSERSPROFILE!\Siemens\SSU\Logs\SSUSetup.log"                                                                   >> !REPORT_LOGFILE! 2>&1
+		echo -------------------------------------------------------                              >> !REPORT_LOGFILE! 2>&1
+		echo SSU - setup log-file found in !ALLUSERSPROFILE!\Siemens\SSU\Logs\SSUSetup.log        >> !REPORT_LOGFILE! 2>&1
+		Type "!ALLUSERSPROFILE!\Siemens\SSU\Logs\SSUSetup.log"                                    >> !REPORT_LOGFILE! 2>&1
 
 		copy "!ALLUSERSPROFILE!\Siemens\SSU\Logs\SSUSetup.log" "!CHECKLMS_SSU_PATH!\SSUSetup.log"                                                      >> !REPORT_LOGFILE! 2>&1
 		echo --- File automatically copied from !ALLUSERSPROFILE!\Siemens\SSU\Logs\SSUSetup.log to !CHECKLMS_SSU_PATH!\SSUSetup.log ---                >> !CHECKLMS_SSU_PATH!\SSUSetup.log 2>&1
