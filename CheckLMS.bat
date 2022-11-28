@@ -10,19 +10,10 @@ rem        - Final script, released for LMS 2.6
 rem 
 rem     Full details see changelog.md (on https://github.com/ImfeldC/CheckLMS/blob/master/changelog.md )
 rem
-rem     14-Nov-2022:
-rem        - Add (new) comment {get-lms -ClientID}
-rem        - Publish CheckLMS "14-Nov-2022" to be part of LMS 2.7.867, collect all changes after "02-Nov-2022" up to "14-Nov-2022" 
-rem     24-Nov-2022:
-rem        - Add serialnumber to wmic OS get Caption,CSDVersion,OSArchitecture,Version, serialnumber
-rem        - Add Machine ID, using reg query HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\SQMClient /v MachineId
-rem        - Add CurrentClockSpeed & MaxClockSpeed to wmic CPU get Name,NumberOfCores,NumberOfLogicalProcessors, CurrentClockSpeed, MaxClockSpeed
-rem          for more info, check https://www.nextofwindows.com/the-best-way-to-uniquely-identify-a-windows-machine
-rem                         and https://stackoverflow.com/questions/47603786/where-do-windows-product-id-and-device-id-values-come-from-are-they-useful
-rem     25-Nov-2022:
-rem        - Add several commands to get status nad jobs of BITS downloader (fix: Defect 2145133)
-rem        - Add new option /cleanup to remove all running BITS jobs.
-rem        - Fix typo: priviledge -> privilege
+rem     28-Nov-2022:
+rem        - Replace /RMS with /REQTOK (Fix: Story 2145456)
+rem        - Fix minor issue in "Skip download archive, as it was created on this machine." function
+rem        - Publish CheckLMS "28-Nov-2022" to be part of LMS 2.7.868, collect all changes after "14-Nov-2022" up to "28-Nov-2022" 
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -66,8 +57,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 25-Nov-2022"
-set LMS_SCRIPT_BUILD=20221125
+set LMS_SCRIPT_VERSION="CheckLMS Script 28-Nov-2022"
+set LMS_SCRIPT_BUILD=20221128
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -1603,11 +1594,11 @@ if not defined LMS_SKIPDOWNLOAD (
 			rem ECHO filedrive=!filedrive! / filepath=!filepath! /  filename=!filename! / fileextension=!fileextension!
 			for /f "tokens=1,2,3 eol=@ delims=_" %%a in ("!filename!") do set filemachine=%%b
 			for /f "tokens=1,2,3 eol=@ delims=_" %%a in ("!filename!") do set filetimestamp=%%c
-			rem echo filemachine=!filemachine. / filetimestamp=!filetimestamp!
-			if "!COMPUTERNAME!" == "!filemachine." (
+			rem echo filemachine=!filemachine! / filetimestamp=!filetimestamp!
+			if "!COMPUTERNAME!" == "!filemachine!" (
 				echo Skip download archive '!file!', as it was created on this machine.                                                   >> !REPORT_LOGFILE! 2>&1
 			) else (
-				echo Found download archive '!file!' from machine '!filemachine.'.                                                        >> !REPORT_LOGFILE! 2>&1
+				echo Found download archive '!file!' from machine '!filemachine!'.                                                        >> !REPORT_LOGFILE! 2>&1
 				if exist "!file!.processed.!COMPUTERNAME!.txt" (
 					rem this download archive has been processed already
 					echo Skip download archive '!file!', as it was processed already on this machine.                                     >> !REPORT_LOGFILE! 2>&1
@@ -6204,10 +6195,10 @@ echo ===========================================================================
 echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 echo ... analyze ONLINE licenses on '!LMS_CFG_LICENSE_SRV_NAME!' ...
 if not defined LMS_SKIPONLICSERV (
-	echo Request Mastership: [read with LmuTool /RMS]                                                                        >> !REPORT_LOGFILE! 2>&1
-	echo     Request Mastership: [read with LmuTool /RMS]
+	echo Request Mastership: [read with LmuTool /REQTOK]                                                                     >> !REPORT_LOGFILE! 2>&1
+	echo     Request Mastership: [read with LmuTool /REQTOK]
 	if /I !LMS_BUILD_VERSION! GEQ 858 (
-		"!LMS_LMUTOOL!" /RMS                                                                                                 >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMUTOOL!" /REQTOK                                                                                              >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo     This operation is not available with LMS !LMS_VERSION!, cannot perform operation.                           >> !REPORT_LOGFILE! 2>&1 
 	)
@@ -7304,11 +7295,11 @@ if not defined LMS_CHECK_ID (
 	echo SKIPPED notification report section. The script didn't execute the notification report commands.                                 >> !REPORT_LOGFILE! 2>&1
 )
 :connection_test
-echo ==============================================================================                                                       >> !REPORT_LOGFILE! 2>&1
-echo =   C O N N E C T I O N   T E S T                                            =                                                       >> !REPORT_LOGFILE! 2>&1
-echo ==============================================================================                                                       >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================       >> !REPORT_LOGFILE! 2>&1
+echo =   C O N N E C T I O N   T E S T                                            =       >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================       >> !REPORT_LOGFILE! 2>&1
 echo ... start connection test at !DATE! !TIME! ...
-echo Start at !DATE! !TIME! ....                                                                                                          >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! ....                                                          >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPCONTEST (
 	rem Connection Test to external site
 	set CONNECTION_TEST_EXT_URL=https://webhook.site/54ced032-9f1a-427a-8eab-24e2329cb8cc?LMS_VERSION=!LMS_VERSION!^&COMPUTERNAME=!COMPUTERNAME!^&LMS_SYSTEMID=!LMS_SYSTEMID!^&LMS_SCRIPT_BUILD=!LMS_SCRIPT_BUILD!
@@ -7316,12 +7307,12 @@ if not defined LMS_SKIPCONTEST (
 	if !ERRORLEVEL!==0 (
 		rem Connection Test: PASSED
 		echo     Connection Test PASSED, can access !CONNECTION_TEST_EXT_URL!
-		echo Connection Test PASSED, can access !CONNECTION_TEST_EXT_URL!                                                                 >> !REPORT_LOGFILE! 2>&1
+		echo Connection Test PASSED, can access !CONNECTION_TEST_EXT_URL!                 >> !REPORT_LOGFILE! 2>&1
 	) else if !ERRORLEVEL!==1 (
 		rem Connection Test: FAILED
 		echo     Connection Test FAILED, cannot access !CONNECTION_TEST_EXT_URL!
-		echo Connection Test FAILED, cannot access !CONNECTION_TEST_EXT_URL!                                                              >> !REPORT_LOGFILE! 2>&1
-		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_ext.txt                                                                           >> !REPORT_LOGFILE! 2>&1
+		echo Connection Test FAILED, cannot access !CONNECTION_TEST_EXT_URL!              >> !REPORT_LOGFILE! 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_ext.txt                           >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                          >> !REPORT_LOGFILE! 2>&1
 	rem Connection Test to Siemens site
@@ -7330,12 +7321,12 @@ if not defined LMS_SKIPCONTEST (
 	if !ERRORLEVEL!==0 (
 		rem Connection Test: PASSED
 		echo     Connection Test PASSED, can access !CONNECTION_TEST_URL!
-		echo Connection Test PASSED, can access !CONNECTION_TEST_URL!                                                                     >> !REPORT_LOGFILE! 2>&1
+		echo Connection Test PASSED, can access !CONNECTION_TEST_URL!                     >> !REPORT_LOGFILE! 2>&1
 	) else if !ERRORLEVEL!==1 (
 		rem Connection Test: FAILED
 		echo     Connection Test FAILED, cannot access !CONNECTION_TEST_URL!
-		echo Connection Test FAILED, cannot access !CONNECTION_TEST_URL!                                                                  >> !REPORT_LOGFILE! 2>&1
-		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_siemens.txt                                                                       >> !REPORT_LOGFILE! 2>&1
+		echo Connection Test FAILED, cannot access !CONNECTION_TEST_URL!                  >> !REPORT_LOGFILE! 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_siemens.txt                       >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                          >> !REPORT_LOGFILE! 2>&1
 	echo ... test connection to LMS server: lms.bt.siemens.com [using https/443 port] ...
@@ -7353,20 +7344,20 @@ if not defined LMS_SKIPCONTEST (
 		echo Connection Test FAILED, cannot access port 443 on lms.bt.siemens.com         >> !REPORT_LOGFILE! 2>&1            
 		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_lms_prod_server.txt               >> !REPORT_LOGFILE! 2>&1
 	)
-	echo -------------------------------------------------------                                                                              >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                          >> !REPORT_LOGFILE! 2>&1
 	set CONNECTION_TEST_URL=https://lms.bt.siemens.com/flexnet/services/ActivationService
 	powershell -Command "(New-Object Net.WebClient).DownloadFile('!CONNECTION_TEST_URL!', '!temp!\downloadtest.txt')"  >!CHECKLMS_REPORT_LOG_PATH!\connection_test_btlms_activationservice.txt 2>&1
 	if !ERRORLEVEL!==0 (
 		rem Connection Test: PASSED
 		echo     Connection Test PASSED, can access !CONNECTION_TEST_URL!
-		echo Connection Test PASSED, can access !CONNECTION_TEST_URL!                                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Connection Test PASSED, can access !CONNECTION_TEST_URL!                     >> !REPORT_LOGFILE! 2>&1
 	) else if !ERRORLEVEL!==1 (
 		rem Connection Test: FAILED
 		echo     Connection Test FAILED, cannot access !CONNECTION_TEST_URL!
-		echo Connection Test FAILED, cannot access !CONNECTION_TEST_URL!                                                                      >> !REPORT_LOGFILE! 2>&1
-		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_btlms_activationservice.txt                                                           >> !REPORT_LOGFILE! 2>&1
+		echo Connection Test FAILED, cannot access !CONNECTION_TEST_URL!                  >> !REPORT_LOGFILE! 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_btlms_activationservice.txt       >> !REPORT_LOGFILE! 2>&1
 	)
-	echo -------------------------------------------------------                                                                              >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                          >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_EXTENDED_CONTENT (
 		echo ... test connection to LMS server: lms-quality.bt.siemens.com [using https/443 port] ...
 		echo Test connection to LMS server: lms-quality.bt.siemens.com  [using https/443 port]        >> !REPORT_LOGFILE! 2>&1 
@@ -7389,63 +7380,63 @@ if not defined LMS_SKIPCONTEST (
 		if !ERRORLEVEL!==0 (
 			rem Connection Test: PASSED
 			echo     Connection Test PASSED, can access !CONNECTION_TEST_URL!
-			echo Connection Test PASSED, can access !CONNECTION_TEST_URL!                                                                     >> !REPORT_LOGFILE! 2>&1
+			echo Connection Test PASSED, can access !CONNECTION_TEST_URL!                 >> !REPORT_LOGFILE! 2>&1
 		) else if !ERRORLEVEL!==1 (
 			rem Connection Test: FAILED
 			echo     Connection Test FAILED, cannot access !CONNECTION_TEST_URL!
-			echo Connection Test FAILED, cannot access !CONNECTION_TEST_URL!                                                                  >> !REPORT_LOGFILE! 2>&1
-			type !CHECKLMS_REPORT_LOG_PATH!\connection_test_btqual_activationservice.txt                                                      >> !REPORT_LOGFILE! 2>&1
+			echo Connection Test FAILED, cannot access !CONNECTION_TEST_URL!              >> !REPORT_LOGFILE! 2>&1
+			type !CHECKLMS_REPORT_LOG_PATH!\connection_test_btqual_activationservice.txt  >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
-		echo Skipped 'Connection Test to Quality System', to execute this test run with /extend otion.                                        >> !REPORT_LOGFILE! 2>&1
+		echo Skipped 'Connection Test to Quality System', to execute this test run with /extend otion.  >> !REPORT_LOGFILE! 2>&1
 	)
-	echo -------------------------------------------------------                                                                              >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                          >> !REPORT_LOGFILE! 2>&1
 	set CONNECTION_TEST_URL=http://194.138.12.72/flexnet/services/ActivationService
 	powershell -Command "(New-Object Net.WebClient).DownloadFile('!CONNECTION_TEST_URL!', '!temp!\downloadtest.txt')"  >!CHECKLMS_REPORT_LOG_PATH!\connection_test_1941381272.txt 2>&1
 	if !ERRORLEVEL!==0 (
 		rem Connection Test: PASSED
 		echo     Connection Test PASSED, can access !CONNECTION_TEST_URL!
-		echo Connection Test PASSED, can access !CONNECTION_TEST_URL!                                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Connection Test PASSED, can access !CONNECTION_TEST_URL!                     >> !REPORT_LOGFILE! 2>&1
 	) else if !ERRORLEVEL!==1 (
 		rem Connection Test: FAILED
 		echo     Connection Test FAILED, cannot access !CONNECTION_TEST_URL!
-		echo Connection Test FAILED, cannot access !CONNECTION_TEST_URL!                                                                      >> !REPORT_LOGFILE! 2>&1
-		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_1941381272.txt                                                                        >> !REPORT_LOGFILE! 2>&1
+		echo Connection Test FAILED, cannot access !CONNECTION_TEST_URL!                  >> !REPORT_LOGFILE! 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_1941381272.txt                    >> !REPORT_LOGFILE! 2>&1
 	)
-	echo -------------------------------------------------------                                                                              >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                          >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_EXTENDED_CONTENT (
 		set CONNECTION_TEST_URL=http://158.226.135.60/flexnet/services/ActivationService
 		powershell -Command "(New-Object Net.WebClient).DownloadFile('!CONNECTION_TEST_URL!', '!temp!\downloadtest.txt')"  >!CHECKLMS_REPORT_LOG_PATH!\connection_test_15822613560.txt 2>&1
 		if !ERRORLEVEL!==0 (
 			rem Connection Test: PASSED
 			echo     Connection Test PASSED, can access !CONNECTION_TEST_URL!
-			echo Connection Test PASSED, can access !CONNECTION_TEST_URL!                                                                     >> !REPORT_LOGFILE! 2>&1
+			echo Connection Test PASSED, can access !CONNECTION_TEST_URL!                 >> !REPORT_LOGFILE! 2>&1
 		) else if !ERRORLEVEL!==1 (
 			rem Connection Test: FAILED
 			echo     Connection Test FAILED, cannot access !CONNECTION_TEST_URL!
-			echo Connection Test FAILED, cannot access !CONNECTION_TEST_URL!                                                                  >> !REPORT_LOGFILE! 2>&1
-			type !CHECKLMS_REPORT_LOG_PATH!\connection_test_15822613560.txt                                                                   >> !REPORT_LOGFILE! 2>&1
+			echo Connection Test FAILED, cannot access !CONNECTION_TEST_URL!              >> !REPORT_LOGFILE! 2>&1
+			type !CHECKLMS_REPORT_LOG_PATH!\connection_test_15822613560.txt               >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
-		echo Skipped 'Connection Test to 158.226.135.60', to execute this test run with /extend otion.                                        >> !REPORT_LOGFILE! 2>&1
+		echo Skipped 'Connection Test to 158.226.135.60', to execute this test run with /extend otion.   >> !REPORT_LOGFILE! 2>&1
 	)
-	echo Start at !DATE! !TIME! ....                                                                                                          >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                              >> !REPORT_LOGFILE! 2>&1
-	echo Ping [using LmuTool /ping] ...                                                                                                       >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                      >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                          >> !REPORT_LOGFILE! 2>&1
+	echo Ping [using LmuTool /ping] ...                                                   >> !REPORT_LOGFILE! 2>&1
 	echo     Ping [using LmuTool /ping] ...
 	if defined LMS_LMUTOOL (
-		"!LMS_LMUTOOL!" /ping                                                                                                                 >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMUTOOL!" /ping                                                             >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                                   >> !REPORT_LOGFILE! 2>&1 
+		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.  >> !REPORT_LOGFILE! 2>&1 
 	)
-	echo -------------------------------------------------------                                                                              >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                                          >> !REPORT_LOGFILE! 2>&1
-	echo Ping !COMPUTERNAME! ...                                                                                                              >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                          >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                      >> !REPORT_LOGFILE! 2>&1
+	echo Ping !COMPUTERNAME! ...                                                          >> !REPORT_LOGFILE! 2>&1
 	echo     Ping !COMPUTERNAME! ...
-	ping !COMPUTERNAME!                                                                                                                       >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                              >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start enhanced connection test [using 'act_connection_test'] ...                                                                     >> !REPORT_LOGFILE! 2>&1
+	ping !COMPUTERNAME!                                                                   >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                          >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                      >> !REPORT_LOGFILE! 2>&1
+	echo Start enhanced connection test [using 'act_connection_test'] ...                 >> !REPORT_LOGFILE! 2>&1
 	echo     Start enhanced connection test [using 'act_connection_test'] ...
 	del !CHECKLMS_REPORT_LOG_PATH!\connection_test_step1.log >nul 2>&1
 	del !CHECKLMS_REPORT_LOG_PATH!\connection_test_step2.log >nul 2>&1
@@ -8063,25 +8054,25 @@ if defined UMN_COUNT_PREV (
 )
 
 echo     check VM values collected with servercomptranutil ...
-echo Check VM values collected with servercomptranutil                                                                                     >> !REPORT_LOGFILE! 2>&1
+echo Check VM values collected with servercomptranutil                              >> !REPORT_LOGFILE! 2>&1
 rem check VM values (also on physical machine.)
 if "!VM_FAMILY!" == "UNKNOWNVM" (
 	echo !SHOW_RED!    ATTENTION: Unknown VM family detected. !SHOW_NORMAL!
-	echo ATTENTION: Unknown VM family detected.                                                                              >> !REPORT_LOGFILE! 2>&1
+	echo ATTENTION: Unknown VM family detected.                                     >> !REPORT_LOGFILE! 2>&1
 )
 if "!VM_NAME!" == "UNKNOWNVM" (
 	echo !SHOW_RED!    ATTENTION: Unknown VM name detected. !SHOW_NORMAL!
-	echo ATTENTION: Unknown VM name detected.                                                                                >> !REPORT_LOGFILE! 2>&1
+	echo ATTENTION: Unknown VM name detected.                                       >> !REPORT_LOGFILE! 2>&1
 )
 echo     check VM values collected with lmvminfo ...
-echo Check VM values collected with lmvminfo                                                                                     >> !REPORT_LOGFILE! 2>&1
+echo Check VM values collected with lmvminfo                                        >> !REPORT_LOGFILE! 2>&1
 if "%VM_FAMILY_2%" == "UNKNOWNVM" (
 	echo !SHOW_RED!    ATTENTION: Unknown VM family detected. !SHOW_NORMAL!
-	echo ATTENTION: Unknown VM family detected.                                                                              >> !REPORT_LOGFILE! 2>&1
+	echo ATTENTION: Unknown VM family detected.                                     >> !REPORT_LOGFILE! 2>&1
 )
 if "%VM_NAME_2%" == "UNKNOWNVM" (
 	echo !SHOW_RED!    ATTENTION: Unknown VM name detected. !SHOW_NORMAL!
-	echo ATTENTION: Unknown VM name detected.                                                                                >> !REPORT_LOGFILE! 2>&1
+	echo ATTENTION: Unknown VM name detected.                                       >> !REPORT_LOGFILE! 2>&1
 )
 REM Compare output of two VM detections with servercomptranutil and lmvminfo
 if defined VM_DETECTED if defined VM_DETECTED_2 (
@@ -8180,10 +8171,10 @@ echo Start at !DATE! !TIME! ....                                                
 echo Check for software updates or messages: [read with 'CheckForUpdate.ps1' script from OSD server]                     >> !REPORT_LOGFILE! 2>&1
 echo     Check for software updates or messages: [read with 'CheckForUpdate.ps1' script from OSD server]
 IF EXIST "!LMS_CHECKFORUPDATE_SCRIPT!" (
-	echo RUN: powershell !LMS_CHECKFORUPDATE_OPTIONS! -Command "& '!LMS_CHECKFORUPDATE_SCRIPT!'"                                                      >> !REPORT_LOGFILE! 2>&1
-	powershell !LMS_CHECKFORUPDATE_OPTIONS! -Command "& '!LMS_CHECKFORUPDATE_SCRIPT!'"                                                                >> !REPORT_LOGFILE! 2>&1
+	echo RUN: powershell !LMS_CHECKFORUPDATE_OPTIONS! -Command "& '!LMS_CHECKFORUPDATE_SCRIPT!'"                          >> !REPORT_LOGFILE! 2>&1
+	powershell !LMS_CHECKFORUPDATE_OPTIONS! -Command "& '!LMS_CHECKFORUPDATE_SCRIPT!'"                                    >> !REPORT_LOGFILE! 2>&1
 ) else (
-	echo ERROR: Cannot execute powershell script 'CheckForUpdate.ps1', it doesn't exist at '!LMS_CHECKFORUPDATE_SCRIPT!'.        >> !REPORT_LOGFILE! 2>&1
+	echo ERROR: Cannot execute powershell script 'CheckForUpdate.ps1', it doesn't exist at '!LMS_CHECKFORUPDATE_SCRIPT!'. >> !REPORT_LOGFILE! 2>&1
 )
 
 :summary
@@ -8238,9 +8229,9 @@ if defined VM_DETECTED (
 		echo Physical machine detected.                                                                                  >> !REPORT_LOGFILE! 2>&1
 	) else (
 		if "!VM_DETECTED!" == "YES" (
-			echo Virtual machine detected!                                                                                                                                     >> !REPORT_LOGFILE! 2>&1
-			echo     AWS_ACCID=!AWS_ACCID! / AWS_IMGID=!AWS_IMGID! / AWS_INSTID=!AWS_INSTID! / AWS_PENTIME=!AWS_PENTIME!                                                       >> !REPORT_LOGFILE! 2>&1   
-			echo     VM_DETECTED=!VM_DETECTED! / VM_FAMILY=!VM_FAMILY! / VM_NAME=!VM_NAME! / VM_UUID=!VM_UUID! / VM_GENID=!VM_GENID!                                           >> !REPORT_LOGFILE! 2>&1
+			echo Virtual machine detected!                                                                                             >> !REPORT_LOGFILE! 2>&1
+			echo     AWS_ACCID=!AWS_ACCID! / AWS_IMGID=!AWS_IMGID! / AWS_INSTID=!AWS_INSTID! / AWS_PENTIME=!AWS_PENTIME!               >> !REPORT_LOGFILE! 2>&1   
+			echo     VM_DETECTED=!VM_DETECTED! / VM_FAMILY=!VM_FAMILY! / VM_NAME=!VM_NAME! / VM_UUID=!VM_UUID! / VM_GENID=!VM_GENID!   >> !REPORT_LOGFILE! 2>&1
 		) else (
 			echo Detection of physical or virtual machine failed. Not able to determine.                                 >> !REPORT_LOGFILE! 2>&1
 			echo     ATTENTION: VM detection failed. VM_DETECTED=!VM_DETECTED!                                           >> !REPORT_LOGFILE! 2>&1
@@ -8280,17 +8271,17 @@ if not defined LMS_CHECK_ID (
 		)
 	) else (
 		echo !SHOW_RED!    ATTENTION: No Dongle Driver installed. !SHOW_NORMAL!
-		echo ATTENTION: No Dongle Driver installed.                                                                          >> !REPORT_LOGFILE! 2>&1
+		echo ATTENTION: No Dongle Driver installed.                                                                      >> !REPORT_LOGFILE! 2>&1
 	)
 )
 if defined ALM_VERSION_STRING (
-	echo Automation License Manager [ALM]                                                                                    >> !REPORT_LOGFILE! 2>&1
+	echo Automation License Manager [ALM]                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo     ALM: !ALM_VERSION_STRING! [!ALM_VERSION!] - !ALM_RELEASE! [!ALM_TECH_VERSION!]  [!ALM_MAJ_VERSION!/!ALM_MIN_VERSION!/!ALM_PATCH_VERSION!]  >> !REPORT_LOGFILE! 2>&1
 	if defined ALM_IS_SUPPORTED (
-		echo     Installed ALM [!ALM_RELEASE!] is supported: !ALM_IS_SUPPORTED!                                              >> !REPORT_LOGFILE! 2>&1
+		echo     Installed ALM [!ALM_RELEASE!] is supported: !ALM_IS_SUPPORTED!                                          >> !REPORT_LOGFILE! 2>&1
 		if "!ALM_IS_SUPPORTED!" NEQ "Yes" (
 			echo !SHOW_RED!    ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported. Please update to newer version. !SHOW_NORMAL!
-			echo ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported. Please update to newer version.                      >> !REPORT_LOGFILE! 2>&1
+			echo ERROR: Installed ALM [!ALM_RELEASE!] is NOT supported. Please update to newer version.                  >> !REPORT_LOGFILE! 2>&1
 		)
 	)
 ) else (

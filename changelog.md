@@ -1362,4 +1362,21 @@ rem     24-Oct-2022:
 rem        - Pass correct options when starting CheckForUpdate.ps1 (see LMS_CHECKFORUPDATE_OPTIONS) (Fix: Defect 2129454)
 rem     02-Nov-2022:
 rem        - Publish CheckLMS "02-Nov-2022" to be part of LMS 2.7.865, collect all changes after "17-Oct-2022" up to "02-Nov-2022" 
+rem     14-Nov-2022:
+rem        - Add (new) comment {get-lms -ClientID}
+rem        - Publish CheckLMS "14-Nov-2022" to be part of LMS 2.7.867, collect all changes after "02-Nov-2022" up to "14-Nov-2022" 
+rem     24-Nov-2022:
+rem        - Add serialnumber to wmic OS get Caption,CSDVersion,OSArchitecture,Version, serialnumber
+rem        - Add Machine ID, using reg query HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\SQMClient /v MachineId
+rem        - Add CurrentClockSpeed & MaxClockSpeed to wmic CPU get Name,NumberOfCores,NumberOfLogicalProcessors, CurrentClockSpeed, MaxClockSpeed
+rem          for more info, check https://www.nextofwindows.com/the-best-way-to-uniquely-identify-a-windows-machine
+rem                         and https://stackoverflow.com/questions/47603786/where-do-windows-product-id-and-device-id-values-come-from-are-they-useful
+rem     25-Nov-2022:
+rem        - Add several commands to get status nad jobs of BITS downloader (fix: Defect 2145133)
+rem        - Add new option /cleanup to remove all running BITS jobs.
+rem        - Fix typo: priviledge -> privilege
+rem     28-Nov-2022:
+rem        - Replace /RMS with /REQTOK (Fix: Story 2145456)
+rem        - Fix minor issue in "Skip download archive, as it was created on this machine." function
+rem        - Publish CheckLMS "28-Nov-2022" to be part of LMS 2.7.868, collect all changes after "14-Nov-2022" up to "28-Nov-2022" 
 ```
