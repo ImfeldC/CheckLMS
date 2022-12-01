@@ -36,7 +36,8 @@ param(
 #             Determine systemid (if not already done) (Fix: Defect 2117302)
 #             Use '-ErrorAction SilentlyContinue' when reading registry value to suppress any error.
 # '20221024': Check that 'get-lms' commandlet is available (Fix: Defect 2129454)
-$scriptVersion = '20221024'
+# '20221201': Check that 'Get-ScheduledTask' doesn't throw an error (Fix: Defect 2153318)
+$scriptVersion = '20221201'
 
 $global:ExitCode=0
 # Old API URL -> $OSD_APIURL="https://www.automation.siemens.com/softwareupdater/public/api/updates"
@@ -240,24 +241,31 @@ $OS_MAJ_VERSION = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\Cu
 $OS_MIN_VERSION = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'CurrentMinorVersionNumber' -ErrorAction SilentlyContinue | select -expand CurrentMinorVersionNumber
 $OS_BUILD_NUM = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'CurrentBuildNumber' | select -expand CurrentBuildNumber
 
-$SSU_UPDATE_ENABLED = (ScheduledTask -TaskName "SSUScheduledTask").Triggers.Enabled
-if( $SSU_UPDATE_ENABLED -eq "True" )
-{
-	if( (ScheduledTask -TaskName "SSUScheduledTask").Triggers.DaysInterval -eq 1 ) {
-		# Daily
-		$SSU_UPDATE_INTERVAL = "Daily"
-	} elseif ( (ScheduledTask -TaskName "SSUScheduledTask").Triggers.WeeksInterval -eq 1 ) {
-		$SSU_UPDATE_INTERVAL = "Weekly"
-	} else {
-		$SSU_UPDATE_INTERVAL = "Monthly"
+$SSU_UPDATE_ENABLED = (Get-ScheduledTask -TaskName "SSUScheduledTask" -ErrorAction SilentlyContinue).Triggers.Enabled
+if( $SSU_UPDATE_ENABLED -eq $null ) {
+	Log-Message "Warning! Scheduled task 'SSUScheduledTask' is nto available or not readable."
+		$SSU_UPDATE_INTERVAL = "n/a"
+		$SSU_UPDATE_TIME = "n/a"
+		$SSU_UPDATE_TYPE = "n/a"
+} else {
+	if( $SSU_UPDATE_ENABLED -eq "True" )
+	{
+		if( (Get-ScheduledTask -TaskName "SSUScheduledTask").Triggers.DaysInterval -eq 1 ) {
+			# Daily
+			$SSU_UPDATE_INTERVAL = "Daily"
+		} elseif ( (Get-ScheduledTask -TaskName "SSUScheduledTask").Triggers.WeeksInterval -eq 1 ) {
+			$SSU_UPDATE_INTERVAL = "Weekly"
+		} else {
+			$SSU_UPDATE_INTERVAL = "Monthly"
+		}
 	}
+	$SSU_UPDATE_TYPE =  Get-ItemProperty -Path 'HKCU:\SOFTWARE\Siemens\SSU' -Name 'InstallUpdateType' -ErrorAction SilentlyContinue | select -expand InstallUpdateType
+	if( $SSU_UPDATE_TYPE -eq $null ) {
+		# Default: 'Automatic', see https://wiki.siemens.com/pages/viewpage.action?pageId=390630467
+		$SSU_UPDATE_TYPE = "Automatic"
+	}
+	$SSU_UPDATE_TIME = (Get-ScheduledTask SSUScheduledTask | Get-ScheduledTaskInfo).NextRunTime.DateTime.split(' ')[4] 
 }
-$SSU_UPDATE_TYPE =  Get-ItemProperty -Path 'HKCU:\SOFTWARE\Siemens\SSU' -Name 'InstallUpdateType' -ErrorAction SilentlyContinue | select -expand InstallUpdateType
-if( $SSU_UPDATE_TYPE -eq $null ) {
-	# Default: 'Automatic', see https://wiki.siemens.com/pages/viewpage.action?pageId=390630467
-	$SSU_UPDATE_TYPE = "Automatic"
-}
-$SSU_UPDATE_TIME = (Get-ScheduledTask SSUScheduledTask | Get-ScheduledTaskInfo).NextRunTime.DateTime.split(' ')[4] 
 
 # retrieve operating system information ...
 if ( $operatingsystem -eq '' )
