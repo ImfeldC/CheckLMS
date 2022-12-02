@@ -37,7 +37,8 @@ param(
 #             Use '-ErrorAction SilentlyContinue' when reading registry value to suppress any error.
 # '20221024': Check that 'get-lms' commandlet is available (Fix: Defect 2129454)
 # '20221201': Check that 'Get-ScheduledTask' doesn't throw an error (Fix: Defect 2153318)
-$scriptVersion = '20221201'
+# '20221202': Add OS check "$OS_BUILD_NUM -gt 22621", to be prepared for future Win11 releases.
+$scriptVersion = '20221202'
 
 $global:ExitCode=0
 # Old API URL -> $OSD_APIURL="https://www.automation.siemens.com/softwareupdater/public/api/updates"
@@ -274,7 +275,10 @@ if ( $operatingsystem -eq '' )
 
 	# For Windows 11, the ProductName is not unique so instead of comparing the ProductName , we get the CurrentBuildNumber from registry: HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\CurrentBuildNumber  and compare it.
 	# For more information on Windows 11 refer the release notes:  https://docs.microsoft.com/en-us/windows/release-health/windows11-release-information
-	if ( $OS_BUILD_NUM -eq 22621 ) {
+	if ( $OS_BUILD_NUM -gt 22621 ) {
+		# > 22H2 (prepare for future releases)
+		$operatingsystem = "Windows11"
+	} elseif ( $OS_BUILD_NUM -eq 22621 ) {
 		# 22H2
 		$operatingsystem = "Windows11"
 	} elseif ( $OS_BUILD_NUM -eq 22000 ) {
