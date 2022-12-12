@@ -1379,4 +1379,14 @@ rem     28-Nov-2022:
 rem        - Replace /RMS with /REQTOK (Fix: Story 2145456)
 rem        - Fix minor issue in "Skip download archive, as it was created on this machine." function
 rem        - Publish CheckLMS "28-Nov-2022" to be part of LMS 2.7.868, collect all changes after "14-Nov-2022" up to "28-Nov-2022" 
+rem     01-Dec-2022:
+rem        - Check that correct VC++ package is installed, before calling WmiRead.exe (Fix: Defect 2152576)
+rem        - set LMS_BUILD_VERSION=0 (instead of 'N/A')
+rem        - Add further checks, to test existence of lmu.psc1; to avoid error messages on non-LMS systems.
+rem        - Remove spaces at line end for several sections.
+rem        - Add warning message, when VC++ library is not installed and SSU client get started!
+rem        - Add command to check that SSU task is running.
+rem     06-Dec-2022:
+rem        - Adjust the output of 'Get Product List'
+rem        - Add new 'Get Feature List'
 ```

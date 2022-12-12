@@ -10,17 +10,8 @@ rem        - Final script, released for LMS 2.6
 rem 
 rem     Full details see changelog.md (on https://github.com/ImfeldC/CheckLMS/blob/master/changelog.md )
 rem
-rem     28-Nov-2022:
-rem        - Replace /RMS with /REQTOK (Fix: Story 2145456)
-rem        - Fix minor issue in "Skip download archive, as it was created on this machine." function
-rem        - Publish CheckLMS "28-Nov-2022" to be part of LMS 2.7.868, collect all changes after "14-Nov-2022" up to "28-Nov-2022" 
-rem     01-Dec-2022:
-rem        - Check that correct VC++ package is installed, before calling WmiRead.exe (Fix: Defect 2152576)
-rem        - set LMS_BUILD_VERSION=0 (instead of 'N/A')
-rem        - Add further checks, to test existence of lmu.psc1; to avoid error messages on non-LMS systems.
-rem        - Remove spaces at line end for several sections.
-rem        - Add warning message, when VC++ library is not installed and SSU client get started!
-rem        - Add command to check that SSU task is running.
+rem     12-Dec-2022:
+rem        - Publish CheckLMS "12-Dec-2022" to be part of LMS 2.7.869, collect all changes after "28-Nov-2022" up to "12-Dec-2022" 
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -65,7 +56,7 @@ rem              - /goto <gotolabel>            jump to a dedicated part within 
 rem  
 rem
 set LMS_SCRIPT_VERSION="CheckLMS Script 12-Dec-2022"
-set LMS_SCRIPT_BUILD=20221201
+set LMS_SCRIPT_BUILD=20221212
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -3791,10 +3782,30 @@ if not defined LMS_SKIPLMS (
 		echo LMS_PS_LMUWSSTATE=[!LMS_PS_LMUWSSTATE!]                                                                             >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 		echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Get Product List: [read with LMU PowerShell command: Select-Product -report -all ¦ Format-Table -Property Name, Version, Count, CustomerSiteId, ActivationId, Features]                                   >> !REPORT_LOGFILE! 2>&1
+		echo     Get Product List: [read with LMU PowerShell command: Select-Product -report -all ...]
+		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -all | Format-Table -Property Name, Version, Count, CustomerSiteId, ActivationId, Features}"  >> !REPORT_LOGFILE! 2>&1
+		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -all | Format-Table -Property Name, Version, Count, CustomerSiteId, ActivationId, Features}"       >> !REPORT_LOGFILE! 2>&1 
+		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
 		echo Get Product List: [read with LMU PowerShell command: Select-Product -report -all]                                   >> !REPORT_LOGFILE! 2>&1
 		echo     Get Product List: [read with LMU PowerShell command: Select-Product -report -all]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -all}"  >> !REPORT_LOGFILE! 2>&1
-		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -all}"       >> !REPORT_LOGFILE! 2>&1 
+		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -all}"   >!CHECKLMS_REPORT_LOG_PATH!\GetProductAll.txt 2>&1 
+		echo     see '!CHECKLMS_REPORT_LOG_PATH!\GetProductAll.txt' for full details.                                            >> !REPORT_LOGFILE! 2>&1
+		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Get Feature List: [read with LMU PowerShell command: Select-Feature -report ¦ Format-Table -Property Name, Version, Status, Quantity, InstalledCount, ConsistentCount, ConsumedCount, ProductName]                                   >> !REPORT_LOGFILE! 2>&1
+		echo     Get Feature List: [read with LMU PowerShell command: Select-Feature -report ...]
+		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Feature -report | Format-Table -Property Name, Version, Status, Quantity, InstalledCount, ConsistentCount, ConsumedCount, ProductName}"  >> !REPORT_LOGFILE! 2>&1
+		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Feature -report | Format-Table -Property Name, Version, Status, Quantity, InstalledCount, ConsistentCount, ConsumedCount, ProductName}"       >> !REPORT_LOGFILE! 2>&1 
+		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Get Feature List: [read with LMU PowerShell command: Select-Feature -report]                                        >> !REPORT_LOGFILE! 2>&1
+		echo     Get Feature List: [read with LMU PowerShell command: Select-Feature -report]
+		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Feature -report}"       >> !REPORT_LOGFILE! 2>&1
+		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Feature -report}"   >!CHECKLMS_REPORT_LOG_PATH!\GetFeaturesAll.txt 2>&1 
+		echo     see '!CHECKLMS_REPORT_LOG_PATH!\GetFeaturesAll.txt' for full details.                                           >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 		echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
 		echo Get Product Upgrades: [read with LMU PowerShell command: Select-Product -report -upgrades]                          >> !REPORT_LOGFILE! 2>&1
