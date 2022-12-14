@@ -12,6 +12,13 @@ rem     Full details see changelog.md (on https://github.com/ImfeldC/CheckLMS/bl
 rem
 rem     12-Dec-2022:
 rem        - Publish CheckLMS "12-Dec-2022" to be part of LMS 2.7.869, collect all changes after "28-Nov-2022" up to "12-Dec-2022" 
+rem     14-Dec-2022:
+rem        - Remove bginfo update durign CheckLMS execution (LMS_UPDATE_BGINFO)
+rem        - Remove script option /installftlms (LMS_INSTALL_LMS_FT_CLIENT)
+rem        - Remove script option /setbginfo (LMS_SET_BGINFO) and /clearbginfo (LMS_CLEAR_BGINFO)
+rem        - Remove script option /setbginfotask (LMS_SET_BGINFO_TASK), use 'configbginfo.bat /setbginfotask' directly (no need to call via CheckLMS)
+rem        - Remove script option /delbginfotask (LMS_DEL_BGINFO_TASK), use 'configbginfo.bat /delbginfotask' directly (no need to call via CheckLMS)
+rem        - Set 2.6.869 as most recent field test version
 rem     
 rem
 rem     SCRIPT USAGE:
@@ -40,14 +47,8 @@ rem          CheckID Options:
 rem              - /checkid                     check machine identifiers, like UMN, VMGENID, ...
 rem              - /setcheckidtask              sets periodic task to run checklms.bat with /checkid option.
 rem              - /delcheckidtask              delete periodic checkid task, see option /setcheckidtask
-rem          LMS BgInfo Options:
-rem              - /setbginfo                   sets the background info (uisng lms.bgi)
-rem              - /clearbginfo                 clears the background info (uisng clean.bgi)
-rem              - /setbginfotask               sets periodic task to update bginfo automatically.
-rem              - /delbginfotask               delete periodic bginfo task, see option /setbginfotask
 rem          Install Options:
 rem              - /installlms                  installs (or updates) LMS client, with newest available released client version
-rem              - /installftlms                installs (or updates) LMS client, with newest available field test client version
 rem              - /removelms                   de-installs LMS client
 rem              - /installdongledriver         installs downloaded dongle driver.
 rem              - /removedongledriver          remove installed dongle driver.
@@ -55,8 +56,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 12-Dec-2022"
-set LMS_SCRIPT_BUILD=20221212
+set LMS_SCRIPT_VERSION="CheckLMS Script 14-Dec-2022"
+set LMS_SCRIPT_BUILD=20221214
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -66,10 +67,10 @@ set CHECKLMS_SCRIPT_PATH=%~p0
 rem most recent lms build: 2.6.849 (per 21-Jan-2021)
 set MOST_RECENT_LMS_VERSION=2.6.849
 set MOST_RECENT_LMS_BUILD=849
-rem most recent lms field test version: 2.6.839 (per 07-Sep-2021)
-rem - if not set, it is not downloaded.
-rem set MOST_RECENT_FT_LMS_VERSION=2.6.839
-rem set MOST_RECENT_FT_LMS_BUILD=839
+rem most recent lms field test version: 2.6.869 (per 14-Dec-2022)
+rem - if not set - it is not downloaded.
+set MOST_RECENT_FT_LMS_VERSION=2.6.869
+set MOST_RECENT_FT_LMS_BUILD=869
 rem most recent dongle driver version (per 18-Aug-2022, LMS 2.7)
 set MOST_RECENT_DONGLE_DRIVER_VERSION=8.43
 set MOST_RECENT_DONGLE_DRIVER_MAJ_VERSION=8
@@ -410,27 +411,8 @@ FOR %%A IN (%*) DO (
 		if "!var!"=="setfirewall" (
 			set LMS_SET_FIREWALL=1
 		)
-		if "!var!"=="setbginfo" (
-			set LMS_SET_BGINFO=1
-		)
-		if "!var!"=="clearbginfo" (
-			set LMS_CLEAR_BGINFO=1
-		)
-		if "!var!"=="setbginfotask" (
-			set LMS_SET_BGINFO_TASK=1
-			set LMS_SKIPDOWNLOAD=1
-			set LMS_SKIPUNZIP=1
-		)
-		if "!var!"=="delbginfotask" (
-			set LMS_DEL_BGINFO_TASK=1
-			set LMS_SKIPDOWNLOAD=1
-			set LMS_SKIPUNZIP=1
-		)
 		if "!var!"=="installlms" (
 			set LMS_INSTALL_LMS_CLIENT=1
-		)
-		if "!var!"=="installftlms" (
-			set LMS_INSTALL_LMS_FT_CLIENT=1
 		)
 		if "!var!"=="removelms" (
 			set LMS_REMOVE_LMS_CLIENT=1
@@ -1552,11 +1534,9 @@ if not defined LMS_SKIPDOWNLOAD (
 			powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/BgInfo/BgInfo.zip', '!LMS_DOWNLOAD_PATH!\BgInfo.zip')"   >> !REPORT_LOGFILE! 2>&1
 			rem Unzip BgInfo ZIP archive [as ZIP]
 			IF EXIST "!LMS_DOWNLOAD_PATH!\BgInfo.zip" (
-				if exist "!LMS_PROGRAMDATA!\BgInfo\setbginfo.lock" ( set LMS_UPDATE_BGINFO=1 )
 				if defined LMS_SHOW_BGINFO ( 
 					if "!LMS_SHOW_BGINFO!" EQU "true" ( 
 						echo Update BgInfo, because 'LMS_SHOW_BGINFO' is '!LMS_SHOW_BGINFO!'.              >> !REPORT_LOGFILE! 2>&1
-						set LMS_UPDATE_BGINFO=1 
 					) 
 				)
 				
@@ -1623,65 +1603,7 @@ if not defined LMS_SKIPDOWNLOAD (
 	echo SKIPPED download section. The script didn't execute the download commands.                                               >> !REPORT_LOGFILE! 2>&1
 )
 
-echo Start at !DATE! !TIME! ....                                                                   >> !REPORT_LOGFILE! 2>&1
-rem set background info; when ...
-rem [1] either /setbginfo option is set [-> LMS_SET_BGINFO]
-rem [2] or setbginfo.lock exists [=setbginfo.bat - V1.02 or older - has been executed before]
-rem [3] or registry entry 'HKEY_LOCAL_MACHINE\SOFTWARE\Siemens\LMS\ShowBGInfo' is 'true' [=setbginfo.bat - V1.03 or nwewer - has been executed before]
-rem [4] or LMS_UPDATE_BGINFO has been set; because setbginfo.lock or registry entry existed before clean-up (see above)
-if defined LMS_SET_BGINFO ( set LMS_UPDATE_BGINFO=1 )
-if exist "!LMS_PROGRAMDATA!\BgInfo\setbginfo.lock" ( set LMS_UPDATE_BGINFO=1 )
-if defined LMS_SHOW_BGINFO ( 
-	if "!LMS_SHOW_BGINFO!" EQU "true" ( 
-		echo Update BgInfo, because 'LMS_SHOW_BGINFO' is '!LMS_SHOW_BGINFO!'.                      >> !REPORT_LOGFILE! 2>&1
-		set LMS_UPDATE_BGINFO=1 
-	) 
-)
-if defined LMS_UPDATE_BGINFO (
-	echo     Update BGInfo ...
-	IF EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat" (
-		echo call "!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat" ...                                   >> !REPORT_LOGFILE! 2>&1
-		call "!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat"                                            >> !REPORT_LOGFILE! 2>&1
-		echo     Updated BGInfo at !DATE! !TIME!
-		echo Updated BGInfo at !DATE! !TIME! [with '!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat']     >> !REPORT_LOGFILE! 2>&1
-	) else if exist "!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat" (
-		echo call "!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat" ...                                     >> !REPORT_LOGFILE! 2>&1
-		call "!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat"                                              >> !REPORT_LOGFILE! 2>&1
-		echo     Updated BGInfo at !DATE! !TIME!
-		echo Updated BGInfo at !DATE! !TIME! [with '!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat']       >> !REPORT_LOGFILE! 2>&1
-	) else (
-		echo     CANNOT update BGInfo because 'setbginfo.bat' doesn't exist.
-		echo CANNOT update BGInfo because 'setbginfo.bat' doesn't exist.                           >> !REPORT_LOGFILE! 2>&1
-	)
-	echo Start at !DATE! !TIME! ....                                                               >> !REPORT_LOGFILE! 2>&1
-)
-if defined LMS_SET_BGINFO (
-	goto script_end
-	rem STOP EXECUTION HERE
-)
-rem clear background info
-if defined LMS_CLEAR_BGINFO (
-	echo     Clear BGInfo ...
-	IF EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\cleanbginfo.bat" (
-		echo call "!LMS_DOWNLOAD_PATH!\BgInfo\cleanbginfo.bat" ...                                 >> !REPORT_LOGFILE! 2>&1
-		call "!LMS_DOWNLOAD_PATH!\BgInfo\cleanbginfo.bat"                                          >> !REPORT_LOGFILE! 2>&1
-		echo     Removed BGInfo at !DATE! !TIME!
-		echo Removed BGInfo at !DATE! !TIME! [with '!LMS_DOWNLOAD_PATH!\BgInfo\setbginfo.bat']     >> !REPORT_LOGFILE! 2>&1
-	) else if exist "!LMS_PROGRAMDATA!\BgInfo\cleanbginfo.bat" (
-		echo call "!LMS_PROGRAMDATA!\BgInfo\cleanbginfo.bat" ...                                   >> !REPORT_LOGFILE! 2>&1
-		call "!LMS_PROGRAMDATA!\BgInfo\cleanbginfo.bat"                                            >> !REPORT_LOGFILE! 2>&1
-		echo     Removed BGInfo at !DATE! !TIME!
-		echo Removed BGInfo at !DATE! !TIME! [with '!LMS_PROGRAMDATA!\BgInfo\setbginfo.bat']       >> !REPORT_LOGFILE! 2>&1
-	) else (
-		echo     CANNOT remove BGInfo because 'cleanbginfo.bat' doesn't exist.
-		echo CANNOT remove BGInfo because 'cleanbginfo.bat' doesn't exist.                         >> !REPORT_LOGFILE! 2>&1
-	)
-	echo Start at !DATE! !TIME! ....                                                               >> !REPORT_LOGFILE! 2>&1
-
-	goto script_end
-	rem STOP EXECUTION HERE
-)
-
+echo Start at !DATE! !TIME! ....   >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPUNZIP (
 	if defined LMS_SERVERTOOL_DW (
 		REM Unzip FNP Siemens Library
@@ -2150,14 +2072,6 @@ if defined LMS_INSTALL_LMS_CLIENT (
 	set LMS_INSTALL_BUILD=!MOST_RECENT_LMS_BUILD!
 )
 
-if defined LMS_INSTALL_LMS_FT_CLIENT (
-	rem install 'field test' LMS client version
-	set LMS_INSTALL_VERSION=!MOST_RECENT_FT_LMS_VERSION!
-	set LMS_INSTALL_BUILD=!MOST_RECENT_FT_LMS_BUILD!
-	echo !SHOW_YELLOW!    WARNING: Your are going to install !LMS_INSTALL_VERSION! which is a 'field test' version of LMS client. !SHOW_NORMAL!
-	echo WARNING: Your are going to install !LMS_INSTALL_VERSION! which is a 'field test' version of LMS client.                 >> !REPORT_LOGFILE! 2>&1
-)
-
 if defined LMS_INSTALL_VERSION (
 	rem Check: Is "most recent" [="released"] build installed, ...
 	if /I !LMS_BUILD_VERSION! NEQ !LMS_INSTALL_BUILD! (
@@ -2328,29 +2242,6 @@ if defined LMS_DEL_CHECK_ID_TASK (
 	rem STOP EXECUTION HERE
 ) else (
 	echo Delete CheckId scheduled task ... NO                                                        >> !REPORT_LOGFILE! 2>&1
-)
-
-if defined LMS_SET_BGINFO_TASK (
-	if exist "!LMS_PROGRAMDATA!\BgInfo\configbginfo.bat" (
-		call !LMS_PROGRAMDATA!\BgInfo\configbginfo.bat /setbginfotask                                >> !REPORT_LOGFILE! 2>&1
-	) else (
-		echo CANNOT create BGInfo task, because 'configbginfo.bat' doesn't exist.                    >> !REPORT_LOGFILE! 2>&1
-	)
-	goto script_end
-	rem STOP EXECUTION HERE
-) else (
-	echo Set BgInfo scheduled task ... NO                                                            >> !REPORT_LOGFILE! 2>&1
-)
-if defined LMS_DEL_BGINFO_TASK (
-	if exist "!LMS_PROGRAMDATA!\BgInfo\configbginfo.bat" (
-		call !LMS_PROGRAMDATA!\BgInfo\configbginfo.bat /delbginfotask                                >> !REPORT_LOGFILE! 2>&1
-	) else (
-		echo CANNOT delete BGInfo task, because 'configbginfo.bat' doesn't exist.                    >> !REPORT_LOGFILE! 2>&1
-	)
-	goto script_end
-	rem STOP EXECUTION HERE
-) else (
-	echo Delete BgInfo scheduled task ... NO                                                         >> !REPORT_LOGFILE! 2>&1
 )
 
 rem Start Demo Vendor Daemon provided by Flexera; see also "1253827: CheckLMS: add support to run demo vendor daemon"
