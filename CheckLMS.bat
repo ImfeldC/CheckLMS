@@ -18,6 +18,10 @@ rem        - Remove script option /installftlms (LMS_INSTALL_LMS_FT_CLIENT)
 rem        - Remove script option /setbginfo (LMS_SET_BGINFO) and /clearbginfo (LMS_CLEAR_BGINFO)
 rem        - Remove script option /setbginfotask (LMS_SET_BGINFO_TASK), use 'configbginfo.bat /setbginfotask' directly (no need to call via CheckLMS)
 rem        - Remove script option /delbginfotask (LMS_DEL_BGINFO_TASK), use 'configbginfo.bat /delbginfotask' directly (no need to call via CheckLMS)
+rem        - Search for other lmgrd.exe on machine (Fix: Task 1709666)
+rem        - Add check for filesize of access.log (Handle: Defect 2163314)
+rem        - Remove test against 'webhook.site' (Fix: Defect 2129493). Do no longer test against this site!
+rem        - Show section headers new also in console output.
 rem        - Set 2.6.869 as most recent field test version
 rem     
 rem
@@ -1534,20 +1538,6 @@ if not defined LMS_SKIPDOWNLOAD (
 			powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/BgInfo/BgInfo.zip', '!LMS_DOWNLOAD_PATH!\BgInfo.zip')"   >> !REPORT_LOGFILE! 2>&1
 			rem Unzip BgInfo ZIP archive [as ZIP]
 			IF EXIST "!LMS_DOWNLOAD_PATH!\BgInfo.zip" (
-				if defined LMS_SHOW_BGINFO ( 
-					if "!LMS_SHOW_BGINFO!" EQU "true" ( 
-						echo Update BgInfo, because 'LMS_SHOW_BGINFO' is '!LMS_SHOW_BGINFO!'.              >> !REPORT_LOGFILE! 2>&1
-					) 
-				)
-				
-				rem clean first existing bginfo
-				IF EXIST "!LMS_DOWNLOAD_PATH!\BgInfo\cleanbginfo.bat" (
-					call "!LMS_DOWNLOAD_PATH!\BgInfo\cleanbginfo.bat"                                      >> !REPORT_LOGFILE! 2>&1
-				) else (
-					if exist "!LMS_PROGRAMDATA!\BgInfo\cleanbginfo.bat" (
-						call "!LMS_PROGRAMDATA!\BgInfo\cleanbginfo.bat"                                    >> !REPORT_LOGFILE! 2>&1
-					)
-				)
 				rmdir /S /Q "!LMS_DOWNLOAD_PATH!\BgInfo\" >nul 2>&1
 				echo     Extract BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip
 				echo Extract BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip                            >> !REPORT_LOGFILE! 2>&1
@@ -1990,6 +1980,9 @@ if not defined LMS_SKIPDOWNLOAD (
 )
 
 echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================
+echo =   S Y S T E M   C O N F I G U R A T I O N   S E C T I O N                  =
+echo ==============================================================================
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 echo =   S Y S T E M   C O N F I G U R A T I O N   S E C T I O N                  =                                          >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
@@ -1997,13 +1990,13 @@ echo ... system configuration section ...
 
 if defined LMS_SET_FIREWALL (
 	echo     set firewall settings ...
-	echo Set firewall settings ...                                                                                                                        >> !REPORT_LOGFILE! 2>&1
+	echo Set firewall settings ...                                                                                           >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
 		rem set firewall settings ...
-		echo Delete rule: netsh advfirewall firewall delete rule name="LMS lmgrd"                                                                             >> !REPORT_LOGFILE! 2>&1
-		netsh advfirewall firewall delete rule name="LMS lmgrd"                                                                                               >> !REPORT_LOGFILE! 2>&1
-		echo Delete rule: netsh advfirewall firewall delete rule name="LMS SIEMBT"                                                                            >> !REPORT_LOGFILE! 2>&1
-		netsh advfirewall firewall delete rule name="LMS SIEMBT"                                                                                              >> !REPORT_LOGFILE! 2>&1
+		echo Delete rule: netsh advfirewall firewall delete rule name="LMS lmgrd"                                            >> !REPORT_LOGFILE! 2>&1
+		netsh advfirewall firewall delete rule name="LMS lmgrd"                                                              >> !REPORT_LOGFILE! 2>&1
+		echo Delete rule: netsh advfirewall firewall delete rule name="LMS SIEMBT"                                           >> !REPORT_LOGFILE! 2>&1
+		netsh advfirewall firewall delete rule name="LMS SIEMBT"                                                             >> !REPORT_LOGFILE! 2>&1
 		rem see also https://wiki.siemens.com/display/en/LMS+VMware+configuration
 		echo Set rule: netsh advfirewall firewall add rule name="LMS lmgrd" dir=in action=allow program="!ProgramFiles_x86!\Siemens\LMS\server\lmgrd.exe"     >> !REPORT_LOGFILE! 2>&1
 		netsh advfirewall firewall add rule name="LMS lmgrd" dir=in action=allow program="!ProgramFiles_x86!\Siemens\LMS\server\lmgrd.exe"                    >> !REPORT_LOGFILE! 2>&1
@@ -2013,7 +2006,7 @@ if defined LMS_SET_FIREWALL (
 		echo Set firewall settings ... DONE                                                                                                                   >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo !SHOW_YELLOW!    WARNING: Cannot set firewall settings, start script with administrator privilege. !SHOW_NORMAL!
-		echo WARNING: Cannot set firewall settings, start script with administrator privilege.                                                           >> !REPORT_LOGFILE! 2>&1
+		echo WARNING: Cannot set firewall settings, start script with administrator privilege.                               >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                               >> !REPORT_LOGFILE! 2>&1
 	Powershell -command "Show-NetFirewallRule"  > !CHECKLMS_REPORT_LOG_PATH!\firewall_rules_PS.txt 2>&1
@@ -2421,6 +2414,9 @@ if defined LMS_CFG_CULTUREID (
     echo     Configured culture Id: no id configured.
 )
 echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================
+echo =   W I N D O W S   S Y S T E M   I N F O R M A T I O N                      =
+echo ==============================================================================
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 echo =   W I N D O W S   S Y S T E M   I N F O R M A T I O N                      =                                          >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
@@ -3152,6 +3148,9 @@ if not defined LMS_CHECK_ID (
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 )
+echo ==============================================================================
+echo =   V I R T U A L   E N V I R O N M E N T                                    =
+echo ==============================================================================
 echo ==============================================================================                                   >> !REPORT_LOGFILE! 2>&1
 echo =   V I R T U A L   E N V I R O N M E N T                                    =                                   >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                   >> !REPORT_LOGFILE! 2>&1
@@ -3309,6 +3308,9 @@ if exist "!CHECKLMS_REPORT_LOG_PATH!\GCP-metadata-document.txt" (
 	echo GCP instance metadata document not found.                                                    >> !REPORT_LOGFILE! 2>&1
 )
 
+echo ==============================================================================
+echo =   L M S   S C H E D U L E D   T A S K S                                    =
+echo ==============================================================================
 echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
 echo =   L M S   S C H E D U L E D   T A S K S                                    =                   >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
@@ -3338,6 +3340,9 @@ if not defined LMS_SKIPSCHEDTASK (
 	echo SKIPPED scheduled task section. The script didn't execute the scheduled task commands.       >> !REPORT_LOGFILE! 2>&1
 )
 :windows_error_reporting
+echo ==============================================================================
+echo =   W I N D O W S   E R R O R   R E P O R T I N G  (W E R)                   =
+echo ==============================================================================
 echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
 echo =   W I N D O W S   E R R O R   R E P O R T I N G  (W E R)                   =                   >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
@@ -3437,6 +3442,9 @@ if not defined LMS_SKIPWER (
 	echo SKIPPED windows error reporting [WER] section. The script didn't execute the windows error reporting [WER] commands.             >> !REPORT_LOGFILE! 2>&1
 )
 :lms_section
+echo ==============================================================================
+echo =   L M S   S Y S T E M   I N F O R M A T I O N                              =
+echo ==============================================================================
 echo ==============================================================================                                              >> !REPORT_LOGFILE! 2>&1
 echo =   L M S   S Y S T E M   I N F O R M A T I O N                              =                                              >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                              >> !REPORT_LOGFILE! 2>&1
@@ -3894,11 +3902,28 @@ if not defined LMS_SKIPLMS (
 	)
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!LMS_HASPDRIVER_FOLDER!\access.log" (
-		echo '!LMS_HASPDRIVER_FOLDER!\access.log', copied to '!CHECKLMS_REPORT_LOG_PATH!\hasp_access.log':                   >> !REPORT_LOGFILE! 2>&1
-		copy /Y "!LMS_HASPDRIVER_FOLDER!\access.log" "!CHECKLMS_REPORT_LOG_PATH!\hasp_access.log"                            >> !REPORT_LOGFILE! 2>&1
-		echo --- File automatically copied from !LMS_HASPDRIVER_FOLDER!\access.log to !CHECKLMS_REPORT_LOG_PATH!\hasp_access.log --- >> !CHECKLMS_REPORT_LOG_PATH!\hasp_access.log 2>&1
-		powershell -command "& {Get-Content '!LMS_HASPDRIVER_FOLDER!\access.log' | Select-Object -last !LOG_FILE_SNIPPET!}"  >> !REPORT_LOGFILE! 2>&1
-		rem type "!LMS_HASPDRIVER_FOLDER!\\access.log"                                                                                >> !REPORT_LOGFILE! 2>&1
+		rem this command doesn't work, due parenthesis in the path: FOR /F "usebackq" %%A IN ('!LMS_HASPDRIVER_FOLDER!\access.log') DO set ACCESSLOG_FILESIZE=%%~zA
+		Powershell -command "Get-Item -Path '!LMS_HASPDRIVER_FOLDER!\access.log' | Select -Property Length | format-list"  > !CHECKLMS_REPORT_LOG_PATH!\access_log_size.txt 2>&1
+		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\access_log_size.txt" for /f "tokens=1* eol=@ delims=<>: " %%A in (!CHECKLMS_REPORT_LOG_PATH!\access_log_size.txt) do (
+			rem set PARAMETER_NAME=%%A
+			rem set PARAMETER_VALUE=%%B
+			set ACCESSLOG_FILESIZE=%%B
+		)
+		echo     Filesize of access.log is !ACCESSLOG_FILESIZE! bytes !                                                      >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! ....                                                                                     >> !REPORT_LOGFILE! 2>&1
+		if /I !ACCESSLOG_FILESIZE! GEQ !LOG_FILESIZE_LIMIT! (
+			echo     ATTENTION: Filesize of access.log with !ACCESSLOG_FILESIZE! bytes, is exceeding critical limit of !LOG_FILESIZE_LIMIT! bytes!
+
+			echo     ATTENTION: Filesize of access.log with !ACCESSLOG_FILESIZE! bytes, is exceeding critical limit of !LOG_FILESIZE_LIMIT! bytes!   >> !REPORT_LOGFILE! 2>&1
+			echo     Because filesize of access.log with !ACCESSLOG_FILESIZE! bytes exceeds critical limit it is not further processed!              >> !REPORT_LOGFILE! 2>&1
+		) else (
+			echo '!LMS_HASPDRIVER_FOLDER!\access.log', copied to '!CHECKLMS_REPORT_LOG_PATH!\hasp_access.log':               >> !REPORT_LOGFILE! 2>&1
+			copy /Y "!LMS_HASPDRIVER_FOLDER!\access.log" "!CHECKLMS_REPORT_LOG_PATH!\hasp_access.log"                        >> !REPORT_LOGFILE! 2>&1
+			echo --- File automatically copied from !LMS_HASPDRIVER_FOLDER!\access.log to !CHECKLMS_REPORT_LOG_PATH!\hasp_access.log --- >> !CHECKLMS_REPORT_LOG_PATH!\hasp_access.log 2>&1
+			powershell -command "& {Get-Content '!LMS_HASPDRIVER_FOLDER!\access.log' | Select-Object -last !LOG_FILE_SNIPPET!}"  >> !REPORT_LOGFILE! 2>&1
+			rem type "!LMS_HASPDRIVER_FOLDER!\\access.log"                                                                                >> !REPORT_LOGFILE! 2>&1
+		)
+		echo Start at !DATE! !TIME! ....                                                                                     >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo     File '!LMS_HASPDRIVER_FOLDER!\access.log' does not exist.                                                   >> !REPORT_LOGFILE! 2>&1
 	)
@@ -4132,9 +4157,12 @@ if not defined LMS_SKIPSIGCHECK (
 	echo SKIPPED signature check section. The script didn't execute the signature check commands.                            >> !REPORT_LOGFILE! 2>&1
 )
 :flexera_fnp_information
-echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-echo =   F L E X E R A  (F N P)   I N F O R M A T I O N                           =                                          >> !REPORT_LOGFILE! 2>&1
-echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================
+echo =   F L E X E R A  (F N P)   I N F O R M A T I O N                           =
+echo ==============================================================================
+echo ==============================================================================     >> !REPORT_LOGFILE! 2>&1
+echo =   F L E X E R A  (F N P)   I N F O R M A T I O N                           =     >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================     >> !REPORT_LOGFILE! 2>&1
 
 rem create powershell script to replace "><" with ">`r`n<"
 set lms_ps_search="><"
@@ -4151,68 +4179,74 @@ set lms_ps_textFileOut=!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml
 SET lms_ps_script2=!CHECKLMS_REPORT_LOG_PATH!\tmpStrRplc2.ps1
 ECHO (Get-Content "!lms_ps_textFileIn!").replace(!lms_ps_search!, !lms_ps_replace!) ^| Set-Content "!lms_ps_textFileOut!">"!lms_ps_script2!"
 
-echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! ....                                                        >> !REPORT_LOGFILE! 2>&1
 echo ... retrieve Flexera (FNP) Information ...
 if not defined LMS_SKIPFNP (
 	IF EXIST "C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService64.exe" (
 		echo wmic datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService64.exe" get Manufacturer,Name,Version  /format:list       >> !REPORT_LOGFILE! 2>&1
 		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService64.exe" get Manufacturer,Name,Version  /format:list
 		type !REPORT_WMIC_LOGFILE! >> !REPORT_LOGFILE! 2>&1
-		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !REPORT_LOGFILE! 2>&1
 	)
 	IF EXIST "C:\\Program Files (x86)\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" (
 		echo wmic datafile where Name="C:\\Program Files (x86)\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list   >> !REPORT_LOGFILE! 2>&1
 		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="C:\\Program Files (x86)\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list
 		type !REPORT_WMIC_LOGFILE! >> !REPORT_LOGFILE! 2>&1
-		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !REPORT_LOGFILE! 2>&1
 	)
 	IF EXIST "C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" (
 		echo wmic datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list       >> !REPORT_LOGFILE! 2>&1
 		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list
 		type !REPORT_WMIC_LOGFILE! >> !REPORT_LOGFILE! 2>&1
-		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !REPORT_LOGFILE! 2>&1
 	)
 	IF EXIST "!ProgramFiles_x86!\Siemens\LMS\server" (
-		echo Content of folder: "!ProgramFiles_x86!\Siemens\LMS\server"                                                      >> !REPORT_LOGFILE! 2>&1
-		dir /S /A /X /4 /W "!ProgramFiles_x86!\Siemens\LMS\server"                                                           >> !REPORT_LOGFILE! 2>&1
-		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Content of folder: "!ProgramFiles_x86!\Siemens\LMS\server"                 >> !REPORT_LOGFILE! 2>&1
+		dir /S /A /X /4 /W "!ProgramFiles_x86!\Siemens\LMS\server"                      >> !REPORT_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !REPORT_LOGFILE! 2>&1
 	)
 	IF EXIST "!ProgramFiles!\Siemens\LMS\server" (
-		echo Content of folder: "!ProgramFiles!\Siemens\LMS\server"                                                          >> !REPORT_LOGFILE! 2>&1
-		dir /S /A /X /4 /W "!ProgramFiles!\Siemens\LMS\server"                                                               >> !REPORT_LOGFILE! 2>&1
-		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Content of folder: "!ProgramFiles!\Siemens\LMS\server"                     >> !REPORT_LOGFILE! 2>&1
+		dir /S /A /X /4 /W "!ProgramFiles!\Siemens\LMS\server"                          >> !REPORT_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !REPORT_LOGFILE! 2>&1
 	)
-	echo servercomptranutil.exe -version                                                                                     >> !REPORT_LOGFILE! 2>&1
+	echo servercomptranutil.exe -version                                                >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SERVERCOMTRANUTIL (
 		if "!FNPVersion!" == "11.14.0.0" (
 			echo     servercomptranutil.exe -version is not available for FNP=!FNPVersion!, cannot perform operation.        >> !REPORT_LOGFILE! 2>&1
 		) else (
-			"!LMS_SERVERCOMTRANUTIL!" -version                                                                               >> !REPORT_LOGFILE! 2>&1
+			"!LMS_SERVERCOMTRANUTIL!" -version                                          >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
-		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                             >> !REPORT_LOGFILE! 2>&1
+		echo     servercomptranutil.exe doesn't exist, cannot perform operation.        >> !REPORT_LOGFILE! 2>&1
 	)
-	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-	echo tsactdiags_SIEMBT_svr.exe --version                                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                        >> !REPORT_LOGFILE! 2>&1
+	echo tsactdiags_SIEMBT_svr.exe --version                                            >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_TSACTDIAGSSVR (
-		"!LMS_TSACTDIAGSSVR!" --version                                                                                      >> !REPORT_LOGFILE! 2>&1
+		"!LMS_TSACTDIAGSSVR!" --version                                                 >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo     tsactdiags_SIEMBT_svr.exe doesn't exist, cannot perform operation.                                          >> !REPORT_LOGFILE! 2>&1
+		echo     tsactdiags_SIEMBT_svr.exe doesn't exist, cannot perform operation.     >> !REPORT_LOGFILE! 2>&1
 	)
-	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-	echo lmver.exe -fnls                                                                                                     >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                        >> !REPORT_LOGFILE! 2>&1
+	echo lmver.exe -fnls                                                                >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_LMVER (
-		"!LMS_LMVER!" -fnls                                                                                                  >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMVER!" -fnls                                                             >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo     lmver.exe doesn't exist, cannot perform operation.                                                          >> !REPORT_LOGFILE! 2>&1
+		echo     lmver.exe doesn't exist, cannot perform operation.                     >> !REPORT_LOGFILE! 2>&1
 	)
-	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-	echo lmutil.exe lmpath -status                                                                                           >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                        >> !REPORT_LOGFILE! 2>&1
+	echo lmutil.exe lmpath -status                                                      >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_LMUTIL (
-		"!LMS_LMUTIL!" lmpath -status                                                                                        >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMUTIL!" lmpath -status                                                   >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo     lmutil.exe doesn't exist, cannot perform operation.                                                         >> !REPORT_LOGFILE! 2>&1
+		echo     lmutil.exe doesn't exist, cannot perform operation.                    >> !REPORT_LOGFILE! 2>&1
 	)
+	echo -------------------------------------------------------                        >> !REPORT_LOGFILE! 2>&1
+	echo ... search all lmgrd executables on this system [lmgrd.exe] [on c:\ only] ...
+	echo Search all lmgrd executables on this system [lmgrd.exe] [on c:\ only]:         >> !REPORT_LOGFILE! 2>&1
+	del !CHECKLMS_REPORT_LOG_PATH!\lmgrdsFilesFound.txt >nul 2>&1
+	FOR /r C:\ %%X IN (lmgrd*.exe) DO if "%%~dpX" NEQ "!CHECKLMS_REPORT_LOG_PATH!\" echo %%~dpnxX >> !CHECKLMS_REPORT_LOG_PATH!\lmgrdsFilesFound.txt
+	type !CHECKLMS_REPORT_LOG_PATH!\lmgrdsFilesFound.txt >> !REPORT_LOGFILE! 2>&1
 )
 rem Run *always* even if LMS_SKIPFNP is set
 echo -------------------------------------------------------                                                                                                    >> !REPORT_LOGFILE! 2>&1
@@ -5652,23 +5686,26 @@ IF EXIST "!REPORT_LOG_PATH!\demo_debuglog.txt" (
 	)
 
 ) else (
-	echo     '!REPORT_LOG_PATH!\demo_debuglog.txt' not found.                                                                >> !REPORT_LOGFILE! 2>&1
+	echo     '!REPORT_LOG_PATH!\demo_debuglog.txt' not found.                                             >> !REPORT_LOGFILE! 2>&1
 )
-echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
-echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-echo =   L I C E N S E   S E R V E R                                              =                                          >> !REPORT_LOGFILE! 2>&1
-echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! ....                                                                          >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================
+echo =   L I C E N S E   S E R V E R                                              =
+echo ==============================================================================
+echo ==============================================================================                       >> !REPORT_LOGFILE! 2>&1
+echo =   L I C E N S E   S E R V E R                                              =                       >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================                       >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! ....                                                                          >> !REPORT_LOGFILE! 2>&1
 echo ... analyze license server ...
 if not defined LMS_SKIPLICSERV (
 	echo     list requests [servercomptranutil.exe -listRequests] ...
-	echo servercomptranutil.exe -listRequests                                                                                    >> !REPORT_LOGFILE! 2>&1
+	echo servercomptranutil.exe -listRequests                                                             >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SERVERCOMTRANUTIL (
 		"!LMS_SERVERCOMTRANUTIL!" -listRequests > !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_listRequests_simple.xml 2>&1
-		type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_listRequests_simple.xml                                               >> !REPORT_LOGFILE! 2>&1
-		echo -- extract pending requests [start] --                                                                              >> !REPORT_LOGFILE! 2>&1
-		Type "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_listRequests_simple.xml" | findstr "Pending"                         >> !REPORT_LOGFILE! 2>&1
-		echo -- extract pending requests [end] --                                                                                >> !REPORT_LOGFILE! 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_listRequests_simple.xml                        >> !REPORT_LOGFILE! 2>&1
+		echo -- extract pending requests [start] --                                                       >> !REPORT_LOGFILE! 2>&1
+		Type "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_listRequests_simple.xml" | findstr "Pending"  >> !REPORT_LOGFILE! 2>&1
+		echo -- extract pending requests [end] --                                                         >> !REPORT_LOGFILE! 2>&1
 		for /f "tokens=1,2,3,4 eol=@ delims== " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_listRequests_simple.xml') do if "%%B" EQU "Pending" (
 			rem echo     Pending request '%%A' found from %%C %%D
 			if not exist !CHECKLMS_REPORT_LOG_PATH!\pending_request_%%A_%%C.xml (
@@ -5679,25 +5716,25 @@ if not defined LMS_SKIPLICSERV (
 			)
 		)
 	) else (
-		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> !REPORT_LOGFILE! 2>&1
+		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                          >> !REPORT_LOGFILE! 2>&1
 	)
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1 
+	echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                          >> !REPORT_LOGFILE! 2>&1 
 	echo     list requests in long format [servercomptranutil.exe -listRequests format=long] ...
-	echo servercomptranutil.exe -listRequests format=long                                                                        >> !REPORT_LOGFILE! 2>&1
+	echo servercomptranutil.exe -listRequests format=long                                                 >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SERVERCOMTRANUTIL (
 		"!LMS_SERVERCOMTRANUTIL!" -listRequests format=long > !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_listRequests_long.txt 2>&1
-		echo     See '!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_listRequests_long.txt' for full details.                     >> !REPORT_LOGFILE! 2>&1
+		echo     See '!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_listRequests_long.txt' for full details. >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> !REPORT_LOGFILE! 2>&1
+		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                          >> !REPORT_LOGFILE! 2>&1
 	)
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1 
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                          >> !REPORT_LOGFILE! 2>&1 
+	echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
 	echo     list requests in xml format [servercomptranutil.exe -listRequests format=xml] ...
-	echo servercomptranutil.exe -listRequests format=xml                                                                         >> !REPORT_LOGFILE! 2>&1
+	echo servercomptranutil.exe -listRequests format=xml                                                  >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SERVERCOMTRANUTIL (
 		"!LMS_SERVERCOMTRANUTIL!" -listRequests format=xml > !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_listRequests_XML.xml 2>&1
-		echo     See !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_listRequests_XML.xml                                              >> !REPORT_LOGFILE! 2>&1
+		echo     See !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_listRequests_XML.xml                   >> !REPORT_LOGFILE! 2>&1
 
 		rem retrieve section break info
 		findstr /m /c:"StorageBreakInfo" "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_listRequests_XML.xml"                        >> !REPORT_LOGFILE! 2>&1
@@ -5707,16 +5744,16 @@ if not defined LMS_SKIPLICSERV (
 			FOR /F "eol=@ delims=@" %%i IN (!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_listRequests_XML.xml) DO ( 
 				ECHO "%%i" | FINDSTR /C:"<StorageBreakInfo>" 1>nul 
 				if !ERRORLEVEL!==0 (
-					echo     Start of 'StorageBreakInfo' section found ...                                                       >> !REPORT_LOGFILE! 2>&1
+					echo     Start of 'StorageBreakInfo' section found ...                                >> !REPORT_LOGFILE! 2>&1
 					Set LMS_START_LOG=1
 				)
 				if !LMS_START_LOG!==1 (
-					echo     %%i                                                                                                 >> !REPORT_LOGFILE! 2>&1
+					echo     %%i                                                                          >> !REPORT_LOGFILE! 2>&1
 					
 					rem check for end of 'StorageBreakInfo' section
 					ECHO "%%i" | FINDSTR /C:"</StorageBreakInfo>" 1>nul 
 					if !ERRORLEVEL!==0 (
-						echo     End of 'StorageBreakInfo' section found ...                                                     >> !REPORT_LOGFILE! 2>&1
+						echo     End of 'StorageBreakInfo' section found ...                              >> !REPORT_LOGFILE! 2>&1
 						Set LMS_START_LOG=0
 					)
 				)
@@ -5726,48 +5763,48 @@ if not defined LMS_SKIPLICSERV (
 		)
 
 	) else (
-		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> !REPORT_LOGFILE! 2>&1
+		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                          >> !REPORT_LOGFILE! 2>&1
 	)
-	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
 	echo     viewing server trusted storage [servercomptranutil.exe -view] ...
-	echo servercomptranutil.exe -view                                                                                            >> !REPORT_LOGFILE! 2>&1
+	echo servercomptranutil.exe -view                                                                     >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SERVERCOMTRANUTIL (
 		"!LMS_SERVERCOMTRANUTIL!" -view > !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_view.txt  2>&1
-		type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_view.txt                                                              >> !REPORT_LOGFILE! 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_view.txt                                       >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> !REPORT_LOGFILE! 2>&1
+		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                          >> !REPORT_LOGFILE! 2>&1
 	)
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1 
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                          >> !REPORT_LOGFILE! 2>&1 
+	echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
 	echo     viewing server trusted storage in long format [servercomptranutil.exe -view format=long] ...
-	echo servercomptranutil.exe -view format=long                                                                                >> !REPORT_LOGFILE! 2>&1
+	echo servercomptranutil.exe -view format=long                                                         >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SERVERCOMTRANUTIL (
 		"!LMS_SERVERCOMTRANUTIL!" -view format=long > !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_viewlong.txt  2>&1
-		echo     See '!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_viewlong.txt' for full details.                              >> !REPORT_LOGFILE! 2>&1
+		echo     See '!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_viewlong.txt' for full details.       >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> !REPORT_LOGFILE! 2>&1
+		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                          >> !REPORT_LOGFILE! 2>&1
 	)
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1 
+	echo -------------------------------------------------------                                          >> !REPORT_LOGFILE! 2>&1 
 	rem Search for an installed feature and test them
 	set tsfeature=
 	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_viewlong.txt" for /f "tokens=2 eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_viewlong.txt ^|find /I "INCREMENT"') do set "tsfeature=%%i"
 	if defined LMS_LMUTOOL (
 		if defined tsfeature (
 			echo     check trusted store feature: !tsfeature!, with LmuTool.exe /CHECK:!tsfeature!
-			echo Check trusted store feature: !tsfeature!, with LmuTool.exe /CHECK:!tsfeature!                                   >> !REPORT_LOGFILE! 2>&1
-			"!LMS_LMUTOOL!" /CHECK:!tsfeature!                                                                                   >> !REPORT_LOGFILE! 2>&1
-			echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1 
+			echo Check trusted store feature: !tsfeature!, with LmuTool.exe /CHECK:!tsfeature!            >> !REPORT_LOGFILE! 2>&1
+			"!LMS_LMUTOOL!" /CHECK:!tsfeature!                                                            >> !REPORT_LOGFILE! 2>&1
+			echo -------------------------------------------------------                                  >> !REPORT_LOGFILE! 2>&1 
 			echo     check trusted store feature: !tsfeature!, with LmuTool.exe /FC:!tsfeature!
-			echo Check trusted store feature: !tsfeature!, with LmuTool.exe /FC:!tsfeature!                                      >> !REPORT_LOGFILE! 2>&1
-			"!LMS_LMUTOOL!" /FC:!tsfeature!                                                                                      >> !REPORT_LOGFILE! 2>&1
+			echo Check trusted store feature: !tsfeature!, with LmuTool.exe /FC:!tsfeature!               >> !REPORT_LOGFILE! 2>&1
+			"!LMS_LMUTOOL!" /FC:!tsfeature!                                                               >> !REPORT_LOGFILE! 2>&1
 		) else (
-			echo Check trusted store feature: not possible, no feature found in trusted store to test.                           >> !REPORT_LOGFILE! 2>&1
+			echo Check trusted store feature: not possible, no feature found in trusted store to test.    >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
-		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> !REPORT_LOGFILE! 2>&1 
+		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.               >> !REPORT_LOGFILE! 2>&1 
 	)
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1 
+	echo -------------------------------------------------------                                          >> !REPORT_LOGFILE! 2>&1 
 	rem Analyze output regarding broken trusted store
 	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_viewlong.txt" for /f "tokens=6 eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_viewlong.txt ^|find /I "**BROKEN**"') do set "TS_BROKEN=%%i"
 	if defined TS_BROKEN (
@@ -5781,7 +5818,7 @@ if not defined LMS_SKIPLICSERV (
 		echo !SHOW_RED!    ATTENTION: Trusted Store is BROKEN. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE! !SHOW_NORMAL!
 		echo ATTENTION: Trusted Store is BROKEN. Time Flag=!TS_TF_TIME! / Host Flag=!TS_TF_HOST! / Restore Flag=!TS_TF_RESTORE!  >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo Trusted Store is NOT broken.                                                                                        >> !REPORT_LOGFILE! 2>&1
+		echo Trusted Store is NOT broken.                                                                 >> !REPORT_LOGFILE! 2>&1
 	)
 	rem Analyze output regarding disabled licenses
 	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_viewlong.txt" for /f "tokens=4 eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_viewlong.txt ^|find /I "Viewed"') do set "TS_TOTAL_COUNT=%%i"
@@ -5790,45 +5827,48 @@ if not defined LMS_SKIPLICSERV (
 		set /a TS_DISABLED_COUNT = 0
 		for /f "tokens=3 eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_viewlong.txt ^|find /I "Status"') do if "%%i" == "Disabled" SET /A TS_DISABLED_COUNT += 1
 		echo !SHOW_RED!    Disabled licenses found. Disabled=!TS_DISABLED_COUNT! of !TS_TOTAL_COUNT! !SHOW_NORMAL!
-		echo ATTENTION: Disabled licenses found. Disabled=!TS_DISABLED_COUNT! of !TS_TOTAL_COUNT!                                >> !REPORT_LOGFILE! 2>&1
+		echo ATTENTION: Disabled licenses found. Disabled=!TS_DISABLED_COUNT! of !TS_TOTAL_COUNT!         >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo No disabled licenses found.                                                                                         >> !REPORT_LOGFILE! 2>&1
+		echo No disabled licenses found.                                                                  >> !REPORT_LOGFILE! 2>&1
 	)
-	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
-	echo appactutil.exe -view -long                                                                                              >> !REPORT_LOGFILE! 2>&1
+	echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo appactutil.exe -view -long                                                                       >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_APPACTUTIL (
-		"!LMS_APPACTUTIL!" -view -long                                                                                           >> !REPORT_LOGFILE! 2>&1
+		"!LMS_APPACTUTIL!" -view -long                                                                    >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo     appactutil.exe doesn't exist, cannot perform operation.                                                         >> !REPORT_LOGFILE! 2>&1
+		echo     appactutil.exe doesn't exist, cannot perform operation.                                  >> !REPORT_LOGFILE! 2>&1
 	)
-	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
-	echo serveractutil.exe -view -long                                                                                           >> !REPORT_LOGFILE! 2>&1
+	echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo serveractutil.exe -view -long                                                                    >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SERVERACTUTIL (
 		"!LMS_SERVERACTUTIL!" -view -long > !CHECKLMS_REPORT_LOG_PATH!\serveractutil_viewlong.txt  2>&1
-		echo     See '!CHECKLMS_REPORT_LOG_PATH!\serveractutil_viewlong.txt' for full details.                                   >> !REPORT_LOGFILE! 2>&1
+		echo     See '!CHECKLMS_REPORT_LOG_PATH!\serveractutil_viewlong.txt' for full details.            >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo     serveractutil.exe doesn't exist, cannot perform operation.                                                      >> !REPORT_LOGFILE! 2>&1
+		echo     serveractutil.exe doesn't exist, cannot perform operation.                               >> !REPORT_LOGFILE! 2>&1
 	)
-	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
-	echo Display the list of installed products, with LmuTool.exe /L                                                             >> !REPORT_LOGFILE! 2>&1
+	echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo Display the list of installed products, with LmuTool.exe /L                                      >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_LMUTOOL (
-		"!LMS_LMUTOOL!" /L                                                                                                       >> !REPORT_LOGFILE! 2>&1
+		"!LMS_LMUTOOL!" /L                                                                                >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> !REPORT_LOGFILE! 2>&1 
+		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.               >> !REPORT_LOGFILE! 2>&1 
 	)
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
 ) else (
 	rem LMS_SKIPLICSERV
 	echo !SHOW_YELLOW!    SKIPPED license server section. The script didn't execute the license server commands. !SHOW_NORMAL!
-	echo SKIPPED license server section. The script didn't execute the license server commands.                                  >> !REPORT_LOGFILE! 2>&1
+	echo SKIPPED license server section. The script didn't execute the license server commands.           >> !REPORT_LOGFILE! 2>&1
 )
-echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-echo =   L O C A L   L I C E N S E   S E R V E R                                  =                                          >> !REPORT_LOGFILE! 2>&1
-echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================
+echo =   L O C A L   L I C E N S E   S E R V E R                                  =
+echo ==============================================================================
+echo ==============================================================================                       >> !REPORT_LOGFILE! 2>&1
+echo =   L O C A L   L I C E N S E   S E R V E R                                  =                       >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================                       >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! ....                                                                          >> !REPORT_LOGFILE! 2>&1
 if defined LMS_CFG_LICENSE_SRV_PORT (
 	set LMS_LIC_SERVER=!LMS_CFG_LICENSE_SRV_PORT!@localhost
 ) else (
@@ -5838,50 +5878,50 @@ if defined LMS_CFG_LICENSE_SRV_PORT (
 echo ... analyze local license server on !LMS_LIC_SERVER! ...
 if not defined LMS_SKIPLOCLICSERV (
 	echo     viewing server trusted storage [servercomptranutil.exe -serverView !LMS_LIC_SERVER!] ...
-	echo Viewing server trusted storage [servercomptranutil.exe -serverView !LMS_LIC_SERVER!]                                    >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Viewing server trusted storage [servercomptranutil.exe -serverView !LMS_LIC_SERVER!]             >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                          >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SERVERCOMTRANUTIL (
 		"!LMS_SERVERCOMTRANUTIL!" -serverView !LMS_LIC_SERVER! > !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_serverView.txt 2>&1
-		Type "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_serverView.txt"                                                      >> !REPORT_LOGFILE! 2>&1
+		Type "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_serverView.txt"                               >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> !REPORT_LOGFILE! 2>&1
+		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                          >> !REPORT_LOGFILE! 2>&1
 	)
-	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
 	echo     viewing server trusted storage in full format [servercomptranutil.exe -serverView !LMS_LIC_SERVER! format=full] ...
 	echo Viewing server trusted storage in full format [servercomptranutil.exe -serverView !LMS_LIC_SERVER! format=full]         >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                          >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SERVERCOMTRANUTIL (
 		"!LMS_SERVERCOMTRANUTIL!" -serverView !LMS_LIC_SERVER! format=full > !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_serverViewFull.txt 2>&1
-		Type "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_serverViewFull.txt"                                                  >> !REPORT_LOGFILE! 2>&1
+		Type "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_serverViewFull.txt"                           >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> !REPORT_LOGFILE! 2>&1
+		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                          >> !REPORT_LOGFILE! 2>&1
 	)
-	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
 	echo     viewing trusted storage in long format [appactutil.exe -serverview -commServer !LMS_LIC_SERVER! -long] ...
 	echo Viewing trusted storage in long format [appactutil.exe -serverview -commServer !LMS_LIC_SERVER! -long]                  >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                          >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_APPACTUTIL (
 		"!LMS_APPACTUTIL!" -serverview -commServer !LMS_LIC_SERVER! -long > !CHECKLMS_REPORT_LOG_PATH!\appactutil_serverViewLong.txt 2>&1
-		Echo     See "!CHECKLMS_REPORT_LOG_PATH!\appactutil_serverViewLong.txt" for more details.                                >> !REPORT_LOGFILE! 2>&1
+		Echo     See "!CHECKLMS_REPORT_LOG_PATH!\appactutil_serverViewLong.txt" for more details.         >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo     appactutil.exe doesn't exist, cannot perform operation.                                                         >> !REPORT_LOGFILE! 2>&1
+		echo     appactutil.exe doesn't exist, cannot perform operation.                                  >> !REPORT_LOGFILE! 2>&1
 	)
-	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
 	rem prepare answer file for RepairAll command, in case a user input is required
 	del !CHECKLMS_REPORT_LOG_PATH!\yes.txt >nul 2>&1
 	for /L %%n in (1,1,500) do echo y >> !CHECKLMS_REPORT_LOG_PATH!\yes.txt
 	echo ... run repair command, using servercomptranutil, appactutil and serveractutil ...
-	echo run repair command, using servercomptranutil, appactutil and serveractutil ...                                          >> !REPORT_LOGFILE! 2>&1
+	echo run repair command, using servercomptranutil, appactutil and serveractutil ...                   >> !REPORT_LOGFILE! 2>&1
 	echo     servercomptranutil.exe -n !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_repair_FID_xxx.xml fr=long -repair FID_xxx  >> !REPORT_LOGFILE! 2>&1
-	echo     servercomptranutil.exe -n -t %LMS_FNO_SERVER% -repair FID_xxx                                                       >> !REPORT_LOGFILE! 2>&1
-	echo     appactutil.exe -repair FID_xxx -gen !CHECKLMS_REPORT_LOG_PATH!\appactutil_repair_FID_xxx.xml                        >> !REPORT_LOGFILE! 2>&1
-	echo     appactutil.exe -repair FID_xxx                                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo     servercomptranutil.exe -n -t %LMS_FNO_SERVER% -repair FID_xxx                                >> !REPORT_LOGFILE! 2>&1
+	echo     appactutil.exe -repair FID_xxx -gen !CHECKLMS_REPORT_LOG_PATH!\appactutil_repair_FID_xxx.xml >> !REPORT_LOGFILE! 2>&1
+	echo     appactutil.exe -repair FID_xxx                                                               >> !REPORT_LOGFILE! 2>&1
 	echo     serveractutil.exe -repair FID_xxx -gen !CHECKLMS_REPORT_LOG_PATH!\serveractutil_repair_FID_xxx.xml                  >> !REPORT_LOGFILE! 2>&1
-	echo     serveractutil.exe -repair FID_xxx                                                                                   >> !REPORT_LOGFILE! 2>&1
+	echo     serveractutil.exe -repair FID_xxx                                                            >> !REPORT_LOGFILE! 2>&1
 	set NeedRepair=Unknown
 	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_serverView.txt" (
 		set NeedRepair=No
@@ -5892,7 +5932,7 @@ if not defined LMS_SKIPLOCLICSERV (
 			if "%%B" NEQ "" (
 				set NeedRepair=Yes
 				echo !SHOW_RED!    Try to repair %%B !SHOW_NORMAL!
-				echo Try to repair %%B                                                                                          >> !REPORT_LOGFILE! 2>&1
+				echo Try to repair %%B                                                                   >> !REPORT_LOGFILE! 2>&1
 				
 				rem servercomptranutil.exe
 				if defined LMS_SERVERCOMTRANUTIL (
@@ -5982,9 +6022,9 @@ if not defined LMS_SKIPLOCLICSERV (
 		rem call RepairAll command
 		"!LMS_SERVERCOMTRANUTIL!" -n ref=CheckLMS_TryToRepair2_FNO -t %LMS_FNO_SERVER% -repairAll < !CHECKLMS_REPORT_LOG_PATH!\yes.txt >> !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_repairAll.txt 2>&1
 		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_repairAll.txt" (
-			Type "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_repairAll.txt"                                                         >> !REPORT_LOGFILE! 2>&1
-			findstr /m /c:"no fulfillments need repairing" "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_repairAll.txt"               >> !REPORT_LOGFILE! 2>&1
-			rem echo ERRORLEVEL=!ERRORLEVEL!                                                                                         >> !REPORT_LOGFILE! 2>&1
+			Type "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_repairAll.txt"                                                   >> !REPORT_LOGFILE! 2>&1
+			findstr /m /c:"no fulfillments need repairing" "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_repairAll.txt"         >> !REPORT_LOGFILE! 2>&1
+			rem echo ERRORLEVEL=!ERRORLEVEL!                                                                                     >> !REPORT_LOGFILE! 2>&1
 			rem https://stackoverflow.com/questions/36237636/windows-batch-findstr-not-setting-errorlevel-within-a-for-loop 
 			if !ERRORLEVEL!==0 (
 				set NeedRepairAll=No
@@ -6068,6 +6108,9 @@ if not defined LMS_SKIPLOCLICSERV (
 	echo !SHOW_YELLOW!    SKIPPED local license server section. The script didn't execute the local license server commands. !SHOW_NORMAL!
 	echo SKIPPED local license server section. The script didn't execute the local license server commands.                      >> !REPORT_LOGFILE! 2>&1
 )
+echo ==============================================================================
+echo =   R E M O T E   L I C E N S E   S E R V E R                                =
+echo ==============================================================================
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 echo =   R E M O T E   L I C E N S E   S E R V E R                                =                                          >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
@@ -6111,6 +6154,9 @@ if not defined LMS_SKIPREMLICSERV (
 	echo !SHOW_YELLOW!    SKIPPED remote license server section. The script didn't execute the remote license server commands. !SHOW_NORMAL!
 	echo SKIPPED remote license server section. The script didn't execute the remote license server commands.                >> !REPORT_LOGFILE! 2>&1
 )
+echo ==============================================================================
+echo =   O N L I N E   L I C E N S E   S E R V E R                                =
+echo ==============================================================================
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 echo =   O N L I N E   L I C E N S E   S E R V E R                                =                                          >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
@@ -6146,6 +6192,9 @@ if not defined LMS_SKIPONLICSERV (
 	echo !SHOW_YELLOW!    SKIPPED online license server section. The script didn't execute the online license server commands. !SHOW_NORMAL!
 	echo SKIPPED online license server section. The script didn't execute the online license server commands.                >> !REPORT_LOGFILE! 2>&1
 )
+echo ==============================================================================
+echo =   L M S   C O N F I G U R A T I O N   F I L E S                            =
+echo ==============================================================================
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 echo =   L M S   C O N F I G U R A T I O N   F I L E S                            =                                          >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
@@ -6301,6 +6350,9 @@ if not defined LMS_CHECK_ID (
 	echo SKIPPED LMS config section. The script didn't execute the LMS config commands.                                      >> !REPORT_LOGFILE! 2>&1
 )
 :ssu_update_information
+echo ==============================================================================
+echo =   S O F T W A R E   U P D A T E   I N F O R M A T I O N                    =
+echo ==============================================================================
 echo ==============================================================================               >> !REPORT_LOGFILE! 2>&1
 echo =   S O F T W A R E   U P D A T E   I N F O R M A T I O N                    =               >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================               >> !REPORT_LOGFILE! 2>&1
@@ -6678,6 +6730,9 @@ if not defined LMS_SKIPSSU (
 	echo SKIPPED SSU section. The script didn't execute the SSU commands.                                                        >> !REPORT_LOGFILE! 2>&1
 )
 :lms_log_files
+echo ==============================================================================
+echo =   L M S   L O G   F I L E S                                                =
+echo ==============================================================================
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 echo =   L M S   L O G   F I L E S                                                =                                          >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
@@ -7092,6 +7147,9 @@ if not defined LMS_SKIPUCMS (
 	echo !SHOW_YELLOW!    SKIPPED UCMS section. The script didn't execute the UCMS commands. !SHOW_NORMAL!
 	echo SKIPPED UCMS section. The script didn't execute the UCMS commands.                                                                                                                                     >> !REPORT_LOGFILE! 2>&1
 )
+echo ==============================================================================
+echo =   W I N D O W S   E V E N T   L O G                                        =
+echo ==============================================================================
 echo ==============================================================================                                                                                                                             >> !REPORT_LOGFILE! 2>&1
 echo =   W I N D O W S   E V E N T   L O G                                        =                                                                                                                             >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                                                                                                             >> !REPORT_LOGFILE! 2>&1
@@ -7208,46 +7266,38 @@ if not defined LMS_SKIPWINEVENT (
 	echo !SHOW_YELLOW!    SKIPPED Windows Events section. The script didn't execute the Windows Events commands. !SHOW_NORMAL!
 	echo SKIPPED Windows Events section. The script didn't execute the Windows Events commands.                                           >> !REPORT_LOGFILE! 2>&1
 )
-echo ==============================================================================                                                       >> !REPORT_LOGFILE! 2>&1
-echo =   L M S   N O T I F I C A T I O N   R E P O R T                            =                                                       >> !REPORT_LOGFILE! 2>&1
-echo ==============================================================================                                                       >> !REPORT_LOGFILE! 2>&1
-echo Start at !DATE! !TIME! ....                                                                                                          >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================
+echo =   L M S   N O T I F I C A T I O N   R E P O R T                            =
+echo ==============================================================================
+echo ==============================================================================       >> !REPORT_LOGFILE! 2>&1
+echo =   L M S   N O T I F I C A T I O N   R E P O R T                            =       >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================       >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! ....                                                          >> !REPORT_LOGFILE! 2>&1
 echo ... get 'LMS Notifications Report' ...
-echo Get 'LMS Notifications Report'                                                                                                       >> !REPORT_LOGFILE! 2>&1
+echo Get 'LMS Notifications Report'                                                       >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_CHECK_ID (
 	IF EXIST "!LMS_PROGRAMDATA!\Documentation\reports\report.htm" (
-		Type !LMS_PROGRAMDATA!\Documentation\reports\report.htm                                                                           >> !REPORT_LOGFILE! 2>&1
-		copy !LMS_PROGRAMDATA!\Documentation\reports\report.htm !CHECKLMS_REPORT_LOG_PATH!\                                               >> !REPORT_LOGFILE! 2>&1
+		Type !LMS_PROGRAMDATA!\Documentation\reports\report.htm                           >> !REPORT_LOGFILE! 2>&1
+		copy !LMS_PROGRAMDATA!\Documentation\reports\report.htm !CHECKLMS_REPORT_LOG_PATH!\  >> !REPORT_LOGFILE! 2>&1
 	) else (
-		echo     !LMS_PROGRAMDATA!\Documentation\reports\report.htm not found.                                                            >> !REPORT_LOGFILE! 2>&1
+		echo     !LMS_PROGRAMDATA!\Documentation\reports\report.htm not found.            >> !REPORT_LOGFILE! 2>&1
 	)
-	echo Start at !DATE! !TIME! ....                                                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                      >> !REPORT_LOGFILE! 2>&1
 ) else (
 	rem LMS_CHECK_ID
 	echo !SHOW_YELLOW!    SKIPPED notification report section. The script didn't execute the notification report commands. !SHOW_NORMAL!
-	echo SKIPPED notification report section. The script didn't execute the notification report commands.                                 >> !REPORT_LOGFILE! 2>&1
+	echo SKIPPED notification report section. The script didn't execute the notification report commands.   >> !REPORT_LOGFILE! 2>&1
 )
 :connection_test
+echo ==============================================================================
+echo =   C O N N E C T I O N   T E S T                                            =
+echo ==============================================================================
 echo ==============================================================================       >> !REPORT_LOGFILE! 2>&1
 echo =   C O N N E C T I O N   T E S T                                            =       >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================       >> !REPORT_LOGFILE! 2>&1
 echo ... start connection test at !DATE! !TIME! ...
 echo Start at !DATE! !TIME! ....                                                          >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPCONTEST (
-	rem Connection Test to external site
-	set CONNECTION_TEST_EXT_URL=https://webhook.site/54ced032-9f1a-427a-8eab-24e2329cb8cc?LMS_VERSION=!LMS_VERSION!^&COMPUTERNAME=!COMPUTERNAME!^&LMS_SYSTEMID=!LMS_SYSTEMID!^&LMS_SCRIPT_BUILD=!LMS_SCRIPT_BUILD!
-	powershell -Command "(New-Object Net.WebClient).DownloadFile('!CONNECTION_TEST_EXT_URL!', '!temp!\downloadtest.txt')"  >!CHECKLMS_REPORT_LOG_PATH!\connection_test_ext.txt 2>&1
-	if !ERRORLEVEL!==0 (
-		rem Connection Test: PASSED
-		echo     Connection Test PASSED, can access !CONNECTION_TEST_EXT_URL!
-		echo Connection Test PASSED, can access !CONNECTION_TEST_EXT_URL!                 >> !REPORT_LOGFILE! 2>&1
-	) else if !ERRORLEVEL!==1 (
-		rem Connection Test: FAILED
-		echo     Connection Test FAILED, cannot access !CONNECTION_TEST_EXT_URL!
-		echo Connection Test FAILED, cannot access !CONNECTION_TEST_EXT_URL!              >> !REPORT_LOGFILE! 2>&1
-		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_ext.txt                           >> !REPORT_LOGFILE! 2>&1
-	)
-	echo -------------------------------------------------------                          >> !REPORT_LOGFILE! 2>&1
 	rem Connection Test to Siemens site
 	set CONNECTION_TEST_URL=http://new.siemens.com/global/en/general/legal.html
 	powershell -Command "(New-Object Net.WebClient).DownloadFile('!CONNECTION_TEST_URL!', '!temp!\downloadtest.txt')"  >!CHECKLMS_REPORT_LOG_PATH!\connection_test_siemens.txt 2>&1
@@ -7508,6 +7558,9 @@ if not defined LMS_SKIPCONTEST (
 )
 echo Start at !DATE! !TIME! ....                                                                                                              >> !REPORT_LOGFILE! 2>&1
 :collect_product_info
+echo ==============================================================================
+echo =   P R O D U C T   S P E C I F I C   I N F O R M A T I O N                  =
+echo ==============================================================================
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 echo =   P R O D U C T   S P E C I F I C   I N F O R M A T I O N                  =                                          >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
@@ -7853,6 +7906,9 @@ if not defined LMS_SKIPPRODUCTS (
 	echo !SHOW_YELLOW!    SKIPPED products section. The script didn't execute the product specific commands. !SHOW_NORMAL!
 	echo SKIPPED products section. The script didn't execute the product specific commands.                                  >> !REPORT_LOGFILE! 2>&1
 )
+echo ==============================================================================
+echo =   C H E C K - I D                                                          =
+echo ==============================================================================
 echo ... perform check on different id's ...
 echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
 echo =   C H E C K - I D                                                          =                                      >> !REPORT_LOGFILE! 2>&1
@@ -8096,6 +8152,9 @@ if /I !AWS_PENTIME! NEQ !AWS_PENTIME_PREV! (
 
 :send_statistic_data
 echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================
+echo =   S E N D   S T A T I S T I C   D A T A                                    =
+echo ==============================================================================
 echo ... send statistic data to OSD ...
 echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
 echo =   S E N D   S T A T I S T I C   D A T A                                    =                                      >> !REPORT_LOGFILE! 2>&1
@@ -8112,6 +8171,9 @@ IF EXIST "!LMS_CHECKFORUPDATE_SCRIPT!" (
 
 :summary
 echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================
+echo =   S U M M A R Y                                                            =
+echo ==============================================================================
 echo ... summarize collected information ...
 echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
 echo =   S U M M A R Y                                                            =                                      >> !REPORT_LOGFILE! 2>&1
@@ -8412,6 +8474,9 @@ if /I !LMULOG_FILESIZE! GEQ !LOG_FILESIZE_LIMIT! (
 )
 if /I !SIEMBTLOG_FILESIZE! GEQ !LOG_FILESIZE_LIMIT! (
 	echo     ATTENTION: Filesize of SIEMBT.log with !SIEMBTLOG_FILESIZE! bytes, is exceeding critical limit of !LOG_FILESIZE_LIMIT! bytes!      >> !REPORT_LOGFILE! 2>&1
+)
+if /I !ACCESSLOG_FILESIZE! GEQ !LOG_FILESIZE_LIMIT! (
+	echo     ATTENTION: Filesize of access.log with !ACCESSLOG_FILESIZE! bytes, is exceeding critical limit of !LOG_FILESIZE_LIMIT! bytes!      >> !REPORT_LOGFILE! 2>&1
 )
 
 :script_end
