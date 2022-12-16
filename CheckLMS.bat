@@ -23,7 +23,14 @@ rem        - Add check for filesize of access.log (Handle: Defect 2163314)
 rem        - Remove test against 'webhook.site' (Fix: Defect 2129493). Do no longer test against this site!
 rem        - Show section headers new also in console output.
 rem        - Set 2.6.869 as most recent field test version
-rem     
+rem     15-Dec-2022:
+rem        - Adjust output of UUID, use 'format-list'
+rem        - Adjust output for 'Get-WinHomeLocation', use 'format-list'
+rem        - replace /ONLINECHECK with /A:act_xx /M:T (Fix: Defect 2164023)
+rem     16-Dec-2022:
+rem        - Adjust output for 'Get-Culture', use 'format-list'
+rem        - Adjust output for 'Get-Service BITS', use 'format-list'
+rem        - set default values for SIEMBT variables, in case we cannot retrieve real values from SIEMBT.log due large filesize
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -60,8 +67,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 14-Dec-2022"
-set LMS_SCRIPT_BUILD=20221214
+set LMS_SCRIPT_VERSION="CheckLMS Script 16-Dec-2022"
+set LMS_SCRIPT_BUILD=20221216
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -2486,7 +2493,7 @@ if not defined LMS_SKIPWMIC (
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	rem see https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/identify_ec2_instances.html
 	echo WMIC Report [using PowerShell: Get-WmiObject -query 'select uuid from Win32_ComputerSystemProduct']:                >> !REPORT_LOGFILE! 2>&1
-	powershell -c "Get-WmiObject -query 'select uuid from Win32_ComputerSystemProduct' | Select UUID"                        >> !REPORT_LOGFILE! 2>&1
+	powershell -c "Get-WmiObject -query 'select uuid from Win32_ComputerSystemProduct' | Select UUID | format-list"          >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1 
 	echo     Read installed products and version [with wmic /format:csv product get name, version, InstallDate, vendor]
 	echo Read installed products and version [with wmic product get name, version, InstallDate, vendor /format:csv]          >> !REPORT_LOGFILE! 2>&1
@@ -2743,12 +2750,12 @@ if not defined LMS_SKIPWINDOWS (
 	powershell -command "Get-TimeZone"                                                                                       >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- powershell -command "Get-Culture"                                                                  >> !REPORT_LOGFILE! 2>&1
 	echo ... retrieve culture information ...
-	echo Retrieve culture information [using 'powershell -command "Get-Culture"']:                                           >> !REPORT_LOGFILE! 2>&1
-	powershell -command "Get-Culture"                                                                                        >> !REPORT_LOGFILE! 2>&1
+	echo Retrieve culture information [using 'powershell -command "Get-Culture | format-list"']:                             >> !REPORT_LOGFILE! 2>&1
+	powershell -command "Get-Culture | format-list"                                                                          >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- powershell -command "Get-WinHomeLocation"                                                          >> !REPORT_LOGFILE! 2>&1
 	echo ... retrieve region or country information ...
-	echo Retrieve region or country information [using 'powershell -command "Get-WinHomeLocation"']:                         >> !REPORT_LOGFILE! 2>&1
-	powershell -command "Get-WinHomeLocation"                                                                                >> !REPORT_LOGFILE! 2>&1
+	echo Retrieve region or country information [using 'powershell -command "Get-WinHomeLocation | format-list"']:           >> !REPORT_LOGFILE! 2>&1
+	powershell -command "Get-WinHomeLocation | format-list"                                                                  >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- powershell -command "$PSVersionTable"                                                              >> !REPORT_LOGFILE! 2>&1
 	echo ... retrieve powershell information ...
 	echo Retrieve powershell information [using 'powershell -command "$PSVersionTable"']:                                    >> !REPORT_LOGFILE! 2>&1
@@ -5555,6 +5562,15 @@ IF EXIST "!REPORT_LOG_PATH!\SIEMBT.log" (
 
 		echo     ATTENTION: Filesize of SIEMBT.log with !SIEMBTLOG_FILESIZE! bytes, is exceeding critical limit of !LOG_FILESIZE_LIMIT! bytes!   >> !REPORT_LOGFILE! 2>&1
 		echo     Because filesize of SIEMBT.log with !SIEMBTLOG_FILESIZE! bytes exceeds critical limit it is not further processed!              >> !REPORT_LOGFILE! 2>&1
+		
+		rem set default values, as we cannot retrieve real values from SIEMBT.log
+		set LMS_SIEMBT_FNLS_PORT=[not available as SIEMBT.log is too large.]
+		set LMS_SIEMBT_VD_PORT=[not available as SIEMBT.log is too large.]
+		set LMS_SIEMBT_HOSTNAME=[not available as SIEMBT.log is too large.]
+		set LMS_SIEMBT_HYPERVISOR=[not available as SIEMBT.log is too large.]
+		set LMS_SIEMBT_HOSTIDS=[not available as SIEMBT.log is too large.]
+		set LMS_SIEMBT_STARTTIME=[not available as SIEMBT.log is too large.]
+
 	) else (
 		rem Extract listening ports from SIEMBT.log
 		for /f "tokens=6* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\SIEMBT.log ^|find /I "(@lmgrd-SLOG@) Listening port"') do set LMS_SIEMBT_FNLS_PORT=%%A
@@ -6182,7 +6198,7 @@ if not defined LMS_SKIPONLICSERV (
 		)
 		FOR %%X IN (!LMS_PROGRAMDATA!\OnlineCheckTokens\*.json) DO ( 
 			echo -------------------------------------------------------                                                     >> !REPORT_LOGFILE! 2>&1 
-			"!LMS_LMUTOOL!" /ONLINECHECK:%%~nX                                                                               >> !REPORT_LOGFILE! 2>&1
+			"!LMS_LMUTOOL!" /A:%%~nX /M:T                                                                                    >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
 		echo     '!LMS_PROGRAMDATA!\OnlineCheckTokens' folder not found.                                                     >> !REPORT_LOGFILE! 2>&1
@@ -6360,8 +6376,8 @@ echo Start at !DATE! !TIME! ....                                                
 echo UserID=8:%SSU_SYSTEMID%                                                                      >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPSSU (
 	echo -------------------------------------------------------                                  >> !REPORT_LOGFILE! 2>&1
-	echo Check that BITS service is available [with: powershell -Command "Get-Service BITS"]      >> !REPORT_LOGFILE! 2>&1
-	powershell -Command "Get-Service BITS"                                                        >> !REPORT_LOGFILE! 2>&1
+	echo Check that BITS service is available [with: powershell -Command "Get-Service BITS | format-list"]      >> !REPORT_LOGFILE! 2>&1
+	powershell -Command "Get-Service BITS | format-list"                                          >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                  >> !REPORT_LOGFILE! 2>&1
 	echo List all BITS jobs [with: powershell -Command "Get-BitsTransfer -AllUsers"]              >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
