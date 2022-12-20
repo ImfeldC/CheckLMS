@@ -31,6 +31,8 @@ rem     16-Dec-2022:
 rem        - Adjust output for 'Get-Culture', use 'format-list'
 rem        - Adjust output for 'Get-Service BITS', use 'format-list'
 rem        - set default values for SIEMBT variables, in case we cannot retrieve real values from SIEMBT.log due large filesize
+rem     19-Dec-2022:
+rem        - add field ProductCode to list of extension modules (in Desigo CC section)
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -67,8 +69,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 16-Dec-2022"
-set LMS_SCRIPT_BUILD=20221216
+set LMS_SCRIPT_VERSION="CheckLMS Script 19-Dec-2022"
+set LMS_SCRIPT_BUILD=20221219
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -7617,7 +7619,7 @@ if not defined LMS_SKIPPRODUCTS (
 		echo -------------------------------------------------------                                            >> !REPORT_LOGFILE! 2>&1
 		echo     Read list of installed Extensions Modules of Desigo CC from registry ...
 		echo Read list of installed Extensions Modules of Desigo CC from registry                                            >> !REPORT_LOGFILE! 2>&1
-		Powershell -command "Get-ItemProperty HKLM:\Software\Siemens\Siemens_GMS\EM\* -ErrorAction SilentlyContinue | Select-Object DisplayName, DisplayVersion, ExtensionSuite, InstallationMode, IsEMWithoutMsi | Format-List" > !CHECKLMS_GMS_PATH!\desigocc_installed_EM.txt 2>&1
+		Powershell -command "Get-ItemProperty HKLM:\Software\Siemens\Siemens_GMS\EM\* -ErrorAction SilentlyContinue | Select-Object DisplayName, DisplayVersion, ProductCode, ExtensionSuite, InstallationMode, IsEMWithoutMsi | Format-List" > !CHECKLMS_GMS_PATH!\desigocc_installed_EM.txt 2>&1
 		type !CHECKLMS_GMS_PATH!\desigocc_installed_EM.txt >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
 		echo     Search for desigo cc logfiles [PVSS_II.log, WCCOActrl253.log] [in '!GMS_InstallDir!'] ...
