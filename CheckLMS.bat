@@ -37,6 +37,7 @@ rem     20-Dec-2022:
 rem        - support ecmcommonutil.exe V1.28 (Fix: Defect 2167138)
 rem     21-Dec-2022:
 rem        - Change download link for BgInfo.zip (Fix: Defect 2167763)
+rem        - Remove direct download of BgInfo, use 'configbginfo.bat /checkdownload' directly (no need to call via CheckLMS)
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -112,7 +113,6 @@ rem External public download location
 rem set CHECKLMS_EXTERNAL_SHARE=https://static.siemens.com/btdownloads/
 rem set CHECKLMS_EXTERNAL_SHARE=https://d32nyvdepsrb0n.cloudfront.net/
 set CHECKLMS_EXTERNAL_SHARE=https://licensemanagementsystem.s3.eu-west-1.amazonaws.com/
-set SYSINTERNALS_DOWNLOAD=https://download.sysinternals.com/files/
 
 rem CheckLMS configuration (Siemens internal only)
 rem set CHECKLMS_CONFIG=https://wiki.siemens.com/download/attachments/313230891/CheckLMS.config
@@ -128,10 +128,6 @@ set CHECKLMS_CONNECTION_TEST_FILE=_CheckLMS_ReadMe_.txt
 rem settings for scheduled task: CheckID
 set LMS_SCHEDTASK_CHECKID_NAME=CheckLMS_CheckID
 set LMS_SCHEDTASK_CHECKID_FULLNAME=\Siemens\Lms\!LMS_SCHEDTASK_CHECKID_NAME!
-
-rem settings for scheduled task: BgInfo
-set LMS_SCHEDTASK_BGINFO_NAME=SetLMSBgInfo
-set LMS_SCHEDTASK_BGINFO_FULLNAME=\Siemens\Lms\!LMS_SCHEDTASK_BGINFO_NAME!
 
 set ProgramFiles_x86=!ProgramFiles(x86)!
 
@@ -682,10 +678,6 @@ for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>
 set VALUE_NAME=SkipALMBtPluginInstallation
 for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
 	set LMS_SKIP_ALM_BT_PUGIN_INSTALLATION=%%A
-)
-set VALUE_NAME=ShowBGInfo
-for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
-	set LMS_SHOW_BGINFO=%%A
 )
 REM -- LMS Registry Keys (ATOS)
 rem "HKLM\SOFTWARE\LicenseManagementSystem\IsInstalled" is set to "1" if LMS has been installed by ATOS (2nd package of LMS 2.4.815)
@@ -1551,18 +1543,6 @@ if not defined LMS_SKIPDOWNLOAD (
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/FNP/counted.lic', '!LMS_DOWNLOAD_PATH!\counted.lic')"   >> !REPORT_LOGFILE! 2>&1
 			)
 			
-			rem Download BGInfo ZIP archive [as ZIP]
-			echo     Download BGInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BGInfo.zip
-			echo Download BGInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BGInfo.zip  from '!SYSINTERNALS_DOWNLOAD!BGInfo.zip'                             >> !REPORT_LOGFILE! 2>&1
-			powershell -Command "(New-Object Net.WebClient).DownloadFile('!SYSINTERNALS_DOWNLOAD!BGInfo.zip', '!LMS_DOWNLOAD_PATH!\BGInfo.zip')"   >> !REPORT_LOGFILE! 2>&1
-			rem Unzip BGInfo ZIP archive [as ZIP]
-			IF EXIST "!LMS_DOWNLOAD_PATH!\BGInfo.zip" (
-				rmdir /S /Q "!LMS_DOWNLOAD_PATH!\BGInfo\" >nul 2>&1
-				echo     Extract BGInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BGInfo.zip
-				echo Extract BGInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BGInfo.zip                            >> !REPORT_LOGFILE! 2>&1
-				"!UNZIP_TOOL!" x -y -spe -o"!LMS_DOWNLOAD_PATH!\BGInfo\" "!LMS_DOWNLOAD_PATH!\BGInfo.zip" > !CHECKLMS_REPORT_LOG_PATH!\unzip_bginfo_zip.txt 2>&1
-			)
-
 		)
 	) else (
 		echo     Don't download additional libraries and files, because no internet connection available.
