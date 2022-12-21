@@ -35,6 +35,8 @@ rem     19-Dec-2022:
 rem        - add field ProductCode to list of extension modules (in Desigo CC section)
 rem     20-Dec-2022:
 rem        - support ecmcommonutil.exe V1.28 (Fix: Defect 2167138)
+rem     21-Dec-2022:
+rem        - Change download link for BgInfo.zip (Fix: Defect 2167763)
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -71,8 +73,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 20-Dec-2022"
-set LMS_SCRIPT_BUILD=20221220
+set LMS_SCRIPT_VERSION="CheckLMS Script 21-Dec-2022"
+set LMS_SCRIPT_BUILD=20221221
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -110,6 +112,7 @@ rem External public download location
 rem set CHECKLMS_EXTERNAL_SHARE=https://static.siemens.com/btdownloads/
 rem set CHECKLMS_EXTERNAL_SHARE=https://d32nyvdepsrb0n.cloudfront.net/
 set CHECKLMS_EXTERNAL_SHARE=https://licensemanagementsystem.s3.eu-west-1.amazonaws.com/
+set SYSINTERNALS_DOWNLOAD=https://download.sysinternals.com/files/
 
 rem CheckLMS configuration (Siemens internal only)
 rem set CHECKLMS_CONFIG=https://wiki.siemens.com/download/attachments/313230891/CheckLMS.config
@@ -1548,18 +1551,16 @@ if not defined LMS_SKIPDOWNLOAD (
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/FNP/counted.lic', '!LMS_DOWNLOAD_PATH!\counted.lic')"   >> !REPORT_LOGFILE! 2>&1
 			)
 			
-			rem Download BGInfo tool
-			rem del !LMS_DOWNLOAD_PATH!\BgInfo.zip >nul 2>&1
-			rem Download BgInfo ZIP archive [as ZIP]
-			echo     Download BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip
-			echo Download BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip  from '!CHECKLMS_EXTERNAL_SHARE!lms/BgInfo/BgInfo.zip'                             >> !REPORT_LOGFILE! 2>&1
-			powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/BgInfo/BgInfo.zip', '!LMS_DOWNLOAD_PATH!\BgInfo.zip')"   >> !REPORT_LOGFILE! 2>&1
-			rem Unzip BgInfo ZIP archive [as ZIP]
-			IF EXIST "!LMS_DOWNLOAD_PATH!\BgInfo.zip" (
-				rmdir /S /Q "!LMS_DOWNLOAD_PATH!\BgInfo\" >nul 2>&1
-				echo     Extract BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip
-				echo Extract BgInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BgInfo.zip                            >> !REPORT_LOGFILE! 2>&1
-				"!UNZIP_TOOL!" x -y -spe -o"!LMS_DOWNLOAD_PATH!\BgInfo\" "!LMS_DOWNLOAD_PATH!\BgInfo.zip" > !CHECKLMS_REPORT_LOG_PATH!\unzip_bginfo_zip.txt 2>&1
+			rem Download BGInfo ZIP archive [as ZIP]
+			echo     Download BGInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BGInfo.zip
+			echo Download BGInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BGInfo.zip  from '!SYSINTERNALS_DOWNLOAD!BGInfo.zip'                             >> !REPORT_LOGFILE! 2>&1
+			powershell -Command "(New-Object Net.WebClient).DownloadFile('!SYSINTERNALS_DOWNLOAD!BGInfo.zip', '!LMS_DOWNLOAD_PATH!\BGInfo.zip')"   >> !REPORT_LOGFILE! 2>&1
+			rem Unzip BGInfo ZIP archive [as ZIP]
+			IF EXIST "!LMS_DOWNLOAD_PATH!\BGInfo.zip" (
+				rmdir /S /Q "!LMS_DOWNLOAD_PATH!\BGInfo\" >nul 2>&1
+				echo     Extract BGInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BGInfo.zip
+				echo Extract BGInfo ZIP archive: !LMS_DOWNLOAD_PATH!\BGInfo.zip                            >> !REPORT_LOGFILE! 2>&1
+				"!UNZIP_TOOL!" x -y -spe -o"!LMS_DOWNLOAD_PATH!\BGInfo\" "!LMS_DOWNLOAD_PATH!\BGInfo.zip" > !CHECKLMS_REPORT_LOG_PATH!\unzip_bginfo_zip.txt 2>&1
 			)
 
 		)
