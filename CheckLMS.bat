@@ -10,34 +10,8 @@ rem        - Final script, released for LMS 2.6
 rem 
 rem     Full details see changelog.md (on https://github.com/ImfeldC/CheckLMS/blob/master/changelog.md )
 rem
-rem     12-Dec-2022:
-rem        - Publish CheckLMS "12-Dec-2022" to be part of LMS 2.7.869, collect all changes after "28-Nov-2022" up to "12-Dec-2022" 
-rem     14-Dec-2022:
-rem        - Remove bginfo update durign CheckLMS execution (LMS_UPDATE_BGINFO)
-rem        - Remove script option /installftlms (LMS_INSTALL_LMS_FT_CLIENT)
-rem        - Remove script option /setbginfo (LMS_SET_BGINFO) and /clearbginfo (LMS_CLEAR_BGINFO)
-rem        - Remove script option /setbginfotask (LMS_SET_BGINFO_TASK), use 'configbginfo.bat /setbginfotask' directly (no need to call via CheckLMS)
-rem        - Remove script option /delbginfotask (LMS_DEL_BGINFO_TASK), use 'configbginfo.bat /delbginfotask' directly (no need to call via CheckLMS)
-rem        - Search for other lmgrd.exe on machine (Fix: Task 1709666)
-rem        - Add check for filesize of access.log (Handle: Defect 2163314)
-rem        - Remove test against 'webhook.site' (Fix: Defect 2129493). Do no longer test against this site!
-rem        - Show section headers new also in console output.
-rem        - Set 2.6.869 as most recent field test version
-rem     15-Dec-2022:
-rem        - Adjust output of UUID, use 'format-list'
-rem        - Adjust output for 'Get-WinHomeLocation', use 'format-list'
-rem        - replace /ONLINECHECK with /A:act_xx /M:T (Fix: Defect 2164023)
-rem     16-Dec-2022:
-rem        - Adjust output for 'Get-Culture', use 'format-list'
-rem        - Adjust output for 'Get-Service BITS', use 'format-list'
-rem        - set default values for SIEMBT variables, in case we cannot retrieve real values from SIEMBT.log due large filesize
-rem     19-Dec-2022:
-rem        - add field ProductCode to list of extension modules (in Desigo CC section)
-rem     20-Dec-2022:
-rem        - support ecmcommonutil.exe V1.28 (Fix: Defect 2167138)
-rem     21-Dec-2022:
-rem        - Change download link for BgInfo.zip (Fix: Defect 2167763)
-rem        - Remove direct download of BgInfo, use 'configbginfo.bat /checkdownload' directly (no need to call via CheckLMS)
+rem     04-Jan-2023:
+rem        - Publish CheckLMS "04-Jan-2023" to be part of LMS 2.7.870, collect all changes after "12-Dec-2022" up to "04-Jan-2023" 
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -74,21 +48,21 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 21-Dec-2022"
-set LMS_SCRIPT_BUILD=20221221
+set LMS_SCRIPT_VERSION="CheckLMS Script 04-Jan-2023"
+set LMS_SCRIPT_BUILD=20230104
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
 set CHECKLMS_SCRIPT_DRIVE=%~d0
 set CHECKLMS_SCRIPT_PATH=%~p0
 
-rem most recent lms build: 2.6.849 (per 21-Jan-2021)
-set MOST_RECENT_LMS_VERSION=2.6.849
-set MOST_RECENT_LMS_BUILD=849
-rem most recent lms field test version: 2.6.869 (per 14-Dec-2022)
+rem most recent lms build: 2.7.870 (per 04-Jan-2023)
+set MOST_RECENT_LMS_VERSION=2.7.870
+set MOST_RECENT_LMS_BUILD=870
+rem most recent lms field test version: n/a
 rem - if not set - it is not downloaded.
-set MOST_RECENT_FT_LMS_VERSION=2.6.869
-set MOST_RECENT_FT_LMS_BUILD=869
+rem set MOST_RECENT_FT_LMS_VERSION=2.6.869
+rem set MOST_RECENT_FT_LMS_BUILD=869
 rem most recent dongle driver version (per 18-Aug-2022, LMS 2.7)
 set MOST_RECENT_DONGLE_DRIVER_VERSION=8.43
 set MOST_RECENT_DONGLE_DRIVER_MAJ_VERSION=8

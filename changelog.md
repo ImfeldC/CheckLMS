@@ -1389,4 +1389,32 @@ rem        - Add command to check that SSU task is running.
 rem     06-Dec-2022:
 rem        - Adjust the output of 'Get Product List'
 rem        - Add new 'Get Feature List'
+rem     12-Dec-2022:
+rem        - Publish CheckLMS "12-Dec-2022" to be part of LMS 2.7.869, collect all changes after "28-Nov-2022" up to "12-Dec-2022" 
+rem     14-Dec-2022:
+rem        - Remove bginfo update durign CheckLMS execution (LMS_UPDATE_BGINFO)
+rem        - Remove script option /installftlms (LMS_INSTALL_LMS_FT_CLIENT)
+rem        - Remove script option /setbginfo (LMS_SET_BGINFO) and /clearbginfo (LMS_CLEAR_BGINFO)
+rem        - Remove script option /setbginfotask (LMS_SET_BGINFO_TASK), use 'configbginfo.bat /setbginfotask' directly (no need to call via CheckLMS)
+rem        - Remove script option /delbginfotask (LMS_DEL_BGINFO_TASK), use 'configbginfo.bat /delbginfotask' directly (no need to call via CheckLMS)
+rem        - Search for other lmgrd.exe on machine (Fix: Task 1709666)
+rem        - Add check for filesize of access.log (Handle: Defect 2163314)
+rem        - Remove test against 'webhook.site' (Fix: Defect 2129493). Do no longer test against this site!
+rem        - Show section headers new also in console output.
+rem        - Set 2.6.869 as most recent field test version
+rem     15-Dec-2022:
+rem        - Adjust output of UUID, use 'format-list'
+rem        - Adjust output for 'Get-WinHomeLocation', use 'format-list'
+rem        - replace /ONLINECHECK with /A:act_xx /M:T (Fix: Defect 2164023)
+rem     16-Dec-2022:
+rem        - Adjust output for 'Get-Culture', use 'format-list'
+rem        - Adjust output for 'Get-Service BITS', use 'format-list'
+rem        - set default values for SIEMBT variables, in case we cannot retrieve real values from SIEMBT.log due large filesize
+rem     19-Dec-2022:
+rem        - add field ProductCode to list of extension modules (in Desigo CC section)
+rem     20-Dec-2022:
+rem        - support ecmcommonutil.exe V1.28 (Fix: Defect 2167138)
+rem     21-Dec-2022:
+rem        - Change download link for BgInfo.zip (Fix: Defect 2167763)
+rem        - Remove direct download of BgInfo, use 'configbginfo.bat /checkdownload' directly (no need to call via CheckLMS)
 ```
