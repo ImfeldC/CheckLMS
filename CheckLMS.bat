@@ -12,6 +12,9 @@ rem     Full details see changelog.md (on https://github.com/ImfeldC/CheckLMS/bl
 rem
 rem     04-Jan-2023:
 rem        - Publish CheckLMS "04-Jan-2023" to be part of LMS 2.7.870, collect all changes after "12-Dec-2022" up to "04-Jan-2023" 
+rem     05-Jan-2023:
+rem        - Adjust installation of dongle driver (Fix: Defect 2118970)
+rem        - Adjust extraction of stored pending requests, improve console output to avoid impression "script is hanging" 
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -48,8 +51,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 04-Jan-2023"
-set LMS_SCRIPT_BUILD=20230104
+set LMS_SCRIPT_VERSION="CheckLMS Script 05-Jan-2023"
+set LMS_SCRIPT_BUILD=20230105
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -1477,13 +1480,22 @@ if not defined LMS_SKIPDOWNLOAD (
 				echo Extract dongle driver: '!LMS_DOWNLOAD_PATH_HASPDRIVER!\DongleDriver.zip'                                           >> !REPORT_LOGFILE! 2>&1
 				"!UNZIP_TOOL!" x -y -spe -o"!LMS_DOWNLOAD_PATH!\hasp\!MOST_RECENT_DONGLE_DRIVER_VERSION!\" "!LMS_DOWNLOAD_PATH_HASPDRIVER!\DongleDriver.zip" > !CHECKLMS_REPORT_LOG_PATH!\unzip_DongleDriver_zip.txt 2>&1
 				
-				if exist "!LMS_DOWNLOAD_PATH!\hasp\!MOST_RECENT_DONGLE_DRIVER_VERSION!\haspdinst.exe" (
-					set TARGETFILE=!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe
-					set TARGETFILE=!TARGETFILE:\=\\!
-					wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
+				if exist "!LMS_DOWNLOAD_PATH_HASPDRIVER!\DongleDriver\haspdinst.exe" (
+					rem found in: C:\ProgramData\Siemens\LMS\Download\hasp\x.xx\DongleDriver (e.g. C:\ProgramData\Siemens\LMS\Download\hasp\8.43\DongleDriver)
+					set HASP_TARGETFILE=!LMS_DOWNLOAD_PATH_HASPDRIVER!\DongleDriver\haspdinst.exe
+					set HASP_TARGETFILE=!HASP_TARGETFILE:\=\\!
+				) else if exist "!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe" (
+					rem found in: C:\ProgramData\Siemens\LMS\Download\hasp\x.xx (e.g. C:\ProgramData\Siemens\LMS\Download\hasp\8.43)
+					set HASP_TARGETFILE=!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe
+					set HASP_TARGETFILE=!HASP_TARGETFILE:\=\\!
+				) 
+				if defined HASP_TARGETFILE (
+					wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!HASP_TARGETFILE!" get Manufacturer,Name,Version  /format:list
 					IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "haspdinstVersion=%%i"
-					echo     Newest dongle driver: !LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe [!haspdinstVersion!] downloaded!
-					echo     Newest dongle driver: !LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe [!haspdinstVersion!] downloaded!        >> !REPORT_LOGFILE! 2>&1
+					echo     Dongle driver: !HASP_TARGETFILE! [!haspdinstVersion!] downloaded!
+					echo     Dongle driver: !HASP_TARGETFILE! [!haspdinstVersion!] downloaded!                                          >> !REPORT_LOGFILE! 2>&1
+				) else (
+					echo     Extract of dongle driver: '!LMS_DOWNLOAD_PATH_HASPDRIVER!/DongleDriver.zip' FAILED.                        >> !REPORT_LOGFILE! 2>&1
 				)
 			) else (
 				echo     Download of dongle driver: '!LMS_DOWNLOAD_PATH_HASPDRIVER!/DongleDriver.zip' FAILED.                           >> !REPORT_LOGFILE! 2>&1
@@ -2112,13 +2124,13 @@ if defined LMS_REMOVE_LMS_CLIENT (
 )
 
 rem set correct dongel driver path 
-if exist "!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe" (
+if exist "!LMS_DOWNLOAD_PATH_HASPDRIVER!\DongleDriver\haspdinst.exe" (
+	set LMS_DONGLE_DRIVER_PATH=!LMS_DOWNLOAD_PATH_HASPDRIVER!\DongleDriver
+) else if exist "!LMS_DOWNLOAD_PATH_HASPDRIVER!\haspdinst.exe" (
 	set LMS_DONGLE_DRIVER_PATH=!LMS_DOWNLOAD_PATH_HASPDRIVER!
-) else (
-	if exist "!LMS_PROGRAMDATA!\DongleDriver\haspdinst.exe" (
+) else if exist "!LMS_PROGRAMDATA!\DongleDriver\haspdinst.exe" (
 		rem use pre-installed dongle driver instead
 		set LMS_DONGLE_DRIVER_PATH=!LMS_PROGRAMDATA!\DongleDriver
-	)
 )
 
 if defined LMS_INSTALL_DONGLE_DRIVER (
@@ -5769,29 +5781,41 @@ echo Start at !DATE! !TIME! ....                                                
 echo ... analyze license server ...
 if not defined LMS_SKIPLICSERV (
 	echo     list requests [servercomptranutil.exe -listRequests] ...
-	echo servercomptranutil.exe -listRequests                                                             >> !REPORT_LOGFILE! 2>&1
+	echo list requests [servercomptranutil.exe -listRequests]                                             >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SERVERCOMTRANUTIL (
 		"!LMS_SERVERCOMTRANUTIL!" -listRequests > !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_listRequests_simple.xml 2>&1
 		type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_listRequests_simple.xml                        >> !REPORT_LOGFILE! 2>&1
 		echo -- extract pending requests [start] --                                                       >> !REPORT_LOGFILE! 2>&1
 		Type "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_listRequests_simple.xml" | findstr "Pending"  >> !REPORT_LOGFILE! 2>&1
 		echo -- extract pending requests [end] --                                                         >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                          >> !REPORT_LOGFILE! 2>&1
+	)
+	echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                          >> !REPORT_LOGFILE! 2>&1 
+	echo     extract requests [servercomptranutil.exe -stored] ...
+	echo extract requests [servercomptranutil.exe -stored]                                                >> !REPORT_LOGFILE! 2>&1
+	if defined LMS_SERVERCOMTRANUTIL (
+		set PENDING_REQUEST_COUNT=0
 		for /f "tokens=1,2,3,4 eol=@ delims== " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_listRequests_simple.xml') do if "%%B" EQU "Pending" (
+			set /A PENDING_REQUEST_COUNT += 1
 			rem echo     Pending request '%%A' found from %%C %%D
 			if not exist !CHECKLMS_REPORT_LOG_PATH!\pending_request_%%A_%%C.xml (
-				echo     Pending request '%%A' found from %%C %%D, retrieve this request information in !CHECKLMS_REPORT_LOG_PATH!\pending_request_%%A_%%C.xml   >> !REPORT_LOGFILE! 2>&1
-				"!LMS_SERVERCOMTRANUTIL!" -stored !CHECKLMS_REPORT_LOG_PATH!\pending_request_%%A_%%C.xml request=%%A                                             >> !REPORT_LOGFILE! 2>&1
+				echo         [!PENDING_REQUEST_COUNT!] Pending request '%%A' found from %%C %%D, retrieve this request information
+				echo     [!PENDING_REQUEST_COUNT!] Pending request '%%A' found from %%C %%D, retrieve this request information in !CHECKLMS_REPORT_LOG_PATH!\pending_request_%%A_%%C.xml [at !DATE! !TIME!]   >> !REPORT_LOGFILE! 2>&1
+				"!LMS_SERVERCOMTRANUTIL!" -stored !CHECKLMS_REPORT_LOG_PATH!\pending_request_%%A_%%C.xml request=%%A                 >> !REPORT_LOGFILE! 2>&1
 			) else (
-				echo     Pending request '%%A' found from %%C %%D, request information is available in !CHECKLMS_REPORT_LOG_PATH!\pending_request_%%A_%%C.xml    >> !REPORT_LOGFILE! 2>&1
+				echo     [!PENDING_REQUEST_COUNT!] Pending request '%%A' found from %%C %%D, request information is available in !CHECKLMS_REPORT_LOG_PATH!\pending_request_%%A_%%C.xml [at !DATE! !TIME!]    >> !REPORT_LOGFILE! 2>&1
 			)
 		)
+		echo     Total !PENDING_REQUEST_COUNT! pending requests found and processed.                      >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                          >> !REPORT_LOGFILE! 2>&1
 	)
 	echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                          >> !REPORT_LOGFILE! 2>&1 
 	echo     list requests in long format [servercomptranutil.exe -listRequests format=long] ...
-	echo servercomptranutil.exe -listRequests format=long                                                 >> !REPORT_LOGFILE! 2>&1
+	echo list requests in long format [servercomptranutil.exe -listRequests format=long]                  >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SERVERCOMTRANUTIL (
 		"!LMS_SERVERCOMTRANUTIL!" -listRequests format=long > !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_listRequests_long.txt 2>&1
 		echo     See '!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_listRequests_long.txt' for full details. >> !REPORT_LOGFILE! 2>&1
@@ -5801,7 +5825,7 @@ if not defined LMS_SKIPLICSERV (
 	echo -------------------------------------------------------                                          >> !REPORT_LOGFILE! 2>&1 
 	echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
 	echo     list requests in xml format [servercomptranutil.exe -listRequests format=xml] ...
-	echo servercomptranutil.exe -listRequests format=xml                                                  >> !REPORT_LOGFILE! 2>&1
+	echo list requests in xml format [servercomptranutil.exe -listRequests format=xml]                    >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SERVERCOMTRANUTIL (
 		"!LMS_SERVERCOMTRANUTIL!" -listRequests format=xml > !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_listRequests_XML.xml 2>&1
 		echo     See !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_listRequests_XML.xml                   >> !REPORT_LOGFILE! 2>&1
@@ -5838,7 +5862,7 @@ if not defined LMS_SKIPLICSERV (
 	echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
 	echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
 	echo     viewing server trusted storage [servercomptranutil.exe -view] ...
-	echo servercomptranutil.exe -view                                                                     >> !REPORT_LOGFILE! 2>&1
+	echo viewing server trusted storage [servercomptranutil.exe -view]                                    >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SERVERCOMTRANUTIL (
 		"!LMS_SERVERCOMTRANUTIL!" -view > !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_view.txt  2>&1
 		type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_view.txt                                       >> !REPORT_LOGFILE! 2>&1
@@ -5848,7 +5872,7 @@ if not defined LMS_SKIPLICSERV (
 	echo -------------------------------------------------------                                          >> !REPORT_LOGFILE! 2>&1 
 	echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
 	echo     viewing server trusted storage in long format [servercomptranutil.exe -view format=long] ...
-	echo servercomptranutil.exe -view format=long                                                         >> !REPORT_LOGFILE! 2>&1
+	echo viewing server trusted storage in long format [servercomptranutil.exe -view format=long]         >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SERVERCOMTRANUTIL (
 		"!LMS_SERVERCOMTRANUTIL!" -view format=long > !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_viewlong.txt  2>&1
 		echo     See '!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_viewlong.txt' for full details.       >> !REPORT_LOGFILE! 2>&1
@@ -8409,6 +8433,7 @@ if defined TS_DISABLED (
 	echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
 	echo !SHOW_RED!    Disabled licenses found. Disabled=!TS_DISABLED_COUNT! of !TS_TOTAL_COUNT! !SHOW_NORMAL!
 	echo ATTENTION: Disabled licenses found. Disabled=!TS_DISABLED_COUNT! of !TS_TOTAL_COUNT!                            >> !REPORT_LOGFILE! 2>&1
+	echo     Total !PENDING_REQUEST_COUNT! pending requests found and processed.                                         >> !REPORT_LOGFILE! 2>&1
 )
 if defined PROC_STOPPED (
 	echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
