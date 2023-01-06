@@ -2711,7 +2711,7 @@ if not defined LMS_SKIPWINDOWS (
 	echo ---------------- powershell -command "[Net.ServicePointManager]::SecurityProtocol"                                  >> !REPORT_LOGFILE! 2>&1
 	echo ... retrieve installed security protocols ...
 	echo Retrieve installed security protocols [using 'powershell -command "[Net.ServicePointManager]::SecurityProtocol"']:  >> !REPORT_LOGFILE! 2>&1
-	powershell -command "[Net.ServicePointManager]::SecurityProtocol"                                                            >> !REPORT_LOGFILE! 2>&1
+	powershell -command "[Net.ServicePointManager]::SecurityProtocol"                                                        >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- powershell -command "Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\.NetFramework\v4.0.30319' ..."   >> !REPORT_LOGFILE! 2>&1
 	echo ... retrieve regitry key 'SchUseStrongCrypto' ...
 	echo Retrieve regitry key 'SchUseStrongCrypto' [using 'powershell -command "Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\.NetFramework\v4.0.30319' ..."']: >> !REPORT_LOGFILE! 2>&1
