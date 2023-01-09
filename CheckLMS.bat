@@ -13,6 +13,7 @@ rem
 rem     09-Jan-2023:
 rem        - set 2.7.871 as new 'most recent build'
 rem        - Publish CheckLMS "09-Jan-2023" to be part of LMS 2.7.871, collect all changes after "04-Dec-2022" up to "09-Jan-2023" 
+rem        - add 'most recent build' version info to the message shown to customer, in case he hasn't installed most-recent LMS build.
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -965,8 +966,8 @@ if "!LMS_BUILD_VERSION!" NEQ "N/A" (
 				) else (
 					REM Check: ... less than MOST_RECENT_LMS_BUILD --> IN TEST
 					if /I !LMS_BUILD_VERSION! LSS !MOST_RECENT_LMS_BUILD! (
-						echo !SHOW_YELLOW!    WARNING: The LMS version !LMS_VERSION! which you are using is a field test version, pls update your system as soon final version is available. !SHOW_NORMAL!
-						echo WARNING: The LMS version !LMS_VERSION! which you are using is a field test version, pls update your system as soon final version is available. >> !REPORT_LOGFILE! 2>&1
+						echo !SHOW_YELLOW!    WARNING: The LMS version !LMS_VERSION! which you are using is a field test version, pls update your system to final version !MOST_RECENT_LMS_VERSION!. !SHOW_NORMAL!
+						echo WARNING: The LMS version !LMS_VERSION! which you are using is a field test version, pls update your system to final version !MOST_RECENT_LMS_VERSION!. >> !REPORT_LOGFILE! 2>&1
 					)
 				)
 		) else (
