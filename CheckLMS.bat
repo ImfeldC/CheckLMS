@@ -11,6 +11,7 @@ rem
 rem     Full details see changelog.md (on https://github.com/ImfeldC/CheckLMS/blob/master/changelog.md )
 rem
 rem     09-Jan-2023:
+rem        - set 2.7.871 as new 'most recent build'
 rem        - Publish CheckLMS "09-Jan-2023" to be part of LMS 2.7.871, collect all changes after "04-Dec-2022" up to "09-Jan-2023" 
 rem
 rem     SCRIPT USAGE:
@@ -56,9 +57,9 @@ rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a
 set CHECKLMS_SCRIPT_DRIVE=%~d0
 set CHECKLMS_SCRIPT_PATH=%~p0
 
-rem most recent lms build: 2.7.870 (per 04-Jan-2023)
-set MOST_RECENT_LMS_VERSION=2.7.870
-set MOST_RECENT_LMS_BUILD=870
+rem most recent lms build: 2.7.871 (per 09-Jan-2023)
+set MOST_RECENT_LMS_VERSION=2.7.871
+set MOST_RECENT_LMS_BUILD=871
 rem most recent lms field test version: n/a
 rem - if not set - it is not downloaded.
 rem set MOST_RECENT_FT_LMS_VERSION=2.6.869
