@@ -10,11 +10,8 @@ rem        - Final script, released for LMS 2.6
 rem 
 rem     Full details see changelog.md (on https://github.com/ImfeldC/CheckLMS/blob/master/changelog.md )
 rem
-rem     04-Jan-2023:
-rem        - Publish CheckLMS "04-Jan-2023" to be part of LMS 2.7.870, collect all changes after "12-Dec-2022" up to "04-Jan-2023" 
-rem     05-Jan-2023:
-rem        - Adjust installation of dongle driver (Fix: Defect 2118970)
-rem        - Adjust extraction of stored pending requests, improve console output to avoid impression "script is hanging" 
+rem     09-Jan-2023:
+rem        - Publish CheckLMS "09-Jan-2023" to be part of LMS 2.7.871, collect all changes after "04-Dec-2022" up to "09-Jan-2023" 
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -51,8 +48,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 05-Jan-2023"
-set LMS_SCRIPT_BUILD=20230105
+set LMS_SCRIPT_VERSION="CheckLMS Script 09-Jan-2023"
+set LMS_SCRIPT_BUILD=20230109
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -444,7 +441,7 @@ if defined LMS_CHECK_ID (
 	set REPORT_LOGFILE=!REPORT_LOG_PATH!\LMSStatusReport_!COMPUTERNAME!_checkid.log 
 ) else (
 	IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" (
-		rem retreive previous status of scheduled task
+		rem retrieve previous status of scheduled task
 		for /f "delims=" %%a in ('powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "(Get-ScheduledTask | Where TaskName -eq !LMS_SCHEDTASK_CHECKID_NAME! ).State"') do set LMS_SCHEDTASK_PREV_STATUS=%%a
 		rem disable scheduled task during execution of script, to avoid parallel running
 		echo Disable scheduled task '!LMS_SCHEDTASK_CHECKID_FULLNAME!', previous state was '!LMS_SCHEDTASK_PREV_STATUS!'  
@@ -2708,6 +2705,10 @@ if not defined LMS_SKIPWINDOWS (
 	echo ... retrieve powershell version ...
 	echo Retrieve powershell version [using 'powershell -command "Get-Host"']:                                               >> !REPORT_LOGFILE! 2>&1
 	powershell -command "Get-Host"                                                                                           >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+	echo ... check if PowerShelll-Remoting is enabled ...
+	echo Check if PowerShelll-Remoting is enabled [using 'powershell -command "(@(netstat -an) -match '\b5985\b').Count -gt 0"']:         >> !REPORT_LOGFILE! 2>&1
+	powershell -command "(@(netstat -an) -match '\b5985\b').Count -gt 0"                                                     >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- powershell -command "[Net.ServicePointManager]::SecurityProtocol"                                  >> !REPORT_LOGFILE! 2>&1
 	echo ... retrieve installed security protocols ...
 	echo Retrieve installed security protocols [using 'powershell -command "[Net.ServicePointManager]::SecurityProtocol"']:  >> !REPORT_LOGFILE! 2>&1
@@ -2730,6 +2731,10 @@ if not defined LMS_SKIPWINDOWS (
 	echo ... retrieve culture information ...
 	echo Retrieve culture information [using 'powershell -command "Get-Culture | format-list"']:                             >> !REPORT_LOGFILE! 2>&1
 	powershell -command "Get-Culture | format-list"                                                                          >> !REPORT_LOGFILE! 2>&1
+	echo ---------------- powershell -command "$host.CurrentUICulture.DateTimeFormat"                                        >> !REPORT_LOGFILE! 2>&1
+	echo ... retrieve UI culture information ...
+	echo Retrieve UI culture information [using 'powershell -command "$host.CurrentUICulture.DateTimeFormat"']:              >> !REPORT_LOGFILE! 2>&1
+	powershell -command "$host.CurrentUICulture.DateTimeFormat"                                                              >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- powershell -command "Get-WinHomeLocation"                                                          >> !REPORT_LOGFILE! 2>&1
 	echo ... retrieve region or country information ...
 	echo Retrieve region or country information [using 'powershell -command "Get-WinHomeLocation | format-list"']:           >> !REPORT_LOGFILE! 2>&1
@@ -2740,26 +2745,31 @@ if not defined LMS_SKIPWINDOWS (
 	powershell -command "$PSVersionTable"                                                                                    >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- powershell -command "& {Get-Service -Name *}"                                                      >> !REPORT_LOGFILE! 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
-	echo ... list installed services [using Get-Service powershell command] ...
-	echo List relevant installed services [using Get-Service powershell command]:                                                >> !REPORT_LOGFILE! 2>&1
-	powershell -command "& {Get-Service -Name 'Siemens BT Licensing Server'}" > !CHECKLMS_REPORT_LOG_PATH!\getservice.txt 2>&1
-	powershell -command "& {Get-Service -Name 'FlexNet Licensing Service*'}" >> !CHECKLMS_REPORT_LOG_PATH!\getservice.txt 2>&1
-	powershell -command "& {Get-Service -Name 'Sentinel LDK License Manager'}" >> !CHECKLMS_REPORT_LOG_PATH!\getservice.txt 2>&1
-	type !CHECKLMS_REPORT_LOG_PATH!\getservice.txt                                                                               >> !REPORT_LOGFILE! 2>&1
-	set /A PROC_RUNNING = 0
-	set /A PROC_STOPPED = 0
-	set /A PROC_FOUND = 0
-	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\getservice.txt" for /f "tokens=1 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\getservice.txt ^|find /I "Running"') do set /A PROC_RUNNING += 1
-	IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\getservice.txt" for /f "tokens=1 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\getservice.txt ^|find /I "Stopped"') do set /A PROC_STOPPED += 1
-	set /a "PROC_FOUND=!PROC_RUNNING!+!PROC_STOPPED!"
-	echo Relevant services: Total !PROC_FOUND! services. !PROC_RUNNING! services running and !PROC_STOPPED! services stopped!    >> !REPORT_LOGFILE! 2>&1
-	if /I !PROC_STOPPED! NEQ 0 (
-		echo !SHOW_RED!    ATTENTION: !PROC_STOPPED! relevant services are stopped. !SHOW_NORMAL!
-		echo ATTENTION: !PROC_STOPPED! relevant services are stopped.                                                            >> !REPORT_LOGFILE! 2>&1
-	)
-	if /I !PROC_FOUND! NEQ 4 (
-		echo !SHOW_RED!    ATTENTION: Only !PROC_FOUND! relevant services found. !SHOW_NORMAL!
-		echo ATTENTION: Only !PROC_FOUND! relevant services found.                                                               >> !REPORT_LOGFILE! 2>&1
+	echo ... list relevant installed services [using Get-Service powershell command] ...
+	echo List relevant installed services [using Get-Service powershell command]:                                            >> !REPORT_LOGFILE! 2>&1
+	rem powershell -command "& {Get-Service -Name 'Siemens BT Licensing Server'}" > !CHECKLMS_REPORT_LOG_PATH!\getservice.txt 2>&1
+	rem powershell -command "& {Get-Service -Name 'FlexNet Licensing Service*'}" >> !CHECKLMS_REPORT_LOG_PATH!\getservice.txt 2>&1
+	rem powershell -command "& {Get-Service -Name 'Sentinel LDK License Manager'}" >> !CHECKLMS_REPORT_LOG_PATH!\getservice.txt 2>&1
+	powershell -command "& {Get-Service | Where-Object {($_.DisplayName -like 'FlexNet Licensing Service*') -or ($_.DisplayName -like 'Siemens BT Licensing Server') -or ($_.DisplayName -like 'Sentinel LDK License Manager')} | Select-Object -Property Status,Name,DisplayName,RequiredServices,DependentServices,ServicesDependedOn | Format-Table -AutoSize -Property * | Out-File -Width 4000 '!CHECKLMS_REPORT_LOG_PATH!\getservice.txt'}" >> !REPORT_LOGFILE! 2>&1
+	if exist "!CHECKLMS_REPORT_LOG_PATH!\getservice.txt" (
+		type !CHECKLMS_REPORT_LOG_PATH!\getservice.txt                                                                           >> !REPORT_LOGFILE! 2>&1
+		set /A PROC_RUNNING = 0
+		set /A PROC_STOPPED = 0
+		set /A PROC_FOUND = 0
+		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\getservice.txt" for /f "tokens=1 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\getservice.txt ^|find /I "Running"') do set /A PROC_RUNNING += 1
+		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\getservice.txt" for /f "tokens=1 delims=<> eol=@" %%i in ('type !CHECKLMS_REPORT_LOG_PATH!\getservice.txt ^|find /I "Stopped"') do set /A PROC_STOPPED += 1
+		set /a "PROC_FOUND=!PROC_RUNNING!+!PROC_STOPPED!"
+		echo Relevant services: Total !PROC_FOUND! services. !PROC_RUNNING! services running and !PROC_STOPPED! services stopped!    >> !REPORT_LOGFILE! 2>&1
+		if /I !PROC_STOPPED! NEQ 0 (
+			echo !SHOW_RED!    ATTENTION: !PROC_STOPPED! relevant services are stopped. !SHOW_NORMAL!
+			echo ATTENTION: !PROC_STOPPED! relevant services are stopped.                                                        >> !REPORT_LOGFILE! 2>&1
+		)
+		if /I !PROC_FOUND! NEQ 4 (
+			echo !SHOW_RED!    ATTENTION: Only !PROC_FOUND! relevant services found. !SHOW_NORMAL!
+			echo ATTENTION: Only !PROC_FOUND! relevant services found.                                                           >> !REPORT_LOGFILE! 2>&1
+		)
+	) else (
+		echo     '!CHECKLMS_REPORT_LOG_PATH!\getservice.txt' doesn't exist! Cannot list relevant installed services.             >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	Powershell -command "Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\FlexNet Licensing Service' -ErrorAction SilentlyContinue | Format-List" > !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_fnls.txt 2>&1
@@ -2779,14 +2789,13 @@ if not defined LMS_SKIPWINDOWS (
 	type !CHECKLMS_REPORT_LOG_PATH!\lms_hklm_hasplms.txt                                                                         >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	echo List installed services [using Get-Service powershell command]:                                                         >> !REPORT_LOGFILE! 2>&1
-	powershell -command "& {Get-Service -Name *}"                                                                                >> !REPORT_LOGFILE! 2>&1
+	powershell -command "& {Get-Service -Name * | Select-Object -Property * | Format-Table  -Property * -AutoSize | Out-File -Width 4000 '!CHECKLMS_REPORT_LOG_PATH!\ListOfServices.txt'}" >> !REPORT_LOGFILE! 2>&1
+	echo For more details, see '!CHECKLMS_REPORT_LOG_PATH!\ListOfServices.txt'                                                   >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- powershell -command "& {Get-Module -ListAvailable -All}"                                               >> !REPORT_LOGFILE! 2>&1
 	echo ... list installed powershell commandlets [using Get-Module powershell command] ...
 	echo List installed powershell commandlets [using Get-Module powershell command]:                                            >> !REPORT_LOGFILE! 2>&1
-	IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" (
-		echo For more details, see !CHECKLMS_REPORT_LOG_PATH!\InstalledPowershellCommandlets.txt                                     >> !REPORT_LOGFILE! 2>&1
-		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Get-Module -ListAvailable -All}" >> !CHECKLMS_REPORT_LOG_PATH!\InstalledPowershellCommandlets.txt 2>&1
-	)
+	powershell -command "& {Get-Module -ListAvailable -All | Format-Table -AutoSize | Out-File -Width 4000 '!CHECKLMS_REPORT_LOG_PATH!\InstalledPowershellCommandlets.txt'}" >> !REPORT_LOGFILE! 2>&1
+	echo For more details, see '!CHECKLMS_REPORT_LOG_PATH!\InstalledPowershellCommandlets.txt'                                   >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	echo Content of folder: "%WinDir%\System32\Drivers\Etc"                                                                      >> !REPORT_LOGFILE! 2>&1
 	dir /S /A /X /4 /W "%WinDir%\System32\Drivers\Etc"                                                                           >> !REPORT_LOGFILE! 2>&1

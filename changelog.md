@@ -1417,4 +1417,14 @@ rem        - support ecmcommonutil.exe V1.28 (Fix: Defect 2167138)
 rem     21-Dec-2022:
 rem        - Change download link for BgInfo.zip (Fix: Defect 2167763)
 rem        - Remove direct download of BgInfo, use 'configbginfo.bat /checkdownload' directly (no need to call via CheckLMS)
+rem     04-Jan-2023:
+rem        - Publish CheckLMS "04-Jan-2023" to be part of LMS 2.7.870, collect all changes after "12-Dec-2022" up to "04-Jan-2023" 
+rem     05-Jan-2023:
+rem        - Adjust installation of dongle driver (Fix: Defect 2118970)
+rem        - Adjust extraction of stored pending requests, improve console output to avoid impression "script is hanging" 
+rem     06-Jan-2023:
+rem        - check if PowerShell Remoting is enabled; with '(@(netstat -an) -match '\b5985\b').Count -gt 0'
+rem        - retrieve the UI culture information, using 'powershell -command "$host.CurrentUICulture.DateTimeFormat"'
+rem        - adjust output of list of installed services and list of installed powershell commandlets, make sure that no information is truncated.
+rem        - simplify logic to retrieve list of relevant installed services, use single powershell command (instead of multiple batch file commands)
 ```
