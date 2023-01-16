@@ -16,6 +16,8 @@ rem        - Publish CheckLMS "09-Jan-2023" to be part of LMS 2.7.871, collect a
 rem        - add 'most recent build' version info to the message shown to customer, in case he hasn't installed most-recent LMS build.
 rem     15-Jan-2023:
 rem        - type 'unzip_DongleDriver_zip.txt' - if it exists - as part of main logfile, when extraction of dongle driver fails.
+rem     16-Jan-2023:
+rem        - use 'Expand-Archive' to extract dongle driver, in addition to the local 7zip application.
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -52,8 +54,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 15-Jan-2023"
-set LMS_SCRIPT_BUILD=20230115
+set LMS_SCRIPT_VERSION="CheckLMS Script 16-Jan-2023"
+set LMS_SCRIPT_BUILD=20230116
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -1479,7 +1481,9 @@ if not defined LMS_SKIPDOWNLOAD (
 			if exist "!LMS_DOWNLOAD_PATH_HASPDRIVER!\DongleDriver.zip" (
 				echo     Extract dongle driver: '!LMS_DOWNLOAD_PATH_HASPDRIVER!\DongleDriver.zip'
 				echo Extract dongle driver: '!LMS_DOWNLOAD_PATH_HASPDRIVER!\DongleDriver.zip'                                           >> !REPORT_LOGFILE! 2>&1
+
 				"!UNZIP_TOOL!" x -y -spe -o"!LMS_DOWNLOAD_PATH!\hasp\!MOST_RECENT_DONGLE_DRIVER_VERSION!\" "!LMS_DOWNLOAD_PATH_HASPDRIVER!\DongleDriver.zip" > !CHECKLMS_REPORT_LOG_PATH!\unzip_DongleDriver_zip.txt 2>&1
+				powershell -Command "Expand-Archive -Path '!LMS_DOWNLOAD_PATH_HASPDRIVER!\DongleDriver.zip' -DestinationPath '!LMS_DOWNLOAD_PATH!\hasp\!MOST_RECENT_DONGLE_DRIVER_VERSION!\' -Verbose -Force"   > !CHECKLMS_REPORT_LOG_PATH!\unzip_DongleDriver_ps.txt 2>&1
 				
 				if exist "!LMS_DOWNLOAD_PATH_HASPDRIVER!\DongleDriver\haspdinst.exe" (
 					rem found in: C:\ProgramData\Siemens\LMS\Download\hasp\x.xx\DongleDriver (e.g. C:\ProgramData\Siemens\LMS\Download\hasp\8.43\DongleDriver)
@@ -1498,7 +1502,12 @@ if not defined LMS_SKIPDOWNLOAD (
 				) else (
 					echo     Extract of dongle driver: '!LMS_DOWNLOAD_PATH_HASPDRIVER!/DongleDriver.zip' FAILED.                        >> !REPORT_LOGFILE! 2>&1
 					if exist "!CHECKLMS_REPORT_LOG_PATH!\unzip_DongleDriver_zip.txt" (
+						echo     '!CHECKLMS_REPORT_LOG_PATH!\unzip_DongleDriver_zip.txt':                                               >> !REPORT_LOGFILE! 2>&1
 						type "!CHECKLMS_REPORT_LOG_PATH!\unzip_DongleDriver_zip.txt"                                                    >> !REPORT_LOGFILE! 2>&1
+					)
+					if exist "!CHECKLMS_REPORT_LOG_PATH!\unzip_DongleDriver_ps.txt" (
+						echo     '!CHECKLMS_REPORT_LOG_PATH!\unzip_DongleDriver_ps.txt':                                                >> !REPORT_LOGFILE! 2>&1
+						type "!CHECKLMS_REPORT_LOG_PATH!\unzip_DongleDriver_ps.txt"                                                     >> !REPORT_LOGFILE! 2>&1
 					)
 				)
 			) else (
