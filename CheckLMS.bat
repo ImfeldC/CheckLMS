@@ -14,6 +14,8 @@ rem     09-Jan-2023:
 rem        - set 2.7.871 as new 'most recent build'
 rem        - Publish CheckLMS "09-Jan-2023" to be part of LMS 2.7.871, collect all changes after "04-Dec-2022" up to "09-Jan-2023" 
 rem        - add 'most recent build' version info to the message shown to customer, in case he hasn't installed most-recent LMS build.
+rem     15-Jan-2023:
+rem        - type 'unzip_DongleDriver_zip.txt' - if it exists - as part of main logfile, when extraction of dongle driver fails.
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -50,8 +52,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 09-Jan-2023"
-set LMS_SCRIPT_BUILD=20230109
+set LMS_SCRIPT_VERSION="CheckLMS Script 15-Jan-2023"
+set LMS_SCRIPT_BUILD=20230115
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -1495,6 +1497,9 @@ if not defined LMS_SKIPDOWNLOAD (
 					echo     Dongle driver: !HASP_TARGETFILE! [!haspdinstVersion!] downloaded!                                          >> !REPORT_LOGFILE! 2>&1
 				) else (
 					echo     Extract of dongle driver: '!LMS_DOWNLOAD_PATH_HASPDRIVER!/DongleDriver.zip' FAILED.                        >> !REPORT_LOGFILE! 2>&1
+					if exist "!CHECKLMS_REPORT_LOG_PATH!\unzip_DongleDriver_zip.txt" (
+						type "!CHECKLMS_REPORT_LOG_PATH!\unzip_DongleDriver_zip.txt"                                                    >> !REPORT_LOGFILE! 2>&1
+					)
 				)
 			) else (
 				echo     Download of dongle driver: '!LMS_DOWNLOAD_PATH_HASPDRIVER!/DongleDriver.zip' FAILED.                           >> !REPORT_LOGFILE! 2>&1
