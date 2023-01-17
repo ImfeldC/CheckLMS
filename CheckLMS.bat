@@ -18,6 +18,9 @@ rem     15-Jan-2023:
 rem        - type 'unzip_DongleDriver_zip.txt' - if it exists - as part of main logfile, when extraction of dongle driver fails.
 rem     16-Jan-2023:
 rem        - use 'Expand-Archive' to extract dongle driver, in addition to the local 7zip application.
+rem     17-Jan-2023:
+rem        - trace version (and existence) of 'Expand-Archive' commandlet; see expandarchive_version.log
+rem        - Enhance .NET Framework Version detection, with values for .NET 4.8.1 (see https://learn.microsoft.com/en-us/dotnet/framework/migration-guide/how-to-determine-which-versions-are-installed )
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -54,8 +57,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 16-Jan-2023"
-set LMS_SCRIPT_BUILD=20230116
+set LMS_SCRIPT_VERSION="CheckLMS Script 17-Jan-2023"
+set LMS_SCRIPT_BUILD=20230117
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -462,6 +465,7 @@ echo.> !REPORT_LOGFILE! 2>&1
 REM -- .NET Framework Version
 REM see https://docs.microsoft.com/en-us/dotnet/framework/migration-guide/how-to-determine-which-versions-are-installed
 REM Decimal values in hex:
+rem -- .NET Framework 4.8.1: 533320, 533325
 rem -- .NET Framework 4.8  : 528449, 528049, 528040, 528372
 rem -- .NET Framework 4.7.2: 461814->70BF6, 461808->70BF0, 
 rem -- .NET Framework 4.7.1: 461310->709FE, 461308->709FC
@@ -482,6 +486,14 @@ for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>
 	set NETVersionHex=%%A
 	rem convert hex in decimal (see https://stackoverflow.com/questions/9453246/reg-query-returning-hexadecimal-value)
 	set /A NETVersionDec=%%A
+)
+if "!NETVersionDec!" == "533320" (
+	rem On Windows 11 2022 Update: 533320
+	set NETVersion=4.8.1
+)
+if "!NETVersionDec!" == "533325" (
+	rem All other Windows operating systems: 533325
+	set NETVersion=4.8.1
 )
 if "!NETVersionDec!" == "528449" (
 	rem On Windows 11 and Windows Server 2022: 528449
@@ -957,6 +969,7 @@ if NOT defined UNZIP_TOOL (
     echo Local Unzip tool [!UNZIP_TOOL!] found.                                                                              >> !REPORT_LOGFILE! 2>&1
 	"!UNZIP_TOOL!" -version    >> "!CHECKLMS_REPORT_LOG_PATH!\unziptool_version.log" 2>&1
 )
+powershell -Command "Get-Command  Expand-Archive"   >> "!CHECKLMS_REPORT_LOG_PATH!\expandarchive_version.log" 2>&1
 
 if "!LMS_BUILD_VERSION!" NEQ "N/A" (
 	REM Check: not 2.5.824 AND not 2.6.849 AND less or equal than 2.6.848  --> DEPRECATED (per Aug-2022)
