@@ -1427,4 +1427,15 @@ rem        - check if PowerShell Remoting is enabled; with '(@(netstat -an) -mat
 rem        - retrieve the UI culture information, using 'powershell -command "$host.CurrentUICulture.DateTimeFormat"'
 rem        - adjust output of list of installed services and list of installed powershell commandlets, make sure that no information is truncated.
 rem        - simplify logic to retrieve list of relevant installed services, use single powershell command (instead of multiple batch file commands)
+rem     09-Jan-2023:
+rem        - set 2.7.871 as new 'most recent build'
+rem        - Publish CheckLMS "09-Jan-2023" to be part of LMS 2.7.871, collect all changes after "04-Dec-2022" up to "09-Jan-2023" 
+rem        - add 'most recent build' version info to the message shown to customer, in case he hasn't installed most-recent LMS build.
+rem     15-Jan-2023:
+rem        - type 'unzip_DongleDriver_zip.txt' - if it exists - as part of main logfile, when extraction of dongle driver fails.
+rem     16-Jan-2023:
+rem        - use 'Expand-Archive' to extract dongle driver, in addition to the local 7zip application.
+rem     17-Jan-2023:
+rem        - trace version (and existence) of 'Expand-Archive' commandlet; see expandarchive_version.log
+rem        - Enhance .NET Framework Version detection, with values for .NET 4.8.1 (see https://learn.microsoft.com/en-us/dotnet/framework/migration-guide/how-to-determine-which-versions-are-installed )
 ```

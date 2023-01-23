@@ -10,17 +10,9 @@ rem        - Final script, released for LMS 2.6
 rem 
 rem     Full details see changelog.md (on https://github.com/ImfeldC/CheckLMS/blob/master/changelog.md )
 rem
-rem     09-Jan-2023:
-rem        - set 2.7.871 as new 'most recent build'
-rem        - Publish CheckLMS "09-Jan-2023" to be part of LMS 2.7.871, collect all changes after "04-Dec-2022" up to "09-Jan-2023" 
-rem        - add 'most recent build' version info to the message shown to customer, in case he hasn't installed most-recent LMS build.
-rem     15-Jan-2023:
-rem        - type 'unzip_DongleDriver_zip.txt' - if it exists - as part of main logfile, when extraction of dongle driver fails.
-rem     16-Jan-2023:
-rem        - use 'Expand-Archive' to extract dongle driver, in addition to the local 7zip application.
-rem     17-Jan-2023:
-rem        - trace version (and existence) of 'Expand-Archive' commandlet; see expandarchive_version.log
-rem        - Enhance .NET Framework Version detection, with values for .NET 4.8.1 (see https://learn.microsoft.com/en-us/dotnet/framework/migration-guide/how-to-determine-which-versions-are-installed )
+rem     23-Jan-2023:
+rem        - set 2.7.872 as new 'most recent build'
+rem        - Publish CheckLMS "23-Jan-2023" to be part of LMS 2.7.872, collect all changes after "09-Jan-2023" up to "23-Jan-2023" 
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -57,17 +49,17 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 17-Jan-2023"
-set LMS_SCRIPT_BUILD=20230117
+set LMS_SCRIPT_VERSION="CheckLMS Script 23-Jan-2023"
+set LMS_SCRIPT_BUILD=20230123
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
 set CHECKLMS_SCRIPT_DRIVE=%~d0
 set CHECKLMS_SCRIPT_PATH=%~p0
 
-rem most recent lms build: 2.7.871 (per 09-Jan-2023)
-set MOST_RECENT_LMS_VERSION=2.7.871
-set MOST_RECENT_LMS_BUILD=871
+rem most recent lms build: 2.7.872 (per 23-Jan-2023)
+set MOST_RECENT_LMS_VERSION=2.7.872
+set MOST_RECENT_LMS_BUILD=872
 rem most recent lms field test version: n/a
 rem - if not set - it is not downloaded.
 rem set MOST_RECENT_FT_LMS_VERSION=2.6.869
