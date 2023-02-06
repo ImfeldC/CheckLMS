@@ -13,6 +13,10 @@ rem
 rem     23-Jan-2023:
 rem        - set 2.7.872 as new 'most recent build'
 rem        - Publish CheckLMS "23-Jan-2023" to be part of LMS 2.7.872, collect all changes after "09-Jan-2023" up to "23-Jan-2023" 
+rem     24-Jan-2023:
+rem        - read-out installation date of LMS client.
+rem     06-Feb-2023:
+rem        - Check: not 2.5.824 AND not 2.6.849 AND not 2.7.872 AND less or equal than 2.7.871  --> DEPRECATED (per Jan-2023)
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -49,8 +53,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 23-Jan-2023"
-set LMS_SCRIPT_BUILD=20230123
+set LMS_SCRIPT_VERSION="CheckLMS Script 06-Feb-2023"
+set LMS_SCRIPT_BUILD=20230206
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -964,21 +968,27 @@ if NOT defined UNZIP_TOOL (
 powershell -Command "Get-Command  Expand-Archive"   >> "!CHECKLMS_REPORT_LOG_PATH!\expandarchive_version.log" 2>&1
 
 if "!LMS_BUILD_VERSION!" NEQ "N/A" (
-	REM Check: not 2.5.824 AND not 2.6.849 AND less or equal than 2.6.848  --> DEPRECATED (per Aug-2022)
+	REM Check: not 2.5.824 AND not 2.6.849 AND not 2.7.872 AND less or equal than 2.7.871  --> DEPRECATED (per Jan-2023)
 	REM See https://support.industry.siemens.com/cs/document/109738214/
 	if /I !LMS_BUILD_VERSION! NEQ 824 (
 		if /I !LMS_BUILD_VERSION! NEQ 849 (
-				if /I !LMS_BUILD_VERSION! LEQ 848 (
-					REM LMS Version 2.6.848 or older (lower build number)
-					echo !SHOW_RED!    NOTE: The LMS version !LMS_VERSION! which you are using is DEPRECATED, pls update your system. !SHOW_NORMAL!
-					echo NOTE: The LMS version !LMS_VERSION! which you are using is DEPRECATED, pls update your system.      >> !REPORT_LOGFILE! 2>&1
-				) else (
-					REM Check: ... less than MOST_RECENT_LMS_BUILD --> IN TEST
-					if /I !LMS_BUILD_VERSION! LSS !MOST_RECENT_LMS_BUILD! (
-						echo !SHOW_YELLOW!    WARNING: The LMS version !LMS_VERSION! which you are using is a field test version, pls update your system to final version !MOST_RECENT_LMS_VERSION!. !SHOW_NORMAL!
-						echo WARNING: The LMS version !LMS_VERSION! which you are using is a field test version, pls update your system to final version !MOST_RECENT_LMS_VERSION!. >> !REPORT_LOGFILE! 2>&1
+			if /I !LMS_BUILD_VERSION! NEQ 872 (
+					if /I !LMS_BUILD_VERSION! LEQ 871 (
+						REM LMS Version 2.7.871 or older (lower build number)
+						echo !SHOW_RED!    NOTE: The LMS version !LMS_VERSION! which you are using is DEPRECATED, pls update your system. !SHOW_NORMAL!
+						echo NOTE: The LMS version !LMS_VERSION! which you are using is DEPRECATED, pls update your system.      >> !REPORT_LOGFILE! 2>&1
+					) else (
+						REM Check: ... less than MOST_RECENT_LMS_BUILD --> IN TEST
+						if /I !LMS_BUILD_VERSION! LSS !MOST_RECENT_LMS_BUILD! (
+							echo !SHOW_YELLOW!    WARNING: The LMS version !LMS_VERSION! which you are using is a field test version, pls update your system to final version !MOST_RECENT_LMS_VERSION!. !SHOW_NORMAL!
+							echo WARNING: The LMS version !LMS_VERSION! which you are using is a field test version, pls update your system to final version !MOST_RECENT_LMS_VERSION!. >> !REPORT_LOGFILE! 2>&1
+						)
 					)
-				)
+			) else (
+				REM LMS Version 2.7.872
+				echo NOTE: The LMS version !LMS_VERSION! which you are using is officially supported. 						 >> !REPORT_LOGFILE! 2>&1
+				set LMS_VERSION_IS_SUPPORTED=1
+			)
 		) else (
 			REM LMS Version 2.6.849
 			echo NOTE: The LMS version !LMS_VERSION! which you are using is officially supported. 							 >> !REPORT_LOGFILE! 2>&1
@@ -3466,6 +3476,9 @@ echo ===========================================================================
 echo Start at !DATE! !TIME! ....                                                                                                 >> !REPORT_LOGFILE! 2>&1
 echo ... retrieve LMS Information ...
 if not defined LMS_SKIPLMS (
+	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo 'License Management System' installation date:                                                                          >> !REPORT_LOGFILE! 2>&1
+	Powershell -command "[Datetime]::ParseExact((Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Where-Object DisplayName -like 'Siemens License Management*' |  Select-Object InstallDate).InstallDate,'yyyyMMdd', $null)" >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	echo Measure execution time: [with LMU PowerShell command: Measure-Command {lmutool.exe /?}]                                 >> !REPORT_LOGFILE! 2>&1
 	echo     Measure execution time: [with LMU PowerShell command: Measure-Command {lmutool.exe /?}]
@@ -6483,6 +6496,9 @@ echo ===========================================================================
 echo Start at !DATE! !TIME! ....                                                                  >> !REPORT_LOGFILE! 2>&1
 echo UserID=8:%SSU_SYSTEMID%                                                                      >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPSSU (
+	echo -------------------------------------------------------                                  >> !REPORT_LOGFILE! 2>&1
+	echo 'Siemens Software Updater' installation date:                                            >> !REPORT_LOGFILE! 2>&1
+	Powershell -command "[Datetime]::ParseExact((Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Where-Object DisplayName -like 'Siemens Software Updater*' |  Select-Object InstallDate).InstallDate,'yyyyMMdd', $null)" >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                  >> !REPORT_LOGFILE! 2>&1
 	echo Check that BITS service is available [with: powershell -Command "Get-Service BITS | format-list"]      >> !REPORT_LOGFILE! 2>&1
 	powershell -Command "Get-Service BITS | format-list"                                          >> !REPORT_LOGFILE! 2>&1
