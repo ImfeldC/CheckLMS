@@ -16,7 +16,11 @@ rem        - Publish CheckLMS "23-Jan-2023" to be part of LMS 2.7.872, collect a
 rem     24-Jan-2023:
 rem        - read-out installation date of LMS client.
 rem     06-Feb-2023:
-rem        - Check: not 2.5.824 AND not 2.6.849 AND not 2.7.872 AND less or equal than 2.7.871  --> DEPRECATED (per Jan-2023)
+rem        - Check: not 2.5.824 AND not 2.6.849 AND not 2.7.872 AND less or equal than 2.7.871  --> DEPRECATED (per Jan-2023) (Fix: Defect 2197309)
+rem
+rem     27-Feb-2023:
+rem        - support ecmcommonutil.exe V1.29 (Fix: Defect 2226119)
+rem        - execute ecmcommonutil V1.25 and V1.28 only when /extended flag is set.
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -53,8 +57,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 06-Feb-2023"
-set LMS_SCRIPT_BUILD=20230206
+set LMS_SCRIPT_VERSION="CheckLMS Script 27-Feb-2023"
+set LMS_SCRIPT_BUILD=20230227
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -1477,6 +1481,12 @@ if not defined LMS_SKIPDOWNLOAD (
 				echo     Download ecmcommonutil app [V1.28]: !LMS_DOWNLOAD_PATH!\ecmcommonutil_V1.28.exe
 				echo Download ecmcommonutil app [V1.28]: '!CHECKLMS_EXTERNAL_SHARE!lms/FNP/ecmcommonutil_V1.28.exe'                     >> !REPORT_LOGFILE! 2>&1
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/FNP/ecmcommonutil_V1.28.exe', '!LMS_DOWNLOAD_PATH!\ecmcommonutil_V1.28.exe')"   >> !REPORT_LOGFILE! 2>&1
+			)
+			rem Download tool "ecmcommonutil_V1.29 (=ecmcommonutil.exe) (from Flexera, as part of Case #02745169)
+			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\ecmcommonutil_V1.29.exe" (
+				echo     Download ecmcommonutil app [V1.29]: !LMS_DOWNLOAD_PATH!\ecmcommonutil_V1.29.exe
+				echo Download ecmcommonutil app [V1.29]: '!CHECKLMS_EXTERNAL_SHARE!lms/FNP/ecmcommonutil_V1.29.exe'                     >> !REPORT_LOGFILE! 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/FNP/ecmcommonutil_V1.29.exe', '!LMS_DOWNLOAD_PATH!\ecmcommonutil_V1.29.exe')"   >> !REPORT_LOGFILE! 2>&1
 			)
 			
 			rem Download newest Dongle Driver
@@ -4785,11 +4795,11 @@ if exist "!REPORT_LOG_PATH!\VMECMID_Latest.txt" (
 )
 
 echo ==============================================================================           >> !REPORT_LOGFILE! 2>&1
-set ECMCOMMONUTIL_TOOL=ECMCommonUtil_V1.28.exe
-set ECMCOMMONUTIL_LOGFILE=!CHECKLMS_REPORT_LOG_PATH!\ECMCommonUtil_V1.28.txt
-set ECMCOMMONUTIL_LOGFILE_DEBUG=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_debug_V1.28.txt
-echo     read host id's [using !ECMCOMMONUTIL_TOOL! V1.28] ...
-echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.28] ...         >> !REPORT_LOGFILE! 2>&1
+set ECMCOMMONUTIL_TOOL=ECMCommonUtil_V1.29.exe
+set ECMCOMMONUTIL_LOGFILE=!CHECKLMS_REPORT_LOG_PATH!\ECMCommonUtil_V1.29.txt
+set ECMCOMMONUTIL_LOGFILE_DEBUG=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_debug_V1.29.txt
+echo     read host id's [using !ECMCOMMONUTIL_TOOL! V1.29] ...
+echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.29] ...         >> !REPORT_LOGFILE! 2>&1
 IF EXIST "!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" (
 	rem log regular (non debug) output in general logfile
 	echo Read version information [using !ECMCOMMONUTIL_TOOL! -v]:                  >  !ECMCOMMONUTIL_LOGFILE! 2>&1
@@ -4860,17 +4870,103 @@ IF EXIST "!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" (
 
 	"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f -d smbios                                     >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.28_smbios_Latest.txt 2>&1
 	"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f -d vm                                         >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.28_vm_Latest.txt 2>&1
+
+	rem analyze values ....
 	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.28_smbios_Latest.txt" for /f "tokens=1,2 eol=@ delims==" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.28_smbios_Latest.txt ^|find /I "Smbios UUID"') do set "ECM_SMBIOS_UUID_6=%%B"
 	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.28_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.28_vm_Latest.txt ^|findstr /I /B "FAMILY"') do if not "%%B" == " ERROR - Unavailable." set "ECM_VM_FAMILY_6=%%B"
 	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.28_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.28_vm_Latest.txt ^|findstr /I /B "NAME"') do if not "%%B" == " ERROR - Unavailable." set "ECM_VM_NAME_6=%%B"
 	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.28_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.28_vm_Latest.txt ^|findstr /I /B "UUID"') do if not "%%B" == " ERROR - Unavailable." set "ECM_VM_UUID_6=%%B"
 	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.28_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.28_vm_Latest.txt ^|findstr /I /B "GENID"') do if not "%%B" == " ERROR - Unavailable." set "ECM_VM_GENID_6=%%B"
 	
-	echo Current ECM values, collected with !ECMCOMMONUTIL_TOOL! V1.28 ...          >> !REPORT_LOGFILE! 2>&1
+	echo Current ECM values, collected with !ECMCOMMONUTIL_TOOL! V1.29 ...          >> !REPORT_LOGFILE! 2>&1
 	echo     ECM_VM_FAMILY=!ECM_VM_FAMILY_6! / ECM_VM_NAME=!ECM_VM_NAME_6! / ECM_VM_UUID=!ECM_VM_UUID_6! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID_6! / ECM_VM_GENID=!ECM_VM_GENID_6!                      >> !REPORT_LOGFILE! 2>&1
 	echo     ECM_VM_FAMILY=!ECM_VM_FAMILY_6! / ECM_VM_NAME=!ECM_VM_NAME_6! / ECM_VM_UUID=!ECM_VM_UUID_6! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID_6! / ECM_VM_GENID=!ECM_VM_GENID_6!  at !DATE! / !TIME! / using !ECMCOMMONUTIL_TOOL! [V1.27] >> !REPORT_LOG_PATH!\VMECMID.txt 2>&1
 ) else (
 	echo     !ECMCOMMONUTIL_TOOL! doesn't exist, cannot perform operation.          >> !REPORT_LOGFILE! 2>&1
+)
+echo ==============================================================================           >> !REPORT_LOGFILE! 2>&1
+set ECMCOMMONUTIL_TOOL=ECMCommonUtil_V1.28.exe
+if defined LMS_EXTENDED_CONTENT (
+	set ECMCOMMONUTIL_LOGFILE=!CHECKLMS_REPORT_LOG_PATH!\ECMCommonUtil_V1.28.txt
+	set ECMCOMMONUTIL_LOGFILE_DEBUG=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_debug_V1.28.txt
+	echo     read host id's [using !ECMCOMMONUTIL_TOOL! V1.28] ...
+	echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.28] ...         >> !REPORT_LOGFILE! 2>&1
+	IF EXIST "!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" (
+		rem log regular (non debug) output in general logfile
+		echo Read version information [using !ECMCOMMONUTIL_TOOL! -v]:                  >  !ECMCOMMONUTIL_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -v                                   >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo Read host id: device [using !ECMCOMMONUTIL_TOOL! -l -f device]:            >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f device                         >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo Read host id: dongle [using !ECMCOMMONUTIL_TOOL! -l -f dongle]:            >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f dongle                         >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo Read host id: net [using !ECMCOMMONUTIL_TOOL! -l -f net]:                  >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f net                            >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo Read host id: smbios [using !ECMCOMMONUTIL_TOOL! -l -f smbios]:            >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f smbios                         >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo Read host id: emulator [using !ECMCOMMONUTIL_TOOL! -l -f emulator]:        >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f emulator                       >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo Read host id: native hostid [using !ECMCOMMONUTIL_TOOL! -l -f hostid]:     >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f hostid                         >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo Read host id: docker [using !ECMCOMMONUTIL_TOOL! -l -f docker]:            >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f docker                         >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo Read host id: tpm [using !ECMCOMMONUTIL_TOOL! -l -f tpm]:                  >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f tpm                            >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo Read host id: wmi [using !ECMCOMMONUTIL_TOOL! -l -f wmi]:                  >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f wmi                            >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo Read host id: drive [using !ECMCOMMONUTIL_TOOL! -l -f drive]:              >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f drive                          >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo Read host id: vm [using !ECMCOMMONUTIL_TOOL! -l -f vm]:                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f vm                             >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo Read host id: vm [using !ECMCOMMONUTIL_TOOL! -l -d vm]:                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -d vm                             >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo Test host id: vm [using !ECMCOMMONUTIL_TOOL! -t vm]:                       >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -t vm                                >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		type !ECMCOMMONUTIL_LOGFILE! 2>&1                                               >> !REPORT_LOGFILE! 2>&1
+
+		rem log debug output in a separate file
+		echo -------------------------------------------------------                                   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		echo Read host id: device [using !ECMCOMMONUTIL_TOOL! -l -f -d device] at !DATE! !TIME! ....   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f -d device                                     >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		echo -------------------------------------------------------                                   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		echo Read host id: net [using !ECMCOMMONUTIL_TOOL! -l -f -d net] at !DATE! !TIME! ....         >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f -d net                                        >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		echo -------------------------------------------------------                                   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		echo Read host id: smbios [using !ECMCOMMONUTIL_TOOL! -l -f -d smbios] at !DATE! !TIME! ....   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f -d smbios                                     >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		echo -------------------------------------------------------                                   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		echo Read host id: vm [using !ECMCOMMONUTIL_TOOL! -l -f -d vm] at !DATE! !TIME! ....           >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f -d vm                                         >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		echo -------------------------------------------------------                                   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		echo Read host id: vm [using !ECMCOMMONUTIL_TOOL! -l -d vm] at !DATE! !TIME! ....              >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -d vm                                            >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		echo -------------------------------------------------------                                   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		echo Run full test [using !ECMCOMMONUTIL_TOOL! -t -f]: at !DATE! !TIME! ....                   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -t -f                                               >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		echo -------------------------------------------------------                                   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		echo Much more output available, check '!ECMCOMMONUTIL_LOGFILE_DEBUG!'          >> !REPORT_LOGFILE! 2>&1
+
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f -d smbios                                     >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.28_smbios_Latest.txt 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f -d vm                                         >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.28_vm_Latest.txt 2>&1
+		
+	) else (
+		echo     !ECMCOMMONUTIL_TOOL! doesn't exist, cannot perform operation.          >> !REPORT_LOGFILE! 2>&1
+	)
+) else (
+	echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.28] SKIPPED, start script with option '/extend' to enable extended content.         >> !REPORT_LOGFILE! 2>&1
 )
 echo ==============================================================================           >> !REPORT_LOGFILE! 2>&1
 set ECMCOMMONUTIL_TOOL=ECMCommonUtil_V1.27.exe
@@ -4957,7 +5053,7 @@ IF EXIST "!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" (
 	echo Current ECM values, collected with !ECMCOMMONUTIL_TOOL! V1.27 ...          >> !REPORT_LOGFILE! 2>&1
 	echo     ECM_VM_FAMILY=!ECM_VM_FAMILY_5! / ECM_VM_NAME=!ECM_VM_NAME_5! / ECM_VM_UUID=!ECM_VM_UUID_5! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID_5! / ECM_VM_GENID=!ECM_VM_GENID_5!                      >> !REPORT_LOGFILE! 2>&1
 	echo     ECM_VM_FAMILY=!ECM_VM_FAMILY_5! / ECM_VM_NAME=!ECM_VM_NAME_5! / ECM_VM_UUID=!ECM_VM_UUID_5! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID_5! / ECM_VM_GENID=!ECM_VM_GENID_5!  at !DATE! / !TIME! / using !ECMCOMMONUTIL_TOOL! [V1.27] >> !REPORT_LOG_PATH!\VMECMID.txt 2>&1
-	rem echo     ECM_VM_FAMILY=!ECM_VM_FAMILY_5! / ECM_VM_NAME=!ECM_VM_NAME_5! / ECM_VM_UUID=!ECM_VM_UUID_5! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID_5! / ECM_VM_GENID=!ECM_VM_GENID_5!  at !DATE! / !TIME! / using !ECMCOMMONUTIL_TOOL! [V1.27] >  !REPORT_LOG_PATH!\VMECMID_Latest.txt 2>&1
+	echo     ECM_VM_FAMILY=!ECM_VM_FAMILY_5! / ECM_VM_NAME=!ECM_VM_NAME_5! / ECM_VM_UUID=!ECM_VM_UUID_5! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID_5! / ECM_VM_GENID=!ECM_VM_GENID_5!  at !DATE! / !TIME! / using !ECMCOMMONUTIL_TOOL! [V1.27] >  !REPORT_LOG_PATH!\VMECMID_Latest.txt 2>&1
 
 ) else (
 	echo     !ECMCOMMONUTIL_TOOL! doesn't exist, cannot perform operation.          >> !REPORT_LOGFILE! 2>&1
@@ -4967,8 +5063,8 @@ set ECMCOMMONUTIL_TOOL=ECMCommonUtil_DevMar2022.exe
 if defined LMS_EXTENDED_CONTENT (
 	set ECMCOMMONUTIL_LOGFILE=!CHECKLMS_REPORT_LOG_PATH!\ECMCommonUtil_DevMar2022.txt
 	set ECMCOMMONUTIL_LOGFILE_DEBUG=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_debug_DevMar2022.txt
-	echo     read host id's [using !ECMCOMMONUTIL_TOOL! V1.27] ...
-	echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.27] ...         >> !REPORT_LOGFILE! 2>&1
+	echo     read host id's [using !ECMCOMMONUTIL_TOOL! DevMar2022] ...
+	echo Read host id's [using !ECMCOMMONUTIL_TOOL! DevMar2022] ...         >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" (
 		rem log regular (non debug) output in general logfile
 		echo Read version information [using !ECMCOMMONUTIL_TOOL! -v]:                  >  !ECMCOMMONUTIL_LOGFILE! 2>&1
@@ -5041,97 +5137,101 @@ if defined LMS_EXTENDED_CONTENT (
 		echo     !ECMCOMMONUTIL_TOOL! doesn't exist, cannot perform operation.          >> !REPORT_LOGFILE! 2>&1
 	)
 ) else (
-	echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.27] SKIPPED, start script with option '/extend' to enable extended content.         >> !REPORT_LOGFILE! 2>&1
+	echo Read host id's [using !ECMCOMMONUTIL_TOOL! DevMar2022] SKIPPED, start script with option '/extend' to enable extended content.         >> !REPORT_LOGFILE! 2>&1
 )
 echo ==============================================================================           >> !REPORT_LOGFILE! 2>&1
 set ECMCOMMONUTIL_TOOL=ecmcommonutil_V1.25.exe
-set ECMCOMMONUTIL_LOGFILE=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.25.txt
-set ECMCOMMONUTIL_LOGFILE_DEBUG=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_debug_V1.25.txt
-echo     read host id's [using !ECMCOMMONUTIL_TOOL! V1.25] ...
-echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.25] ...         >> !REPORT_LOGFILE! 2>&1
-IF EXIST "!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" (
-	rem log regular (non debug) output in general logfile
-	echo Read version information [using !ECMCOMMONUTIL_TOOL! -v]:                  >  !ECMCOMMONUTIL_LOGFILE! 2>&1
-	"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -v                                   >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	echo Read host id: device [using !ECMCOMMONUTIL_TOOL! -l -f device]:            >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f device                         >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	echo Read host id: dongle [using !ECMCOMMONUTIL_TOOL! -l -f dongle]:            >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f dongle                         >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	echo Read host id: net [using !ECMCOMMONUTIL_TOOL! -l -f net]:                  >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f net                            >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	echo Read host id: smbios [using !ECMCOMMONUTIL_TOOL! -l -f smbios]:            >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f smbios                         >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	echo Read host id: emulator [using !ECMCOMMONUTIL_TOOL! -l -f emulator]:        >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f emulator                       >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	echo Read host id: native hostid [using !ECMCOMMONUTIL_TOOL! -l -f hostid]:     >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f hostid                         >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	echo Read host id: docker [using !ECMCOMMONUTIL_TOOL! -l -f docker]:            >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f docker                         >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	echo Read host id: tpm [using !ECMCOMMONUTIL_TOOL! -l -f tpm]:                  >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f tpm                            >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	echo Read host id: wmi [using !ECMCOMMONUTIL_TOOL! -l -f wmi]:                  >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f wmi                            >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	echo Read host id: drive [using !ECMCOMMONUTIL_TOOL! -l -f drive]:              >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f drive                          >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	echo Read host id: vm [using !ECMCOMMONUTIL_TOOL! -l -f vm]:                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f vm                             >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	echo Read host id: vm [using !ECMCOMMONUTIL_TOOL! -l -d vm]:                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -d vm                             >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	echo Test host id: vm [using !ECMCOMMONUTIL_TOOL! -t vm]:                       >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -t vm                                >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-	echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
-    type !ECMCOMMONUTIL_LOGFILE! 2>&1                                               >> !REPORT_LOGFILE! 2>&1
+if defined LMS_EXTENDED_CONTENT (
+	set ECMCOMMONUTIL_LOGFILE=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.25.txt
+	set ECMCOMMONUTIL_LOGFILE_DEBUG=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_debug_V1.25.txt
+	echo     read host id's [using !ECMCOMMONUTIL_TOOL! V1.25] ...
+	echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.25] ...         >> !REPORT_LOGFILE! 2>&1
+	IF EXIST "!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" (
+		rem log regular (non debug) output in general logfile
+		echo Read version information [using !ECMCOMMONUTIL_TOOL! -v]:                  >  !ECMCOMMONUTIL_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -v                                   >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo Read host id: device [using !ECMCOMMONUTIL_TOOL! -l -f device]:            >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f device                         >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo Read host id: dongle [using !ECMCOMMONUTIL_TOOL! -l -f dongle]:            >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f dongle                         >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo Read host id: net [using !ECMCOMMONUTIL_TOOL! -l -f net]:                  >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f net                            >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo Read host id: smbios [using !ECMCOMMONUTIL_TOOL! -l -f smbios]:            >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f smbios                         >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo Read host id: emulator [using !ECMCOMMONUTIL_TOOL! -l -f emulator]:        >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f emulator                       >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo Read host id: native hostid [using !ECMCOMMONUTIL_TOOL! -l -f hostid]:     >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f hostid                         >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo Read host id: docker [using !ECMCOMMONUTIL_TOOL! -l -f docker]:            >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f docker                         >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo Read host id: tpm [using !ECMCOMMONUTIL_TOOL! -l -f tpm]:                  >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f tpm                            >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo Read host id: wmi [using !ECMCOMMONUTIL_TOOL! -l -f wmi]:                  >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f wmi                            >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo Read host id: drive [using !ECMCOMMONUTIL_TOOL! -l -f drive]:              >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f drive                          >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo Read host id: vm [using !ECMCOMMONUTIL_TOOL! -l -f vm]:                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f vm                             >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo Read host id: vm [using !ECMCOMMONUTIL_TOOL! -l -d vm]:                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -d vm                             >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo Test host id: vm [using !ECMCOMMONUTIL_TOOL! -t vm]:                       >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -t vm                                >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		echo -------------------------------------------------------                    >> !ECMCOMMONUTIL_LOGFILE! 2>&1
+		type !ECMCOMMONUTIL_LOGFILE! 2>&1                                               >> !REPORT_LOGFILE! 2>&1
 
-	rem log debug output in a separate file
-	echo -------------------------------------------------------                                   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
-	echo Read host id: device [using !ECMCOMMONUTIL_TOOL! -l -f -d device] at !DATE! !TIME! ....   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
-	"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f -d device                                     >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
-	echo -------------------------------------------------------                                   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
-	echo Read host id: net [using !ECMCOMMONUTIL_TOOL! -l -f -d net] at !DATE! !TIME! ....         >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
-	"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f -d net                                        >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
-	echo -------------------------------------------------------                                   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
-	echo Read host id: smbios [using !ECMCOMMONUTIL_TOOL! -l -f -d smbios] at !DATE! !TIME! ....   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
-	"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f -d smbios                                     >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
-	echo -------------------------------------------------------                                   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
-	echo Read host id: vm [using !ECMCOMMONUTIL_TOOL! -l -f -d vm] at !DATE! !TIME! ....           >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
-	"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f -d vm                                         >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
-	echo -------------------------------------------------------                                   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
-	echo Read host id: vm [using !ECMCOMMONUTIL_TOOL! -l -d vm] at !DATE! !TIME! ....              >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
-	"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -d vm                                            >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
-	echo -------------------------------------------------------                                   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
-	echo Run full test [using !ECMCOMMONUTIL_TOOL! -t -f]: at !DATE! !TIME! ....                   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
-	"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -t -f                                               >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
-	echo -------------------------------------------------------                                   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
-    echo Much more output available, check '!ECMCOMMONUTIL_LOGFILE_DEBUG!'          >> !REPORT_LOGFILE! 2>&1
+		rem log debug output in a separate file
+		echo -------------------------------------------------------                                   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		echo Read host id: device [using !ECMCOMMONUTIL_TOOL! -l -f -d device] at !DATE! !TIME! ....   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f -d device                                     >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		echo -------------------------------------------------------                                   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		echo Read host id: net [using !ECMCOMMONUTIL_TOOL! -l -f -d net] at !DATE! !TIME! ....         >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f -d net                                        >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		echo -------------------------------------------------------                                   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		echo Read host id: smbios [using !ECMCOMMONUTIL_TOOL! -l -f -d smbios] at !DATE! !TIME! ....   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f -d smbios                                     >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		echo -------------------------------------------------------                                   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		echo Read host id: vm [using !ECMCOMMONUTIL_TOOL! -l -f -d vm] at !DATE! !TIME! ....           >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f -d vm                                         >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		echo -------------------------------------------------------                                   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		echo Read host id: vm [using !ECMCOMMONUTIL_TOOL! -l -d vm] at !DATE! !TIME! ....              >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -d vm                                            >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		echo -------------------------------------------------------                                   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		echo Run full test [using !ECMCOMMONUTIL_TOOL! -t -f]: at !DATE! !TIME! ....                   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -t -f                                               >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		echo -------------------------------------------------------                                   >> !ECMCOMMONUTIL_LOGFILE_DEBUG! 2>&1
+		echo Much more output available, check '!ECMCOMMONUTIL_LOGFILE_DEBUG!'          >> !REPORT_LOGFILE! 2>&1
 
-	"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f -d smbios                                     >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.25_smbios_Latest.txt 2>&1
-	"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f -d vm                                         >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.25_vm_Latest.txt 2>&1
-	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.25_smbios_Latest.txt" for /f "tokens=1,2 eol=@ delims==" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.25_smbios_Latest.txt ^|find /I "Smbios UUID"') do set "ECM_SMBIOS_UUID_4=%%B"
-	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.25_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.25_vm_Latest.txt ^|findstr /I /B "FAMILY"') do if not "%%B" == " ERROR - Unavailable." set "ECM_VM_FAMILY_4=%%B"
-	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.25_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.25_vm_Latest.txt ^|findstr /I /B "NAME"') do if not "%%B" == " ERROR - Unavailable." set "ECM_VM_NAME_4=%%B"
-	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.25_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.25_vm_Latest.txt ^|findstr /I /B "UUID"') do if not "%%B" == " ERROR - Unavailable." set "ECM_VM_UUID_4=%%B"
-	if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.25_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.25_vm_Latest.txt ^|findstr /I /B "GENID"') do if not "%%B" == " ERROR - Unavailable." set "ECM_VM_GENID_4=%%B"
-	
-	echo Current ECM values, collected with !ECMCOMMONUTIL_TOOL! V1.25 ...          >> !REPORT_LOGFILE! 2>&1
-	echo     ECM_VM_FAMILY=!ECM_VM_FAMILY_4! / ECM_VM_NAME=!ECM_VM_NAME_4! / ECM_VM_UUID=!ECM_VM_UUID_4! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID_4! / ECM_VM_GENID=!ECM_VM_GENID_4!                      >> !REPORT_LOGFILE! 2>&1
-	echo     ECM_VM_FAMILY=!ECM_VM_FAMILY_4! / ECM_VM_NAME=!ECM_VM_NAME_4! / ECM_VM_UUID=!ECM_VM_UUID_4! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID_4! / ECM_VM_GENID=!ECM_VM_GENID_4!  at !DATE! / !TIME! / using !ECMCOMMONUTIL_TOOL! [V1.25] >> !REPORT_LOG_PATH!\VMECMID.txt 2>&1
-	echo     ECM_VM_FAMILY=!ECM_VM_FAMILY_4! / ECM_VM_NAME=!ECM_VM_NAME_4! / ECM_VM_UUID=!ECM_VM_UUID_4! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID_4! / ECM_VM_GENID=!ECM_VM_GENID_4!  at !DATE! / !TIME! / using !ECMCOMMONUTIL_TOOL! [V1.25] >  !REPORT_LOG_PATH!\VMECMID_Latest.txt 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f -d smbios                                     >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.25_smbios_Latest.txt 2>&1
+		"!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" -l -f -d vm                                         >  !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.25_vm_Latest.txt 2>&1
+		if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.25_smbios_Latest.txt" for /f "tokens=1,2 eol=@ delims==" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.25_smbios_Latest.txt ^|find /I "Smbios UUID"') do set "ECM_SMBIOS_UUID_4=%%B"
+		if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.25_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.25_vm_Latest.txt ^|findstr /I /B "FAMILY"') do if not "%%B" == " ERROR - Unavailable." set "ECM_VM_FAMILY_4=%%B"
+		if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.25_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.25_vm_Latest.txt ^|findstr /I /B "NAME"') do if not "%%B" == " ERROR - Unavailable." set "ECM_VM_NAME_4=%%B"
+		if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.25_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.25_vm_Latest.txt ^|findstr /I /B "UUID"') do if not "%%B" == " ERROR - Unavailable." set "ECM_VM_UUID_4=%%B"
+		if exist "!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.25_vm_Latest.txt"     for /f "tokens=1,2 eol=@ delims==:" %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.25_vm_Latest.txt ^|findstr /I /B "GENID"') do if not "%%B" == " ERROR - Unavailable." set "ECM_VM_GENID_4=%%B"
+		
+		echo Current ECM values, collected with !ECMCOMMONUTIL_TOOL! V1.25 ...          >> !REPORT_LOGFILE! 2>&1
+		echo     ECM_VM_FAMILY=!ECM_VM_FAMILY_4! / ECM_VM_NAME=!ECM_VM_NAME_4! / ECM_VM_UUID=!ECM_VM_UUID_4! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID_4! / ECM_VM_GENID=!ECM_VM_GENID_4!                      >> !REPORT_LOGFILE! 2>&1
+		echo     ECM_VM_FAMILY=!ECM_VM_FAMILY_4! / ECM_VM_NAME=!ECM_VM_NAME_4! / ECM_VM_UUID=!ECM_VM_UUID_4! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID_4! / ECM_VM_GENID=!ECM_VM_GENID_4!  at !DATE! / !TIME! / using !ECMCOMMONUTIL_TOOL! [V1.25] >> !REPORT_LOG_PATH!\VMECMID.txt 2>&1
+		echo     ECM_VM_FAMILY=!ECM_VM_FAMILY_4! / ECM_VM_NAME=!ECM_VM_NAME_4! / ECM_VM_UUID=!ECM_VM_UUID_4! / ECM_SMBIOS_UUID=!ECM_SMBIOS_UUID_4! / ECM_VM_GENID=!ECM_VM_GENID_4!  at !DATE! / !TIME! / using !ECMCOMMONUTIL_TOOL! [V1.25] >  !REPORT_LOG_PATH!\VMECMID_Latest.txt 2>&1
 
+	) else (
+		echo     !ECMCOMMONUTIL_TOOL! doesn't exist, cannot perform operation.          >> !REPORT_LOGFILE! 2>&1
+	)
 ) else (
-	echo     !ECMCOMMONUTIL_TOOL! doesn't exist, cannot perform operation.          >> !REPORT_LOGFILE! 2>&1
+	echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.25] SKIPPED, start script with option '/extend' to enable extended content.         >> !REPORT_LOGFILE! 2>&1
 )
 echo ==============================================================================     >> !REPORT_LOGFILE! 2>&1
 set ECMCOMMONUTIL_TOOL=ecmcommonutil_x64_n6_V1.23.exe
