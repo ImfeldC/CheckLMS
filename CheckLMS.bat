@@ -24,6 +24,12 @@ rem     28-Feb-2023:
 rem        - remove support for ECMCommonUtil (DevMar2022)
 rem        - remove support for ECMCommonUtil (V1.23)
 rem        - remove support for ECMCommonUtil (V1.28)
+rem     30-Mar-2023:
+rem        - set most recent dongle driver version to 8.53 (per 30-Mar-2023, LMS 2.8)
+rem          Support new dongle driver: https://licensemanagementsystem.s3.eu-west-1.amazonaws.com/lms/hasp/8.53/DongleDriver.zip
+rem        - Fix issue with non colored output when installing dongle driver, issue was ...
+rem          "wmic /output:...." get ...  /format:list  > NUL" ... I had to add > NUL
+rem          see also https://stackoverflow.com/questions/69812746/batch-file-colored-text-only-works-outside-of-if
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -60,8 +66,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 28-Feb-2023"
-set LMS_SCRIPT_BUILD=20230228
+set LMS_SCRIPT_VERSION="CheckLMS Script 30-Mar-2023"
+set LMS_SCRIPT_BUILD=20230330
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -75,10 +81,10 @@ rem most recent lms field test version: n/a
 rem - if not set - it is not downloaded.
 rem set MOST_RECENT_FT_LMS_VERSION=2.6.869
 rem set MOST_RECENT_FT_LMS_BUILD=869
-rem most recent dongle driver version (per 18-Aug-2022, LMS 2.7)
-set MOST_RECENT_DONGLE_DRIVER_VERSION=8.43
+rem most recent dongle driver version (per 30-Mar-2023, LMS 2.8)
+set MOST_RECENT_DONGLE_DRIVER_VERSION=8.53
 set MOST_RECENT_DONGLE_DRIVER_MAJ_VERSION=8
-set MOST_RECENT_DONGLE_DRIVER_MIN_VERSION=43
+set MOST_RECENT_DONGLE_DRIVER_MIN_VERSION=53
 rem most recent BT ALM plugin (per 15-Nov-2021, LMS 2.6)
 set MOST_RECENT_BT_ALM_PLUGIN=1.1.43.0
 
@@ -2159,13 +2165,14 @@ if defined LMS_INSTALL_DONGLE_DRIVER (
 	if exist "!LMS_DONGLE_DRIVER_PATH!\haspdinst.exe" (
 		set TARGETFILE=!LMS_DONGLE_DRIVER_PATH!\haspdinst.exe
 		set TARGETFILE=!TARGETFILE:\=\\!
-		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
+		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list  > NUL
 		IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "haspdinstVersion=%%i"
 		echo     Dongle driver: !LMS_DONGLE_DRIVER_PATH!\haspdinst.exe [!haspdinstVersion!] available 
 		echo Dongle driver: !LMS_DONGLE_DRIVER_PATH!\haspdinst.exe [!haspdinstVersion!] available                          >> !REPORT_LOGFILE! 2>&1
+		echo .
 		if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
-			rem install dongle driver downloaded by this script
 			echo !SHOW_RED!    --- Install newest dongle driver !haspdinstVersion! by this script. !SHOW_NORMAL! 
+			rem install dongle driver downloaded by this script
 			echo --- Install newest dongle driver !haspdinstVersion! by this script.                                       >> !REPORT_LOGFILE! 2>&1
 			start "Install dongle driver" "!LMS_DONGLE_DRIVER_PATH!\haspdinst.exe" -install -killprocess 
 			echo --- Installation started in an own process/shell.                                                         >> !REPORT_LOGFILE! 2>&1
