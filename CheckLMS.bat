@@ -28,8 +28,10 @@ rem     30-Mar-2023:
 rem        - set most recent dongle driver version to 8.53 (per 30-Mar-2023, LMS 2.8)
 rem          Support new dongle driver: https://licensemanagementsystem.s3.eu-west-1.amazonaws.com/lms/hasp/8.53/DongleDriver.zip
 rem        - Fix issue with non colored output when installing dongle driver, issue was ...
-rem          "wmic /output:...." get ...  /format:list  > NUL" ... I had to add > NUL
+rem          "wmic /output:...." get ...  /format:list  > NUL" ... I had to add '> NUL'
 rem          see also https://stackoverflow.com/questions/69812746/batch-file-colored-text-only-works-outside-of-if
+rem     03-Apr-2023:
+rem        - Fix issue with non colored output, issue was ... had to add '> NUL'
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -66,8 +68,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 30-Mar-2023"
-set LMS_SCRIPT_BUILD=20230330
+set LMS_SCRIPT_VERSION="CheckLMS Script 03-Apr-2023"
+set LMS_SCRIPT_BUILD=20230403
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -797,19 +799,19 @@ REM       you need to replace \ with \\, see https://alt.msdos.batch.narkive.com
 set FNPVersion=
 REM Keep "old" way to retrieve file version ...
 if exist "C:\Program Files\Common Files\Macrovision Shared\FlexNet Publisher\FNPLicensingService64.exe" (
-	wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService64.exe" get Manufacturer,Name,Version  /format:list
+	wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService64.exe" get Manufacturer,Name,Version  /format:list  > NUL
 	IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "FNPVersion=%%i"
 )
 if not defined FNPVersion (
 	if exist "C:\Program Files (x86)\Common Files\Macrovision Shared\FlexNet Publisher\FNPLicensingService.exe" (
-		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="C:\\Program Files (x86)\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list
+		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="C:\\Program Files (x86)\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list  > NUL
 		IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "FNPVersion=%%i"
 	)
 )
 if not defined FNPVersion (
 	if exist "C:\Program Files\Common Files\Macrovision Shared\FlexNet Publisher\FNPLicensingService.exe" (
 		REM Covers the case of Win7 32-bit
-		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list
+		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list  > NUL
 		IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "FNPVersion=%%i"
 	)
 )
@@ -819,7 +821,7 @@ if not defined FNPVersion (
 	set TARGETFILE=!ProgramFiles!\Common Files\Macrovision Shared\FlexNet Publisher\FNPLicensingService64.exe
 	if exist "!TARGETFILE!" (
 		set TARGETFILE=!TARGETFILE:\=\\!
-		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
+		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list  > NUL
 		IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "FNPVersion=%%i"
 	)
 )
@@ -827,7 +829,7 @@ if not defined FNPVersion (
 	set TARGETFILE=!ProgramFiles_x86!\Common Files\Macrovision Shared\FlexNet Publisher\FNPLicensingService.exe
 	if exist "!TARGETFILE!" (
 		set TARGETFILE=!TARGETFILE:\=\\!
-		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
+		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list  > NUL
 		IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "FNPVersion=%%i"
 	)
 )
@@ -835,7 +837,7 @@ if not defined FNPVersion (
 	set TARGETFILE=!ProgramFiles!\Common Files\Macrovision Shared\FlexNet Publisher\FNPLicensingService.exe
 	if exist "!TARGETFILE!" (
 		set TARGETFILE=!TARGETFILE:\=\\!
-		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
+		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list  > NUL
 		IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "FNPVersion=%%i"
 	)
 )
@@ -1507,7 +1509,7 @@ if not defined LMS_SKIPDOWNLOAD (
 					set HASP_TARGETFILE=!HASP_TARGETFILE:\=\\!
 				) 
 				if defined HASP_TARGETFILE (
-					wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!HASP_TARGETFILE!" get Manufacturer,Name,Version  /format:list
+					wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!HASP_TARGETFILE!" get Manufacturer,Name,Version  /format:list  > NUL
 					IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "haspdinstVersion=%%i"
 					echo     Dongle driver: !HASP_TARGETFILE! [!haspdinstVersion!] downloaded!
 					echo     Dongle driver: !HASP_TARGETFILE! [!haspdinstVersion!] downloaded!                                          >> !REPORT_LOGFILE! 2>&1
@@ -2092,7 +2094,7 @@ if defined LMS_INSTALL_VERSION (
 			IF EXIST "!LMS_SETUP_EXECUTABLE!" (
 				set TARGETFILE=!LMS_SETUP_EXECUTABLE!
 				set TARGETFILE=!TARGETFILE:\=\\!
-				wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
+				wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list  > NUL
 				IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "lmsclientVersion=%%i"
 				echo     LMS client: !LMS_SETUP_EXECUTABLE! [!lmsclientVersion!] available
 				echo LMS client: !LMS_SETUP_EXECUTABLE! [!lmsclientVersion!] available                                           >> !REPORT_LOGFILE! 2>&1
@@ -2197,7 +2199,7 @@ if defined LMS_REMOVE_DONGLE_DRIVER (
 	if exist "!LMS_DONGLE_DRIVER_PATH!\haspdinst.exe" (
 		set TARGETFILE=!LMS_DONGLE_DRIVER_PATH!\haspdinst.exe
 		set TARGETFILE=!TARGETFILE:\=\\!
-		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list
+		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!TARGETFILE!" get Manufacturer,Name,Version  /format:list  > NUL
 		IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "haspdinstVersion=%%i"
 		echo     Dongle driver: !LMS_DONGLE_DRIVER_PATH!\haspdinst.exe [!haspdinstVersion!] available 
 		echo Dongle driver: !LMS_DONGLE_DRIVER_PATH!\haspdinst.exe [!haspdinstVersion!] available                          >> !REPORT_LOGFILE! 2>&1
@@ -2510,12 +2512,12 @@ if not defined LMS_SKIPWMIC (
 	del !REPORT_WMIC_LOGFILE! >nul 2>&1
 	echo ---------------- wmic csproduct get *                                                                               >> !REPORT_LOGFILE! 2>&1
 	echo     wmic csproduct get *
-	wmic /output:!REPORT_WMIC_LOGFILE! csproduct get * /format:list                    
+	wmic /output:!REPORT_WMIC_LOGFILE! csproduct get * /format:list   > NUL                   
 	type !REPORT_WMIC_LOGFILE!                                                                                               >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- wmic OS get Caption,CSDVersion,OSArchitecture,Version, serialnumber                                >> !REPORT_LOGFILE! 2>&1
 	echo     More information to Windows Version, see https://en.wikipedia.org/wiki/Windows_10_version_history               >> !REPORT_LOGFILE! 2>&1
 	echo     wmic OS get Caption,CSDVersion,OSArchitecture,Version, serialnumber
-	wmic /output:!REPORT_WMIC_LOGFILE! OS get Caption,CSDVersion,OSArchitecture,Version, serialnumber /format:list                    
+	wmic /output:!REPORT_WMIC_LOGFILE! OS get Caption,CSDVersion,OSArchitecture,Version, serialnumber /format:list   > NUL                   
 	type !REPORT_WMIC_LOGFILE!                                                                                               >> !REPORT_LOGFILE! 2>&1
 	wmic /output:!CHECKLMS_REPORT_LOG_PATH!\wmicOS_fullList.txt OS get /format:list                                          >> !REPORT_LOGFILE! 2>&1                    
 	echo ---------------- wmic BIOS get Manufacturer,Name,SMBIOSBIOSVersion,Version,BuildNumber,InstallDate,SerialNumber,Description                         >> !REPORT_LOGFILE! 2>&1
@@ -2861,7 +2863,7 @@ if not defined LMS_SKIPWINDOWS (
 	echo ---------------- wmic qfe list                                                                                          >> !REPORT_LOGFILE! 2>&1
 	rem There is an issue, that not all installed patches are listed, see https://support.microsoft.com/en-us/help/2644427/systeminfo-exe-does-not-display-all-updates-in-windows-server-2003
 	rem Workaround, use "wmic qfe list"
-	wmic /output:!REPORT_WMIC_LOGFILE! qfe list
+	wmic /output:!REPORT_WMIC_LOGFILE! qfe list  > NUL
 	type !REPORT_WMIC_LOGFILE!                                                                                                   >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- powershell -command "Get-WindowsUpdateLog"                                                             >> !REPORT_LOGFILE! 2>&1
 	rem copied from UCMS-LogcollectorDWP.ini
@@ -4085,7 +4087,7 @@ if not defined LMS_SKIPBTALMPLUGIN (
 	IF EXIST "!LMS_ALMBTPLUGIN_FOLDER!\\AlmBtPg.dll" (
 		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
 		echo wmic datafile where Name="!LMS_ALMBTPLUGIN_FOLDER!\\AlmBtPg.dll" get Manufacturer,Name,Version  /format:list    >> !REPORT_LOGFILE! 2>&1
-		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!LMS_ALMBTPLUGIN_FOLDER!\\AlmBtPg.dll" get Manufacturer,Name,Version  /format:list
+		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!LMS_ALMBTPLUGIN_FOLDER!\\AlmBtPg.dll" get Manufacturer,Name,Version  /format:list  > NUL
 		type !REPORT_WMIC_LOGFILE! >> !REPORT_LOGFILE! 2>&1
 		IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "BTALMPLUGINVersion=%%i"
 		echo     Installed BT ALM Plugin Version: !BTALMPLUGINVersion!
@@ -4116,7 +4118,7 @@ if not defined LMS_SKIPBTALMPLUGIN (
 	IF EXIST "!LMS_ALMBTPLUGIN_FOLDER_X86!\\AlmBtPg.dll" (
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 		echo wmic datafile where Name="!LMS_ALMBTPLUGIN_FOLDER_X86!\\AlmBtPg.dll" get Manufacturer,Name,Version  /format:list    >> !REPORT_LOGFILE! 2>&1
-		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!LMS_ALMBTPLUGIN_FOLDER_X86!\\AlmBtPg.dll" get Manufacturer,Name,Version  /format:list
+		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="!LMS_ALMBTPLUGIN_FOLDER_X86!\\AlmBtPg.dll" get Manufacturer,Name,Version  /format:list  > NUL
 		type !REPORT_WMIC_LOGFILE! >> !REPORT_LOGFILE! 2>&1
 		IF EXIST "!REPORT_WMIC_LOGFILE!" for /f "tokens=2 delims== eol=@" %%i in ('type !REPORT_WMIC_LOGFILE! ^|find /I "Version"') do set "BTALMPLUGINVersion=%%i"
 		echo     Installed BT ALM Plugin Version: !BTALMPLUGINVersion!
@@ -4210,19 +4212,19 @@ echo ... retrieve Flexera (FNP) Information ...
 if not defined LMS_SKIPFNP (
 	IF EXIST "C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService64.exe" (
 		echo wmic datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService64.exe" get Manufacturer,Name,Version  /format:list       >> !REPORT_LOGFILE! 2>&1
-		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService64.exe" get Manufacturer,Name,Version  /format:list
+		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService64.exe" get Manufacturer,Name,Version  /format:list  > NUL
 		type !REPORT_WMIC_LOGFILE! >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                    >> !REPORT_LOGFILE! 2>&1
 	)
 	IF EXIST "C:\\Program Files (x86)\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" (
 		echo wmic datafile where Name="C:\\Program Files (x86)\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list   >> !REPORT_LOGFILE! 2>&1
-		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="C:\\Program Files (x86)\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list
+		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="C:\\Program Files (x86)\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list  > NUL
 		type !REPORT_WMIC_LOGFILE! >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                    >> !REPORT_LOGFILE! 2>&1
 	)
 	IF EXIST "C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" (
 		echo wmic datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list       >> !REPORT_LOGFILE! 2>&1
-		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list
+		wmic /output:!REPORT_WMIC_LOGFILE! datafile where Name="C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService.exe" get Manufacturer,Name,Version  /format:list  > NUL
 		type !REPORT_WMIC_LOGFILE! >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                    >> !REPORT_LOGFILE! 2>&1
 	)
