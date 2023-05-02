@@ -6,7 +6,8 @@ param(
 	[bool]$DownloadSoftware = $false,
 	[bool]$Verbose = $true,
 	[string]$productversion = '',
-	[string]$productcode = ''
+	[string]$productcode = '',
+	[bool]$stagesystem = $false
 )
 #endregion
 
@@ -40,12 +41,18 @@ param(
 # '20221202': Add OS check "$OS_BUILD_NUM -gt 22621", to be prepared for future Win11 releases.
 # '20230502': Add URL for stage (test) system of OSD backend server
 #             Add script version to console output
+#             Add parameter to choose between productive (=default) or stage system
 $scriptVersion = '20230502'
 
 $global:ExitCode=0
 # Old API URL -> $OSD_APIURL="https://www.automation.siemens.com/softwareupdater/public/api/updates"
-# Stage API URL -> $OSD_APIURL="https://osd-akstage.automation.siemens.com/softwareupdater/public/api/updates"
-$OSD_APIURL="https://osd-ak.automation.siemens.com/softwareupdater/public/api/updates"
+if( $stagesystem ) {
+	# Stage API URL -> 
+	$OSD_APIURL="https://osd-akstage.automation.siemens.com/softwareupdater/public/api/updates"
+} else {
+	# Productive API URL -> 
+	$OSD_APIURL="https://osd-ak.automation.siemens.com/softwareupdater/public/api/updates"
+}
 
 $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
 $headers.Add("Content-Type", "application/json")
@@ -152,7 +159,8 @@ function Get-InstalledSoftware {
 # start logging
 Log-Message "Script Execution '$scriptVersion' started from path '$PSScriptRoot' ..."
 if( $Verbose ) {
-	Log-Message "Parameters: operatingsystem=$operatingsystem / language=$language / SkipSiemensSoftware=$SkipSiemensSoftware / DownloadSoftware=$DownloadSoftware / Verbose=$Verbose / productversion=$productversion / productcode=$productcode"
+	Log-Message "Parameters: operatingsystem=$operatingsystem / language=$language / SkipSiemensSoftware=$SkipSiemensSoftware / DownloadSoftware=$DownloadSoftware / Verbose=$Verbose / productversion=$productversion / productcode=$productcode / StageSystem=$stagesystem"
+	Log-Message "API URL: '$OSD_APIURL'"
 }
 
 # set client type ..
