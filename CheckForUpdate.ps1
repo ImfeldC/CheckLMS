@@ -38,10 +38,13 @@ param(
 # '20221024': Check that 'get-lms' commandlet is available (Fix: Defect 2129454)
 # '20221201': Check that 'Get-ScheduledTask' doesn't throw an error (Fix: Defect 2153318)
 # '20221202': Add OS check "$OS_BUILD_NUM -gt 22621", to be prepared for future Win11 releases.
-$scriptVersion = '20221202'
+# '20230502': Add URL for stage (test) system of OSD backend server
+#             Add script version to console output
+$scriptVersion = '20230502'
 
 $global:ExitCode=0
 # Old API URL -> $OSD_APIURL="https://www.automation.siemens.com/softwareupdater/public/api/updates"
+# Stage API URL -> $OSD_APIURL="https://osd-akstage.automation.siemens.com/softwareupdater/public/api/updates"
 $OSD_APIURL="https://osd-ak.automation.siemens.com/softwareupdater/public/api/updates"
 
 $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
@@ -147,7 +150,7 @@ function Get-InstalledSoftware {
 
 
 # start logging
-Log-Message "Script Execution started from path '$PSScriptRoot' ..."
+Log-Message "Script Execution '$scriptVersion' started from path '$PSScriptRoot' ..."
 if( $Verbose ) {
 	Log-Message "Parameters: operatingsystem=$operatingsystem / language=$language / SkipSiemensSoftware=$SkipSiemensSoftware / DownloadSoftware=$DownloadSoftware / Verbose=$Verbose / productversion=$productversion / productcode=$productcode"
 }
