@@ -32,6 +32,13 @@ rem          "wmic /output:...." get ...  /format:list  > NUL" ... I had to add 
 rem          see also https://stackoverflow.com/questions/69812746/batch-file-colored-text-only-works-outside-of-if
 rem     03-Apr-2023:
 rem        - Fix issue with non colored output, issue was ... had to add '> NUL'
+rem     05-May-2023:
+rem        - Adjust output. Enhance ECMCommonUtil with related LMS client version. 
+rem               V1.29 -> LMS 2.8, still in work
+rem               V1.27 -> LMS 2.7
+rem               V1.25 (with /extend option) -> LMS 2.6
+rem               V1.21 (with /extend option) -> LMS 2.5
+rem               V1.19 (with /extend option) -> LMS 2.4
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -68,8 +75,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 03-Apr-2023"
-set LMS_SCRIPT_BUILD=20230403
+set LMS_SCRIPT_VERSION="CheckLMS Script 05-May-2023"
+set LMS_SCRIPT_BUILD=20230505
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -1449,26 +1456,26 @@ if not defined LMS_SKIPDOWNLOAD (
 			
 			rem Download tool "ecmcommonutil.exe" V1.19 (=ecmcommonutil_1.19.exe) (from Flexera) to read-out host id's
 			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe" (
-				echo     Download ecmcommonutil app: !LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe
-				echo Download ecmcommonutil app: !LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe                                             >> !REPORT_LOGFILE! 2>&1
+				echo     Download ecmcommonutil app [V1.19]: !LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe
+				echo Download ecmcommonutil app [V1.19]: '!CHECKLMS_EXTERNAL_SHARE!lms/FNP/ecmcommonutil_1.19.exe'                      >> !REPORT_LOGFILE! 2>&1
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/FNP/ecmcommonutil_1.19.exe', '!LMS_DOWNLOAD_PATH!\ecmcommonutil_1.19.exe')"   >> !REPORT_LOGFILE! 2>&1
 			)
 			rem Download tool "ecmcommonutil.exe" V1.21 (from Flexera) to read-out host id's
 			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe" (
-				echo     Download ecmcommonutil app: !LMS_DOWNLOAD_PATH!\ecmcommonutil.exe
-				echo Download ecmcommonutil app: !LMS_DOWNLOAD_PATH!\ecmcommonutil.exe                                                  >> !REPORT_LOGFILE! 2>&1
+				echo     Download ecmcommonutil app [V1.21]: !LMS_DOWNLOAD_PATH!\ecmcommonutil.exe
+				echo Download ecmcommonutil app [V1.21]: '!CHECKLMS_EXTERNAL_SHARE!lms/FNP/ecmcommonutil.exe'                           >> !REPORT_LOGFILE! 2>&1
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/FNP/ecmcommonutil.exe', '!LMS_DOWNLOAD_PATH!\ecmcommonutil.exe')"   >> !REPORT_LOGFILE! 2>&1
 			)
 			rem Download tool "ecmcommonutil_V1.25 (=ecmcommonutil.exe) (from Flexera) to read-out host id's
 			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\ecmcommonutil_V1.25.exe" (
-				echo     Download ecmcommonutil app: !LMS_DOWNLOAD_PATH!\ecmcommonutil_V1.25.exe
-				echo Download ecmcommonutil app: !LMS_DOWNLOAD_PATH!\ecmcommonutil_V1.25.exe                                            >> !REPORT_LOGFILE! 2>&1
+				echo     Download ecmcommonutil app [V1.25]: !LMS_DOWNLOAD_PATH!\ecmcommonutil_V1.25.exe
+				echo Download ecmcommonutil app [V1.25]: '!CHECKLMS_EXTERNAL_SHARE!lms/FNP/ecmcommonutil_V1.25.exe'                     >> !REPORT_LOGFILE! 2>&1
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/FNP/ecmcommonutil_V1.25.exe', '!LMS_DOWNLOAD_PATH!\ecmcommonutil_V1.25.exe')"   >> !REPORT_LOGFILE! 2>&1
 			)
 			rem Download tool "ecmcommonutil_V1.27 (=ecmcommonutil.exe) (from Flexera) to read-out host id's
 			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\ECMCommonUtil_V1.27.exe" (
 				echo     Download ecmcommonutil app [V1.27]: !LMS_DOWNLOAD_PATH!\ECMCommonUtil_V1.27.exe
-				echo Download ecmcommonutil app [V1.27]: !LMS_DOWNLOAD_PATH!\ECMCommonUtil_V1.27.exe                                    >> !REPORT_LOGFILE! 2>&1
+				echo Download ecmcommonutil app [V1.27]: '!CHECKLMS_EXTERNAL_SHARE!lms/FNP/ECMCommonUtil_V1.27.exe'                     >> !REPORT_LOGFILE! 2>&1
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/FNP/ECMCommonUtil_V1.27.exe', '!LMS_DOWNLOAD_PATH!\ECMCommonUtil_V1.27.exe')"   >> !REPORT_LOGFILE! 2>&1
 			)
 			rem Download tool "ecmcommonutil_V1.29 (=ecmcommonutil.exe) (from Flexera, as part of Case #02745169)
@@ -4788,8 +4795,8 @@ echo ===========================================================================
 set ECMCOMMONUTIL_TOOL=ECMCommonUtil_V1.29.exe
 set ECMCOMMONUTIL_LOGFILE=!CHECKLMS_REPORT_LOG_PATH!\ECMCommonUtil_V1.29.txt
 set ECMCOMMONUTIL_LOGFILE_DEBUG=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_debug_V1.29.txt
-echo     read host id's [using !ECMCOMMONUTIL_TOOL! V1.29] ...
-echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.29] ...         >> !REPORT_LOGFILE! 2>&1
+echo     read host id's [using !ECMCOMMONUTIL_TOOL! V1.29] -> LMS 2.8 ...
+echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.29] -> LMS 2.8 ...         >> !REPORT_LOGFILE! 2>&1
 IF EXIST "!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" (
 	rem log regular (non debug) output in general logfile
 	echo Read version information [using !ECMCOMMONUTIL_TOOL! -v]:                  >  !ECMCOMMONUTIL_LOGFILE! 2>&1
@@ -4878,8 +4885,8 @@ echo ===========================================================================
 set ECMCOMMONUTIL_TOOL=ECMCommonUtil_V1.27.exe
 set ECMCOMMONUTIL_LOGFILE=!CHECKLMS_REPORT_LOG_PATH!\ECMCommonUtil_V1.27.txt
 set ECMCOMMONUTIL_LOGFILE_DEBUG=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_debug_V1.27.txt
-echo     read host id's [using !ECMCOMMONUTIL_TOOL! V1.27] ...
-echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.27] ...         >> !REPORT_LOGFILE! 2>&1
+echo     read host id's [using !ECMCOMMONUTIL_TOOL! V1.27] -> LMS 2.7 ...
+echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.27] -> LMS 2.7...         >> !REPORT_LOGFILE! 2>&1
 IF EXIST "!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" (
 	rem log regular (non debug) output in general logfile
 	echo Read version information [using !ECMCOMMONUTIL_TOOL! -v]:                  >  !ECMCOMMONUTIL_LOGFILE! 2>&1
@@ -4966,11 +4973,11 @@ IF EXIST "!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" (
 )
 echo ==============================================================================           >> !REPORT_LOGFILE! 2>&1
 set ECMCOMMONUTIL_TOOL=ecmcommonutil_V1.25.exe
+echo     read host id's [using !ECMCOMMONUTIL_TOOL! V1.25] -> LMS 2.6 ...
+echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.25] -> LMS 2.6 ...         >> !REPORT_LOGFILE! 2>&1
 if defined LMS_EXTENDED_CONTENT (
 	set ECMCOMMONUTIL_LOGFILE=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.25.txt
 	set ECMCOMMONUTIL_LOGFILE_DEBUG=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_debug_V1.25.txt
-	echo     read host id's [using !ECMCOMMONUTIL_TOOL! V1.25] ...
-	echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.25] ...         >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" (
 		rem log regular (non debug) output in general logfile
 		echo Read version information [using !ECMCOMMONUTIL_TOOL! -v]:                  >  !ECMCOMMONUTIL_LOGFILE! 2>&1
@@ -5055,16 +5062,15 @@ if defined LMS_EXTENDED_CONTENT (
 		echo     !ECMCOMMONUTIL_TOOL! doesn't exist, cannot perform operation.          >> !REPORT_LOGFILE! 2>&1
 	)
 ) else (
-	echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.25] SKIPPED, start script with option '/extend' to enable extended content.         >> !REPORT_LOGFILE! 2>&1
+	echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.25] -> LMS 2.6 SKIPPED, start script with option '/extend' to enable extended content.         >> !REPORT_LOGFILE! 2>&1
 )
 echo ==============================================================================     >> !REPORT_LOGFILE! 2>&1
 set ECMCOMMONUTIL_TOOL=ecmcommonutil.exe
+echo     read host id's [using !ECMCOMMONUTIL_TOOL! V1.21] -> LMS 2.5 ...
+echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.21] -> LMS 2.5 ...         >> !REPORT_LOGFILE! 2>&1
 if defined LMS_EXTENDED_CONTENT (
-	set ECMCOMMONUTIL_TOOL=ecmcommonutil.exe
 	set ECMCOMMONUTIL_LOGFILE=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.21.txt
 	set ECMCOMMONUTIL_LOGFILE_DEBUG=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_debug_V1.21.txt
-	echo     read host id's [using !ECMCOMMONUTIL_TOOL! V1.21] ...
-	echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.21] ...         >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" (
 		rem log regular (non debug) output in general logfile
 		echo Read version information [using !ECMCOMMONUTIL_TOOL! -v]:                  >  !ECMCOMMONUTIL_LOGFILE! 2>&1
@@ -5124,16 +5130,15 @@ if defined LMS_EXTENDED_CONTENT (
 		echo     !ECMCOMMONUTIL_TOOL! doesn't exist, cannot perform operation.                           >> !REPORT_LOGFILE! 2>&1
 	)
 ) else (
-	echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.21] SKIPPED, start script with option '/extend' to enable extended content.         >> !REPORT_LOGFILE! 2>&1
+	echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.21] -> LMS 2.5 SKIPPED, start script with option '/extend' to enable extended content.         >> !REPORT_LOGFILE! 2>&1
 )
 echo ==============================================================================     >> !REPORT_LOGFILE! 2>&1
-set ECMCOMMONUTIL_TOOL=ecmcommonutil.exe
+set ECMCOMMONUTIL_TOOL=ecmcommonutil_1.19.exe
+echo     read host id's [using !ECMCOMMONUTIL_TOOL! V1.19] -> LMS 2.4 ...
+echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.19] -> LMS 2.4 ...         >> !REPORT_LOGFILE! 2>&1
 if defined LMS_EXTENDED_CONTENT (
-	set ECMCOMMONUTIL_TOOL=ecmcommonutil_1.19.exe
 	set ECMCOMMONUTIL_LOGFILE=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.19.txt
 	set ECMCOMMONUTIL_LOGFILE_DEBUG=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_debug_V1.19.txt
-	echo     read host id's [using !ECMCOMMONUTIL_TOOL! V1.19] ...
-	echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.19] ...         >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" (
 		rem log regular (non debug) output in general logfile
 		echo Read version information [using !ECMCOMMONUTIL_TOOL! -v]:                  >  !ECMCOMMONUTIL_LOGFILE! 2>&1
@@ -5191,7 +5196,7 @@ if defined LMS_EXTENDED_CONTENT (
 		echo     !ECMCOMMONUTIL_TOOL! doesn't exist, cannot perform operation.                         >> !REPORT_LOGFILE! 2>&1
 	)
 ) else (
-	echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.19] SKIPPED, start script with option '/extend' to enable extended content.         >> !REPORT_LOGFILE! 2>&1
+	echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.19] -> LMS 2.4 SKIPPED, start script with option '/extend' to enable extended content.         >> !REPORT_LOGFILE! 2>&1
 )
 if not defined LMS_SKIPFNP ( 
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
