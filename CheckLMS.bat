@@ -4795,8 +4795,8 @@ echo ===========================================================================
 set ECMCOMMONUTIL_TOOL=ECMCommonUtil_V1.29.exe
 set ECMCOMMONUTIL_LOGFILE=!CHECKLMS_REPORT_LOG_PATH!\ECMCommonUtil_V1.29.txt
 set ECMCOMMONUTIL_LOGFILE_DEBUG=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_debug_V1.29.txt
-echo     read host id's [using !ECMCOMMONUTIL_TOOL! V1.29] -> LMS 2.8 ...
-echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.29] -> LMS 2.8 ...         >> !REPORT_LOGFILE! 2>&1
+echo     read host id's [using !ECMCOMMONUTIL_TOOL! V1.29 -> LMS 2.8] ...
+echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.29 -> LMS 2.8] ...         >> !REPORT_LOGFILE! 2>&1
 IF EXIST "!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" (
 	rem log regular (non debug) output in general logfile
 	echo Read version information [using !ECMCOMMONUTIL_TOOL! -v]:                  >  !ECMCOMMONUTIL_LOGFILE! 2>&1
@@ -4885,8 +4885,8 @@ echo ===========================================================================
 set ECMCOMMONUTIL_TOOL=ECMCommonUtil_V1.27.exe
 set ECMCOMMONUTIL_LOGFILE=!CHECKLMS_REPORT_LOG_PATH!\ECMCommonUtil_V1.27.txt
 set ECMCOMMONUTIL_LOGFILE_DEBUG=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_debug_V1.27.txt
-echo     read host id's [using !ECMCOMMONUTIL_TOOL! V1.27] -> LMS 2.7 ...
-echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.27] -> LMS 2.7...         >> !REPORT_LOGFILE! 2>&1
+echo     read host id's [using !ECMCOMMONUTIL_TOOL! V1.27 -> LMS 2.7] ...
+echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.27 -> LMS 2.7] ...         >> !REPORT_LOGFILE! 2>&1
 IF EXIST "!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" (
 	rem log regular (non debug) output in general logfile
 	echo Read version information [using !ECMCOMMONUTIL_TOOL! -v]:                  >  !ECMCOMMONUTIL_LOGFILE! 2>&1
@@ -4973,8 +4973,8 @@ IF EXIST "!LMS_DOWNLOAD_PATH!\!ECMCOMMONUTIL_TOOL!" (
 )
 echo ==============================================================================           >> !REPORT_LOGFILE! 2>&1
 set ECMCOMMONUTIL_TOOL=ecmcommonutil_V1.25.exe
-echo     read host id's [using !ECMCOMMONUTIL_TOOL! V1.25] -> LMS 2.6 ...
-echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.25] -> LMS 2.6 ...         >> !REPORT_LOGFILE! 2>&1
+echo     read host id's [using !ECMCOMMONUTIL_TOOL! V1.25 -> LMS 2.6] ...
+echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.25 -> LMS 2.6] ...         >> !REPORT_LOGFILE! 2>&1
 if defined LMS_EXTENDED_CONTENT (
 	set ECMCOMMONUTIL_LOGFILE=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.25.txt
 	set ECMCOMMONUTIL_LOGFILE_DEBUG=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_debug_V1.25.txt
@@ -5062,12 +5062,12 @@ if defined LMS_EXTENDED_CONTENT (
 		echo     !ECMCOMMONUTIL_TOOL! doesn't exist, cannot perform operation.          >> !REPORT_LOGFILE! 2>&1
 	)
 ) else (
-	echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.25] -> LMS 2.6 SKIPPED, start script with option '/extend' to enable extended content.         >> !REPORT_LOGFILE! 2>&1
+	echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.25 -> LMS 2.6] SKIPPED, start script with option '/extend' to enable extended content.         >> !REPORT_LOGFILE! 2>&1
 )
 echo ==============================================================================     >> !REPORT_LOGFILE! 2>&1
 set ECMCOMMONUTIL_TOOL=ecmcommonutil.exe
-echo     read host id's [using !ECMCOMMONUTIL_TOOL! V1.21] -> LMS 2.5 ...
-echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.21] -> LMS 2.5 ...         >> !REPORT_LOGFILE! 2>&1
+echo     read host id's [using !ECMCOMMONUTIL_TOOL! V1.21 -> LMS 2.5] ...
+echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.21 -> LMS 2.5] ...         >> !REPORT_LOGFILE! 2>&1
 if defined LMS_EXTENDED_CONTENT (
 	set ECMCOMMONUTIL_LOGFILE=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.21.txt
 	set ECMCOMMONUTIL_LOGFILE_DEBUG=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_debug_V1.21.txt
@@ -5134,8 +5134,8 @@ if defined LMS_EXTENDED_CONTENT (
 )
 echo ==============================================================================     >> !REPORT_LOGFILE! 2>&1
 set ECMCOMMONUTIL_TOOL=ecmcommonutil_1.19.exe
-echo     read host id's [using !ECMCOMMONUTIL_TOOL! V1.19] -> LMS 2.4 ...
-echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.19] -> LMS 2.4 ...         >> !REPORT_LOGFILE! 2>&1
+echo     read host id's [using !ECMCOMMONUTIL_TOOL! V1.19 -> LMS 2.4] ...
+echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.19 -> LMS 2.4] ...         >> !REPORT_LOGFILE! 2>&1
 if defined LMS_EXTENDED_CONTENT (
 	set ECMCOMMONUTIL_LOGFILE=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_V1.19.txt
 	set ECMCOMMONUTIL_LOGFILE_DEBUG=!CHECKLMS_REPORT_LOG_PATH!\ecmcommonutil_debug_V1.19.txt
@@ -5196,7 +5196,7 @@ if defined LMS_EXTENDED_CONTENT (
 		echo     !ECMCOMMONUTIL_TOOL! doesn't exist, cannot perform operation.                         >> !REPORT_LOGFILE! 2>&1
 	)
 ) else (
-	echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.19] -> LMS 2.4 SKIPPED, start script with option '/extend' to enable extended content.         >> !REPORT_LOGFILE! 2>&1
+	echo Read host id's [using !ECMCOMMONUTIL_TOOL! V1.19 -> LMS 2.4] SKIPPED, start script with option '/extend' to enable extended content.         >> !REPORT_LOGFILE! 2>&1
 )
 if not defined LMS_SKIPFNP ( 
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
