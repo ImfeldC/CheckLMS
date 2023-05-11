@@ -42,7 +42,8 @@ param(
 # '20230502': Add URL for stage (test) system of OSD backend server
 #             Add script version to console output
 #             Add parameter to choose between productive (=default) or stage system
-$scriptVersion = '20230502'
+# '20230511': Support 'SkipCheckForUpdate' registry entry; if set to '1' do not perform check for updates.
+$scriptVersion = '20230511'
 
 $global:ExitCode=0
 # Old API URL -> $OSD_APIURL="https://www.automation.siemens.com/softwareupdater/public/api/updates"
@@ -174,8 +175,9 @@ if( $PSScriptRoot.Contains("\Siemens\LMS\") ) {
 		$lmsproductcode = get-lms -ProductCode | select -expand Guid
 		$lmsproductversion = get-lms -LMSVersion
 		$lmssystemid = get-lms -SystemId
+		$SkipCheckForUpdate  = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Siemens\LMS' -Name 'SkipCheckForUpdate' -ErrorAction SilentlyContinue | select -expand SkipCheckForUpdate
 		if( $Verbose ) {
-			Log-Message "LMS Client Info: lmsproductversion=$lmsproductversion / lmsproductcode=$lmsproductcode / lmssystemid=$lmssystemid"
+			Log-Message "LMS Client Info: lmsproductversion=$lmsproductversion / lmsproductcode=$lmsproductcode / lmssystemid=$lmssystemid / SkipCheckForUpdate=$SkipCheckForUpdate"
 		}
 		if ( $productcode -eq '' )
 		{
@@ -195,8 +197,9 @@ if( $PSScriptRoot.Contains("\Siemens\LMS\") ) {
 	$ssuproductcode = $TEMPPRODUCTCODE.GUID-replace '\{(.*)\}','$1';
 	$ssuproductversion = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Siemens\SSU' -Name 'Version' | select -expand Version
 	$ssusystemid = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Siemens\SSU' -Name 'SystemId' | select -expand SystemId
+	$SkipCheckForUpdate  = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Siemens\SSU' -Name 'SkipCheckForUpdate' -ErrorAction SilentlyContinue | select -expand SkipCheckForUpdate
 	if( $Verbose ) {
-		Log-Message "SSU Client Info: ssuproductversion=$ssuproductversion / ssuproductcode=$ssuproductcode / ssusystemid=$ssusystemid"
+		Log-Message "SSU Client Info: ssuproductversion=$ssuproductversion / ssuproductcode=$ssuproductcode / ssusystemid=$ssusystemid / SkipCheckForUpdate=$SkipCheckForUpdate"
 	}
 	if ( $productcode -eq '' )
 	{
@@ -222,7 +225,26 @@ if ( $systemid -eq $null ) {
 	# use machine id (as final default)
 	$systemid = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Cryptography' -Name 'MachineGuid' -ErrorAction SilentlyContinue | select -expand MachineGuid
 }
-Log-Message "System Id: $systemid"
+if ( $Verbose ) {
+	Log-Message "System Id: $systemid"
+}
+
+#determine SkipCheckForUpdate (if not already done)
+if ( $SkipCheckForUpdate -eq $null ) {
+	# SkipCheckForUpdate for SSU exists ...
+	$SkipCheckForUpdate =  Get-ItemProperty -Path 'HKLM:\SOFTWARE\Siemens\SSU' -Name 'SkipCheckForUpdate' -ErrorAction SilentlyContinue | select -expand SkipCheckForUpdate
+}
+if ( $SkipCheckForUpdate -eq $null ) {
+	# SkipCheckForUpdate for LMS exists ...
+	$SkipCheckForUpdate =  Get-ItemProperty -Path 'HKLM:\SOFTWARE\Siemens\LMS' -Name 'SkipCheckForUpdate' -ErrorAction SilentlyContinue | select -expand SkipCheckForUpdate
+}
+if ( $SkipCheckForUpdate -eq $null ) {
+	# use 0 (as final default)
+	$SkipCheckForUpdate = 0
+}
+if ( $Verbose ) {
+	Log-Message "SkipCheckForUpdate: $SkipCheckForUpdate"
+}
 
 # check product code and version ...
 if ( $productcode -eq '' )
@@ -327,81 +349,9 @@ if ( Test-Path 'C:\ProgramData\Siemens\LMS\Logs\SIEMBT.log' ) {
 } else {
 	$LMS_SIEMBT_HYPERVISOR = "n/a"
 }
-Log-Message "Check for updates on client '$systemid' for '$operatingsystem', for product '$productcode' with version '$productversion' ..."
 
-$body = "{
-    `"ProductCode`": `"$productcode`",
-    `"ProductVersion`": `"$productversion`",
-    `"OperationSystem`": `"$operatingsystem`",
-    `"Language`": `"$language`",
-    `"clientType`":`"$clientType`",
-    `"clientVersion`":`"$clientVersion`",
-    `"clientGUID`":`"$systemid`",
-    `"clientInfo`":
-    {
-        `"timeZone`":`"$timezone_displayname`",
-        `"region`":`"$region`",
-        `"language`":`"$display_language`",
-        `"ssuupdateinterval`":`"$SSU_UPDATE_INTERVAL`",
-        `"ssuupdatetime`":`"$SSU_UPDATE_TIME`",
-        `"ssuupdatetype`":`"$SSU_UPDATE_TYPE`",
-        `"CSID`":`"$LMS_PS_CSID`",
-        `"LMS_IS_VM`":`"$LMS_IS_VM`",
-        `"LMS_SIEMBT_HYPERVISOR`":`"$LMS_SIEMBT_HYPERVISOR`",
-        `"OS_PRODUCTNAME`":`"$OS_PRODUCTNAME`",
-        `"OS_VERSION`":`"$OS_VERSION`",
-        `"OS_MAJ_VERSION`":`"$OS_MAJ_VERSION`",
-        `"OS_MIN_VERSION`":`"$OS_MIN_VERSION`",
-        `"OS_BUILD_NUM`":`"$OS_BUILD_NUM`",
-        `"OS_MACHINEGUID`":`"$OS_MACHINEGUID`"
-    }
-}"
-
-# send (first) request to OSD server
-Invoke-OSDRequest $body $headers
-
-if( $DownloadSoftware ) {
-	if( $response ) {
-		# start further processing or repsone, e.g. extract  "downloadURL"
-		if( $Verbose ) {
-			Log-Message "Start to analyze the Response ..."
-		}
-		
-		foreach ($swupdate in $response.softwareUpdates) {
-			if( $Verbose ) {
-				Log-Message "Software Update: $swupdate"  
-			}
-			
-			$title = $swupdate.title
-			$description = $swupdate.description
-			$downloadurl = [URI]$swupdate.downloadURL
-			$Path = $env:ProgramData + '\Siemens\LMS\Download'
-			$shorturl, $options = ($downloadurl -Split '\?')[0,1]
-			$filename = ($shorturl -Split '/')[-1]
-			if( $Verbose ) {
-				Log-Message "Title: $title / Description: $description / Download URL: $shorturl / filename: $filename / options: $options"
-			}
-			
-			if( $downloadurl ) {
-				# download the software udpate
-				Log-Message "Start to download ... '$downloadurl' to '$Path\$filename'"
-				#Start-BitsTransfer -Source "$downloadurl" -Destination "$Path"
-				(New-Object Net.WebClient).DownloadFile($downloadurl, $Path + "\\" + $filename)
-				Log-Message "End of download ..."
-			}
-		}	
-	} else {
-		Log-Message "Skip download, no valid response received ..."
-	}
-}
-
-if (-not $SkipSiemensSoftware) {
-	if ( $Verbose ) {
-		Log-Message "Retrieve installed Siemens Software ... "
-	}
-	# Read-out installed Siemens software and convert then into json 
-	$SiemensInstalledSoftware1 = Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate, PSChildName | Where-Object{$_.Publisher -like '*Siemens*'} | ConvertTo-Json
-	$SiemensInstalledSoftware2 = Get-CimInstance Win32_Product | Sort-Object -property Name | Where-Object{$_.Vendor -like '*Siemens*'} | Select-Object Name, Version, InstallDate, Vendor, IdentifyingNumber | ConvertTo-Json
+if ( $SkipCheckForUpdate -ne '1' ) {
+	Log-Message "Check for updates on client '$systemid' for '$operatingsystem', for product '$productcode' with version '$productversion' ..."
 
 	$body = "{
 		`"ProductCode`": `"$productcode`",
@@ -410,16 +360,93 @@ if (-not $SkipSiemensSoftware) {
 		`"Language`": `"$language`",
 		`"clientType`":`"$clientType`",
 		`"clientVersion`":`"$clientVersion`",
-		`"clientGUID`":`"$lmssystemid`",
+		`"clientGUID`":`"$systemid`",
 		`"clientInfo`":
 		{
-			`"siemens_installed_software`": $SiemensInstalledSoftware1,
-			`"siemens_installed_software`": $SiemensInstalledSoftware2
+			`"timeZone`":`"$timezone_displayname`",
+			`"region`":`"$region`",
+			`"language`":`"$display_language`",
+			`"ssuupdateinterval`":`"$SSU_UPDATE_INTERVAL`",
+			`"ssuupdatetime`":`"$SSU_UPDATE_TIME`",
+			`"ssuupdatetype`":`"$SSU_UPDATE_TYPE`",
+			`"CSID`":`"$LMS_PS_CSID`",
+			`"LMS_IS_VM`":`"$LMS_IS_VM`",
+			`"LMS_SIEMBT_HYPERVISOR`":`"$LMS_SIEMBT_HYPERVISOR`",
+			`"OS_PRODUCTNAME`":`"$OS_PRODUCTNAME`",
+			`"OS_VERSION`":`"$OS_VERSION`",
+			`"OS_MAJ_VERSION`":`"$OS_MAJ_VERSION`",
+			`"OS_MIN_VERSION`":`"$OS_MIN_VERSION`",
+			`"OS_BUILD_NUM`":`"$OS_BUILD_NUM`",
+			`"OS_MACHINEGUID`":`"$OS_MACHINEGUID`"
 		}
 	}"
 
-	# send (second) request to OSD server
+	# send (first) request to OSD server
 	Invoke-OSDRequest $body $headers
+
+	if( $DownloadSoftware ) {
+		if( $response ) {
+			# start further processing or repsone, e.g. extract  "downloadURL"
+			if( $Verbose ) {
+				Log-Message "Start to analyze the Response ..."
+			}
+			
+			foreach ($swupdate in $response.softwareUpdates) {
+				if( $Verbose ) {
+					Log-Message "Software Update: $swupdate"  
+				}
+				
+				$title = $swupdate.title
+				$description = $swupdate.description
+				$downloadurl = [URI]$swupdate.downloadURL
+				$Path = $env:ProgramData + '\Siemens\LMS\Download'
+				$shorturl, $options = ($downloadurl -Split '\?')[0,1]
+				$filename = ($shorturl -Split '/')[-1]
+				if( $Verbose ) {
+					Log-Message "Title: $title / Description: $description / Download URL: $shorturl / filename: $filename / options: $options"
+				}
+				
+				if( $downloadurl ) {
+					# download the software udpate
+					Log-Message "Start to download ... '$downloadurl' to '$Path\$filename'"
+					#Start-BitsTransfer -Source "$downloadurl" -Destination "$Path"
+					(New-Object Net.WebClient).DownloadFile($downloadurl, $Path + "\\" + $filename)
+					Log-Message "End of download ..."
+				}
+			}	
+		} else {
+			Log-Message "Skip download, no valid response received ..."
+		}
+	}
+
+	if (-not $SkipSiemensSoftware) {
+		if ( $Verbose ) {
+			Log-Message "Retrieve installed Siemens Software ... "
+		}
+		# Read-out installed Siemens software and convert then into json 
+		$SiemensInstalledSoftware1 = Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate, PSChildName | Where-Object{$_.Publisher -like '*Siemens*'} | ConvertTo-Json
+		$SiemensInstalledSoftware2 = Get-CimInstance Win32_Product | Sort-Object -property Name | Where-Object{$_.Vendor -like '*Siemens*'} | Select-Object Name, Version, InstallDate, Vendor, IdentifyingNumber | ConvertTo-Json
+
+		$body = "{
+			`"ProductCode`": `"$productcode`",
+			`"ProductVersion`": `"$productversion`",
+			`"OperationSystem`": `"$operatingsystem`",
+			`"Language`": `"$language`",
+			`"clientType`":`"$clientType`",
+			`"clientVersion`":`"$clientVersion`",
+			`"clientGUID`":`"$lmssystemid`",
+			`"clientInfo`":
+			{
+				`"siemens_installed_software`": $SiemensInstalledSoftware1,
+				`"siemens_installed_software`": $SiemensInstalledSoftware2
+			}
+		}"
+
+		# send (second) request to OSD server
+		Invoke-OSDRequest $body $headers
+	}
+} else {
+	Log-Message "*** SKIPPED *** Check for updates on client '$systemid' for '$operatingsystem', for product '$productcode' with version '$productversion' ..."
 }
 
 Log-Message "Script Execution ended ..."
