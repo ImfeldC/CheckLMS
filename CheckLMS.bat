@@ -39,6 +39,8 @@ rem               V1.27 = LMS 2.7
 rem               V1.25 (with /extend option) = LMS 2.6
 rem               V1.21 (with /extend option) = LMS 2.5
 rem               V1.19 (with /extend option) = LMS 2.4
+rem     15-May-2023:
+rem        - Add further timestamp" output during checkLMS execution, to track "long running" commands. 
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -75,8 +77,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 05-May-2023"
-set LMS_SCRIPT_BUILD=20230505
+set LMS_SCRIPT_VERSION="CheckLMS Script 15-May-2023"
+set LMS_SCRIPT_BUILD=20230515
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -1071,6 +1073,7 @@ if defined VC_REDIST_VERSION (
 )
 echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPDOWNLOAD (
+	echo Start at !DATE! !TIME! ....                                                               >> !REPORT_LOGFILE! 2>&1
 	echo ... Connection Test to BT download site ...
 	rem Connection Test to BT download site
 	set ConnectionTestStatus=Unknown
@@ -1079,15 +1082,16 @@ if not defined LMS_SKIPDOWNLOAD (
 	if exist "!LMS_DOWNLOAD_PATH!\ReadMe.txt" (
 		rem Connection Test: PASSED
 		echo     Connection Test PASSED, can access !CHECKLMS_EXTERNAL_SHARE!
-		echo Connection Test PASSED, can access !CHECKLMS_EXTERNAL_SHARE!                                          >> !REPORT_LOGFILE! 2>&1
+		echo Connection Test PASSED, can access !CHECKLMS_EXTERNAL_SHARE!                          >> !REPORT_LOGFILE! 2>&1
 		set ConnectionTestStatus=Passed
 	) else if !ERRORLEVEL!==1 (
 		rem Connection Test: FAILED
 		echo     Connection Test FAILED, cannot access !CHECKLMS_EXTERNAL_SHARE!
-		echo Connection Test FAILED, cannot access !CHECKLMS_EXTERNAL_SHARE!                                       >> !REPORT_LOGFILE! 2>&1
-		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_btdownloads.txt                                                          >> !REPORT_LOGFILE! 2>&1
+		echo Connection Test FAILED, cannot access !CHECKLMS_EXTERNAL_SHARE!                       >> !REPORT_LOGFILE! 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_btdownloads.txt                            >> !REPORT_LOGFILE! 2>&1
 		set ConnectionTestStatus=Failed
 	)
+	echo Start at !DATE! !TIME! ....                                                               >> !REPORT_LOGFILE! 2>&1
 	echo ... download newer CheckLMS scripts ...
 	if "!ConnectionTestStatus!" == "Passed" (
 
@@ -2967,6 +2971,7 @@ if not defined LMS_SKIPWINDOWS (
 	echo     Displays Windows IP Configuration: ipconfig /all
 	ipconfig /all                                                                                  >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- Retrieve public IP address: from http://ip4only.me/api/                  >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                               >> !REPORT_LOGFILE! 2>&1
 	powershell -Command "(New-Object Net.WebClient).DownloadFile('http://ip4only.me/api/', '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ip4only.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_ip4only_log.txt 2>&1
 	if !ERRORLEVEL!==0 (
 		rem Connection Test: PASSED
@@ -2980,6 +2985,7 @@ if not defined LMS_SKIPWINDOWS (
 		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_ip4only_log.txt                            >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ---------------- Retrieve public IP address: from https://api.ipify.org                   >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                               >> !REPORT_LOGFILE! 2>&1
 	powershell -Command "(New-Object Net.WebClient).DownloadFile('https://api.ipify.org', '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ipify.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_ipify_log.txt 2>&1
 	if !ERRORLEVEL!==0 (
 		rem Connection Test: PASSED
@@ -2994,6 +3000,7 @@ if not defined LMS_SKIPWINDOWS (
 		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_ipify_log.txt                              >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ---------------- Retrieve public IP address: from http://www.ifconfig.io/                 >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                               >> !REPORT_LOGFILE! 2>&1
 	powershell -Command "(New-Object Net.WebClient).DownloadFile('http://www.ifconfig.io/', '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ifconfig.html')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_ifconfig_log.txt 2>&1
 	if !ERRORLEVEL!==0 (
 		rem Connection Test: PASSED
@@ -3007,6 +3014,7 @@ if not defined LMS_SKIPWINDOWS (
 		echo     Details, see '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ifconfig_log.txt'        >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ---------------- Retrieve ISP name: from https://ipinfo.io/org                            >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                               >> !REPORT_LOGFILE! 2>&1
 	powershell -Command "(New-Object Net.WebClient).DownloadFile('https://ipinfo.io/org', '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ipinfo.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_ipinfo_log.txt 2>&1
 	if !ERRORLEVEL!==0 (
 		rem Connection Test: PASSED
@@ -7297,6 +7305,7 @@ if not defined LMS_SKIPCONTEST (
 		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_siemens.txt                       >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                          >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                      >> !REPORT_LOGFILE! 2>&1
 	echo ... test connection to LMS server: lms.bt.siemens.com [using https/443 port] ...
 	echo Test connection to LMS server: lms.bt.siemens.com  [using https/443 port]        >> !REPORT_LOGFILE! 2>&1 
 	rem Connection Test to LMS server
@@ -7313,6 +7322,7 @@ if not defined LMS_SKIPCONTEST (
 		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_lms_prod_server.txt               >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                          >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! ....                                                      >> !REPORT_LOGFILE! 2>&1
 	set CONNECTION_TEST_URL=https://lms.bt.siemens.com/flexnet/services/ActivationService
 	powershell -Command "(New-Object Net.WebClient).DownloadFile('!CONNECTION_TEST_URL!', '!temp!\downloadtest.txt')"  >!CHECKLMS_REPORT_LOG_PATH!\connection_test_btlms_activationservice.txt 2>&1
 	if !ERRORLEVEL!==0 (
@@ -7327,6 +7337,7 @@ if not defined LMS_SKIPCONTEST (
 	)
 	echo -------------------------------------------------------                          >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_EXTENDED_CONTENT (
+		echo Start at !DATE! !TIME! ....                                                  >> !REPORT_LOGFILE! 2>&1
 		echo ... test connection to LMS server: lms-quality.bt.siemens.com [using https/443 port] ...
 		echo Test connection to LMS server: lms-quality.bt.siemens.com  [using https/443 port]        >> !REPORT_LOGFILE! 2>&1 
 		rem Connection Test to LMS server
