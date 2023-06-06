@@ -41,6 +41,8 @@ rem               V1.21 (with /extend option) = LMS 2.5
 rem               V1.19 (with /extend option) = LMS 2.4
 rem     15-May-2023:
 rem        - Add further timestamp" output during checkLMS execution, to track "long running" commands. 
+rem     06-Jun-2023:
+rem        - Support captureScreen.ps1, capture screen for further analysis.
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -77,8 +79,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 15-May-2023"
-set LMS_SCRIPT_BUILD=20230515
+set LMS_SCRIPT_VERSION="CheckLMS Script 06-Jun-2023"
+set LMS_SCRIPT_BUILD=20230606
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -2010,6 +2012,16 @@ echo ===========================================================================
 echo =   S Y S T E M   C O N F I G U R A T I O N   S E C T I O N                  =                                          >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 echo ... system configuration section ...
+
+if not defined LMS_CHECK_ID (
+	IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\captureScreen.ps1" (
+		echo RUN: powershell -Command "& '!ProgramFiles!\Siemens\LMS\scripts\captureScreen.ps1'; exit $LASTEXITCODE"         >> !REPORT_LOGFILE! 2>&1
+		powershell -Command "& '!ProgramFiles!\Siemens\LMS\scripts\captureScreen.ps1'; exit $LASTEXITCODE"                   >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo ERROR: Cannot execute powershell script 'captureScreen.ps1', it doesn't exist at '!ProgramFiles!\Siemens\LMS\scripts\captureScreen.ps1'.    >> !REPORT_LOGFILE! 2>&1
+	)
+	echo -------------------------------------------------------                               >> !REPORT_LOGFILE! 2>&1
+)
 
 if defined LMS_SET_FIREWALL (
 	echo     set firewall settings ...
@@ -8474,6 +8486,16 @@ if /I !SIEMBTLOG_FILESIZE! GEQ !LOG_FILESIZE_LIMIT! (
 )
 if /I !ACCESSLOG_FILESIZE! GEQ !LOG_FILESIZE_LIMIT! (
 	echo     ATTENTION: Filesize of access.log with !ACCESSLOG_FILESIZE! bytes, is exceeding critical limit of !LOG_FILESIZE_LIMIT! bytes!      >> !REPORT_LOGFILE! 2>&1
+)
+
+if not defined LMS_CHECK_ID (
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+	IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\captureScreen.ps1" (
+		echo RUN: powershell -Command "& '!ProgramFiles!\Siemens\LMS\scripts\captureScreen.ps1'; exit $LASTEXITCODE"         >> !REPORT_LOGFILE! 2>&1
+		powershell -Command "& '!ProgramFiles!\Siemens\LMS\scripts\captureScreen.ps1'; exit $LASTEXITCODE"                   >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo ERROR: Cannot execute powershell script 'captureScreen.ps1', it doesn't exist at '!ProgramFiles!\Siemens\LMS\scripts\captureScreen.ps1'.    >> !REPORT_LOGFILE! 2>&1
+	)
 )
 
 :script_end
