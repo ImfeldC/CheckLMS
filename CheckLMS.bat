@@ -43,6 +43,8 @@ rem     15-May-2023:
 rem        - Add further timestamp" output during checkLMS execution, to track "long running" commands. 
 rem     06-Jun-2023:
 rem        - Support captureScreen.ps1, capture screen for further analysis.
+rem     12-Jul-2023:
+rem        - Add commend 'Select-Product -report -offline' and collect output in GetProductOffline.txt
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -79,8 +81,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 06-Jun-2023"
-set LMS_SCRIPT_BUILD=20230606
+set LMS_SCRIPT_VERSION="CheckLMS Script 12-Jul-2023"
+set LMS_SCRIPT_BUILD=20230712
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -3747,6 +3749,13 @@ if not defined LMS_SKIPLMS (
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -all}"  >> !REPORT_LOGFILE! 2>&1
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -all}"   >!CHECKLMS_REPORT_LOG_PATH!\GetProductAll.txt 2>&1 
 		echo     see '!CHECKLMS_REPORT_LOG_PATH!\GetProductAll.txt' for full details.                                            >> !REPORT_LOGFILE! 2>&1
+		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Get Product List: [read with LMU PowerShell command: Select-Product -report -offline]                               >> !REPORT_LOGFILE! 2>&1
+		echo     Get Product List: [read with LMU PowerShell command: Select-Product -report -offline]
+		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -offline}"  >> !REPORT_LOGFILE! 2>&1
+		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -offline}"   >!CHECKLMS_REPORT_LOG_PATH!\GetProductOffline.txt 2>&1 
+		echo     see '!CHECKLMS_REPORT_LOG_PATH!\GetProductOffline.txt' for full details.                                        >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 		echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
 		echo Get Feature List: [read with LMU PowerShell command: Select-Feature -report ¦ Format-Table -Property Name, Version, Status, Quantity, InstalledCount, ConsistentCount, ConsumedCount, ProductName]                                   >> !REPORT_LOGFILE! 2>&1
