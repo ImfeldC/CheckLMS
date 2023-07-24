@@ -1,6 +1,13 @@
 @Echo Off
 rem
 rem Check current LMS installation
+rem 
+rem ---------------------------------------------------------------------------------------
+rem © Siemens 2018 - 2023
+rem
+rem Transmittal, reproduction, dissemination and/or editing of this document as well as utilization ofits contents and communication thereof to others without express authorization are prohibited.
+rem Offenders will be held liable for payment of damages. All rights created by patent grant orregistration of a utility model or design patent are reserved.
+rem ---------------------------------------------------------------------------------------
 rem
 rem Changelog:
 rem     24-Jul-2018: Initial version
@@ -45,6 +52,11 @@ rem     06-Jun-2023:
 rem        - Support captureScreen.ps1, capture screen for further analysis.
 rem     12-Jul-2023:
 rem        - Add commend 'Select-Product -report -offline' and collect output in GetProductOffline.txt
+rem     21-Jul-2023:
+rem        - Add Siemens copyright: © Siemens 2023
+rem     24-Jul-2023:
+rem        - Fix: 2255922: The entries for "ProductName" are shortened by CheckLMS
+rem        - Execute 'netstat -o -f' & 'netstat -t -f' & 'netstat -y -f' only in /etxend mode --> speed-up script execution, avoid 'long running' commands
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -81,8 +93,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 12-Jul-2023"
-set LMS_SCRIPT_BUILD=20230712
+set LMS_SCRIPT_VERSION="CheckLMS Script 24-Jul-2023"
+set LMS_SCRIPT_BUILD=20230724
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -318,6 +330,7 @@ set REPORT_WMIC_INSTALLED_SW_LOGFILE=!CHECKLMS_REPORT_LOG_PATH!\WMIC_Installed_S
 set REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV=!CHECKLMS_REPORT_LOG_PATH!\WMIC_Installed_SW_Report.csv 
 set REPORT_WMIC_LOGFILE=!CHECKLMS_REPORT_LOG_PATH!\WMICReport.log 
 set REPORT_PS_LOGFILE=!CHECKLMS_REPORT_LOG_PATH!\PSReport.log 
+set REPORT_PowerShell_TEMPFILE=!CHECKLMS_REPORT_LOG_PATH!\PSOutputTemp.log
 
 rem Local path for BT ALM plugin
 set LMS_ALMBTPLUGIN_FOLDER_X86=C:\\Program Files (x86)\\Common Files\\Siemens\\SWS\\plugins\\bt
@@ -2605,7 +2618,7 @@ if not defined LMS_SKIPWMIC (
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	echo ... read installed products and version for vendor=Siemens [from registry] ...
 	echo Read installed products and version for vendor=Siemens [from registry]                                              >> !REPORT_LOGFILE! 2>&1
-	Powershell -command "Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* -ErrorAction SilentlyContinue | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate, InstallSource, ModifyPath, UninstallString, PSChildName | Where-Object{$_.Publisher -like '*Siemens*'} | Format-Table | Out-File -Width 1024 '!CHECKLMS_REPORT_LOG_PATH!\InstalledSiemensProgramsReport.log'" >> !REPORT_LOGFILE! 2>&1
+	Powershell -command "Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* -ErrorAction SilentlyContinue | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate, InstallSource, ModifyPath, UninstallString, PSChildName | Where-Object{$_.Publisher -like '*Siemens*'} | Format-Table | Out-File -Width 4000 '!CHECKLMS_REPORT_LOG_PATH!\InstalledSiemensProgramsReport.log'" >> !REPORT_LOGFILE! 2>&1
 	type !CHECKLMS_REPORT_LOG_PATH!\InstalledSiemensProgramsReport.log                                                       >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- wmic product get name, version, InstallDate, vendor [with vendor=Siemens]                          >> !REPORT_LOGFILE! 2>&1
 	echo ... read installed products and version [with wmic] ...
@@ -2687,7 +2700,7 @@ if not defined LMS_SKIPWMIC (
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	echo ... read installed products and version [from registry] ...
 	echo Read installed products and version [from registry]                                                                 >> !REPORT_LOGFILE! 2>&1
-	Powershell -command "Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* -ErrorAction SilentlyContinue | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate, InstallSource, ModifyPath, UninstallString, PSChildName | Format-Table | Out-File -Width 1024 '!CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport1.log'" >> !REPORT_LOGFILE! 2>&1
+	Powershell -command "Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* -ErrorAction SilentlyContinue | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate, InstallSource, ModifyPath, UninstallString, PSChildName | Format-Table | Out-File -Width 4000 '!CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport1.log'" >> !REPORT_LOGFILE! 2>&1
 	Powershell -command "Get-Item HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*"                                                                                                                                                     > !CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport2.log 2>&1
 	rem type !CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport.log >> !REPORT_LOGFILE! 2>&1
 	echo     See full details in '!CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport1.log' and '!CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport2.log'!  >> !REPORT_LOGFILE! 2>&1
@@ -3070,9 +3083,13 @@ if not defined LMS_SKIPNETSTAT (
     echo     More details see '!CHECKLMS_REPORT_LOG_PATH!\netstat_x.log'														 >> !REPORT_LOGFILE! 2>&1                    
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- Displays the owning process ID associated with each connection: netstat -o -f                          >> !REPORT_LOGFILE! 2>&1
-	echo     Displays the owning process ID associated with each connection: netstat -o -f
-	netstat -o -f   > !CHECKLMS_REPORT_LOG_PATH!\netstat_o_f.log 2>&1
-    echo     More details see '!CHECKLMS_REPORT_LOG_PATH!\netstat_o_f.log'														 >> !REPORT_LOGFILE! 2>&1                  
+	if defined LMS_EXTENDED_CONTENT (
+		echo     Displays the owning process ID associated with each connection: netstat -o -f
+		netstat -o -f   > !CHECKLMS_REPORT_LOG_PATH!\netstat_o_f.log 2>&1
+		echo     More details see '!CHECKLMS_REPORT_LOG_PATH!\netstat_o_f.log'													 >> !REPORT_LOGFILE! 2>&1                  
+	) else (
+		echo Displays the owning process ID associated with each connection: 'netstat -o -f' skipped, start script with option '/extend' to enable extended content.    >> !REPORT_LOGFILE! 2>&1
+	)
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- Displays all connections and listening ports: netstat -a -f                                            >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_EXTENDED_CONTENT (
@@ -3080,13 +3097,17 @@ if not defined LMS_SKIPNETSTAT (
 		netstat -a -f   > !CHECKLMS_REPORT_LOG_PATH!\netstat_a_f.log 2>&1
 		echo     More details see '!CHECKLMS_REPORT_LOG_PATH!\netstat_a_f.log'												     >> !REPORT_LOGFILE! 2>&1                  
 	) else (
-		echo Displays all connections and listening ports: 'netstat -a -f' skipped, start script with option '/extend' to enable extended content.             >> !REPORT_LOGFILE! 2>&1
+		echo Displays all connections and listening ports: 'netstat -a -f' skipped, start script with option '/extend' to enable extended content.                      >> !REPORT_LOGFILE! 2>&1
 	)
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- Displays the current connection offload state: netstat -t -f                                           >> !REPORT_LOGFILE! 2>&1
-	echo     Displays the current connection offload state: netstat -t -f
-	netstat -t -f   > !CHECKLMS_REPORT_LOG_PATH!\netstat_t_f.log 2>&1
-    echo     More details see '!CHECKLMS_REPORT_LOG_PATH!\netstat_t_f.log'														 >> !REPORT_LOGFILE! 2>&1                  
+	if defined LMS_EXTENDED_CONTENT (
+		echo     Displays the current connection offload state: netstat -t -f
+		netstat -t -f   > !CHECKLMS_REPORT_LOG_PATH!\netstat_t_f.log 2>&1
+		echo     More details see '!CHECKLMS_REPORT_LOG_PATH!\netstat_t_f.log'													 >> !REPORT_LOGFILE! 2>&1                  
+	) else (
+		echo Displays the current connection offload state: 'netstat -t -f' skipped, start script with option '/extend' to enable extended content.                     >> !REPORT_LOGFILE! 2>&1
+	)
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- Displays the executable involved in creating each connection or listening port: netstat -b -f          >> !REPORT_LOGFILE! 2>&1
 	echo     Displays the executable involved in creating each connection or listening port: netstat -b -f
@@ -3094,9 +3115,13 @@ if not defined LMS_SKIPNETSTAT (
     echo     More details see '!CHECKLMS_REPORT_LOG_PATH!\netstat_b_f.log'														 >> !REPORT_LOGFILE! 2>&1                  
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- Displays the TCP connection template for all connections: netstat -y -f                                >> !REPORT_LOGFILE! 2>&1
-	echo     Displays the TCP connection template for all connections: netstat -y -f
-	netstat -y -f   > !CHECKLMS_REPORT_LOG_PATH!\netstat_y_f.log 2>&1
-    echo     More details see '!CHECKLMS_REPORT_LOG_PATH!\netstat_y_f.log'														 >> !REPORT_LOGFILE! 2>&1
+	if defined LMS_EXTENDED_CONTENT (
+		echo     Displays the TCP connection template for all connections: netstat -y -f
+		netstat -y -f   > !CHECKLMS_REPORT_LOG_PATH!\netstat_y_f.log 2>&1
+		echo     More details see '!CHECKLMS_REPORT_LOG_PATH!\netstat_y_f.log'													 >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo Displays the TCP connection template for all connections: 'netstat -y -f' skipped, start script with option '/extend' to enable extended content.          >> !REPORT_LOGFILE! 2>&1
+	)
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 ) else (
 	rem LMS_SKIPNETSTAT
@@ -3738,36 +3763,38 @@ if not defined LMS_SKIPLMS (
 		echo LMS_PS_LMUWSSTATE=[!LMS_PS_LMUWSSTATE!]                                                                             >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 		echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
-		echo Get Product List: [read with LMU PowerShell command: Select-Product -report -all ¦ Format-Table -Property Name, Version, Count, CustomerSiteId, ActivationId, Features]                                   >> !REPORT_LOGFILE! 2>&1
+		echo Get Product List: [read with LMU PowerShell command: Select-Product -report -all ¦ ...]                             >> !REPORT_LOGFILE! 2>&1
 		echo     Get Product List: [read with LMU PowerShell command: Select-Product -report -all ...]
-		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -all | Format-Table -Property Name, Version, Count, CustomerSiteId, ActivationId, Features}"  >> !REPORT_LOGFILE! 2>&1
-		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -all | Format-Table -Property Name, Version, Count, CustomerSiteId, ActivationId, Features}"       >> !REPORT_LOGFILE! 2>&1 
+		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -all | Format-Table -Property Name, Version, Count, CustomerSiteId, ActivationId, Features | Out-File -Encoding utf8 '!REPORT_PowerShell_TEMPFILE!' -width 4000}"  >> !REPORT_LOGFILE! 2>&1
+		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -all | Format-Table -Property Name, Version, Count, CustomerSiteId, ActivationId, Features | Out-File -Encoding utf8 '!REPORT_PowerShell_TEMPFILE!' -width 4000}"       >> !REPORT_LOGFILE! 2>&1 
+		type !REPORT_PowerShell_TEMPFILE!                                                                                        >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 		echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
 		echo Get Product List: [read with LMU PowerShell command: Select-Product -report -all]                                   >> !REPORT_LOGFILE! 2>&1
 		echo     Get Product List: [read with LMU PowerShell command: Select-Product -report -all]
-		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -all}"  >> !REPORT_LOGFILE! 2>&1
-		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -all}"   >!CHECKLMS_REPORT_LOG_PATH!\GetProductAll.txt 2>&1 
+		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -all | Out-File -Encoding utf8 '!CHECKLMS_REPORT_LOG_PATH!\GetProductAll.txt' -width 4000}"          >> !REPORT_LOGFILE! 2>&1
+		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -all | Out-File -Encoding utf8 '!CHECKLMS_REPORT_LOG_PATH!\GetProductAll.txt' -width 4000}"               >> !REPORT_LOGFILE! 2>&1 
 		echo     see '!CHECKLMS_REPORT_LOG_PATH!\GetProductAll.txt' for full details.                                            >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 		echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
 		echo Get Product List: [read with LMU PowerShell command: Select-Product -report -offline]                               >> !REPORT_LOGFILE! 2>&1
 		echo     Get Product List: [read with LMU PowerShell command: Select-Product -report -offline]
-		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -offline}"  >> !REPORT_LOGFILE! 2>&1
-		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -offline}"   >!CHECKLMS_REPORT_LOG_PATH!\GetProductOffline.txt 2>&1 
+		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -offline | Out-File -Encoding utf8 '!CHECKLMS_REPORT_LOG_PATH!\GetProductOffline.txt' -width 4000}"  >> !REPORT_LOGFILE! 2>&1
+		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -offline | Out-File -Encoding utf8 '!CHECKLMS_REPORT_LOG_PATH!\GetProductOffline.txt' -width 4000}"       >> !REPORT_LOGFILE! 2>&1 
 		echo     see '!CHECKLMS_REPORT_LOG_PATH!\GetProductOffline.txt' for full details.                                        >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 		echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
-		echo Get Feature List: [read with LMU PowerShell command: Select-Feature -report ¦ Format-Table -Property Name, Version, Status, Quantity, InstalledCount, ConsistentCount, ConsumedCount, ProductName]                                   >> !REPORT_LOGFILE! 2>&1
+		echo Get Feature List: [read with LMU PowerShell command: Select-Feature -report ¦ ...]                                  >> !REPORT_LOGFILE! 2>&1
 		echo     Get Feature List: [read with LMU PowerShell command: Select-Feature -report ...]
-		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Feature -report | Format-Table -Property Name, Version, Status, Quantity, InstalledCount, ConsistentCount, ConsumedCount, ProductName}"  >> !REPORT_LOGFILE! 2>&1
-		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Feature -report | Format-Table -Property Name, Version, Status, Quantity, InstalledCount, ConsistentCount, ConsumedCount, ProductName}"       >> !REPORT_LOGFILE! 2>&1 
+		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Feature -report | Format-Table -Property Name, Version, Status, Quantity, InstalledCount, ConsistentCount, ConsumedCount, ProductName | Out-File -Encoding utf8 '!REPORT_PowerShell_TEMPFILE!' -width 4000}"  >> !REPORT_LOGFILE! 2>&1
+		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Feature -report | Format-Table -Property Name, Version, Status, Quantity, InstalledCount, ConsistentCount, ConsumedCount, ProductName | Out-File -Encoding utf8 '!REPORT_PowerShell_TEMPFILE!' -width 4000}"       >> !REPORT_LOGFILE! 2>&1 
+		type !REPORT_PowerShell_TEMPFILE!                                                                                        >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 		echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
 		echo Get Feature List: [read with LMU PowerShell command: Select-Feature -report]                                        >> !REPORT_LOGFILE! 2>&1
 		echo     Get Feature List: [read with LMU PowerShell command: Select-Feature -report]
-		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Feature -report}"       >> !REPORT_LOGFILE! 2>&1
-		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Feature -report}"   >!CHECKLMS_REPORT_LOG_PATH!\GetFeaturesAll.txt 2>&1 
+		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Feature -report | Out-File -Encoding utf8 '!CHECKLMS_REPORT_LOG_PATH!\GetFeaturesAll.txt' -width 4000}"              >> !REPORT_LOGFILE! 2>&1
+		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Feature -report | Out-File -Encoding utf8 '!CHECKLMS_REPORT_LOG_PATH!\GetFeaturesAll.txt' -width 4000}"   		          >> !REPORT_LOGFILE! 2>&1 
 		echo     see '!CHECKLMS_REPORT_LOG_PATH!\GetFeaturesAll.txt' for full details.                                           >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 		echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
