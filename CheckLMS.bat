@@ -11,8 +11,13 @@ rem ----------------------------------------------------------------------------
 rem
 rem Changelog:
 rem     24-Jul-2018: Initial version
-rem     24-Jan-2022: script released for LMS 2.6
-rem     23-Jan-2023: script released for LMS 2.7
+rem     14-Sep-2018: script released for LMS 2.2     (2.2.721)
+rem     20-Jul-2019: script released for LMS 2.2 SP1 (2.2.737)
+rem     18-Dec-2019: script released for LMS 2.3     (2.3.745)
+rem     11-Aug-2020: script released for LMS 2.4     (2.4.815)
+rem     07-Jan-2021: script released for LMS 2.5     (2.5.824)
+rem     24-Jan-2022: script released for LMS 2.6     (2.6.849)
+rem     23-Jan-2023: script released for LMS 2.7     (2.7.872)
 rem 
 rem     Full details see changelog.md (on https://github.com/ImfeldC/CheckLMS/blob/master/changelog.md )
 rem
@@ -57,6 +62,12 @@ rem        - Add Siemens copyright: © Siemens 2023
 rem     24-Jul-2023:
 rem        - Fix: 2255922: The entries for "ProductName" are shortened by CheckLMS
 rem        - Execute 'netstat -o -f' & 'netstat -t -f' & 'netstat -y -f' only in /etxend mode --> speed-up script execution, avoid 'long running' commands
+rem     02-Aug-2023:
+rem        - add 'get-lms -IsCheckoutSortCertFirst' (see 989411: Checkout priority between Certificates and Trusted Store (Flexera case #02019461))
+rem     03-Aug-2023:
+rem        - Add 'Get-ComputerInfo | select Windows*'
+rem        - Add 'dism /online /get-currentedition'
+rem        - Execute 'netstat -b -f' only in /etxend mode --> speed-up script execution, avoid 'long running' commands
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -93,8 +104,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 24-Jul-2023"
-set LMS_SCRIPT_BUILD=20230724
+set LMS_SCRIPT_VERSION="CheckLMS Script 03-Aug-2023"
+set LMS_SCRIPT_BUILD=20230803
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -2721,6 +2732,16 @@ if not defined LMS_SKIPWMIC (
 echo Collect further information from windows ...                                                                            >> !REPORT_LOGFILE! 2>&1
 echo ... collect further information from windows ...
 if not defined LMS_SKIPWINDOWS (
+	echo ---------------- powershell -command "Get-ComputerInfo | select Windows*"                                           >> !REPORT_LOGFILE! 2>&1
+	echo Retrieve windows version [using 'powershell -command "Get-ComputerInfo | select Windows*"']:                        >> !REPORT_LOGFILE! 2>&1
+	powershell -command "Get-ComputerInfo | select Windows*"                                                                 >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+	if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
+		echo Retrieve windows edition [using 'dism /online /get-currentedition']:                                            >> !REPORT_LOGFILE! 2>&1
+		dism /online /get-currentedition                                                                                     >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo WARNING: Cannot execute 'dism /online /get-currentedition', start script with administrator privilege.          >> !REPORT_LOGFILE! 2>&1
+	)
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 	echo ... read installed .NET framework[s] [reg query] ...
 	echo Read installed .NET framework[s] [reg query]                                                                        >> !REPORT_LOGFILE! 2>&1
@@ -3110,9 +3131,13 @@ if not defined LMS_SKIPNETSTAT (
 	)
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- Displays the executable involved in creating each connection or listening port: netstat -b -f          >> !REPORT_LOGFILE! 2>&1
-	echo     Displays the executable involved in creating each connection or listening port: netstat -b -f
-	netstat -b -f   > !CHECKLMS_REPORT_LOG_PATH!\netstat_b_f.log 2>&1
-    echo     More details see '!CHECKLMS_REPORT_LOG_PATH!\netstat_b_f.log'														 >> !REPORT_LOGFILE! 2>&1                  
+	if defined LMS_EXTENDED_CONTENT (
+		echo     Displays the executable involved in creating each connection or listening port: netstat -b -f
+		netstat -b -f   > !CHECKLMS_REPORT_LOG_PATH!\netstat_b_f.log 2>&1
+		echo     More details see '!CHECKLMS_REPORT_LOG_PATH!\netstat_b_f.log'													 >> !REPORT_LOGFILE! 2>&1                  
+	) else (
+		echo Displays the executable involved in creating each connection or listening port: 'netstat -b -f' skipped, start script with option '/extend' to enable extended content.                     >> !REPORT_LOGFILE! 2>&1
+	)
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- Displays the TCP connection template for all connections: netstat -y -f                                >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_EXTENDED_CONTENT (
@@ -3761,6 +3786,11 @@ if not defined LMS_SKIPLMS (
 		for /f %%i in ('powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -LMUWsState}"') do set LMS_PS_LMUWSSTATE=%%i          >> !REPORT_LOGFILE! 2>&1
 		if "!LMS_PS_LMUWSSTATE!" NEQ "" set LMS_PS_LMUWSSTATE=!LMS_PS_LMUWSSTATE: =!
 		echo LMS_PS_LMUWSSTATE=[!LMS_PS_LMUWSSTATE!]                                                                             >> !REPORT_LOGFILE! 2>&1
+		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+		echo Get LMS checkout order: [read with LMU PowerShell command: get-lms -IsCheckoutSortCertFirst]                        >> !REPORT_LOGFILE! 2>&1
+		echo     Get LMS checkout order: [read with LMU PowerShell command: get-lms -IsCheckoutSortCertFirst]
+		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -IsCheckoutSortCertFirst}" >> !REPORT_LOGFILE! 2>&1
+		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -IsCheckoutSortCertFirst}"  >> !REPORT_LOGFILE! 2>&1 
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 		echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
 		echo Get Product List: [read with LMU PowerShell command: Select-Product -report -all ¦ ...]                             >> !REPORT_LOGFILE! 2>&1
