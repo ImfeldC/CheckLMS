@@ -61,13 +61,13 @@ rem     21-Jul-2023:
 rem        - Add Siemens copyright: © Siemens 2023
 rem     24-Jul-2023:
 rem        - Fix: 2255922: The entries for "ProductName" are shortened by CheckLMS
-rem        - Execute 'netstat -o -f' & 'netstat -t -f' & 'netstat -y -f' only in /etxend mode --> speed-up script execution, avoid 'long running' commands
+rem        - Execute 'netstat -o -f' & 'netstat -t -f' & 'netstat -y -f' only in /extend mode --> speed-up script execution, avoid 'long running' commands
 rem     02-Aug-2023:
 rem        - add 'get-lms -IsCheckoutSortCertFirst' (see 989411: Checkout priority between Certificates and Trusted Store (Flexera case #02019461))
 rem     03-Aug-2023:
 rem        - Add 'Get-ComputerInfo | select Windows*'
 rem        - Add 'dism /online /get-currentedition'
-rem        - Execute 'netstat -b -f' only in /etxend mode --> speed-up script execution, avoid 'long running' commands
+rem        - Execute 'netstat -b -f' only in /extend mode --> speed-up script execution, avoid 'long running' commands
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
