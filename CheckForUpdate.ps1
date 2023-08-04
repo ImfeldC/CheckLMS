@@ -43,7 +43,8 @@ param(
 #             Add script version to console output
 #             Add parameter to choose between productive (=default) or stage system
 # '20230511': Support 'SkipCheckForUpdate' registry entry; if set to '1' do not perform check for updates.
-$scriptVersion = '20230511'
+# '20230804': Revert back to use Start-BitsTransfer to download file from OSD, instead of Net.WebClient (see also '20221005')
+$scriptVersion = '20230804'
 
 $global:ExitCode=0
 # Old API URL -> $OSD_APIURL="https://www.automation.siemens.com/softwareupdater/public/api/updates"
@@ -402,15 +403,16 @@ if ( $SkipCheckForUpdate -ne '1' ) {
 				$Path = $env:ProgramData + '\Siemens\LMS\Download'
 				$shorturl, $options = ($downloadurl -Split '\?')[0,1]
 				$filename = ($shorturl -Split '/')[-1]
+				
 				if( $Verbose ) {
 					Log-Message "Title: $title / Description: $description / Download URL: $shorturl / filename: $filename / options: $options"
 				}
 				
 				if( $downloadurl ) {
 					# download the software udpate
-					Log-Message "Start to download ... '$downloadurl' to '$Path\$filename'"
-					#Start-BitsTransfer -Source "$downloadurl" -Destination "$Path"
-					(New-Object Net.WebClient).DownloadFile($downloadurl, $Path + "\\" + $filename)
+					$filepath = $Path + "\\" + $filename
+					Log-Message "Start to download ... '$downloadurl' to '$filepath'"
+					Start-BitsTransfer -Source "$downloadurl" -Destination $filepath
 					Log-Message "End of download ..."
 				}
 			}	
