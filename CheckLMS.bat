@@ -68,6 +68,9 @@ rem     03-Aug-2023:
 rem        - Add 'Get-ComputerInfo | select Windows*'
 rem        - Add 'dism /online /get-currentedition'
 rem        - Execute 'netstat -b -f' only in /extend mode --> speed-up script execution, avoid 'long running' commands
+rem     25-Aug-2023:
+rem        - replace 'Started at' with 'Start at'
+rem        - Add to each 'Start at' the related command to the output (this allows easier analysis of 'long running tasks' later on)
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -104,8 +107,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 03-Aug-2023"
-set LMS_SCRIPT_BUILD=20230803
+set LMS_SCRIPT_VERSION="CheckLMS Script 25-Aug-2023"
+set LMS_SCRIPT_BUILD=20230825
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -1101,7 +1104,7 @@ if defined VC_REDIST_VERSION (
 )
 echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPDOWNLOAD (
-	echo Start at !DATE! !TIME! ....                                                               >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Connection Test to BT download site                           >> !REPORT_LOGFILE! 2>&1
 	echo ... Connection Test to BT download site ...
 	rem Connection Test to BT download site
 	set ConnectionTestStatus=Unknown
@@ -1119,7 +1122,7 @@ if not defined LMS_SKIPDOWNLOAD (
 		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_btdownloads.txt                            >> !REPORT_LOGFILE! 2>&1
 		set ConnectionTestStatus=Failed
 	)
-	echo Start at !DATE! !TIME! ....                                                               >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... download newer CheckLMS scripts                               >> !REPORT_LOGFILE! 2>&1
 	echo ... download newer CheckLMS scripts ...
 	if "!ConnectionTestStatus!" == "Passed" (
 
@@ -1314,7 +1317,7 @@ if defined LMS_SHOW_VERSION (
 )
 
 if not defined LMS_SKIPDOWNLOAD (
-	echo Start at !DATE! !TIME! ....                                                                   >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Connection Test to BT download site                               >> !REPORT_LOGFILE! 2>&1
 	echo ... Connection Test to BT download site ...
 	rem Connection Test to BT download site
 	set ConnectionTestStatus=Unknown
@@ -1644,7 +1647,7 @@ if not defined LMS_SKIPDOWNLOAD (
 	echo SKIPPED download section. The script didn't execute the download commands.                                               >> !REPORT_LOGFILE! 2>&1
 )
 
-echo Start at !DATE! !TIME! ....   >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... unzip section  >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPUNZIP (
 	if defined LMS_SERVERTOOL_DW (
 		REM Unzip FNP Siemens Library
@@ -1702,6 +1705,7 @@ if not defined LMS_SKIPUNZIP (
 	echo SKIPPED unzip section. The script didn't execute the unzip commands.                                               >> !REPORT_LOGFILE! 2>&1
 )
 
+echo Start at !DATE! !TIME! .... check download  >> !REPORT_LOGFILE! 2>&1
 if defined LMS_CHECK_DOWNLOAD (
 	if defined UNZIP_TOOL (
 		echo -------------------------------------------------------                           >> !REPORT_LOGFILE! 2>&1
@@ -2030,7 +2034,7 @@ if not defined LMS_SKIPDOWNLOAD (
 	)
 )
 
-echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... S Y S T E M   C O N F I G U R A T I O N   S E C T I O N                                     >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================
 echo =   S Y S T E M   C O N F I G U R A T I O N   S E C T I O N                  =
 echo ==============================================================================
@@ -2379,7 +2383,7 @@ if defined LMS_STOP_DEMO_VD (
 
 if not defined LMS_CHECK_ID (
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Convert CSID configuration file, with LmuTool.exe /MULTICSID                            >> !REPORT_LOGFILE! 2>&1
 	echo Convert CSID configuration file, with LmuTool.exe /MULTICSID                                                        >> !REPORT_LOGFILE! 2>&1
 	echo     Convert CSID configuration file, with LmuTool.exe /MULTICSID
 	if defined LMS_LMUTOOL (
@@ -2475,7 +2479,7 @@ if defined LMS_CFG_CULTUREID (
     echo Configured culture Id: no id configured.                                                                            >> !REPORT_LOGFILE! 2>&1
     echo     Configured culture Id: no id configured.
 )
-echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... W I N D O W S   S Y S T E M   I N F O R M A T I O N                                         >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================
 echo =   W I N D O W S   S Y S T E M   I N F O R M A T I O N                      =
 echo ==============================================================================
@@ -2502,7 +2506,7 @@ rem 		echo     works only on "known" languages, for languages !OS_LANGUAGE! chec
 rem 	)
 rem )
 
-echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... Collect information from windows                                                            >> !REPORT_LOGFILE! 2>&1
 echo Collect information from windows ...                                                                                    >> !REPORT_LOGFILE! 2>&1
 echo ... collect information from windows ...
 echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
@@ -2555,7 +2559,7 @@ if not defined LMS_SKIPWMIC (
 	wmic /output:!REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV! product get name, version, InstallDate, vendor /format:csv           >> !REPORT_LOGFILE! 2>&1
 	echo     See '!REPORT_WMIC_INSTALLED_SW_LOGFILE_CSV!' for full details.                                                  >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... WMIC Report                                                                             >> !REPORT_LOGFILE! 2>&1
 	rem see https://www.lisenet.com/2014/get-windows-system-information-via-wmi-command-line-wmic/
 	echo WMIC Report                                                                                                         >> !REPORT_LOGFILE! 2>&1
 	del !REPORT_WMIC_LOGFILE! >nul 2>&1
@@ -2716,7 +2720,7 @@ if not defined LMS_SKIPWMIC (
 	rem type !CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport.log >> !REPORT_LOGFILE! 2>&1
 	echo     See full details in '!CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport1.log' and '!CHECKLMS_REPORT_LOG_PATH!\InstalledProgramsReport2.log'!  >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- wmic product get name, version, InstallDate, vendor, IdentifyingNumber                             >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Read installed products and version [with wmic product get name, version, InstallDate, vendor, IdentifyingNumber]    >> !REPORT_LOGFILE! 2>&1
 	echo     Read installed products and version [with wmic product get name, version, InstallDate, vendor, IdentifyingNumber]
 	echo Read installed products and version [with wmic]                                                                     >> !REPORT_LOGFILE! 2>&1
 	wmic /output:!REPORT_WMIC_INSTALLED_SW_LOGFILE! product get name, version, InstallDate, vendor, IdentifyingNumber        >> !REPORT_LOGFILE! 2>&1
@@ -2771,7 +2775,7 @@ if not defined LMS_SKIPWINDOWS (
 	echo Display environment variables [using set command]:                                                                  >> !REPORT_LOGFILE! 2>&1
 	set                                                                                                                      >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... retrieve list of drivers [using driverquery]                                            >> !REPORT_LOGFILE! 2>&1
 	echo ... retrieve list of drivers [using driverquery] ...
 	echo Retrieve list of drivers [using driverquery]:                                                                       >> !REPORT_LOGFILE! 2>&1
 	driverquery /v                                                                                                           >> !REPORT_LOGFILE! 2>&1
@@ -2834,7 +2838,7 @@ if not defined LMS_SKIPWINDOWS (
 	echo Retrieve powershell information [using 'powershell -command "$PSVersionTable"']:                                    >> !REPORT_LOGFILE! 2>&1
 	powershell -command "$PSVersionTable"                                                                                    >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- powershell -command "& {Get-Service -Name *}"                                                      >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... list relevant installed services [using Get-Service powershell command]                 >> !REPORT_LOGFILE! 2>&1
 	echo ... list relevant installed services [using Get-Service powershell command] ...
 	echo List relevant installed services [using Get-Service powershell command]:                                            >> !REPORT_LOGFILE! 2>&1
 	rem powershell -command "& {Get-Service -Name 'Siemens BT Licensing Server'}" > !CHECKLMS_REPORT_LOG_PATH!\getservice.txt 2>&1
@@ -2914,7 +2918,7 @@ if not defined LMS_SKIPWINDOWS (
 	echo List available sleep states of power configuration [using powercfg /AVAILABLESLEEPSTATES]:                              >> !REPORT_LOGFILE! 2>&1
 	powercfg /AVAILABLESLEEPSTATES                                                                                               >> !REPORT_LOGFILE! 2>&1
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... collect system information                                                                  >> !REPORT_LOGFILE! 2>&1
 	echo ... collect system information ...
 	echo Collect system information ...                                                                                          >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- systeminfo                                                                                             >> !REPORT_LOGFILE! 2>&1
@@ -2959,7 +2963,7 @@ if not defined LMS_SKIPWINDOWS (
 		)
 	)
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... collect user information                                                                    >> !REPORT_LOGFILE! 2>&1
 	echo ... collect user information ...
 	echo Collect user information ...                                                                                            >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- whoami                                                                                                 >> !REPORT_LOGFILE! 2>&1
@@ -2992,7 +2996,7 @@ if not defined LMS_SKIPWINDOWS (
 		echo Creation of 'GpResultUser.html' skipped, start script with option '/extend' to enable extended content.             >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ==============================================================================            >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                               >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... collect task list [process information]                       >> !REPORT_LOGFILE! 2>&1
 	echo ... collect task list [process information] ...
 	echo Task List [Process Infromation]                                                           >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- Displays task list: for specific LMS processes                           >> !REPORT_LOGFILE! 2>&1
@@ -3012,14 +3016,14 @@ if not defined LMS_SKIPWINDOWS (
 	tasklist /M > !CHECKLMS_REPORT_LOG_PATH!\tasklist_currentlyUsed.txt 2>&1 
 	echo     See !CHECKLMS_REPORT_LOG_PATH!\tasklist_currentlyUsed.txt                             >> !REPORT_LOGFILE! 2>&1
 	echo ==============================================================================            >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                               >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... read network statistics                                       >> !REPORT_LOGFILE! 2>&1
 	echo ... read network statistics ...
 	echo Displays Windows IP Configuration [ipconfig]                                              >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- Displays Windows IP Configuration: ipconfig /all                         >> !REPORT_LOGFILE! 2>&1
 	echo     Displays Windows IP Configuration: ipconfig /all
 	ipconfig /all                                                                                  >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- Retrieve public IP address: from http://ip4only.me/api/                  >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                               >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Connection Test, check http://ip4only.me/api/                 >> !REPORT_LOGFILE! 2>&1
 	powershell -Command "(New-Object Net.WebClient).DownloadFile('http://ip4only.me/api/', '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ip4only.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_ip4only_log.txt 2>&1
 	if !ERRORLEVEL!==0 (
 		rem Connection Test: PASSED
@@ -3033,7 +3037,7 @@ if not defined LMS_SKIPWINDOWS (
 		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_ip4only_log.txt                            >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ---------------- Retrieve public IP address: from https://api.ipify.org                   >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                               >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Connection Test, check https://api.ipify.org                  >> !REPORT_LOGFILE! 2>&1
 	powershell -Command "(New-Object Net.WebClient).DownloadFile('https://api.ipify.org', '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ipify.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_ipify_log.txt 2>&1
 	if !ERRORLEVEL!==0 (
 		rem Connection Test: PASSED
@@ -3048,7 +3052,7 @@ if not defined LMS_SKIPWINDOWS (
 		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_ipify_log.txt                              >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ---------------- Retrieve public IP address: from http://www.ifconfig.io/                 >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                               >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Connection Test, check http://www.ifconfig.io/                >> !REPORT_LOGFILE! 2>&1
 	powershell -Command "(New-Object Net.WebClient).DownloadFile('http://www.ifconfig.io/', '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ifconfig.html')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_ifconfig_log.txt 2>&1
 	if !ERRORLEVEL!==0 (
 		rem Connection Test: PASSED
@@ -3062,7 +3066,7 @@ if not defined LMS_SKIPWINDOWS (
 		echo     Details, see '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ifconfig_log.txt'        >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ---------------- Retrieve ISP name: from https://ipinfo.io/org                            >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                               >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Connection Test, check https://ipinfo.io/org                  >> !REPORT_LOGFILE! 2>&1
 	powershell -Command "(New-Object Net.WebClient).DownloadFile('https://ipinfo.io/org', '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ipinfo.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_ipinfo_log.txt 2>&1
 	if !ERRORLEVEL!==0 (
 		rem Connection Test: PASSED
@@ -3087,22 +3091,22 @@ if not defined LMS_SKIPNETSTAT (
 	echo ---------------- Displays Ethernet statistics: netstat -e                                                               >> !REPORT_LOGFILE! 2>&1
 	echo     Displays Ethernet statistics: netstat -e
 	netstat -e                                                                                                                   >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Displays the routing table: netstat -r                                                      >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- Displays the routing table: netstat -r                                                                 >> !REPORT_LOGFILE! 2>&1
 	echo     Displays the routing table: netstat -r
 	netstat -r      > !CHECKLMS_REPORT_LOG_PATH!\netstat_r.log 2>&1
     echo     More details see '!CHECKLMS_REPORT_LOG_PATH!\netstat_r.log'														 >> !REPORT_LOGFILE! 2>&1                    
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Displays per-protocol statistics: netstat -s                                                >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- Displays per-protocol statistics: netstat -s                                                           >> !REPORT_LOGFILE! 2>&1
 	echo     Displays per-protocol statistics: netstat -s
 	netstat -s      > !CHECKLMS_REPORT_LOG_PATH!\netstat_s.log 2>&1
     echo     More details see '!CHECKLMS_REPORT_LOG_PATH!\netstat_s.log'														 >> !REPORT_LOGFILE! 2>&1                    
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Displays NetworkDirect connections, listeners, and shared endpoints: netstat -x             >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- Displays NetworkDirect connections, listeners, and shared endpoints: netstat -x                        >> !REPORT_LOGFILE! 2>&1
 	echo     Displays NetworkDirect connections, listeners, and shared endpoints: netstat -x
 	netstat -x      > !CHECKLMS_REPORT_LOG_PATH!\netstat_x.log 2>&1
     echo     More details see '!CHECKLMS_REPORT_LOG_PATH!\netstat_x.log'														 >> !REPORT_LOGFILE! 2>&1                    
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Displays the owning process ID associated with each connection: netstat -o -f               >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- Displays the owning process ID associated with each connection: netstat -o -f                          >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_EXTENDED_CONTENT (
 		echo     Displays the owning process ID associated with each connection: netstat -o -f
@@ -3111,7 +3115,7 @@ if not defined LMS_SKIPNETSTAT (
 	) else (
 		echo Displays the owning process ID associated with each connection: 'netstat -o -f' skipped, start script with option '/extend' to enable extended content.    >> !REPORT_LOGFILE! 2>&1
 	)
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Displays all connections and listening ports: netstat -a -f                                 >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- Displays all connections and listening ports: netstat -a -f                                            >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_EXTENDED_CONTENT (
 		echo     Displays all connections and listening ports: netstat -a -f
@@ -3120,7 +3124,7 @@ if not defined LMS_SKIPNETSTAT (
 	) else (
 		echo Displays all connections and listening ports: 'netstat -a -f' skipped, start script with option '/extend' to enable extended content.                      >> !REPORT_LOGFILE! 2>&1
 	)
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Displays the current connection offload state: netstat -t -f                                >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- Displays the current connection offload state: netstat -t -f                                           >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_EXTENDED_CONTENT (
 		echo     Displays the current connection offload state: netstat -t -f
@@ -3129,7 +3133,7 @@ if not defined LMS_SKIPNETSTAT (
 	) else (
 		echo Displays the current connection offload state: 'netstat -t -f' skipped, start script with option '/extend' to enable extended content.                     >> !REPORT_LOGFILE! 2>&1
 	)
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Displays the executable involved in creating each connection or listening port: netstat -b -f   >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- Displays the executable involved in creating each connection or listening port: netstat -b -f          >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_EXTENDED_CONTENT (
 		echo     Displays the executable involved in creating each connection or listening port: netstat -b -f
@@ -3138,7 +3142,7 @@ if not defined LMS_SKIPNETSTAT (
 	) else (
 		echo Displays the executable involved in creating each connection or listening port: 'netstat -b -f' skipped, start script with option '/extend' to enable extended content.                     >> !REPORT_LOGFILE! 2>&1
 	)
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Displays the TCP connection template for all connections: netstat -y -f                     >> !REPORT_LOGFILE! 2>&1
 	echo ---------------- Displays the TCP connection template for all connections: netstat -y -f                                >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_EXTENDED_CONTENT (
 		echo     Displays the TCP connection template for all connections: netstat -y -f
@@ -3182,7 +3186,7 @@ if not defined LMS_SKIPNETSETTINGS (
 	echo SKIPPED network section. The script didn't execute the network commands.                                            >> !REPORT_LOGFILE! 2>&1
 )
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... retrieve firewall settings                                                                  >> !REPORT_LOGFILE! 2>&1
 echo ... retrieve firewall settings ...
 if not defined LMS_SKIPFIREWALL (
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
@@ -3258,7 +3262,7 @@ echo ===========================================================================
 echo ==============================================================================                                   >> !REPORT_LOGFILE! 2>&1
 echo =   V I R T U A L   E N V I R O N M E N T                                    =                                   >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                   >> !REPORT_LOGFILE! 2>&1
-echo Start at !DATE! !TIME! ....                                                                                      >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... V I R T U A L   E N V I R O N M E N T                                                >> !REPORT_LOGFILE! 2>&1
 echo ... get information of virtual environment ...
 echo Get information of virtual environment ...                                                                       >> !REPORT_LOGFILE! 2>&1
 echo     Hypervisor Present  : !LMS_IS_VM!                                                                            >> !REPORT_LOGFILE! 2>&1
@@ -3418,7 +3422,7 @@ echo ===========================================================================
 echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
 echo =   L M S   S C H E D U L E D   T A S K S                                    =                   >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
-echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... L M S   S C H E D U L E D   T A S K S                                >> !REPORT_LOGFILE! 2>&1
 echo ... collect scheduled tasks defintions ...
 if not defined LMS_SKIPSCHEDTASK (
 	schtasks /Query /V > "!CHECKLMS_REPORT_LOG_PATH!\schtasks.log" 2>&1
@@ -3445,12 +3449,12 @@ if not defined LMS_SKIPSCHEDTASK (
 )
 :windows_error_reporting
 echo ==============================================================================
-echo =   W I N D O W S   E R R O R   R E P O R T I N G  (W E R)                   =
+echo =   W I N D O W S   E R R O R   R E P O R T I N G  [W E R]                   =
 echo ==============================================================================
 echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
-echo =   W I N D O W S   E R R O R   R E P O R T I N G  (W E R)                   =                   >> !REPORT_LOGFILE! 2>&1
+echo =   W I N D O W S   E R R O R   R E P O R T I N G  [W E R]                   =                   >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
-echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... W I N D O W S   E R R O R   R E P O R T I N G  [W E R]               >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPWER (
 	echo ... get crash dump settings ...
 	echo Get crash dump settings ...                                                                  >> !REPORT_LOGFILE! 2>&1
@@ -3473,7 +3477,7 @@ if not defined LMS_SKIPWER (
 	echo Search crash dump files [*.dmp] [on c:\ only]:                                               >> !REPORT_LOGFILE! 2>&1
 	del !CHECKLMS_CRASH_DUMP_PATH!\CrashDumpFilesFound.txt >nul 2>&1
 	FOR /r C:\ %%X IN (*.dmp) DO if "%%~dpX" NEQ "!CHECKLMS_CRASH_DUMP_PATH!\" echo %%~dpnxX >> !CHECKLMS_CRASH_DUMP_PATH!\CrashDumpFilesFound.txt
-	echo Start at !DATE! !TIME! ....                                                                  >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... analyze crash dump files [*.dmp]                                 >> !REPORT_LOGFILE! 2>&1
 	echo ... analyze crash dump files [*.dmp] ...
 	echo Analyze crash dump files [*.dmp]:                                                            >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!CHECKLMS_CRASH_DUMP_PATH!\CrashDumpFilesFound.txt" (
@@ -3552,7 +3556,7 @@ echo ===========================================================================
 echo ==============================================================================                                              >> !REPORT_LOGFILE! 2>&1
 echo =   L M S   S Y S T E M   I N F O R M A T I O N                              =                                              >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                              >> !REPORT_LOGFILE! 2>&1
-echo Start at !DATE! !TIME! ....                                                                                                 >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... L M S   S Y S T E M   I N F O R M A T I O N                                                     >> !REPORT_LOGFILE! 2>&1
 echo ... retrieve LMS Information ...
 if not defined LMS_SKIPLMS (
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
@@ -3792,42 +3796,42 @@ if not defined LMS_SKIPLMS (
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -IsCheckoutSortCertFirst}" >> !REPORT_LOGFILE! 2>&1
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {get-lms -IsCheckoutSortCertFirst}"  >> !REPORT_LOGFILE! 2>&1 
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-		echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
-		echo Get Product List: [read with LMU PowerShell command: Select-Product -report -all ¦ ...]                             >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! .... Get Product List: [read with LMU PowerShell command: Select-Product -report -all ...]   >> !REPORT_LOGFILE! 2>&1
+		echo Get Product List: [read with LMU PowerShell command: Select-Product -report -all ...]                               >> !REPORT_LOGFILE! 2>&1
 		echo     Get Product List: [read with LMU PowerShell command: Select-Product -report -all ...]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -all | Format-Table -Property Name, Version, Count, CustomerSiteId, ActivationId, Features | Out-File -Encoding utf8 '!REPORT_PowerShell_TEMPFILE!' -width 4000}"  >> !REPORT_LOGFILE! 2>&1
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -all | Format-Table -Property Name, Version, Count, CustomerSiteId, ActivationId, Features | Out-File -Encoding utf8 '!REPORT_PowerShell_TEMPFILE!' -width 4000}"       >> !REPORT_LOGFILE! 2>&1 
 		type !REPORT_PowerShell_TEMPFILE!                                                                                        >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-		echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! .... Get Product List: [read with LMU PowerShell command: Select-Product -report -all]       >> !REPORT_LOGFILE! 2>&1
 		echo Get Product List: [read with LMU PowerShell command: Select-Product -report -all]                                   >> !REPORT_LOGFILE! 2>&1
 		echo     Get Product List: [read with LMU PowerShell command: Select-Product -report -all]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -all | Out-File -Encoding utf8 '!CHECKLMS_REPORT_LOG_PATH!\GetProductAll.txt' -width 4000}"          >> !REPORT_LOGFILE! 2>&1
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -all | Out-File -Encoding utf8 '!CHECKLMS_REPORT_LOG_PATH!\GetProductAll.txt' -width 4000}"               >> !REPORT_LOGFILE! 2>&1 
 		echo     see '!CHECKLMS_REPORT_LOG_PATH!\GetProductAll.txt' for full details.                                            >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-		echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! .... Get Product List: [read with LMU PowerShell command: Select-Product -report -offline]   >> !REPORT_LOGFILE! 2>&1
 		echo Get Product List: [read with LMU PowerShell command: Select-Product -report -offline]                               >> !REPORT_LOGFILE! 2>&1
 		echo     Get Product List: [read with LMU PowerShell command: Select-Product -report -offline]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -offline | Out-File -Encoding utf8 '!CHECKLMS_REPORT_LOG_PATH!\GetProductOffline.txt' -width 4000}"  >> !REPORT_LOGFILE! 2>&1
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -offline | Out-File -Encoding utf8 '!CHECKLMS_REPORT_LOG_PATH!\GetProductOffline.txt' -width 4000}"       >> !REPORT_LOGFILE! 2>&1 
 		echo     see '!CHECKLMS_REPORT_LOG_PATH!\GetProductOffline.txt' for full details.                                        >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-		echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
-		echo Get Feature List: [read with LMU PowerShell command: Select-Feature -report ¦ ...]                                  >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! .... Get Feature List: [read with LMU PowerShell command: Select-Feature -report ...]        >> !REPORT_LOGFILE! 2>&1
+		echo Get Feature List: [read with LMU PowerShell command: Select-Feature -report ...]                                    >> !REPORT_LOGFILE! 2>&1
 		echo     Get Feature List: [read with LMU PowerShell command: Select-Feature -report ...]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Feature -report | Format-Table -Property Name, Version, Status, Quantity, InstalledCount, ConsistentCount, ConsumedCount, ProductName | Out-File -Encoding utf8 '!REPORT_PowerShell_TEMPFILE!' -width 4000}"  >> !REPORT_LOGFILE! 2>&1
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Feature -report | Format-Table -Property Name, Version, Status, Quantity, InstalledCount, ConsistentCount, ConsumedCount, ProductName | Out-File -Encoding utf8 '!REPORT_PowerShell_TEMPFILE!' -width 4000}"       >> !REPORT_LOGFILE! 2>&1 
 		type !REPORT_PowerShell_TEMPFILE!                                                                                        >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-		echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! .... Get Feature List: [read with LMU PowerShell command: Select-Feature -report]            >> !REPORT_LOGFILE! 2>&1
 		echo Get Feature List: [read with LMU PowerShell command: Select-Feature -report]                                        >> !REPORT_LOGFILE! 2>&1
 		echo     Get Feature List: [read with LMU PowerShell command: Select-Feature -report]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Feature -report | Out-File -Encoding utf8 '!CHECKLMS_REPORT_LOG_PATH!\GetFeaturesAll.txt' -width 4000}"              >> !REPORT_LOGFILE! 2>&1
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Feature -report | Out-File -Encoding utf8 '!CHECKLMS_REPORT_LOG_PATH!\GetFeaturesAll.txt' -width 4000}"   		          >> !REPORT_LOGFILE! 2>&1 
 		echo     see '!CHECKLMS_REPORT_LOG_PATH!\GetFeaturesAll.txt' for full details.                                           >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-		echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! .... Get Product Upgrades: [read with LMU PowerShell command: Select-Product -report -upgrades] >> !REPORT_LOGFILE! 2>&1
 		echo Get Product Upgrades: [read with LMU PowerShell command: Select-Product -report -upgrades]                          >> !REPORT_LOGFILE! 2>&1
 		echo     Get Product Upgrades: [read with LMU PowerShell command: Select-Product -report -upgrades]
 		echo powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {Select-Product -report -upgrades}"                                       >> !REPORT_LOGFILE! 2>&1
@@ -3839,7 +3843,7 @@ if not defined LMS_SKIPLMS (
 			type !CHECKLMS_REPORT_LOG_PATH!\GetProductUpgrades.txt                                                               >> !REPORT_LOGFILE! 2>&1
 		)
 		echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-		echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! .... Get Product Maintenance: [read with LMU PowerShell command]                             >> !REPORT_LOGFILE! 2>&1
 		echo Get Product Maintenance: [read with LMU PowerShell command]                                                         >> !REPORT_LOGFILE! 2>&1
 		echo     Get Product Maintenance: [read with LMU PowerShell command]
 		powershell -PSConsoleFile "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1" -command "& {(Select-Product -report -upgrades)[0].Maintenance}" >!CHECKLMS_REPORT_LOG_PATH!\GetProductMaintenance.txt 2>&1 
@@ -3854,7 +3858,7 @@ if not defined LMS_SKIPLMS (
 		echo ERROR: Cannot execute powershell commands due missing "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1".                >> !REPORT_LOGFILE! 2>&1
 	)	
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Read-out "SUR expiration date" for this system, with LmuTool.exe /SurEDateAll               >> !REPORT_LOGFILE! 2>&1
 	echo Read-out "SUR expiration date" for this system, with LmuTool.exe /SurEDateAll                                           >> !REPORT_LOGFILE! 2>&1
 	echo     Read-out "SUR expiration date" for this system, with LmuTool.exe /SurEDateAll
 	if defined LMS_LMUTOOL (
@@ -3889,7 +3893,7 @@ if not defined LMS_SKIPLMS (
 		echo ERROR: Cannot execute powershell commands due missing "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1".                >> !REPORT_LOGFILE! 2>&1
 	)	
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Read-out "site value" for this system, with LmuTool.exe /SITEVALUE                          >> !REPORT_LOGFILE! 2>&1
 	echo Read-out "site value" for this system, with LmuTool.exe /SITEVALUE                                                      >> !REPORT_LOGFILE! 2>&1
 	echo     Read-out "site value" for this system, with LmuTool.exe /SITEVALUE
 	if defined LMS_LMUTOOL (
@@ -3902,7 +3906,7 @@ if not defined LMS_SKIPLMS (
 		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> !REPORT_LOGFILE! 2>&1 
 	)
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Run health check, with LmuTool.exe /healthcheck                                             >> !REPORT_LOGFILE! 2>&1
 	echo Run health check, with LmuTool.exe /healthcheck                                                                         >> !REPORT_LOGFILE! 2>&1
 	echo     Run health check, with LmuTool.exe /healthcheck
 	if defined LMS_LMUTOOL (
@@ -3915,7 +3919,7 @@ if not defined LMS_SKIPLMS (
 		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> !REPORT_LOGFILE! 2>&1 
 	)
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Run TS clean-up, with LmuTool.exe /cleants                                                  >> !REPORT_LOGFILE! 2>&1
 	echo Run TS clean-up, with LmuTool.exe /cleants                                                                              >> !REPORT_LOGFILE! 2>&1
 	echo     Run TS clean-up, with LmuTool.exe /cleants
 	if defined LMS_LMUTOOL (
@@ -3928,7 +3932,7 @@ if not defined LMS_SKIPLMS (
 		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> !REPORT_LOGFILE! 2>&1 
 	)
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Run 'check', with LmuTool.exe /check                                                        >> !REPORT_LOGFILE! 2>&1
 	echo Run 'check', with LmuTool.exe /check                                                                                    >> !REPORT_LOGFILE! 2>&1
 	echo     Run 'check', with LmuTool.exe /check
 	if defined LMS_LMUTOOL (
@@ -3936,7 +3940,7 @@ if not defined LMS_SKIPLMS (
 	) else (
 		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> !REPORT_LOGFILE! 2>&1 
 	)
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... retrieve dongle driver information                                                          >> !REPORT_LOGFILE! 2>&1
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 	echo LMS License Mode: %LMS_LICENSE_MODE% [read from registry]                                                               >> !REPORT_LOGFILE! 2>&1
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
@@ -4031,7 +4035,7 @@ if not defined LMS_SKIPLMS (
 			set ACCESSLOG_FILESIZE=%%B
 		)
 		echo     Filesize of access.log is !ACCESSLOG_FILESIZE! bytes !                                                      >> !REPORT_LOGFILE! 2>&1
-		echo Start at !DATE! !TIME! ....                                                                                     >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! .... check access.log                                                                    >> !REPORT_LOGFILE! 2>&1
 		if /I !ACCESSLOG_FILESIZE! GEQ !LOG_FILESIZE_LIMIT! (
 			echo     ATTENTION: Filesize of access.log with !ACCESSLOG_FILESIZE! bytes, is exceeding critical limit of !LOG_FILESIZE_LIMIT! bytes!
 
@@ -4300,7 +4304,7 @@ set lms_ps_textFileOut=!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file_mod.xml
 SET lms_ps_script2=!CHECKLMS_REPORT_LOG_PATH!\tmpStrRplc2.ps1
 ECHO (Get-Content "!lms_ps_textFileIn!").replace(!lms_ps_search!, !lms_ps_replace!) ^| Set-Content "!lms_ps_textFileOut!">"!lms_ps_script2!"
 
-echo Start at !DATE! !TIME! ....                                                        >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... F L E X E R A  (F N P)   I N F O R M A T I O N         >> !REPORT_LOGFILE! 2>&1
 echo ... retrieve Flexera (FNP) Information ...
 if not defined LMS_SKIPFNP (
 	IF EXIST "C:\\Program Files\\Common Files\\Macrovision Shared\\FlexNet Publisher\\FNPLicensingService64.exe" (
@@ -4371,7 +4375,7 @@ if not defined LMS_SKIPFNP (
 )
 rem Run *always* even if LMS_SKIPFNP is set
 echo -------------------------------------------------------                                                                                                    >> !REPORT_LOGFILE! 2>&1
-echo Start at !DATE! !TIME! ....                                                                                                                                >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... Create offline activation request file [using servercomptranutil.exe -n                                                        >> !REPORT_LOGFILE! 2>&1
 echo Create offline activation request file [using servercomptranutil.exe -n "!CHECKLMS_REPORT_LOG_PATH!\fake_id_request_file.xml" -activate fake_id] ...       >> !REPORT_LOGFILE! 2>&1
 echo     Create offline activation request file ...
 if defined LMS_SERVERCOMTRANUTIL (
@@ -4444,30 +4448,30 @@ if defined LMS_SERVERCOMTRANUTIL (
 )
 echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPFNP (
-	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... perform TS health check [using servercomptranutil.exe -healthCheck]                     >> !REPORT_LOGFILE! 2>&1
 	set HealthCheckOk=Unknown
-	echo perform TS health check [using servercomptranutil.exe -healthCheck] ...                                                 >> !REPORT_LOGFILE! 2>&1
+	echo perform TS health check [using servercomptranutil.exe -healthCheck] ...                                             >> !REPORT_LOGFILE! 2>&1
 	echo     perform TS health check [using servercomptranutil.exe -healthCheck] ...
 	if defined LMS_SERVERCOMTRANUTIL (
 		if "!FNPVersion!" == "11.14.0.0" (
-			echo     servercomptranutil.exe -healthCheck is not available for FNP=!FNPVersion!, cannot perform operation.        >> !REPORT_LOGFILE! 2>&1
+			echo     servercomptranutil.exe -healthCheck is not available for FNP=!FNPVersion!, cannot perform operation.    >> !REPORT_LOGFILE! 2>&1
 		) else (
 			"!LMS_SERVERCOMTRANUTIL!" -healthCheck > !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_healthCheck.txt 2>&1   
-			type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_healthCheck.txt                                                   >> !REPORT_LOGFILE! 2>&1
+			type !CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_healthCheck.txt                                               >> !REPORT_LOGFILE! 2>&1
 			
-			findstr /m /c:"FAIL" "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_healthCheck.txt"                                 >> !REPORT_LOGFILE! 2>&1
+			findstr /m /c:"FAIL" "!CHECKLMS_REPORT_LOG_PATH!\servercomptranutil_healthCheck.txt"                             >> !REPORT_LOGFILE! 2>&1
 			if !ERRORLEVEL!==0 (
 				set HealthCheckOk=No
 				echo !SHOW_RED!    ATTENTION: HealthCheck FAILED. !SHOW_NORMAL!
-				echo ATTENTION: HealthCheck FAILED.                                                                              >> !REPORT_LOGFILE! 2>&1
+				echo ATTENTION: HealthCheck FAILED.                                                                          >> !REPORT_LOGFILE! 2>&1
 			) else (
 				set HealthCheckOk=Yes
 				echo     HealthCheck PASSED.
 			)
 		)
 	) else (
-		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> !REPORT_LOGFILE! 2>&1
+		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                             >> !REPORT_LOGFILE! 2>&1
 	)
 )
 rem remove temporary created powershell scripts
@@ -4476,7 +4480,7 @@ del !lms_ps_script1!                          >nul 2>&1
 del !lms_ps_script2!                          >nul 2>&1
 rem Execute always, even LMS_SKIPFNP is set!
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... retrieve license information [using servercomptranutil.exe -unique, is equal to: servercomptranutil.exe -umn]   >> !REPORT_LOGFILE! 2>&1
 echo retrieve license information [using servercomptranutil.exe -unique, is equal to: servercomptranutil.exe -umn] ...       >> !REPORT_LOGFILE! 2>&1
 echo     retrieve license information [using servercomptranutil.exe -unique, is equal to: servercomptranutil.exe -umn] ...
 if exist "!REPORT_LOG_PATH!\UMN_Latest.txt" (
@@ -4533,7 +4537,7 @@ if defined LMS_SERVERCOMTRANUTIL (
 	echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                                 >> !REPORT_LOGFILE! 2>&1
 )
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... retrieve license information [using appactutil.exe -unique]                                 >> !REPORT_LOGFILE! 2>&1
 echo retrieve license information [using appactutil.exe -unique] ...                                                         >> !REPORT_LOGFILE! 2>&1
 echo     retrieve license information [using appactutil.exe -unique] ...
 if defined LMS_APPACTUTIL (
@@ -4569,7 +4573,7 @@ rem compare the UMNs read with the two commands
 rem Moved the check to own section further down
 
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... retrieve virtual information [using servercomptranutil.exe -virtual]                        >> !REPORT_LOGFILE! 2>&1
 echo retrieve virtual information [using servercomptranutil.exe -virtual] ...                                                >> !REPORT_LOGFILE! 2>&1
 echo     retrieve virtual information [using servercomptranutil.exe -virtual] ...
 if exist "!REPORT_LOG_PATH!\VMID_Latest.txt" (
@@ -4618,7 +4622,7 @@ echo     VM_DETECTED=!VM_DETECTED! / VM_FAMILY=!VM_FAMILY! / VM_NAME=!VM_NAME! /
 
 if not defined LMS_SKIPFNP (
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... retrieve virtual information [using appactutil.exe -virtual -long]                          >> !REPORT_LOGFILE! 2>&1
 	echo retrieve virtual information [using appactutil.exe -virtual -long] ...                                                  >> !REPORT_LOGFILE! 2>&1
 	echo     retrieve virtual information [using appactutil.exe -virtual -long] ...
 	if defined LMS_APPACTUTIL (
@@ -4627,7 +4631,7 @@ if not defined LMS_SKIPFNP (
 		echo     appactutil.exe doesn't exist, cannot perform operation.                                                         >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... serveractutil.exe -virtual                                                                  >> !REPORT_LOGFILE! 2>&1
 	echo serveractutil.exe -virtual                                                                                              >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SERVERACTUTIL (
 		"!LMS_SERVERACTUTIL!" -virtual                                                                                           >> !REPORT_LOGFILE! 2>&1
@@ -4635,7 +4639,7 @@ if not defined LMS_SKIPFNP (
 		echo     serveractutil.exe doesn't exist, cannot perform operation.                                                      >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... lmdiag.exe -c "!LMS_PROGRAMDATA!\Server Certificates\" -n                                   >> !REPORT_LOGFILE! 2>&1
 	echo lmdiag.exe -c "!LMS_PROGRAMDATA!\Server Certificates\" -n                                                               >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_LMDIAG (
 		"!LMS_LMDIAG!" -c "!LMS_PROGRAMDATA!\Server Certificates\" -n                                                            >> !REPORT_LOGFILE! 2>&1
@@ -4643,7 +4647,7 @@ if not defined LMS_SKIPFNP (
 		echo     lmdiag.exe doesn't exist, cannot perform operation.                                                             >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... lmstat.exe -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -A                         >> !REPORT_LOGFILE! 2>&1
 	echo lmstat.exe -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -A                                                     >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_LMSTAT (
 		"!LMS_LMSTAT!" -c "!LMS_PROGRAMDATA!\Server Certificates\SIEMBT.lic" -A                                                  >> !REPORT_LOGFILE! 2>&1
@@ -4658,7 +4662,7 @@ if not defined LMS_SKIPFNP (
 		echo     lmstat.exe doesn't exist, cannot perform operation.                                                             >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... retrieve virtual information [using lmvminfo.exe -long]                                     >> !REPORT_LOGFILE! 2>&1
 	echo retrieve virtual information [using lmvminfo.exe -long] ...                                                             >> !REPORT_LOGFILE! 2>&1
 	echo     retrieve virtual information [using lmvminfo.exe -long] ...
 	if defined LMS_LMVMINFO (
@@ -4695,7 +4699,7 @@ if not defined LMS_SKIPFNP (
 		)
 	)
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... lmtpminfo.exe -long                                                                         >> !REPORT_LOGFILE! 2>&1
 	echo lmtpminfo.exe -long                                                                                                     >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_LMTPMINFO (
 		"!LMS_LMTPMINFO!" -long                                                                                                  >> !REPORT_LOGFILE! 2>&1
@@ -4703,7 +4707,7 @@ if not defined LMS_SKIPFNP (
 		echo     lmtpminfo.exe doesn't exist, cannot perform operation.                                                          >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... tsreset_svr.exe -logreport verbose                                                          >> !REPORT_LOGFILE! 2>&1
 	echo tsreset_svr.exe -logreport verbose                                                                                      >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_TSRESETSVR (
 		if "!FNPVersion!" == "11.14.0.0" (
@@ -4814,7 +4818,7 @@ if not defined LMS_SKIPFNP (
 		echo     tsreset_app.exe doesn't exist, cannot perform operation.                                                        >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ============================================================================== >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                    >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... collect host id's                                  >> !REPORT_LOGFILE! 2>&1
 	echo ... collect host id's ...
 	echo Collect host id's:                                                             >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_LMHOSTID (
@@ -5286,7 +5290,7 @@ if defined LMS_EXTENDED_CONTENT (
 )
 if not defined LMS_SKIPFNP ( 
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... list available offline request files                                                        >> !REPORT_LOGFILE! 2>&1
 	echo ... list available offline request files ...
 	echo List available offline request files:                                                                                   >> !REPORT_LOGFILE! 2>&1
 	echo Content of folder: "!LMS_PROGRAMDATA!\Requests"                                                                         >> !REPORT_LOGFILE! 2>&1
@@ -5302,7 +5306,7 @@ if not defined LMS_SKIPFNP (
 	)
 	echo More details, see '!CHECKLMS_REPORT_LOG_PATH!\license_all_requests.txt'                                                 >> !REPORT_LOGFILE! 2>&1
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... analyze installed/available local certificates                                              >> !REPORT_LOGFILE! 2>&1
 	echo ... analyze installed/available local certificates ...
 	echo Installed/available local certificates:                                                                                 >> !REPORT_LOGFILE! 2>&1
 	echo Content of folder: "!LMS_PROGRAMDATA!\Certificates"                                                                     >> !REPORT_LOGFILE! 2>&1
@@ -5332,7 +5336,7 @@ if not defined LMS_SKIPFNP (
 		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> !REPORT_LOGFILE! 2>&1 
 	)
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... analyze installed/available server certificates                                             >> !REPORT_LOGFILE! 2>&1
 	echo ... analyze installed/available server certificates ...
 	echo Installed/available server certificates:                                                                                >> !REPORT_LOGFILE! 2>&1
 	echo Content of folder: "!LMS_PROGRAMDATA!\Server Certificates"                                                              >> !REPORT_LOGFILE! 2>&1
@@ -5362,7 +5366,7 @@ if not defined LMS_SKIPFNP (
 		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> !REPORT_LOGFILE! 2>&1 
 	)
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Content of folder: "!ALLUSERSPROFILE!\FLEXnet" [Trusted Store Folder]                       >> !REPORT_LOGFILE! 2>&1
 	echo Content of folder: "!ALLUSERSPROFILE!\FLEXnet" [Trusted Store Folder]                                                   >> !REPORT_LOGFILE! 2>&1
 	rem dir "!ALLUSERSPROFILE!\FLEXnet"                                                                                              >> !REPORT_LOGFILE! 2>&1
 	rem dir /AH "!ALLUSERSPROFILE!\FLEXnet"                                                                                          >> !REPORT_LOGFILE! 2>&1
@@ -5384,7 +5388,7 @@ if not defined LMS_SKIPFNP (
 		echo     No files found, the directory '!ALLUSERSPROFILE!\FLEXnet\' doesn't exist.                                       >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... decrypt Flexera logfiles                                                                    >> !REPORT_LOGFILE! 2>&1
 	echo ... decrypt Flexera logfiles ... 
 	echo Decrypt Flexera logfiles:                                                                                               >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_TSACTDIAGSSVR (
@@ -5562,7 +5566,7 @@ if not defined LMS_SKIPFNP (
 	)
 
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1 
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... search Flexera logfiles                                                                     >> !REPORT_LOGFILE! 2>&1
 	echo ... search Flexera logfiles ...
 	echo Search Flexera logfiles:                                                                                                >> !REPORT_LOGFILE! 2>&1
 	if exist "!ALLUSERSPROFILE!\FLEXnet\" (
@@ -5571,26 +5575,26 @@ if not defined LMS_SKIPFNP (
 		rem do not replace % with !, this doesn't work within for /r
 		FOR /r "%ALLUSERSPROFILE%\FLEXnet\" %%X IN (*.log) DO echo %%~dpnxX >> !CHECKLMS_REPORT_LOG_PATH!\FlexeraLogFilesFound.txt
 		if exist "!CHECKLMS_REPORT_LOG_PATH!\FlexeraLogFilesFound.txt" (
-			Type !CHECKLMS_REPORT_LOG_PATH!\FlexeraLogFilesFound.txt                                                             >> !REPORT_LOGFILE! 2>&1
+			Type !CHECKLMS_REPORT_LOG_PATH!\FlexeraLogFilesFound.txt                                                         >> !REPORT_LOGFILE! 2>&1
 		) else (
-			echo     No Flexera logfiles found, the file '!CHECKLMS_REPORT_LOG_PATH!\FlexeraLogFilesFound.txt' doesn't exist.    >> !REPORT_LOGFILE! 2>&1
+			echo     No Flexera logfiles found, the file '!CHECKLMS_REPORT_LOG_PATH!\FlexeraLogFilesFound.txt' doesn't exist. >> !REPORT_LOGFILE! 2>&1
 		)
 		FOR %%X IN (!ALLUSERSPROFILE!\FLEXnet\*.log) DO ( 
-			echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1 
-			echo %%X                                                                                                             >> !REPORT_LOGFILE! 2>&1 
-			powershell -command "& {Get-Content '%%X' | Select-Object -last !LOG_FILE_LINES!}"                                   >> !REPORT_LOGFILE! 2>&1 
-			copy %%X !CHECKLMS_REPORT_LOG_PATH!\                                                                                 >> !REPORT_LOGFILE! 2>&1
+			echo -------------------------------------------------------                                                     >> !REPORT_LOGFILE! 2>&1 
+			echo %%X                                                                                                         >> !REPORT_LOGFILE! 2>&1 
+			powershell -command "& {Get-Content '%%X' | Select-Object -last !LOG_FILE_LINES!}"                               >> !REPORT_LOGFILE! 2>&1 
+			copy %%X !CHECKLMS_REPORT_LOG_PATH!\                                                                             >> !REPORT_LOGFILE! 2>&1
 		)
 	) else (
-		echo     No Flexera logfiles found, the directory '!ALLUSERSPROFILE!\FLEXnet\' doesn't exist.                            >> !REPORT_LOGFILE! 2>&1
+		echo     No Flexera logfiles found, the directory '!ALLUSERSPROFILE!\FLEXnet\' doesn't exist.                        >> !REPORT_LOGFILE! 2>&1
 	)
 ) else (
 	echo !SHOW_YELLOW!    SKIPPED FNP section. The script didn't execute the FNP commands. !SHOW_NORMAL!
-	echo SKIPPED FNP section. The script didn't execute the FNP commands.                                                        >> !REPORT_LOGFILE! 2>&1
+	echo SKIPPED FNP section. The script didn't execute the FNP commands.                                                    >> !REPORT_LOGFILE! 2>&1
 )
 rem Run *always* even if LMS_SKIPFNP is set
 echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... Analyze 'SIEMBT.log'                                                                        >> !REPORT_LOGFILE! 2>&1
 echo     Analyze 'SIEMBT.log' ...
 echo Analyze 'SIEMBT.log' ...                                                                                                >> !REPORT_LOGFILE! 2>&1
 IF EXIST "!REPORT_LOG_PATH!\SIEMBT.log" (
@@ -5676,7 +5680,7 @@ IF EXIST "!REPORT_LOG_PATH!\SIEMBT.log" (
 ) else (
 	echo     !REPORT_LOG_PATH!\SIEMBT.log not found.                                                                         >> !REPORT_LOGFILE! 2>&1
 )
-echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... Analyze 'demo_debuglog.txt'                                                                 >> !REPORT_LOGFILE! 2>&1
 echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 echo Analyze 'demo_debuglog.txt' ...                                                                                         >> !REPORT_LOGFILE! 2>&1
 IF EXIST "!REPORT_LOG_PATH!\demo_debuglog.txt" (
@@ -5744,14 +5748,13 @@ IF EXIST "!REPORT_LOG_PATH!\demo_debuglog.txt" (
 ) else (
 	echo     '!REPORT_LOG_PATH!\demo_debuglog.txt' not found.                                             >> !REPORT_LOGFILE! 2>&1
 )
-echo Start at !DATE! !TIME! ....                                                                          >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... L I C E N S E   S E R V E R                                              >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================
 echo =   L I C E N S E   S E R V E R                                              =
 echo ==============================================================================
 echo ==============================================================================                       >> !REPORT_LOGFILE! 2>&1
 echo =   L I C E N S E   S E R V E R                                              =                       >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                       >> !REPORT_LOGFILE! 2>&1
-echo Start at !DATE! !TIME! ....                                                                          >> !REPORT_LOGFILE! 2>&1
 echo ... analyze license server ...
 if not defined LMS_SKIPLICSERV (
 	echo     list requests [servercomptranutil.exe -listRequests] ...
@@ -5765,7 +5768,7 @@ if not defined LMS_SKIPLICSERV (
 	) else (
 		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                          >> !REPORT_LOGFILE! 2>&1
 	)
-	echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... extract requests [servercomptranutil.exe -stored]                    >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                          >> !REPORT_LOGFILE! 2>&1 
 	echo     extract requests [servercomptranutil.exe -stored] ...
 	echo extract requests [servercomptranutil.exe -stored]                                                >> !REPORT_LOGFILE! 2>&1
@@ -5786,7 +5789,7 @@ if not defined LMS_SKIPLICSERV (
 	) else (
 		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                          >> !REPORT_LOGFILE! 2>&1
 	)
-	echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... list requests in long format [servercomptranutil.exe -listRequests format=long]  >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                          >> !REPORT_LOGFILE! 2>&1 
 	echo     list requests in long format [servercomptranutil.exe -listRequests format=long] ...
 	echo list requests in long format [servercomptranutil.exe -listRequests format=long]                  >> !REPORT_LOGFILE! 2>&1
@@ -5797,7 +5800,7 @@ if not defined LMS_SKIPLICSERV (
 		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                          >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                          >> !REPORT_LOGFILE! 2>&1 
-	echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... list requests in xml format [servercomptranutil.exe -listRequests format=xml]  >> !REPORT_LOGFILE! 2>&1
 	echo     list requests in xml format [servercomptranutil.exe -listRequests format=xml] ...
 	echo list requests in xml format [servercomptranutil.exe -listRequests format=xml]                    >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SERVERCOMTRANUTIL (
@@ -5834,7 +5837,7 @@ if not defined LMS_SKIPLICSERV (
 		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                          >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... viewing server trusted storage [servercomptranutil.exe -view]        >> !REPORT_LOGFILE! 2>&1
 	echo     viewing server trusted storage [servercomptranutil.exe -view] ...
 	echo viewing server trusted storage [servercomptranutil.exe -view]                                    >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SERVERCOMTRANUTIL (
@@ -5844,7 +5847,7 @@ if not defined LMS_SKIPLICSERV (
 		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                          >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                          >> !REPORT_LOGFILE! 2>&1 
-	echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... viewing server trusted storage in long format [servercomptranutil.exe -view format=long]   >> !REPORT_LOGFILE! 2>&1
 	echo     viewing server trusted storage in long format [servercomptranutil.exe -view format=long] ...
 	echo viewing server trusted storage in long format [servercomptranutil.exe -view format=long]         >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SERVERCOMTRANUTIL (
@@ -5900,7 +5903,7 @@ if not defined LMS_SKIPLICSERV (
 		echo No disabled licenses found.                                                                  >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... appactutil.exe -view -long                                           >> !REPORT_LOGFILE! 2>&1
 	echo appactutil.exe -view -long                                                                       >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_APPACTUTIL (
 		"!LMS_APPACTUTIL!" -view -long                                                                    >> !REPORT_LOGFILE! 2>&1
@@ -5908,7 +5911,7 @@ if not defined LMS_SKIPLICSERV (
 		echo     appactutil.exe doesn't exist, cannot perform operation.                                  >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... serveractutil.exe -view -long                                        >> !REPORT_LOGFILE! 2>&1
 	echo serveractutil.exe -view -long                                                                    >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SERVERACTUTIL (
 		"!LMS_SERVERACTUTIL!" -view -long > !CHECKLMS_REPORT_LOG_PATH!\serveractutil_viewlong.txt  2>&1
@@ -5917,7 +5920,7 @@ if not defined LMS_SKIPLICSERV (
 		echo     serveractutil.exe doesn't exist, cannot perform operation.                               >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Display the list of installed products, with LmuTool.exe /L          >> !REPORT_LOGFILE! 2>&1
 	echo Display the list of installed products, with LmuTool.exe /L                                      >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_LMUTOOL (
 		"!LMS_LMUTOOL!" /L                                                                                >> !REPORT_LOGFILE! 2>&1
@@ -5936,7 +5939,7 @@ echo ===========================================================================
 echo ==============================================================================                       >> !REPORT_LOGFILE! 2>&1
 echo =   L O C A L   L I C E N S E   S E R V E R                                  =                       >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                       >> !REPORT_LOGFILE! 2>&1
-echo Start at !DATE! !TIME! ....                                                                          >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... L O C A L   L I C E N S E   S E R V E R                                  >> !REPORT_LOGFILE! 2>&1
 if defined LMS_CFG_LICENSE_SRV_PORT (
 	set LMS_LIC_SERVER=!LMS_CFG_LICENSE_SRV_PORT!@localhost
 ) else (
@@ -5956,7 +5959,7 @@ if not defined LMS_SKIPLOCLICSERV (
 		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                          >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... viewing server trusted storage in full format [servercomptranutil.exe -serverView !LMS_LIC_SERVER! format=full]  >> !REPORT_LOGFILE! 2>&1
 	echo     viewing server trusted storage in full format [servercomptranutil.exe -serverView !LMS_LIC_SERVER! format=full] ...
 	echo Viewing server trusted storage in full format [servercomptranutil.exe -serverView !LMS_LIC_SERVER! format=full]         >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                          >> !REPORT_LOGFILE! 2>&1
@@ -5967,7 +5970,7 @@ if not defined LMS_SKIPLOCLICSERV (
 		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                          >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... viewing trusted storage in long format [appactutil.exe -serverview -commServer !LMS_LIC_SERVER! -long]  >> !REPORT_LOGFILE! 2>&1
 	echo     viewing trusted storage in long format [appactutil.exe -serverview -commServer !LMS_LIC_SERVER! -long] ...
 	echo Viewing trusted storage in long format [appactutil.exe -serverview -commServer !LMS_LIC_SERVER! -long]                  >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                          >> !REPORT_LOGFILE! 2>&1
@@ -5978,7 +5981,7 @@ if not defined LMS_SKIPLOCLICSERV (
 		echo     appactutil.exe doesn't exist, cannot perform operation.                                  >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ==============================================================================                   >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                      >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... run repair command, using servercomptranutil, appactutil and serveractutil  >> !REPORT_LOGFILE! 2>&1
 	rem prepare answer file for RepairAll command, in case a user input is required
 	del !CHECKLMS_REPORT_LOG_PATH!\yes.txt >nul 2>&1
 	for /L %%n in (1,1,500) do echo y >> !CHECKLMS_REPORT_LOG_PATH!\yes.txt
@@ -6080,7 +6083,7 @@ if not defined LMS_SKIPLOCLICSERV (
 		)
 	)
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... run repair all command using servercomptranutil.exe -n -t xxx -repairAll                    >> !REPORT_LOGFILE! 2>&1
 	echo ... run repair all command using servercomptranutil.exe -n -t xxx -repairAll ...
 	echo ... run repair all command using servercomptranutil.exe -n -t %LMS_FNO_SERVER% -repairAll ...                           >> !REPORT_LOGFILE! 2>&1
 	echo     servercomptranutil.exe -n -t %LMS_FNO_SERVER% -repairAll                                                            >> !REPORT_LOGFILE! 2>&1
@@ -6122,7 +6125,7 @@ if not defined LMS_SKIPLOCLICSERV (
 		)
 	)
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... run repair all command using LmuTool /REPALL /M:O                                           >> !REPORT_LOGFILE! 2>&1
 	echo ... run repair all command using LmuTool /REPALL /M:O ...
 	echo ... run repair all command using LmuTool /REPALL /M:O ...                                                               >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_LMUTOOL (
@@ -6150,7 +6153,7 @@ if not defined LMS_SKIPLOCLICSERV (
 	)
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_EXTENDED_CONTENT (
-		echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! .... resend all stored requests, using servercomptranutil.exe -t xxx -stored request=all     >> !REPORT_LOGFILE! 2>&1
 		echo ... resend all stored requests, using servercomptranutil.exe -t xxx -stored request=all ...
 		echo ... resend all stored requests, using servercomptranutil.exe -t %LMS_FNO_SERVER% -stored request=all ...            >> !REPORT_LOGFILE! 2>&1
 		echo     servercomptranutil.exe -t %LMS_FNO_SERVER% -stored request=all                                                  >> !REPORT_LOGFILE! 2>&1
@@ -6182,7 +6185,7 @@ echo ===========================================================================
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 echo =   R E M O T E   L I C E N S E   S E R V E R                                =                                          >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... R E M O T E   L I C E N S E   S E R V E R                                                   >> !REPORT_LOGFILE! 2>&1
 echo ... analyze remote license server on !LMS_CFG_LICENSE_SRV_PORT!@!LMS_CFG_LICENSE_SRV_NAME! ...
 if not defined LMS_SKIPREMLICSERV (
 	if defined LMS_CFG_LICENSE_SRV_NAME (
@@ -6193,15 +6196,15 @@ if not defined LMS_SKIPREMLICSERV (
 			if defined LMS_SERVERCOMTRANUTIL (
 				"!LMS_SERVERCOMTRANUTIL!" -serverView !LMS_CFG_LICENSE_SRV_PORT!@!LMS_CFG_LICENSE_SRV_NAME!                  >> !REPORT_LOGFILE! 2>&1
 				echo ==============================================================================                          >> !REPORT_LOGFILE! 2>&1
-				echo Start at !DATE! !TIME! ....                                                                             >> !REPORT_LOGFILE! 2>&1
+				echo Start at !DATE! !TIME! .... servercomptranutil.exe -serverView !LMS_CFG_LICENSE_SRV_PORT!@!LMS_CFG_LICENSE_SRV_NAME! format=full  >> !REPORT_LOGFILE! 2>&1
 				echo servercomptranutil.exe -serverView !LMS_CFG_LICENSE_SRV_PORT!@!LMS_CFG_LICENSE_SRV_NAME! format=full    >> !REPORT_LOGFILE! 2>&1
 				"!LMS_SERVERCOMTRANUTIL!" -serverView !LMS_CFG_LICENSE_SRV_PORT!@!LMS_CFG_LICENSE_SRV_NAME! format=full      >> !REPORT_LOGFILE! 2>&1
 			) else (
 				echo     servercomptranutil.exe doesn't exist, cannot perform operation.                                     >> !REPORT_LOGFILE! 2>&1
 			)
 			echo ==============================================================================                              >> !REPORT_LOGFILE! 2>&1
-			echo Start at !DATE! !TIME! ....                                                                                 >> !REPORT_LOGFILE! 2>&1
 
+			echo Start at !DATE! !TIME! .... viewing trusted storage in long format [appactutil.exe -serverview -commServer !LMS_CFG_LICENSE_SRV_PORT!@!LMS_CFG_LICENSE_SRV_NAME! -long]  >> !REPORT_LOGFILE! 2>&1
 			echo     viewing trusted storage in long format [appactutil.exe -serverview -commServer !LMS_CFG_LICENSE_SRV_PORT!@!LMS_CFG_LICENSE_SRV_NAME! -long] ...
 			echo Viewing trusted storage in long format [appactutil.exe -serverview -commServer !LMS_CFG_LICENSE_SRV_PORT!@!LMS_CFG_LICENSE_SRV_NAME! -long]     >> !REPORT_LOGFILE! 2>&1
 			if defined LMS_APPACTUTIL (
@@ -6228,7 +6231,7 @@ echo ===========================================================================
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 echo =   O N L I N E   L I C E N S E   S E R V E R                                =                                          >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... O N L I N E   L I C E N S E   S E R V E R                                                   >> !REPORT_LOGFILE! 2>&1
 echo ... analyze ONLINE licenses on '!LMS_CFG_LICENSE_SRV_NAME!' ...
 if not defined LMS_SKIPONLICSERV (
 	echo Request Mastership: [read with LmuTool /REQTOK]                                                                     >> !REPORT_LOGFILE! 2>&1
@@ -6266,7 +6269,7 @@ echo ===========================================================================
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 echo =   L M S   C O N F I G U R A T I O N   F I L E S                            =                                          >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... L M S   C O N F I G U R A T I O N   F I L E S                                               >> !REPORT_LOGFILE! 2>&1
 echo ... analyze configuration files ...
 if not defined LMS_CHECK_ID (
 	echo Get LmuTool Configuration: [read with LmuTool]                                                                          >> !REPORT_LOGFILE! 2>&1
@@ -6315,7 +6318,7 @@ if not defined LMS_CHECK_ID (
 	xcopy "!LMS_PROGRAMDATA!\Config\*" !CHECKLMS_REPORT_LOG_PATH!\Config\ /E /Y /H /I                                            >> !REPORT_LOGFILE! 2>&1 
 	echo --- Files automatically copied from '!LMS_PROGRAMDATA!\Config\*' to '!CHECKLMS_REPORT_LOG_PATH!\Config\' at !DATE! !TIME! --- > !CHECKLMS_REPORT_LOG_PATH!\Config\__README.txt 2>&1
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Configuration File: CSID CONFIG '!LMS_PROGRAMDATA!\Config\CsidCfg'                          >> !REPORT_LOGFILE! 2>&1
 	echo Configuration File: CSID CONFIG '!LMS_PROGRAMDATA!\Config\CsidCfg'                                                      >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_LMUTOOL (
 		"!LMS_LMUTOOL!" /DEC2:!LMS_PROGRAMDATA!\Config\CsidCfg >nul 2>&1
@@ -6330,7 +6333,7 @@ if not defined LMS_CHECK_ID (
 		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> !REPORT_LOGFILE! 2>&1 
 	)
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Configuration File: LICENSE CONFIG '!LMS_PROGRAMDATA!\Config\LicCfg'                        >> !REPORT_LOGFILE! 2>&1
 	echo Configuration File: LICENSE CONFIG '!LMS_PROGRAMDATA!\Config\LicCfg'                                                    >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_LMUTOOL (
 		"!LMS_LMUTOOL!" /DEC2:!LMS_PROGRAMDATA!\Config\LicCfg  >nul 2>&1
@@ -6345,14 +6348,14 @@ if not defined LMS_CHECK_ID (
 		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> !REPORT_LOGFILE! 2>&1 
 	)
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Configured license server                                                                   >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_CFG_LICENSE_SRV_NAME (
 		echo Configured license server: !LMS_CFG_LICENSE_SRV_NAME! with port !LMS_CFG_LICENSE_SRV_PORT!                          >> !REPORT_LOGFILE! 2>&1
 	) else (
 		echo Configured license server: no server configured.                                                                    >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Configuration File: SUR HISTORY '!LMS_PROGRAMDATA!\Config\SurHistory'                       >> !REPORT_LOGFILE! 2>&1
 	echo Configuration File: SUR HISTORY '!LMS_PROGRAMDATA!\Config\SurHistory'                                                   >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_LMUTOOL (
 		"!LMS_LMUTOOL!" /DEC2:!LMS_PROGRAMDATA!\Config\SurHistory >nul 2>&1
@@ -6367,7 +6370,7 @@ if not defined LMS_CHECK_ID (
 		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> !REPORT_LOGFILE! 2>&1 
 	)
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Configuration File: LEL Config '!LMS_PROGRAMDATA!\Config\LELCfg'                            >> !REPORT_LOGFILE! 2>&1
 	echo Configuration File: LEL Config '!LMS_PROGRAMDATA!\Config\LELCfg'                                                        >> !REPORT_LOGFILE! 2>&1
 	if exist "!LMS_PROGRAMDATA!\Config\LELCfg" (
 		Type !LMS_PROGRAMDATA!\Config\LELCfg                                                                                     >> !REPORT_LOGFILE! 2>&1
@@ -6376,7 +6379,7 @@ if not defined LMS_CHECK_ID (
 		echo     LEL configuration file '!LMS_PROGRAMDATA!\Config\LELCfg' doesn't exist, cannot show content.                    >> !REPORT_LOGFILE! 2>&1 
 	)
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Configuration File: LMU PROFILE [!ProgramFiles!\Siemens\LMS\bin\LmuTool.profile]            >> !REPORT_LOGFILE! 2>&1
 	echo Configuration File: LMU PROFILE [!ProgramFiles!\Siemens\LMS\bin\LmuTool.profile]                                        >> !REPORT_LOGFILE! 2>&1
 	Type "!ProgramFiles!\Siemens\LMS\bin\LmuTool.profile"                                                                        >> !REPORT_LOGFILE! 2>&1
 	echo .                                                                                                                       >> !REPORT_LOGFILE! 2>&1
@@ -6391,7 +6394,7 @@ if not defined LMS_CHECK_ID (
 		echo ERROR: Cannot execute powershell commands due missing "!ProgramFiles!\Siemens\LMS\scripts\lmu.psc1".                >> !REPORT_LOGFILE! 2>&1
 	)	
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Configuration File: LMU SETTINGS [!LMS_PROGRAMDATA!\Config\LmuSettings]                     >> !REPORT_LOGFILE! 2>&1
 	echo Configuration File: LMU SETTINGS [!LMS_PROGRAMDATA!\Config\LmuSettings]                                                 >> !REPORT_LOGFILE! 2>&1
 	Type !LMS_PROGRAMDATA!\Config\LmuSettings                                                                                    >> !REPORT_LOGFILE! 2>&1
 	echo .                                                                                                                       >> !REPORT_LOGFILE! 2>&1
@@ -6408,7 +6411,7 @@ if not defined LMS_CHECK_ID (
 		echo Configured backup path: no path configured, cannot perform operation.                                               >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Configuration File: Siemens.Gms.ApplicationFramework.exe.config                             >> !REPORT_LOGFILE! 2>&1
 	echo Configuration File: Siemens.Gms.ApplicationFramework.exe.config                                                         >> !REPORT_LOGFILE! 2>&1
 	Type "!ProgramFiles!\Siemens\LMS\bin\Siemens.Gms.ApplicationFramework.exe.config"                                            >> !REPORT_LOGFILE! 2>&1
 	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
@@ -6424,7 +6427,7 @@ echo ===========================================================================
 echo ==============================================================================               >> !REPORT_LOGFILE! 2>&1
 echo =   S O F T W A R E   U P D A T E   I N F O R M A T I O N                    =               >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================               >> !REPORT_LOGFILE! 2>&1
-echo Start at !DATE! !TIME! ....                                                                  >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... S O F T W A R E   U P D A T E   I N F O R M A T I O N            >> !REPORT_LOGFILE! 2>&1
 echo UserID=8:%SSU_SYSTEMID%                                                                      >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPSSU (
 	echo -------------------------------------------------------                                  >> !REPORT_LOGFILE! 2>&1
@@ -6584,7 +6587,7 @@ if not defined LMS_SKIPSSU (
 		set OSDSoftwareUpdateServerConnectionTestStatus=Failed
 	)
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1 
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... test connection to OSD software update server  [using API URL]                              >> !REPORT_LOGFILE! 2>&1
 	echo ... test connection to OSD software update server  [using API URL] ...
 	echo Test connection to OSD software update server  [using API URL]                                                          >> !REPORT_LOGFILE! 2>&1                                                                                            
 	rem Connection Test to OSD software update server
@@ -6607,7 +6610,7 @@ if not defined LMS_SKIPSSU (
 	) else (
 		echo ERROR: Cannot execute powershell script 'CheckForUpdate.ps1', it doesn't exist at '!ProgramFiles!\Siemens\SSU\bin\CheckForUpdate.ps1'.    >> !REPORT_LOGFILE! 2>&1
 	)
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Test connection to FNC cloud                                                                >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_EXTENDED_CONTENT (
 		echo ... test connection to FNC cloud ...
@@ -6723,7 +6726,7 @@ if not defined LMS_SKIPSSU (
 		)
 	)
 	echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... check if FNC content is available                                                           >> !REPORT_LOGFILE! 2>&1
 	echo **** FNC Windows Client [FNC] ****                                                                                      >> !REPORT_LOGFILE! 2>&1
 	echo ... check if FNC content is available ...
 	echo FNC Content:                                                                                                            >> !REPORT_LOGFILE! 2>&1
@@ -6808,7 +6811,7 @@ echo ===========================================================================
 echo =   L M S   L O G   F I L E S                                                =                                          >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_CHECK_ID (
-	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... L M S   L O G   F I L E S                                                               >> !REPORT_LOGFILE! 2>&1
 	echo Content of folder: "!REPORT_LOG_PATH!" [LOGS]                                                                       >> !REPORT_LOGFILE! 2>&1
 	dir /S /A /X /4 /W "!REPORT_LOG_PATH!" > !CHECKLMS_REPORT_LOG_PATH!\content_folder_LOGS.txt  2>&1
 	echo     See '!CHECKLMS_REPORT_LOG_PATH!\content_folder_LOGS.txt' for more details.                                      >> !REPORT_LOGFILE! 2>&1
@@ -6896,7 +6899,7 @@ if not defined LMS_SKIPSETUP (
 		echo     No LMS setup logfile [*LicenseManagementSystem*.log] found.                                                 >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... search further setup logfiles                                                           >> !REPORT_LOGFILE! 2>&1
 	echo ... search further setup logfiles ...
 	echo Search further setup logfiles:                                                                                      >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
@@ -7224,7 +7227,7 @@ echo ===========================================================================
 echo ==============================================================================                                                                                                                             >> !REPORT_LOGFILE! 2>&1
 echo =   W I N D O W S   E V E N T   L O G                                        =                                                                                                                             >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                                                                                                             >> !REPORT_LOGFILE! 2>&1
-echo Start at !DATE! !TIME! ....                                                                                                                                                                                >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... W I N D O W S   E V E N T   L O G                                                                                                                                              >> !REPORT_LOGFILE! 2>&1
 echo ... read-out windows event log [first %LOG_EVENTLOG_EVENTS% lines] ...
 if not defined LMS_SKIPWINEVENT (
 	echo     Windows Event Log: Siemens ['LMS Setup']
@@ -7343,7 +7346,7 @@ echo ===========================================================================
 echo ==============================================================================       >> !REPORT_LOGFILE! 2>&1
 echo =   L M S   N O T I F I C A T I O N   R E P O R T                            =       >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================       >> !REPORT_LOGFILE! 2>&1
-echo Start at !DATE! !TIME! ....                                                          >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... L M S   N O T I F I C A T I O N   R E P O R T            >> !REPORT_LOGFILE! 2>&1
 echo ... get 'LMS Notifications Report' ...
 echo Get 'LMS Notifications Report'                                                       >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_CHECK_ID (
@@ -7367,7 +7370,7 @@ echo ===========================================================================
 echo =   C O N N E C T I O N   T E S T                                            =       >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================       >> !REPORT_LOGFILE! 2>&1
 echo ... start connection test at !DATE! !TIME! ...
-echo Start at !DATE! !TIME! ....                                                          >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! ....  C O N N E C T I O N   T E S T                           >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPCONTEST (
 	rem Connection Test to Siemens site
 	set CONNECTION_TEST_URL=http://new.siemens.com/global/en/general/legal.html
@@ -7383,7 +7386,7 @@ if not defined LMS_SKIPCONTEST (
 		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_siemens.txt                       >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                      >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... test connection to LMS server: lms.bt.siemens.com [using https/443 port] >> !REPORT_LOGFILE! 2>&1
 	echo ... test connection to LMS server: lms.bt.siemens.com [using https/443 port] ...
 	echo Test connection to LMS server: lms.bt.siemens.com  [using https/443 port]        >> !REPORT_LOGFILE! 2>&1 
 	rem Connection Test to LMS server
@@ -7400,7 +7403,7 @@ if not defined LMS_SKIPCONTEST (
 		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_lms_prod_server.txt               >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                      >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... check https://lms.bt.siemens.com/flexnet/services/ActivationService >> !REPORT_LOGFILE! 2>&1
 	set CONNECTION_TEST_URL=https://lms.bt.siemens.com/flexnet/services/ActivationService
 	powershell -Command "(New-Object Net.WebClient).DownloadFile('!CONNECTION_TEST_URL!', '!temp!\downloadtest.txt')"  >!CHECKLMS_REPORT_LOG_PATH!\connection_test_btlms_activationservice.txt 2>&1
 	if !ERRORLEVEL!==0 (
@@ -7415,7 +7418,7 @@ if not defined LMS_SKIPCONTEST (
 	)
 	echo -------------------------------------------------------                          >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_EXTENDED_CONTENT (
-		echo Start at !DATE! !TIME! ....                                                  >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! .... test connection to LMS server: lms-quality.bt.siemens.com [using https/443 port]  >> !REPORT_LOGFILE! 2>&1
 		echo ... test connection to LMS server: lms-quality.bt.siemens.com [using https/443 port] ...
 		echo Test connection to LMS server: lms-quality.bt.siemens.com  [using https/443 port]        >> !REPORT_LOGFILE! 2>&1 
 		rem Connection Test to LMS server
@@ -7477,7 +7480,7 @@ if not defined LMS_SKIPCONTEST (
 	) else (
 		echo Skipped 'Connection Test to 158.226.135.60', to execute this test run with /extend otion.   >> !REPORT_LOGFILE! 2>&1
 	)
-	echo Start at !DATE! !TIME! ....                                                      >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Ping [using LmuTool /ping]                           >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                          >> !REPORT_LOGFILE! 2>&1
 	echo Ping [using LmuTool /ping] ...                                                   >> !REPORT_LOGFILE! 2>&1
 	echo     Ping [using LmuTool /ping] ...
@@ -7487,12 +7490,12 @@ if not defined LMS_SKIPCONTEST (
 		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.  >> !REPORT_LOGFILE! 2>&1 
 	)
 	echo -------------------------------------------------------                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                      >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Ping !COMPUTERNAME!                                  >> !REPORT_LOGFILE! 2>&1
 	echo Ping !COMPUTERNAME! ...                                                          >> !REPORT_LOGFILE! 2>&1
 	echo     Ping !COMPUTERNAME! ...
 	ping !COMPUTERNAME!                                                                   >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                      >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Start enhanced connection test [using 'act_connection_test']  >> !REPORT_LOGFILE! 2>&1
 	echo Start enhanced connection test [using 'act_connection_test'] ...                 >> !REPORT_LOGFILE! 2>&1
 	echo     Start enhanced connection test [using 'act_connection_test'] ...
 	del !CHECKLMS_REPORT_LOG_PATH!\connection_test_step1.log >nul 2>&1
@@ -7501,24 +7504,24 @@ if not defined LMS_SKIPCONTEST (
 	if defined LMS_LMUTOOL (
 		rem Execute each step of enhanced connection test
 		echo         -[Step 1 of 3] Activate 'act_connection_test' ...
-		echo          Started at !DATE! !TIME! ...
-		echo Started at !DATE! !TIME! ....                      >  !CHECKLMS_REPORT_LOG_PATH!\connection_test_step1.log 2>&1
+		echo          Start at !DATE! !TIME! ... 
+		echo Start at !DATE! !TIME! ....                      >  !CHECKLMS_REPORT_LOG_PATH!\connection_test_step1.log 2>&1
 		"!LMS_LMUTOOL!" /A:act_connection_test /M:O /Partial:1  >> !CHECKLMS_REPORT_LOG_PATH!\connection_test_step1.log 2>&1
 		rem supress error message: "Der Prozess kann nicht auf die Datei zugreifen, da sie von einem anderen Prozess verwendet wird."
 		rem delaying - doesn't work -- powershell.exe -Command "Start-Sleep -Seconds 15"
 		echo Finished at !DATE! !TIME! ....                     >> !CHECKLMS_REPORT_LOG_PATH!\connection_test_step1.log 2>&1
 		echo          Finished at !DATE! !TIME!!
 		echo         -[Step 2 of 3] Check 'act_connection_test' ...
-		echo          Started at !DATE! !TIME! ...
-		echo Started at !DATE! !TIME! ....                      >  !CHECKLMS_REPORT_LOG_PATH!\connection_test_step2.log 2>&1
+		echo          Start at !DATE! !TIME! ...
+		echo Start at !DATE! !TIME! ....                      >  !CHECKLMS_REPORT_LOG_PATH!\connection_test_step2.log 2>&1
 		"!LMS_LMUTOOL!" /CHECK:sbt_lms_connection_test          >> !CHECKLMS_REPORT_LOG_PATH!\connection_test_step2.log 2>&1
 		rem supress error message: "Der Prozess kann nicht auf die Datei zugreifen, da sie von einem anderen Prozess verwendet wird."
 		rem delaying - doesn't work -- powershell.exe -Command "Start-Sleep -Seconds 15"
 		echo Finished at !DATE! !TIME! ....                     >> !CHECKLMS_REPORT_LOG_PATH!\connection_test_step2.log 2>&1
 		echo          Finished at !DATE! !TIME!!
 		echo         -[Step 3 of 3] Return 'act_connection_test' ...
-		echo          Started at !DATE! !TIME! ...
-		echo Started at !DATE! !TIME! ....                      >  !CHECKLMS_REPORT_LOG_PATH!\connection_test_step3.log 2>&1
+		echo          Start at !DATE! !TIME! ...
+		echo Start at !DATE! !TIME! ....                      >  !CHECKLMS_REPORT_LOG_PATH!\connection_test_step3.log 2>&1
 		"!LMS_LMUTOOL!" /RA:act_connection_test                 >> !CHECKLMS_REPORT_LOG_PATH!\connection_test_step3.log 2>&1
 		rem supress error message: "Der Prozess kann nicht auf die Datei zugreifen, da sie von einem anderen Prozess verwendet wird."
 		rem delaying - doesn't work -- powershell.exe -Command "Start-Sleep -Seconds 15"
@@ -7561,7 +7564,7 @@ if not defined LMS_SKIPCONTEST (
 	)
 	echo Start at !DATE! !TIME! ....                                                                                                          >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                              >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                                          >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Try 'fake' activation using %LMS_FNO_SERVER%                                                             >> !REPORT_LOGFILE! 2>&1
 	echo Try 'fake' activation [using servercomptranutil.exe -n -t %LMS_FNO_SERVER% -activate Some_fake_activation_id] ...                    >> !REPORT_LOGFILE! 2>&1
 	echo     Try 'fake' activation using %LMS_FNO_SERVER% ...
 	if defined LMS_SERVERCOMTRANUTIL (
@@ -7575,27 +7578,27 @@ if not defined LMS_SKIPCONTEST (
 	if defined LMS_CFG_LICENSE_SRV_NAME (
 		echo Check connection to configured license server ...                                                                                >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                                          >> !REPORT_LOGFILE! 2>&1
-		echo Start at !DATE! !TIME! ....                                                                                                      >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! .... nslookup configured license server: !LMS_CFG_LICENSE_SRV_NAME!                                       >> !REPORT_LOGFILE! 2>&1
 		echo nslookup configured license server: !LMS_CFG_LICENSE_SRV_NAME! ...                                                               >> !REPORT_LOGFILE! 2>&1
 		echo     nslookup configured license server: !LMS_CFG_LICENSE_SRV_NAME! ...
 		nslookup !LMS_CFG_LICENSE_SRV_NAME!                                                                                                   >> !REPORT_LOGFILE! 2>&1
-		echo Start at !DATE! !TIME! ....                                                                                                      >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                                          >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! .... Ping configured license server: !LMS_CFG_LICENSE_SRV_NAME!                                           >> !REPORT_LOGFILE! 2>&1
 		echo Ping configured license server: !LMS_CFG_LICENSE_SRV_NAME! ...                                                                   >> !REPORT_LOGFILE! 2>&1
 		echo     Ping configured license server: !LMS_CFG_LICENSE_SRV_NAME! ...
 		ping !LMS_CFG_LICENSE_SRV_NAME!                                                                                                       >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                                          >> !REPORT_LOGFILE! 2>&1
-		echo Start at !DATE! !TIME! ....                                                                                                      >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! .... Trace route IPv4 configured license server [max. 20 hops]                                            >> !REPORT_LOGFILE! 2>&1
 		echo Trace route IPv4 configured license server [max. 20 hops] ...                                                                    >> !REPORT_LOGFILE! 2>&1
 		echo     Trace route IPv4 configured license server [max. 20 hops] ...
 		tracert -h 20  -4 !LMS_CFG_LICENSE_SRV_NAME!                                                                                          >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                                          >> !REPORT_LOGFILE! 2>&1
-		echo Start at !DATE! !TIME! ....                                                                                                      >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! .... Trace route IPv6 configured license server [max. 20 hops]                                            >> !REPORT_LOGFILE! 2>&1
 		echo Trace route IPv6 configured license server [max. 20 hops] ...                                                                    >> !REPORT_LOGFILE! 2>&1
 		echo     Trace route IPv6 configured license server [max. 20 hops] ...
 		tracert -h 20  -6 !LMS_CFG_LICENSE_SRV_NAME!                                                                                          >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                                          >> !REPORT_LOGFILE! 2>&1
-		echo Start at !DATE! !TIME! ....                                                                                                      >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! .... retrieve system time information from !LMS_CFG_LICENSE_SRV_NAME!                                     >> !REPORT_LOGFILE! 2>&1
 		echo     retrieve system time information from !LMS_CFG_LICENSE_SRV_NAME! ...
 		echo Retrieve system time information [using w32tm /stripchart /computer:!LMS_CFG_LICENSE_SRV_NAME! /dataonly /samples:2]:            >> !REPORT_LOGFILE! 2>&1
 		w32tm /stripchart /computer:!LMS_CFG_LICENSE_SRV_NAME! /dataonly /samples:2                                                           >> !REPORT_LOGFILE! 2>&1
@@ -7603,23 +7606,23 @@ if not defined LMS_SKIPCONTEST (
 		echo Check connection to configured license server: no server configured, cannot perform operation.                                   >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                                                              >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                                          >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Ping lms.bt.siemens.com                                                                                  >> !REPORT_LOGFILE! 2>&1
 	echo Ping lms.bt.siemens.com ...                                                                                                          >> !REPORT_LOGFILE! 2>&1
 	echo     Ping lms.bt.siemens.com ...
 	ping lms.bt.siemens.com                                                                                                                   >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                              >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                                          >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Trace route IPv4 to lms.bt.siemens.com [max. 10 hops]                                                    >> !REPORT_LOGFILE! 2>&1
 	echo Trace route IPv4 to lms.bt.siemens.com [max. 10 hops] ...                                                                            >> !REPORT_LOGFILE! 2>&1
 	echo     Trace route IPv4 to lms.bt.siemens.com [max. 10 hops] ...
 	tracert -h 10  -4 lms.bt.siemens.com                                                                                                      >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                              >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                                          >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Trace route IPv6 to lms.bt.siemens.com [max. 10 hops]                                                    >> !REPORT_LOGFILE! 2>&1
 	echo Trace route IPv6 to lms.bt.siemens.com [max. 10 hops] ...                                                                            >> !REPORT_LOGFILE! 2>&1
 	echo     Trace route IPv6 to lms.bt.siemens.com [max. 10 hops] ...
 	tracert -h 10  -6 lms.bt.siemens.com                                                                                                      >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                                              >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_EXTENDED_CONTENT (
-		echo Start at !DATE! !TIME! ....                                                                                                      >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! .... Ping lms-quality.bt.siemens.com                                                                      >> !REPORT_LOGFILE! 2>&1
 		echo Ping lms-quality.bt.siemens.com ...                                                                                              >> !REPORT_LOGFILE! 2>&1
 		echo     Ping lms-quality.bt.siemens.com ...
 		ping lms-quality.bt.siemens.com                                                                                                       >> !REPORT_LOGFILE! 2>&1
@@ -7630,7 +7633,6 @@ if not defined LMS_SKIPCONTEST (
 	echo !SHOW_YELLOW!    SKIPPED connection test. The script didn't execute the connections tests. !SHOW_NORMAL!
 	echo SKIPPED connection test. The script didn't execute the connections tests.                                                            >> !REPORT_LOGFILE! 2>&1
 )
-echo Start at !DATE! !TIME! ....                                                                                                              >> !REPORT_LOGFILE! 2>&1
 :collect_product_info
 echo ==============================================================================
 echo =   P R O D U C T   S P E C I F I C   I N F O R M A T I O N                  =
@@ -7638,6 +7640,7 @@ echo ===========================================================================
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 echo =   P R O D U C T   S P E C I F I C   I N F O R M A T I O N                  =                                          >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... P R O D U C T   S P E C I F I C   I N F O R M A T I O N                                     >> !REPORT_LOGFILE! 2>&1
 echo ... start to collect product specific information ...
 if not defined LMS_SKIPPRODUCTS (
 	echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
@@ -8225,7 +8228,6 @@ if /I !AWS_PENTIME! NEQ !AWS_PENTIME_PREV! (
 )
 
 :send_statistic_data
-echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================
 echo =   S E N D   S T A T I S T I C   D A T A                                    =
 echo ==============================================================================
@@ -8233,7 +8235,7 @@ echo ... send statistic data to OSD ...
 echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
 echo =   S E N D   S T A T I S T I C   D A T A                                    =                                      >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
-echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... S E N D   S T A T I S T I C   D A T A                                                   >> !REPORT_LOGFILE! 2>&1
 echo Check for software updates or messages: [read with 'CheckForUpdate.ps1' script from OSD server]                     >> !REPORT_LOGFILE! 2>&1
 echo     Check for software updates or messages: [read with 'CheckForUpdate.ps1' script from OSD server]
 IF EXIST "!LMS_CHECKFORUPDATE_SCRIPT!" (
@@ -8244,7 +8246,7 @@ IF EXIST "!LMS_CHECKFORUPDATE_SCRIPT!" (
 )
 
 :summary
-echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... S U M M A R Y                                                                           >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================
 echo =   S U M M A R Y                                                            =
 echo ==============================================================================
@@ -8448,23 +8450,23 @@ if defined TS_LOG_START_DATE (
 	echo FlexeraDecryptedEventlog.log contains data from start date: !TS_LOG_START_DATE! till end date: !TS_LOG_END_DATE!    >> !REPORT_LOGFILE! 2>&1
 	if defined TS_LOG_TRANS_BRK_FOUND (
 		echo ATTENTION: "Transient break" [Event: 40000012] found - !TS_LOG_TRANS_BRK_FOUND!                                 >> !REPORT_LOGFILE! 2>&1
-		echo            Started at !TS_LOG_TRANS_BRK_FOUND_START_DATE! till !TS_LOG_TRANS_BRK_FOUND_END_DATE!                >> !REPORT_LOGFILE! 2>&1
+		echo            Start at !TS_LOG_TRANS_BRK_FOUND_START_DATE! till !TS_LOG_TRANS_BRK_FOUND_END_DATE!                >> !REPORT_LOGFILE! 2>&1
 	)
 	if defined TS_LOG_TRANS_BRK_VAL1_FOUND (
 		echo ATTENTION: "Transient break in Anchoring" [Event: 40000012] found - !TS_LOG_TRANS_BRK_VAL1_FOUND!               >> !REPORT_LOGFILE! 2>&1
-		echo            Started at !TS_LOG_TRANS_BRK_VAL1_FOUND_START_DATE! till !TS_LOG_TRANS_BRK_VAL1_FOUND_END_DATE!      >> !REPORT_LOGFILE! 2>&1
+		echo            Start at !TS_LOG_TRANS_BRK_VAL1_FOUND_START_DATE! till !TS_LOG_TRANS_BRK_VAL1_FOUND_END_DATE!      >> !REPORT_LOGFILE! 2>&1
 	)
 	if defined TS_LOG_TRANS_BRK_VAL2_FOUND (
 		echo ATTENTION: "Transient break in Binding" [Event: 40000012] found - !TS_LOG_TRANS_BRK_VAL2_FOUND!                 >> !REPORT_LOGFILE! 2>&1
-		echo            Started at !TS_LOG_TRANS_BRK_VAL2_FOUND_START_DATE! till !TS_LOG_TRANS_BRK_VAL2_FOUND_END_DATE!      >> !REPORT_LOGFILE! 2>&1
+		echo            Start at !TS_LOG_TRANS_BRK_VAL2_FOUND_START_DATE! till !TS_LOG_TRANS_BRK_VAL2_FOUND_END_DATE!      >> !REPORT_LOGFILE! 2>&1
 	)
 	if defined TS_LOG_BAD_ANCH_FOUND (
 		echo ATTENTION: !TS_LOG_BAD_ANCH_FOUND_MESSAGE!                                                                      >> !REPORT_LOGFILE! 2>&1
-		echo            Started at !TS_LOG_BAD_ANCH_FOUND_START_DATE! till !TS_LOG_BAD_ANCH_FOUND_END_DATE!                  >> !REPORT_LOGFILE! 2>&1
+		echo            Start at !TS_LOG_BAD_ANCH_FOUND_START_DATE! till !TS_LOG_BAD_ANCH_FOUND_END_DATE!                  >> !REPORT_LOGFILE! 2>&1
 	)
 	if defined TS_LOG_ANCH_NOT_FOUND (
 		echo ATTENTION: "Anchor not available" [Event: 1000000d] found - !TS_LOG_ANCH_NOT_FOUND!                             >> !REPORT_LOGFILE! 2>&1
-		echo            Started at !TS_LOG_ANCH_NOT_FOUND_START_DATE! till !TS_LOG_ANCH_NOT_FOUND_END_DATE!                  >> !REPORT_LOGFILE! 2>&1
+		echo            Start at !TS_LOG_ANCH_NOT_FOUND_START_DATE! till !TS_LOG_ANCH_NOT_FOUND_END_DATE!                  >> !REPORT_LOGFILE! 2>&1
 	)
 	rem binding identities: ANCHORS (Validator=1)
 	rem    Value 1 (0x1) Track Zero; Value 2 (0x2) Registry
