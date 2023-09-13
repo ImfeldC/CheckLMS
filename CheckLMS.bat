@@ -75,8 +75,9 @@ rem     12-Sep-2023:
 rem        - Fix: 2348172: Handle case when creation of logfile archive doesn't work/ends with an error
 rem     13-Sep-2023:
 rem        - Slighlty adjust end message, when logfile archive hasn't been created.
-rem        - Download addtional script from git: ExtractPoolingInformation.ps1
-rem        - Analyze 'SIEMBT.log', extract pooling information (by calling ExtractPoolingInformation.ps1)
+rem        - Download addtional script from git: 'ExtractPoolingInformation.ps1'
+rem        - Analyze 'SIEMBT.log', extract pooling information (by calling 'ExtractPoolingInformation.ps1')
+rem        - Support also script 'ExtractPoolingInformation.ps1' located in C:\Program Files\Siemens\LMS\scripts
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -5704,8 +5705,15 @@ echo Start at !DATE! !TIME! .... Analyze 'SIEMBT.log', extract pooling informati
 echo     Analyze 'SIEMBT.log', extract pooling information ...
 echo Analyze 'SIEMBT.log', extract pooling information ...                                                                   >> !REPORT_LOGFILE! 2>&1
 IF EXIST "!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1" (
-	echo RUN: powershell -Command "& '!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1'; exit $LASTEXITCODE"                >> !REPORT_LOGFILE! 2>&1
-	powershell -Command "& '!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1'; exit $LASTEXITCODE"                          >> !REPORT_LOGFILE! 2>&1
+	set LMS_EXTRACTPOOLINFO_SCRIPT=!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1
+) else IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\ExtractPoolingInformation.ps1" (
+	set LMS_EXTRACTPOOLINFO_SCRIPT=!ProgramFiles!\Siemens\LMS\scripts\ExtractPoolingInformation.ps1
+)
+IF EXIST "!LMS_EXTRACTPOOLINFO_SCRIPT!" (
+	echo RUN: powershell -Command "& '!LMS_EXTRACTPOOLINFO_SCRIPT!'; exit $LASTEXITCODE"                                     >> !REPORT_LOGFILE! 2>&1
+	powershell -Command "& '!LMS_EXTRACTPOOLINFO_SCRIPT!'; exit $LASTEXITCODE"                                               >> !REPORT_LOGFILE! 2>&1
+) else (
+	echo     'ExtractPoolingInformation.ps1' script not found.                                                               >> !REPORT_LOGFILE! 2>&1
 )
 echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 echo Start at !DATE! !TIME! .... Analyze 'demo_debuglog.txt'                                                                 >> !REPORT_LOGFILE! 2>&1
