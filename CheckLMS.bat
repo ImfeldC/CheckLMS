@@ -78,6 +78,7 @@ rem        - Slighlty adjust end message, when logfile archive hasn't been creat
 rem        - Download addtional script from git: 'ExtractPoolingInformation.ps1'
 rem        - Analyze 'SIEMBT.log', extract pooling information (by calling 'ExtractPoolingInformation.ps1')
 rem        - Support also script 'ExtractPoolingInformation.ps1' located in C:\Program Files\Siemens\LMS\scripts
+rem        - Extract 'Host Info' with 'ExtractHostInfo.ps1' (instead of doing this within batch file)
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -1610,9 +1611,20 @@ if not defined LMS_SKIPDOWNLOAD (
 				set LMS_DOWNLOAD_LINK=https://raw.githubusercontent.com/ImfeldC/CheckLMS/master/ExtractPoolingInformation.ps1
 				echo     Download additional powershell script from github: !LMS_DOWNLOAD_LINK!
 				echo Download additional powershell script from github: !LMS_DOWNLOAD_LINK!                                             >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1')" > !CHECKLMS_REPORT_LOG_PATH!\download_psscript_git.txt 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1')" > !CHECKLMS_REPORT_LOG_PATH!\download_extractpoolinfo_git.txt 2>&1
 				if !ERRORLEVEL!==0 (
 					echo     Download PASSED, script available at '!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1'                   >> !REPORT_LOGFILE! 2>&1
+				) else if !ERRORLEVEL!==1 (
+					echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                       >> !REPORT_LOGFILE! 2>&1
+				)
+			)
+			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\ExtractHostInfo.ps1" (
+				set LMS_DOWNLOAD_LINK=https://raw.githubusercontent.com/ImfeldC/CheckLMS/master/ExtractHostInfo.ps1
+				echo     Download additional powershell script from github: !LMS_DOWNLOAD_LINK!
+				echo Download additional powershell script from github: !LMS_DOWNLOAD_LINK!                                             >> !REPORT_LOGFILE! 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\ExtractHostInfo.ps1')" > !CHECKLMS_REPORT_LOG_PATH!\download_extracthostinfo_git.txt 2>&1
+				if !ERRORLEVEL!==0 (
+					echo     Download PASSED, script available at '!LMS_DOWNLOAD_PATH!\ExtractHostInfo.ps1'                             >> !REPORT_LOGFILE! 2>&1
 				) else if !ERRORLEVEL!==1 (
 					echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                       >> !REPORT_LOGFILE! 2>&1
 				)
@@ -5658,32 +5670,50 @@ IF EXIST "!REPORT_LOG_PATH!\SIEMBT.log" (
 			rem Extract "Host Info"
 			echo     Extract 'Host Info' ...
 			echo Extract 'Host Info' ...                                                                                     >> !REPORT_LOGFILE! 2>&1
-			rem NOTE: The implementation below is VERY slow, we should move this part into /extend mode :-)
-			Set LMS_START_LOG=0
-			del "!CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt" >nul 2>&1
-			Set LMS_HOSTINFO_FOUND=
-			FOR /F "eol=@ delims=" %%i IN ('type !REPORT_LOG_PATH!\SIEMBT.log') DO ( 
-				if not defined LMS_HOSTINFO_FOUND (
-					ECHO "%%i" | FINDSTR /C:"=== Host Info ===" 1>nul 
-					if !ERRORLEVEL!==0 (
-						echo Start of 'Host Info' section found ... > !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt 2>&1
-						Set LMS_START_LOG=1
-					)
-					if !LMS_START_LOG!==1 (
-						echo %%i                                    >> !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt 2>&1
-						
-						rem check for end of 'Host Info' block
-						ECHO "%%i" | FINDSTR /C:"===============================================" 1>nul 
+
+
+			IF EXIST "!LMS_DOWNLOAD_PATH!\ExtractHostInfo.ps1" (
+				set LMS_EXTRACTHOSTINFO_SCRIPT=!LMS_DOWNLOAD_PATH!\ExtractHostInfo.ps1
+			) else IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\ExtractHostInfo.ps1" (
+				set LMS_EXTRACTHOSTINFO_SCRIPT=!ProgramFiles!\Siemens\LMS\scripts\ExtractHostInfo.ps1
+			)
+			IF EXIST "!LMS_EXTRACTHOSTINFO_SCRIPT!" (
+				echo RUN: powershell -Command "& '!LMS_EXTRACTHOSTINFO_SCRIPT!'; exit $LASTEXITCODE"                         >> !REPORT_LOGFILE! 2>&1
+				powershell -Command "& '!LMS_EXTRACTHOSTINFO_SCRIPT!'; exit $LASTEXITCODE"  > !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt 2>&1
+			) else (
+				echo     'ExtractHostInfo.ps1' script not found.                                                             >> !REPORT_LOGFILE! 2>&1
+
+				rem #########################################################
+				rem NOTE: The implementation below is VERY slow, it has been replaced by 'ExtractHostInfo.ps1' ... just kept in case the script is not there ;-)
+				Set LMS_START_LOG=0
+				del "!CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt" >nul 2>&1
+				Set LMS_HOSTINFO_FOUND=
+				FOR /F "eol=@ delims=" %%i IN ('type !REPORT_LOG_PATH!\SIEMBT.log') DO ( 
+					if not defined LMS_HOSTINFO_FOUND (
+						ECHO "%%i" | FINDSTR /C:"=== Host Info ===" 1>nul 
 						if !ERRORLEVEL!==0 (
-							echo End of 'Host Info' section found ...   >> !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt 2>&1
-							Set LMS_START_LOG=0
-							Set LMS_HOSTINFO_FOUND=1
-							goto break_hostinfo_for_loop 
+							echo Start of 'Host Info' section found ... > !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt 2>&1
+							Set LMS_START_LOG=1
+						)
+						if !LMS_START_LOG!==1 (
+							echo %%i                                    >> !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt 2>&1
+							
+							rem check for end of 'Host Info' block
+							ECHO "%%i" | FINDSTR /C:"===============================================" 1>nul 
+							if !ERRORLEVEL!==0 (
+								echo End of 'Host Info' section found ...   >> !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt 2>&1
+								Set LMS_START_LOG=0
+								Set LMS_HOSTINFO_FOUND=1
+								goto break_hostinfo_for_loop 
+							)
 						)
 					)
 				)
+				:break_hostinfo_for_loop 
+				rem #########################################################
+
 			)
-			:break_hostinfo_for_loop 
+			
 			IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt" (
 				type "!CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt"                                                        >> !REPORT_LOGFILE! 2>&1
 			) else (
@@ -5691,7 +5721,7 @@ IF EXIST "!REPORT_LOG_PATH!\SIEMBT.log" (
 			)
 
 			rem SIEMBT.log
-			echo Start at !DATE! !TIME! ....                                                                                 >> !REPORT_LOGFILE! 2>&1
+			echo Start at !DATE! !TIME! .... LOG FILE: SIEMBT.log [last !LOG_FILE_LINES! lines]                              >> !REPORT_LOGFILE! 2>&1
 			echo LOG FILE: SIEMBT.log [last !LOG_FILE_LINES! lines]                                                          >> !REPORT_LOGFILE! 2>&1
 			powershell -command "& {Get-Content '!REPORT_LOG_PATH!\SIEMBT.log' | Select-Object -last !LOG_FILE_LINES!}"      >> !REPORT_LOGFILE! 2>&1
 		)
