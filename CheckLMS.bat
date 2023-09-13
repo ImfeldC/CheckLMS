@@ -76,6 +76,7 @@ rem        - Fix: 2348172: Handle case when creation of logfile archive doesn't 
 rem     13-Sep-2023:
 rem        - Slighlty adjust end message, when logfile archive hasn't been created.
 rem        - Download addtional script from git: ExtractPoolingInformation.ps1
+rem        - Analyze 'SIEMBT.log', extract pooling information (by calling ExtractPoolingInformation.ps1)
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -1136,19 +1137,19 @@ if not defined LMS_SKIPDOWNLOAD (
 			rem Check if newer CheckLMS.bat is available in !LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat
 			IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat" (
 				echo     Check script on '!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat' ... 
-				echo Check script on '!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat' ...                                                                                                           >> !REPORT_LOGFILE! 2>&1
+				echo Check script on '!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat' ...                                                                                                       >> !REPORT_LOGFILE! 2>&1
 				for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD set LMS_SCRIPT_BUILD_DOWNLOAD=%%i
 			)	
 
 			rem Download newest LMS check script from github 'CheckLMS.bat'
 			if not defined LMS_DONOTSTARTNEWERSCRIPT (
-				echo     Download newest LMS check script from github: !LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat
-				echo Download newest LMS check script: !LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat                                                                                       >> !REPORT_LOGFILE! 2>&1
-				del !LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat >nul 2>&1
 				set LMS_DOWNLOAD_LINK=https://raw.githubusercontent.com/ImfeldC/CheckLMS/master/CheckLMS.bat
+				echo     Download newest LMS check script from github: !LMS_DOWNLOAD_LINK!
+				echo Download newest LMS check script: !LMS_DOWNLOAD_LINK!                                                                                                                 >> !REPORT_LOGFILE! 2>&1
+				del !LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat >nul 2>&1
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat')" > !CHECKLMS_REPORT_LOG_PATH!\download_checklms_git.txt 2>&1
 				if !ERRORLEVEL!==0 (
-					echo     Download PASSED, can access '!LMS_DOWNLOAD_LINK!'                                                                                                             >> !REPORT_LOGFILE! 2>&1
+					echo     Download PASSED, file available at '!LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat'                                                                            >> !REPORT_LOGFILE! 2>&1
 				) else if !ERRORLEVEL!==1 (
 					echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                                                                          >> !REPORT_LOGFILE! 2>&1
 				)
@@ -1177,13 +1178,13 @@ if not defined LMS_SKIPDOWNLOAD (
 
 			rem Download newest LMS check script from download share as 'CheckLMS.bat'
 			if not defined LMS_DONOTSTARTNEWERSCRIPT (
-			 	echo     Download newest LMS check script: !LMS_DOWNLOAD_PATH!\CheckLMS\bat\CheckLMS.bat
-			 	echo Download newest LMS check script: !LMS_DOWNLOAD_PATH!\CheckLMS\bat\CheckLMS.bat                                                                                       >> !REPORT_LOGFILE! 2>&1
-			 	del !LMS_DOWNLOAD_PATH!\CheckLMS\bat\CheckLMS.bat >nul 2>&1
 				set LMS_DOWNLOAD_LINK=!CHECKLMS_EXTERNAL_SHARE!lms/CheckLMS/CheckLMS.bat
+			 	echo     Download newest LMS check script: !LMS_DOWNLOAD_LINK!
+			 	echo Download newest LMS check script: !LMS_DOWNLOAD_LINK!                                                                                                                 >> !REPORT_LOGFILE! 2>&1
+			 	del !LMS_DOWNLOAD_PATH!\CheckLMS\bat\CheckLMS.bat >nul 2>&1
 			 	powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\CheckLMS\bat\CheckLMS.bat')"                                      >> !REPORT_LOGFILE! 2>&1
 				if !ERRORLEVEL!==0 (
-					echo     Download PASSED, can access '!LMS_DOWNLOAD_LINK!'                                                                                                             >> !REPORT_LOGFILE! 2>&1
+					echo     Download PASSED, file available at '!LMS_DOWNLOAD_PATH!\CheckLMS\bat\CheckLMS.bat'                                                                            >> !REPORT_LOGFILE! 2>&1
 				) else if !ERRORLEVEL!==1 (
 					echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                                                                          >> !REPORT_LOGFILE! 2>&1
 				)
@@ -1372,7 +1373,7 @@ if not defined LMS_SKIPDOWNLOAD (
 				rem Download and unzip FNP toolkit [as ZIP]
 				IF NOT EXIST "!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.zip" (
 					echo     Download FNP Siemens Library: !LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.zip
-					echo Download FNP Siemens Library: !LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.zip                                                                                                           >> !REPORT_LOGFILE! 2>&1
+					echo Download FNP Siemens Library: !LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.zip                                      >> !REPORT_LOGFILE! 2>&1
 					powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/FNP/!LMS_SERVERTOOL_DW!.zip', '!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.zip')"   >> !REPORT_LOGFILE! 2>&1
 
 					REM Unzip FNP Siemens Library
@@ -1610,7 +1611,7 @@ if not defined LMS_SKIPDOWNLOAD (
 				echo Download additional powershell script from github: !LMS_DOWNLOAD_LINK!                                             >> !REPORT_LOGFILE! 2>&1
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1')" > !CHECKLMS_REPORT_LOG_PATH!\download_psscript_git.txt 2>&1
 				if !ERRORLEVEL!==0 (
-					echo     Download PASSED, can access '!LMS_DOWNLOAD_LINK!'                                                          >> !REPORT_LOGFILE! 2>&1
+					echo     Download PASSED, script available at '!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1'                   >> !REPORT_LOGFILE! 2>&1
 				) else if !ERRORLEVEL!==1 (
 					echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                       >> !REPORT_LOGFILE! 2>&1
 				)
@@ -5698,8 +5699,16 @@ IF EXIST "!REPORT_LOG_PATH!\SIEMBT.log" (
 ) else (
 	echo     !REPORT_LOG_PATH!\SIEMBT.log not found.                                                                         >> !REPORT_LOGFILE! 2>&1
 )
-echo Start at !DATE! !TIME! .... Analyze 'demo_debuglog.txt'                                                                 >> !REPORT_LOGFILE! 2>&1
 echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... Analyze 'SIEMBT.log', extract pooling information.                                          >> !REPORT_LOGFILE! 2>&1
+echo     Analyze 'SIEMBT.log', extract pooling information ...
+echo Analyze 'SIEMBT.log', extract pooling information ...                                                                   >> !REPORT_LOGFILE! 2>&1
+IF EXIST "!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1" (
+	echo RUN: powershell -Command "& '!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1'; exit $LASTEXITCODE"                >> !REPORT_LOGFILE! 2>&1
+	powershell -Command "& '!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1'; exit $LASTEXITCODE"                          >> !REPORT_LOGFILE! 2>&1
+)
+echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+echo Start at !DATE! !TIME! .... Analyze 'demo_debuglog.txt'                                                                 >> !REPORT_LOGFILE! 2>&1
 echo Analyze 'demo_debuglog.txt' ...                                                                                         >> !REPORT_LOGFILE! 2>&1
 IF EXIST "!REPORT_LOG_PATH!\demo_debuglog.txt" (
 	if defined LMS_EXTENDED_CONTENT (
