@@ -73,6 +73,8 @@ rem        - replace 'Started at' with 'Start at'
 rem        - Add to each 'Start at' the related command to the output (this allows easier analysis of 'long running tasks' later on)
 rem     12-Sep-2023:
 rem        - Fix: 2348172: Handle case when creation of logfile archive doesn't work/ends with an error
+rem     13-Sep-2023:
+rem        - Slighlty adjust end message, when logfile archive hasn't been created.
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -109,8 +111,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 12-Sep-2023"
-set LMS_SCRIPT_BUILD=20230912
+set LMS_SCRIPT_VERSION="CheckLMS Script 13-Sep-2023"
+set LMS_SCRIPT_BUILD=20230913
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -8626,6 +8628,8 @@ if not defined LMS_CHECK_ID (
 			echo ... finished, see '!REPORT_LOGARCHIVE!'!
 		) else (
 			rem ZIP archive is not available ...
+			echo Creation of logfile archive failed.
+			echo .
 			echo .
 			echo ... finished, see '!REPORT_LOGFILE!'!
 			echo .
