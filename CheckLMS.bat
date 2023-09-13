@@ -75,6 +75,7 @@ rem     12-Sep-2023:
 rem        - Fix: 2348172: Handle case when creation of logfile archive doesn't work/ends with an error
 rem     13-Sep-2023:
 rem        - Slighlty adjust end message, when logfile archive hasn't been created.
+rem        - Download addtional script from git: ExtractPoolingInformation.ps1
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -1600,6 +1601,19 @@ if not defined LMS_SKIPDOWNLOAD (
 				echo     Download 'counted.lic': !LMS_DOWNLOAD_PATH!\counted.lic
 				echo Download 'counted.lic': !LMS_DOWNLOAD_PATH!\counted.lic                                                            >> !REPORT_LOGFILE! 2>&1
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/FNP/counted.lic', '!LMS_DOWNLOAD_PATH!\counted.lic')"   >> !REPORT_LOGFILE! 2>&1
+			)
+			
+
+			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1" (
+				set LMS_DOWNLOAD_LINK=https://raw.githubusercontent.com/ImfeldC/CheckLMS/master/ExtractPoolingInformation.ps1
+				echo     Download additional powershell script from github: !LMS_DOWNLOAD_LINK!
+				echo Download additional powershell script from github: !LMS_DOWNLOAD_LINK!                                             >> !REPORT_LOGFILE! 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1')" > !CHECKLMS_REPORT_LOG_PATH!\download_psscript_git.txt 2>&1
+				if !ERRORLEVEL!==0 (
+					echo     Download PASSED, can access '!LMS_DOWNLOAD_LINK!'                                                          >> !REPORT_LOGFILE! 2>&1
+				) else if !ERRORLEVEL!==1 (
+					echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                       >> !REPORT_LOGFILE! 2>&1
+				)
 			)
 			
 		)
