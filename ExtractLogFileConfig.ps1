@@ -1,3 +1,24 @@
+# Funktion zum Suchen von Dateien mit einem bestimmten Namen  
+function Find-Files {  
+    param (  
+        [string]$Path,  
+        [string]$Name  
+    )  
+  
+    # Suchen nach Dateien mit dem angegebenen Namen im angegebenen Pfad  
+    $files = Get-ChildItem $Path -Filter "$Name.*" -File  
+  
+    # Ausgabe der gefundenen Dateien  
+    if ($files.Count -eq 0) {  
+        Write-Output "No files found."  
+    } else {  
+        Write-Output "Files found:"  
+        foreach ($file in $files) {  
+            Write-Output "- $($file.FullName)"  
+        }  
+    }  
+}  
+  
 # XML-Konfigurationsdatei laden  
 [xml]$config = Get-Content "C:\Program Files\Siemens\LMS\bin\lmslogcfg.xml"  
   
@@ -27,5 +48,7 @@ if ($appender -eq $null) {
     Write-Output "File Name: $fileName"  
     Write-Output "Max Backup Index: $maxBackupIndex"  
     Write-Output "Level Value: $levelValue"    
-    #Write-Output "Appender: $($appender.InnerXml)"    
+  
+    # Aufrufen der Funktion zum Suchen von Dateien  
+    Find-Files -Path $filePath -Name $fileName  
 }  
