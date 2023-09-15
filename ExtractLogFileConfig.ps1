@@ -17,6 +17,24 @@ function Find-Files {
             Write-Output "- $($file.FullName)"  
         }  
     }  
+  
+    # Suchen nach Dateien mit dem angegebenen Namen und einem Wildcard-Platzhalter im Pfad  
+    $wildcardName = $Name -replace "{pid}", "*"  
+    $wildcardFiles = Get-ChildItem $Path -Filter "$wildcardName.*" -File  
+  
+    # Ausgabe der gefundenen Dateien  
+    if ($wildcardFiles.Count -eq 0) {  
+        Write-Output "No wildcard files found."  
+    } else {  
+        Write-Output "Wildcard files found:"  
+        foreach ($file in $wildcardFiles) {  
+            Write-Output "- $($file.FullName)"  
+        }  
+    }  
+  
+    # Ausgabe der Anzahl der gefundenen Dateien  
+    $totalFiles = $files.Count + $wildcardFiles.Count  
+    Write-Output "Total files found: $totalFiles"  
 }  
   
 # XML-Konfigurationsdatei laden  
