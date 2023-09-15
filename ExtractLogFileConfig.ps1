@@ -35,6 +35,9 @@ function Find-Files {
     # Ausgabe der Anzahl der gefundenen Dateien  
     $totalFiles = $files.Count + $wildcardFiles.Count  
     Write-Output "Total files found: $totalFiles"  
+  
+    # Rückgabe der gefundenen Dateien  
+    return ,$files + $wildcardFiles  
 }  
   
 # XML-Konfigurationsdatei laden  
@@ -67,6 +70,30 @@ if ($appender -eq $null) {
     Write-Output "Max Backup Index: $maxBackupIndex"  
     Write-Output "Level Value: $levelValue"    
   
-    # Aufrufen der Funktion zum Suchen von Dateien  
-    Find-Files -Path $filePath -Name $fileName  
+    # Aufrufen der Funktion zum Suchen von Dateien und Speichern der gefundenen Dateien in einer Variablen  
+    $foundFiles = Find-Files -Path $filePath -Name $fileName  
+  
+    # Erstellen eines ZIP-Archivs mit den gefundenen Dateien  
+    if ($foundFiles.Count -eq 0) {  
+        Write-Output "No files found to archive."  
+    } else {  
+        # Erstellen eines Dateinamens für das ZIP-Archiv  
+        $zipFileName = "$fileName.zip"  
+  
+        # Erstellen des Pfads für das ZIP-Archiv  
+        $zipFilePath = Join-Path $filePath $zipFileName  
+  
+        # Prüfen, ob das ZIP-Archiv bereits existiert  
+        if (Test-Path $zipFilePath) {  
+            Write-Output "Deleting existing archive: $zipFilePath"  
+            Remove-Item $zipFilePath  
+        }  
+  
+        # Erstellen des ZIP-Archivs  
+        Write-Output "Creating archive: $zipFilePath"  
+        Add-Type -AssemblyName "System.IO.Compression.FileSystem"  
+        [System.IO.Compression.ZipFile]::CreateFromDirectory($filePath, $zipFilePath)  
+  
+        Write-Output "Archive created at $zipFilePath."  
+    }  
 }  
