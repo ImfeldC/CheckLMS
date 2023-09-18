@@ -79,6 +79,8 @@ rem        - Download addtional script from git: 'ExtractPoolingInformation.ps1'
 rem        - Analyze 'SIEMBT.log', extract pooling information (by calling 'ExtractPoolingInformation.ps1')
 rem        - Support also script 'ExtractPoolingInformation.ps1' located in C:\Program Files\Siemens\LMS\scripts
 rem        - Extract 'Host Info' with 'ExtractHostInfo.ps1' (instead of doing this within batch file)
+rem     18-Sep-2023:
+rem        - add hint about "servercomptranutil.exe -vl"
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -115,8 +117,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 13-Sep-2023"
-set LMS_SCRIPT_BUILD=20230913
+set LMS_SCRIPT_VERSION="CheckLMS Script 18-Sep-2023"
+set LMS_SCRIPT_BUILD=20230918
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -5912,7 +5914,7 @@ if not defined LMS_SKIPLICSERV (
 		echo     servercomptranutil.exe doesn't exist, cannot perform operation.                          >> !REPORT_LOGFILE! 2>&1
 	)
 	echo -------------------------------------------------------                                          >> !REPORT_LOGFILE! 2>&1 
-	echo Start at !DATE! !TIME! .... viewing server trusted storage in long format [servercomptranutil.exe -view format=long]   >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... viewing server trusted storage in long format [servercomptranutil.exe -view format=long, servercomptranutil.exe -vl]   >> !REPORT_LOGFILE! 2>&1
 	echo     viewing server trusted storage in long format [servercomptranutil.exe -view format=long] ...
 	echo viewing server trusted storage in long format [servercomptranutil.exe -view format=long]         >> !REPORT_LOGFILE! 2>&1
 	if defined LMS_SERVERCOMTRANUTIL (
