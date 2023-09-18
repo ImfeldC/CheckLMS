@@ -83,6 +83,7 @@ rem     18-Sep-2023:
 rem        - add hint about "servercomptranutil.exe -vl"
 rem        - Download addtional script from git: 'ExtractLogFileConfig.ps1'
 rem        - Execute script 'ExtractLogFileConfig.ps1' to collect additional logfiles not located in common LMS folder
+rem        - adjust script, to execute 'ExtractPoolingInformation.ps1' only when SIEMBT.log is smaller than critcial limit (see LOG_FILESIZE_LIMIT).
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -5686,7 +5687,6 @@ IF EXIST "!REPORT_LOG_PATH!\SIEMBT.log" (
 			echo     Extract 'Host Info' ...
 			echo Extract 'Host Info' ...                                                                                     >> !REPORT_LOGFILE! 2>&1
 
-
 			IF EXIST "!LMS_DOWNLOAD_PATH!\ExtractHostInfo.ps1" (
 				set LMS_EXTRACTHOSTINFO_SCRIPT=!LMS_DOWNLOAD_PATH!\ExtractHostInfo.ps1
 			) else IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\ExtractHostInfo.ps1" (
@@ -5735,30 +5735,33 @@ IF EXIST "!REPORT_LOG_PATH!\SIEMBT.log" (
 				echo     ATTENTION: No 'Host Info' found in '!REPORT_LOG_PATH!\SIEMBT.log'!                                  >> !REPORT_LOGFILE! 2>&1
 			)
 
+			echo -------------------------------------------------------                                                     >> !REPORT_LOGFILE! 2>&1
+			echo Start at !DATE! !TIME! .... Analyze 'SIEMBT.log', extract pooling information.                              >> !REPORT_LOGFILE! 2>&1
+			echo     Analyze 'SIEMBT.log', extract pooling information ...
+			echo Analyze 'SIEMBT.log', extract pooling information ...                                                       >> !REPORT_LOGFILE! 2>&1
+			IF EXIST "!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1" (
+				set LMS_EXTRACTPOOLINFO_SCRIPT=!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1
+			) else IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\ExtractPoolingInformation.ps1" (
+				set LMS_EXTRACTPOOLINFO_SCRIPT=!ProgramFiles!\Siemens\LMS\scripts\ExtractPoolingInformation.ps1
+			)
+			IF EXIST "!LMS_EXTRACTPOOLINFO_SCRIPT!" (
+				echo RUN: powershell -Command "& '!LMS_EXTRACTPOOLINFO_SCRIPT!'; exit $LASTEXITCODE"                         >> !REPORT_LOGFILE! 2>&1
+				powershell -Command "& '!LMS_EXTRACTPOOLINFO_SCRIPT!'; exit $LASTEXITCODE"                                   >> !REPORT_LOGFILE! 2>&1
+			) else (
+				echo     'ExtractPoolingInformation.ps1' script not found.                                                   >> !REPORT_LOGFILE! 2>&1
+			)
+
 			rem SIEMBT.log
+			echo -------------------------------------------------------                                                     >> !REPORT_LOGFILE! 2>&1
 			echo Start at !DATE! !TIME! .... LOG FILE: SIEMBT.log [last !LOG_FILE_LINES! lines]                              >> !REPORT_LOGFILE! 2>&1
 			echo LOG FILE: SIEMBT.log [last !LOG_FILE_LINES! lines]                                                          >> !REPORT_LOGFILE! 2>&1
 			powershell -command "& {Get-Content '!REPORT_LOG_PATH!\SIEMBT.log' | Select-Object -last !LOG_FILE_LINES!}"      >> !REPORT_LOGFILE! 2>&1
+
 		)
 	)
 
 ) else (
 	echo     !REPORT_LOG_PATH!\SIEMBT.log not found.                                                                         >> !REPORT_LOGFILE! 2>&1
-)
-echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-echo Start at !DATE! !TIME! .... Analyze 'SIEMBT.log', extract pooling information.                                          >> !REPORT_LOGFILE! 2>&1
-echo     Analyze 'SIEMBT.log', extract pooling information ...
-echo Analyze 'SIEMBT.log', extract pooling information ...                                                                   >> !REPORT_LOGFILE! 2>&1
-IF EXIST "!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1" (
-	set LMS_EXTRACTPOOLINFO_SCRIPT=!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1
-) else IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\ExtractPoolingInformation.ps1" (
-	set LMS_EXTRACTPOOLINFO_SCRIPT=!ProgramFiles!\Siemens\LMS\scripts\ExtractPoolingInformation.ps1
-)
-IF EXIST "!LMS_EXTRACTPOOLINFO_SCRIPT!" (
-	echo RUN: powershell -Command "& '!LMS_EXTRACTPOOLINFO_SCRIPT!'; exit $LASTEXITCODE"                                     >> !REPORT_LOGFILE! 2>&1
-	powershell -Command "& '!LMS_EXTRACTPOOLINFO_SCRIPT!'; exit $LASTEXITCODE"                                               >> !REPORT_LOGFILE! 2>&1
-) else (
-	echo     'ExtractPoolingInformation.ps1' script not found.                                                               >> !REPORT_LOGFILE! 2>&1
 )
 echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 echo Start at !DATE! !TIME! .... Analyze 'demo_debuglog.txt'                                                                 >> !REPORT_LOGFILE! 2>&1
