@@ -10,7 +10,13 @@ param(
 	[bool]$stagesystem = $false
 )
 #endregion
-
+# ---------------------------------------------------------------------------------------
+# © Siemens 2022 - 2023
+#
+# Transmittal, reproduction, dissemination and/or editing of this document as well as utilization ofits contents and communication thereof to others without express authorization are prohibited.
+# Offenders will be held liable for payment of damages. All rights created by patent grant orregistration of a utility model or design patent are reserved.
+# ---------------------------------------------------------------------------------------
+#
 # '20220420': Add installed Siemens Software 
 # '20220421': try/catch rest method call, read addtional data, see https://github.com/MicrosoftDocs/PowerShell-Docs/issues/4456 
 # '20220504': Add option $SkipSiemensSoftware, to skip sending installed Siemens Software. Disable per default.
@@ -44,7 +50,8 @@ param(
 #             Add parameter to choose between productive (=default) or stage system
 # '20230511': Support 'SkipCheckForUpdate' registry entry; if set to '1' do not perform check for updates.
 # '20230804': Revert back to use Start-BitsTransfer to download file from OSD, instead of Net.WebClient (see also '20221005')
-$scriptVersion = '20230804'
+# '20230913': Add copyright notice of Siemens 
+$scriptVersion = '20230013'
 
 $global:ExitCode=0
 # Old API URL -> $OSD_APIURL="https://www.automation.siemens.com/softwareupdater/public/api/updates"
