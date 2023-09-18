@@ -81,6 +81,8 @@ rem        - Support also script 'ExtractPoolingInformation.ps1' located in C:\P
 rem        - Extract 'Host Info' with 'ExtractHostInfo.ps1' (instead of doing this within batch file)
 rem     18-Sep-2023:
 rem        - add hint about "servercomptranutil.exe -vl"
+rem        - Download addtional script from git: 'ExtractLogFileConfig.ps1'
+rem        - Execute script 'ExtractLogFileConfig.ps1' to collect additional logfiles not located in common LMS folder
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -1627,6 +1629,17 @@ if not defined LMS_SKIPDOWNLOAD (
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\ExtractHostInfo.ps1')" > !CHECKLMS_REPORT_LOG_PATH!\download_extracthostinfo_git.txt 2>&1
 				if !ERRORLEVEL!==0 (
 					echo     Download PASSED, script available at '!LMS_DOWNLOAD_PATH!\ExtractHostInfo.ps1'                             >> !REPORT_LOGFILE! 2>&1
+				) else if !ERRORLEVEL!==1 (
+					echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                       >> !REPORT_LOGFILE! 2>&1
+				)
+			)
+			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\ExtractLogFileConfig.ps1" (
+				set LMS_DOWNLOAD_LINK=https://raw.githubusercontent.com/ImfeldC/CheckLMS/master/ExtractLogFileConfig.ps1
+				echo     Download additional powershell script from github: !LMS_DOWNLOAD_LINK!
+				echo Download additional powershell script from github: !LMS_DOWNLOAD_LINK!                                             >> !REPORT_LOGFILE! 2>&1
+				powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\ExtractLogFileConfig.ps1')" > !CHECKLMS_REPORT_LOG_PATH!\download_extractlogfileconfig_git.txt 2>&1
+				if !ERRORLEVEL!==0 (
+					echo     Download PASSED, script available at '!LMS_DOWNLOAD_PATH!\ExtractLogFileConfig.ps1'                        >> !REPORT_LOGFILE! 2>&1
 				) else if !ERRORLEVEL!==1 (
 					echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                       >> !REPORT_LOGFILE! 2>&1
 				)
@@ -6884,7 +6897,7 @@ if not defined LMS_CHECK_ID (
 	echo     See '!CHECKLMS_REPORT_LOG_PATH!\content_folder_LOGS.txt' for more details.                                      >> !REPORT_LOGFILE! 2>&1
 ) else (
 	rem LMS_CHECK_ID
-	echo !SHOW_YELLOW!    SKIPPED LMS logfile section. The script didn't execute the LMS logfile commands. !SHOW_NORMAL!
+	echo !SHOW_YELLOW!    SKIPPED LMS logfile section. The script didn't execute the LMS logfile commands. !SHOW_NORMAL! 
 	echo SKIPPED LMS logfile section. The script didn't execute the LMS logfile commands.                                    >> !REPORT_LOGFILE! 2>&1
 )
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
@@ -7035,6 +7048,18 @@ if not defined LMS_SKIPSETUP (
 )
 echo ==============================================================================                                                                                                     >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPLOGS (
+	echo ... read LMS logfiles not located in default LMS logfile folders ...
+	echo Read LMS logfiles not located in default LMS logfile folders                                                        >> !REPORT_LOGFILE! 2>&1
+	IF EXIST "!LMS_DOWNLOAD_PATH!\ExtractLogFileConfig.ps1" (
+		set LMS_EXTRACTLOGFILEINFO_SCRIPT=!LMS_DOWNLOAD_PATH!\ExtractLogFileConfig.ps1
+	) else IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\ExtractLogFileConfig.ps1" (
+		set LMS_EXTRACTLOGFILEINFO_SCRIPT=!ProgramFiles!\Siemens\LMS\scripts\ExtractLogFileConfig.ps1
+	)
+	IF EXIST "!LMS_EXTRACTLOGFILEINFO_SCRIPT!" ( 
+		echo RUN: powershell -Command "& '!LMS_EXTRACTLOGFILEINFO_SCRIPT!'; exit $LASTEXITCODE"                              >> !REPORT_LOGFILE! 2>&1
+		powershell -Command "& '!LMS_EXTRACTLOGFILEINFO_SCRIPT!'; exit $LASTEXITCODE"                                        >> !REPORT_LOGFILE! 2>&1
+	)
+	echo -------------------------------------------------------                                                                                                                        >> !REPORT_LOGFILE! 2>&1
 	echo ... read LMS logfiles [last !LOG_FILE_LINES! lines] ...
 	echo LOG FILE: LMU.log [last !LOG_FILE_LINES! lines]                                                                                                                                >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!REPORT_LOG_PATH!\LMU.log" (
