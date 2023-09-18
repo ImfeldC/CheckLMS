@@ -1,3 +1,29 @@
+# ---------------------------------------------------------------------------------------
+# © Siemens 2023
+#
+# Transmittal, reproduction, dissemination and/or editing of this document as well as utilization ofits contents and communication thereof to others without express authorization are prohibited.
+# Offenders will be held liable for payment of damages. All rights created by patent grant orregistration of a utility model or design patent are reserved.
+# ---------------------------------------------------------------------------------------
+#
+# '20230918': Initial version (created with help of Azure OpneAI studio)
+#
+$scriptVersion = '20230918'
+# Function to print-out messages, including <date> and <time> information.
+$scriptName = $MyInvocation.MyCommand.Name
+function Log-Message {
+    [CmdletBinding()]
+    Param
+    (
+        [Parameter(Mandatory=$true, Position=0)]
+        [string]$LogMessage
+    )
+
+    $message = "[$scriptName/$scriptVersion] {0} - {1}" -f (Get-Date), $LogMessage
+	[System.Console]::WriteLine( $message )
+}
+
+Log-Message "Start script ..."  
+
 # Funktion zum Suchen von Dateien mit einem bestimmten Namen  
 function Find-Files {  
     param (  
@@ -12,7 +38,7 @@ function Find-Files {
     if ($files.Count -eq 0) {  
         [System.Console]::WriteLine( "No files found." )
     } else {  
-        [System.Console]::WriteLine( "$($files.Count) Files found:"  )
+        #[System.Console]::WriteLine( "$($files.Count) Files found:"  )
         #foreach ($file in $files) {  
         #    [System.Console]::WriteLine( "- $($file.FullName)" )
         #}  
@@ -26,7 +52,7 @@ function Find-Files {
     if ($wildcardFiles.Count -eq 0) {  
         [System.Console]::WriteLine( "No wildcard files found."  )
     } else {  
-        [System.Console]::WriteLine( "$($wildcardFiles.Count) Wildcard files found:"  )
+        #[System.Console]::WriteLine( "$($wildcardFiles.Count) Wildcard files found:"  )
         #foreach ($file in $wildcardFiles) {  
         #    [System.Console]::WriteLine( "- $($file.FullName)"  )
         #}  
@@ -43,7 +69,7 @@ function Find-Files {
 # Function to create ZIP archive
 function Create-ZipArchive {
     param (  
-        [string[]]$Files,  
+        [System.IO.FileInfo[]]$Files,  
         [string]$ZipArchive  
     )  
 
@@ -55,7 +81,7 @@ function Create-ZipArchive {
 	}	  
 	if (!(Test-Path $tempFolder)) { New-Item -ItemType Directory -Path $tempFolder | Out-Null }  
 	# Copy the files to the temporary folder  
-	foreach ($file in $uniqueFiles) {  
+	foreach ($file in $Files) {  
 		#[System.Console]::WriteLine( "Copy $($file.FullName)"  )
 		Copy-Item $file.FullName -Destination $tempFolder  
 	}  
@@ -72,7 +98,7 @@ function Create-ZipArchive {
 	#	Compress-Archive -Path $($file.FullName) -Update -DestinationPath $ZipArchive #-ErrorAction SilentlyContinue  
 	#}  
 
-	[System.Console]::WriteLine( "Zip Archive '$ZipArchive' created ..."  )
+	#[System.Console]::WriteLine( "Zip Archive '$ZipArchive' created ..."  )
 	#return $ZipArchive
 }
 
@@ -90,7 +116,7 @@ $levelValue = $config.configuration.root.level.value
   
 # Prüfen, ob der Appender gefunden wurde  
 if ($appender -eq $null) {    
-    Write-Output "ERROR: Appender not found."    
+    Log-Message "ERROR: Appender not found."    
 } else {    
     # Dateipfad und Dateiname aus dem Datei-Parameter extrahieren  
     $filePath = Split-Path $fileValue  
@@ -100,32 +126,56 @@ if ($appender -eq $null) {
     $maxBackupIndex = $appender.param | Where-Object {$_.name -eq "MaxBackupIndex"} | Select-Object -ExpandProperty value  
       
     # Ausgabe der Ergebnisse  
-    Write-Output "File Value: $fileValue"    
-    Write-Output "File Path: $filePath"  
-    Write-Output "File Name: $fileName"  
-    Write-Output "Max Backup Index: $maxBackupIndex"  
-    Write-Output "Level Value: $levelValue"    
+    Log-Message "File Value: $fileValue"    
+    Log-Message "File Path: $filePath"  
+    Log-Message "File Name: $fileName"  
+    Log-Message "Max Backup Index: $maxBackupIndex"  
+    Log-Message "Level Value: $levelValue"    
   
     # Aufrufen der Funktion zum Suchen von Dateien und Speichern der gefundenen Dateien in einer Variablen  
-    Write-Output "Search files: $filePath / $fileName"    
+    Log-Message "Search files: $filePath / $fileName"    
     $foundFiles = Find-Files -Path $filePath -Name $fileName  
-    Write-Output "Files found: $($foundFiles.Count)"    
+    Log-Message "Files found: $($foundFiles.Count)"    
+
+	# Read a value from the registry key  
+	$keyPath = "HKLM:\SOFTWARE\FLEXlm License Manager\Siemens BT Licensing Server"  
+	$valueName = "LMGRD_LOG_FILE"  
+	$logFilePath = (Get-ItemProperty -Path $keyPath).$valueName  
+	# Remove the first character if it is a "+"  
+	if ($logFilePath.StartsWith("+")) {  
+		$logFilePath = $logFilePath.Substring(1)  
+	}
+	# Add the value to the list of files  
+	$foundFiles += [System.IO.FileInfo]::new($logFilePath)
+    Log-Message "Add file: $logFilePath"    
 
 	# Remove duplicate file names  
 	$uniqueFiles = $foundFiles | Select-Object -Unique  
-    Write-Output "Unique Files found: $($uniqueFiles.Count)"    
+    Log-Message "Unique Files found: $($uniqueFiles.Count)"    
 
 	# Remove files from the list if they are in a known path  
 	$knownPath = "$Env:ProgramData\Siemens\LMS\Logs"  
-	$finalFiles = $uniqueFiles | Where-Object { $_.FullName -notlike "$knownPath\*" }  
-    Write-Output "Final Files found: $($finalFiles.Count)"    
+	$additionalFiles = $uniqueFiles | Where-Object { $_.FullName -notlike "$knownPath\*" }  
+    Log-Message "Additional Files - outside of common LMS log folder - found: $($additionalFiles.Count)"    
+
+	# Remove files larger than 200 MB  
+	$largeFiles = $additionalFiles | Where-Object { $_.Length -gt 1GB }  
+	foreach ($file in $largeFiles) {  
+		Log-Message( "Skip large file $($file.FullName) with size of $($file.Length/1000/1000/1000) GB"  )
+	}  
+	$finalFiles = $additionalFiles | Where-Object { $_.Length -lt 1GB }  
+    Log-Message "Files to be added to the ZIP archive: $($finalFiles.Count)"    
 
 	if( ($finalFiles.Count) -gt 0 ) {
-		$zipPath = "$Env:ProgramData\Siemens\LMS\Logs\CheckLMSLogs\archive_licenf.zip"  
+		$zipPath = "$Env:ProgramData\Siemens\LMS\Logs\Additional_LogFiles.zip"  
 		Create-ZipArchive -Files $finalFiles -ZipArchive $zipPath 
+		Log-Message "ZIP archive '$zipPath' created ..."    
+		foreach ($file in $finalFiles) {  
+			Log-Message( "File $($file.FullName) added ..."  )
+		}  
 	} else {
-		Write-Output "No files to copy into ZIP archive ..."    
+		Log-Message "No files to copy into ZIP archive ..."    
 	}
 	
-	Write-Output "Script finished ..."    
+	Log-Message "Script finished ..."    
 }  
