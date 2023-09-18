@@ -12,10 +12,10 @@ function Find-Files {
     if ($files.Count -eq 0) {  
         [System.Console]::WriteLine( "No files found." )
     } else {  
-        [System.Console]::WriteLine( "Files found:"  )
-        foreach ($file in $files) {  
-            [System.Console]::WriteLine( "- $($file.FullName)" )
-        }  
+        [System.Console]::WriteLine( "$($files.Count) Files found:"  )
+        #foreach ($file in $files) {  
+        #    [System.Console]::WriteLine( "- $($file.FullName)" )
+        #}  
     }  
   
     # Suchen nach Dateien mit dem angegebenen Namen und einem Wildcard-Platzhalter im Pfad  
@@ -26,22 +26,58 @@ function Find-Files {
     if ($wildcardFiles.Count -eq 0) {  
         [System.Console]::WriteLine( "No wildcard files found."  )
     } else {  
-        [System.Console]::WriteLine( "Wildcard files found:"  )
-        foreach ($file in $wildcardFiles) {  
-            [System.Console]::WriteLine( "- $($file.FullName)"  )
-        }  
+        [System.Console]::WriteLine( "$($wildcardFiles.Count) Wildcard files found:"  )
+        #foreach ($file in $wildcardFiles) {  
+        #    [System.Console]::WriteLine( "- $($file.FullName)"  )
+        #}  
     }  
   
     # Ausgabe der Anzahl der gefundenen Dateien  
-    $totalFiles = $files.Count + $wildcardFiles.Count  
-    [System.Console]::WriteLine( "Total files found: $totalFiles"  )
+    #$totalFiles = $files.Count + $wildcardFiles.Count  
+    #[System.Console]::WriteLine( "Total files found: $totalFiles"  )
   
     # Rückgabe der gefundenen Dateien  
     return ($files + $wildcardFiles)
 }  
-  
+
+# Function to create ZIP archive
+function Create-ZipArchive {
+    param (  
+        [string[]]$Files,  
+        [string]$ZipArchive  
+    )  
+
+	# Enter the path for the temporary folder and create it if it doesn't exist  
+	$tempFolder = "$Env:TEMP\ArchiveFiles"  
+	# Empty the temporary folder if it already exists  
+	if (Test-Path $tempFolder) {  
+		Remove-Item $tempFolder -Recurse -Force  
+	}	  
+	if (!(Test-Path $tempFolder)) { New-Item -ItemType Directory -Path $tempFolder | Out-Null }  
+	# Copy the files to the temporary folder  
+	foreach ($file in $uniqueFiles) {  
+		#[System.Console]::WriteLine( "Copy $($file.FullName)"  )
+		Copy-Item $file.FullName -Destination $tempFolder  
+	}  
+
+	# Enter the path and name for the ZIP archive  
+	if (Test-Path $ZipArchive) { Remove-Item $ZipArchive }  
+
+	# Create the ZIP archive  
+	Compress-Archive -Path $tempFolder -DestinationPath $ZipArchive #-ErrorAction SilentlyContinue  
+
+	# Create the ZIP archive  
+	#foreach ($file in $foundFiles) {  
+	#	[System.Console]::WriteLine( "Add $($file.FullName)"  )
+	#	Compress-Archive -Path $($file.FullName) -Update -DestinationPath $ZipArchive #-ErrorAction SilentlyContinue  
+	#}  
+
+	[System.Console]::WriteLine( "Zip Archive '$ZipArchive' created ..."  )
+	#return $ZipArchive
+}
+
 # XML-Konfigurationsdatei laden  
-[xml]$config = Get-Content "C:\Program Files\Siemens\LMS\bin\lmslogcfg.xml"  
+[xml]$config = Get-Content "$Env:ProgramFiles\Siemens\LMS\bin\lmslogcfg.xml"  
   
 # Appender mit dem Namen "ALL-OUT" auswählen  
 $appender = $config.configuration.appender | Where-Object {$_.name -eq "ALL-OUT"}  
@@ -74,6 +110,22 @@ if ($appender -eq $null) {
     Write-Output "Search files: $filePath / $fileName"    
     $foundFiles = Find-Files -Path $filePath -Name $fileName  
     Write-Output "Files found: $($foundFiles.Count)"    
-  
-    Write-Output "Script finished ..."    
+
+	# Remove duplicate file names  
+	$uniqueFiles = $foundFiles | Select-Object -Unique  
+    Write-Output "Unique Files found: $($uniqueFiles.Count)"    
+
+	# Remove files from the list if they are in a known path  
+	$knownPath = "$Env:ProgramData\Siemens\LMS\Logs"  
+	$finalFiles = $uniqueFiles | Where-Object { $_.FullName -notlike "$knownPath\*" }  
+    Write-Output "Final Files found: $($finalFiles.Count)"    
+
+	if( ($finalFiles.Count) -gt 0 ) {
+		$zipPath = "$Env:ProgramData\Siemens\LMS\Logs\CheckLMSLogs\archive_licenf.zip"  
+		Create-ZipArchive -Files $finalFiles -ZipArchive $zipPath 
+	} else {
+		Write-Output "No files to copy into ZIP archive ..."    
+	}
+	
+	Write-Output "Script finished ..."    
 }  
