@@ -84,6 +84,8 @@ rem        - add hint about "servercomptranutil.exe -vl"
 rem        - Download addtional script from git: 'ExtractLogFileConfig.ps1'
 rem        - Execute script 'ExtractLogFileConfig.ps1' to collect additional logfiles not located in common LMS folder
 rem        - adjust script, to execute 'ExtractPoolingInformation.ps1' only when SIEMBT.log is smaller than critcial limit (see LOG_FILESIZE_LIMIT).
+rem     19-Sep-2023:
+rem        - Fix: 2335487: Update CheckLMS to support dongle driver 9.14
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -120,8 +122,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 18-Sep-2023"
-set LMS_SCRIPT_BUILD=20230918
+set LMS_SCRIPT_VERSION="CheckLMS Script 19-Sep-2023"
+set LMS_SCRIPT_BUILD=20230919
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -135,10 +137,10 @@ rem most recent lms field test version: n/a
 rem - if not set - it is not downloaded.
 rem set MOST_RECENT_FT_LMS_VERSION=2.6.869
 rem set MOST_RECENT_FT_LMS_BUILD=869
-rem most recent dongle driver version (per 30-Mar-2023, LMS 2.8)
-set MOST_RECENT_DONGLE_DRIVER_VERSION=8.53
-set MOST_RECENT_DONGLE_DRIVER_MAJ_VERSION=8
-set MOST_RECENT_DONGLE_DRIVER_MIN_VERSION=53
+rem most recent dongle driver version (per 19-sep-2023, LMS 2.8)
+set MOST_RECENT_DONGLE_DRIVER_VERSION=9.14
+set MOST_RECENT_DONGLE_DRIVER_MAJ_VERSION=9
+set MOST_RECENT_DONGLE_DRIVER_MIN_VERSION=14
 rem most recent BT ALM plugin (per 15-Nov-2021, LMS 2.6)
 set MOST_RECENT_BT_ALM_PLUGIN=1.1.43.0
 
