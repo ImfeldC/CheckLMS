@@ -51,7 +51,8 @@ param(
 # '20230511': Support 'SkipCheckForUpdate' registry entry; if set to '1' do not perform check for updates.
 # '20230804': Revert back to use Start-BitsTransfer to download file from OSD, instead of Net.WebClient (see also '20221005')
 # '20230913': Add copyright notice of Siemens 
-$scriptVersion = '20230013'
+# '20230921': Fix: 2355024: 'Running on Hypervisor' NOT found
+$scriptVersion = '20230021'
 
 $global:ExitCode=0
 # Old API URL -> $OSD_APIURL="https://www.automation.siemens.com/softwareupdater/public/api/updates"
@@ -350,9 +351,13 @@ if ( $operatingsystem -eq '' )
 # Determine hypervisor (using SIEMBT logfile)
 if ( Test-Path 'C:\ProgramData\Siemens\LMS\Logs\SIEMBT.log' ) {
 	$A = Get-ChildItem -Path C:\ProgramData\Siemens\LMS\Logs\SIEMBT.log | Select-String -Pattern 'Running on Hypervisor:(.+)'
-	if( $A[0] -match 'Running on Hypervisor:\s(?<Hypervisor>.+)' )
-	{
-		$LMS_SIEMBT_HYPERVISOR = $Matches.Hypervisor
+	if( $A ) {
+		if( $A[0] -match 'Running on Hypervisor:\s(?<Hypervisor>.+)' )
+		{
+			$LMS_SIEMBT_HYPERVISOR = $Matches.Hypervisor
+		}
+	} else {
+		$LMS_SIEMBT_HYPERVISOR = "n/a"
 	}
 } else {
 	$LMS_SIEMBT_HYPERVISOR = "n/a"
