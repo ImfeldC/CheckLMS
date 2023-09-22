@@ -20,8 +20,9 @@
 #
 # '20230913': Initial version (created with help of Azure OpneAI studio)
 # '20230921': Read-out backup file (in case a rollover has been performed)
+# '20230922': Further improve; open any backup file till a 'host info' blok is found.
 #
-$scriptVersion = '20230921'
+$scriptVersion = '20230922'
 
 $logFile = "C:\ProgramData\Siemens\LMS\Logs\SIEMBT.log"  
 $searchPatternHostInfo = "\r\n(.*? === Host Info ===\r\n.*?\r\n.*?\r\n.*?\r\n.*?\r\n.*?===============================================)\r\n"
@@ -51,10 +52,10 @@ do {
   
 	# Search for 'Host Info' in open logfile
 	$matchesHostInfos = Select-String $searchPatternHostInfo -InputObject $content -AllMatches | % { $_.Matches }  
-	Log-Message "Host Info: $($matchesHostInfos.Count) matches found."
 
 	# if 'Host Info' has been found ...
 	if ($matchesHostInfos) {  
+		Log-Message "Host Info: $($matchesHostInfos.Count) matches found."
 		
 		# $matchesHostInfos | ForEach-Object { Log-Message "'Host Info' section found: `n$($_.Groups[1].Value)" }  
 		
@@ -63,22 +64,20 @@ do {
 	} else {
 		# Search for 'backup file' in open logfile  
 		$matchesBackupFiles = Select-String $searchPatternBackupFile -InputObject $content -AllMatches | % { $_.Matches }  
-		Log-Message "Backup Files: $($matchesBackupFiles.Count) matches found."
-
 		# If 'backup file' is found ....  
 		if ($matchesBackupFiles) {  
 			#$matchesBackupFiles | ForEach-Object { Log-Message "Backup File: $($_.Groups[1].Value)" }  
 			
 			$backupFile = $matchesBackupFiles[0].Groups[1].Value
+			Log-Message "Backup File found: $backupFile (in $logFile)"
 			$logFile = $backupFile
-			Log-Message "Backup File: $backupFile"
 		}  
 		else {  
 			$backupFile = ""
 			Log-Message "Backup Files: No matches found."  
 		}  
+		#Log-Message "Backup Files: $($matchesBackupFiles.Count) matches found."
 	}
-
 } while ( ($matchesHostInfos.Count -eq 0) -and (-not [string]::IsNullOrEmpty($backupFile)) )
 
 Log-Message "Finish script ..."  
