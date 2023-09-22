@@ -13,14 +13,19 @@
 # 2023-09-07T12:11:00+0200 (SIEMBT) (@SIEMBT-SLOG@) Running on Hypervisor: None (Physical)
 # 2023-09-07T12:11:00+0200 (SIEMBT) (@SIEMBT-SLOG@) ===============================================
 #
+# Example of 'backup file' entry:
+# 2023-09-21T08:07:24+0200 (SIEMBT) Successful roll-over of debug log file C:\ProgramData\Siemens\LMS\Logs\SIEMBT.log. The debug log back-up is available in C:\ProgramData\Siemens\LMS\Logs\SIEMBT.20230921_080723.log
+#
 # ---------------------------------------------------------------------------------------
 #
 # '20230913': Initial version (created with help of Azure OpneAI studio)
+# '20230921': Read-out backup file (in case a rollover has been performed)
 #
-$scriptVersion = '20230913'
+$scriptVersion = '20230921'
 
 $logFile = "C:\ProgramData\Siemens\LMS\Logs\SIEMBT.log"  
-$searchPattern = "\r\n(.*? === Host Info ===\r\n.*?\r\n.*?\r\n.*?\r\n.*?\r\n.*?===============================================)\r\n"
+$searchPatternHostInfo = "\r\n(.*? === Host Info ===\r\n.*?\r\n.*?\r\n.*?\r\n.*?\r\n.*?===============================================)\r\n"
+$searchPatternBackupFile = "The debug log back-up is available in (C:.*)\r\n"
 
 # Function to print-out messages, including <date> and <time> information.
 $scriptName = $MyInvocation.MyCommand.Name
@@ -38,22 +43,42 @@ function Log-Message
 
 Log-Message "Start script ..."  
 
-# Öffnen Sie die Log-Datei und lesen Sie den Inhalt in eine einzige Zeichenfolge  
-$content = Get-Content $logFile | Out-String  
+do {
+	# Open the logfile and read them into one line
+	Log-Message "Open file: $logFile"
+	$content = Get-Content $logFile | Out-String  
+	Log-Message "File opened: $logFile"
   
-# Suchen Sie nach dem Muster in der Zeichenfolge  
-$matches = Select-String $searchPattern -InputObject $content -AllMatches | % { $_.Matches }  
-  
-# Wenn Übereinstimmungen gefunden wurden, geben Sie sie aus  
-if ($matches) {  
-	Log-Message "$($matches.Count) matches found."
-	
-    # $matches | ForEach-Object { Log-Message "'Host Info' section found: `n$($_.Groups[1].Value)" }  
-	
-	$lastMatch = $matches[-1]  
-	Log-Message "Latest 'Host Info' section found: `n$lastMatch"
-}  
-else {  
-    Log-Message "No matches found."  
-}  
+	# Search for 'Host Info' in open logfile
+	$matchesHostInfos = Select-String $searchPatternHostInfo -InputObject $content -AllMatches | % { $_.Matches }  
+	Log-Message "Host Info: $($matchesHostInfos.Count) matches found."
+
+	# if 'Host Info' has been found ...
+	if ($matchesHostInfos) {  
+		
+		# $matchesHostInfos | ForEach-Object { Log-Message "'Host Info' section found: `n$($_.Groups[1].Value)" }  
+		
+		$lastMatch = $matchesHostInfos[-1]  
+		Log-Message "Most  recent 'Host Info' section: `n$lastMatch"
+	} else {
+		# Search for 'backup file' in open logfile  
+		$matchesBackupFiles = Select-String $searchPatternBackupFile -InputObject $content -AllMatches | % { $_.Matches }  
+		Log-Message "Backup Files: $($matchesBackupFiles.Count) matches found."
+
+		# If 'backup file' is found ....  
+		if ($matchesBackupFiles) {  
+			#$matchesBackupFiles | ForEach-Object { Log-Message "Backup File: $($_.Groups[1].Value)" }  
+			
+			$backupFile = $matchesBackupFiles[0].Groups[1].Value
+			$logFile = $backupFile
+			Log-Message "Backup File: $backupFile"
+		}  
+		else {  
+			$backupFile = ""
+			Log-Message "Backup Files: No matches found."  
+		}  
+	}
+
+} while ( ($matchesHostInfos.Count -eq 0) -and (-not [string]::IsNullOrEmpty($backupFile)) )
+
 Log-Message "Finish script ..."  
