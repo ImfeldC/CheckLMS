@@ -21,10 +21,13 @@
 # '20230913': Initial version (created with help of Azure OpneAI studio)
 # '20230921': Read-out backup file (in case a rollover has been performed)
 # '20230922': Further improve; open any backup file till a 'host info' blok is found.
+# '20230925': Store the 'Host Info' block in file "C:\ProgramData\Siemens\LMS\Logs\SIEMBT_HostInfo.txt"
 #
-$scriptVersion = '20230922'
+$scriptVersion = '20230925'
 
-$logFile = "C:\ProgramData\Siemens\LMS\Logs\SIEMBT.log"  
+$programDataPath = $env:ProgramData 
+$logFile = "$programDataPath\Siemens\LMS\Logs\SIEMBT.log"  
+$outputFilePath = "$programDataPath\Siemens\LMS\Logs\SIEMBT_HostInfo.txt"  
 $searchPatternHostInfo = "\r\n(.*? === Host Info ===\r\n.*?\r\n.*?\r\n.*?\r\n.*?\r\n.*?===============================================)\r\n"
 $searchPatternBackupFile = "The debug log back-up is available in (C:.*)\r\n"
 
@@ -61,6 +64,10 @@ do {
 		
 		$lastMatch = $matchesHostInfos[-1]  
 		Log-Message "Most  recent 'Host Info' section: `n$lastMatch"
+		
+		Set-Content -Path $outputFilePath -Value $lastMatch
+		Log-Message "Most  recent 'Host Info' section stored in '$outputFilePath'."
+		
 	} else {
 		# Search for 'backup file' in open logfile  
 		$matchesBackupFiles = Select-String $searchPatternBackupFile -InputObject $content -AllMatches | % { $_.Matches }  

@@ -86,6 +86,8 @@ rem        - Execute script 'ExtractLogFileConfig.ps1' to collect additional log
 rem        - adjust script, to execute 'ExtractPoolingInformation.ps1' only when SIEMBT.log is smaller than critcial limit (see LOG_FILESIZE_LIMIT).
 rem     19-Sep-2023:
 rem        - Fix: 2335487: Update CheckLMS to support dongle driver 9.14
+rem     25-Sep-2023:
+rem        - Consider "C:\ProgramData\Siemens\LMS\Logs\SIEMBT_HostInfo.txt"; if available log them into common logfile.
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -122,8 +124,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 19-Sep-2023"
-set LMS_SCRIPT_BUILD=20230919
+set LMS_SCRIPT_VERSION="CheckLMS Script 25-Sep-2023"
+set LMS_SCRIPT_BUILD=20230925
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -5733,6 +5735,11 @@ IF EXIST "!REPORT_LOG_PATH!\SIEMBT.log" (
 			
 			IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt" (
 				type "!CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt"                                                        >> !REPORT_LOGFILE! 2>&1
+			) else (
+				echo     ATTENTION: No 'Host Info' found in '!CHECKLMS_REPORT_LOG_PATH!\SIEMBT.log'!                         >> !REPORT_LOGFILE! 2>&1
+			)
+			IF EXIST "!REPORT_LOG_PATH!\SIEMBT_HostInfo.txt" (
+				type "!REPORT_LOG_PATH!\SIEMBT_HostInfo.txt"                                                                 >> !REPORT_LOGFILE! 2>&1
 			) else (
 				echo     ATTENTION: No 'Host Info' found in '!REPORT_LOG_PATH!\SIEMBT.log'!                                  >> !REPORT_LOGFILE! 2>&1
 			)
