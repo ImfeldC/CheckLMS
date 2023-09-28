@@ -88,6 +88,10 @@ rem     19-Sep-2023:
 rem        - Fix: 2335487: Update CheckLMS to support dongle driver 9.14
 rem     25-Sep-2023:
 rem        - Consider "C:\ProgramData\Siemens\LMS\Logs\SIEMBT_HostInfo.txt"; if available log them into common logfile.
+rem     27-Sep-2023:
+rem        - Rewrite analysis of SIEMBT.log, use only PowerShell scripts (replace/remove legacy code directly implemented in CheckLMS.bat script)
+rem     28-Sep-2023:
+rem        - Consider extract of errors from SIEMBT logfiles (nad possible rollover logfiles)
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -124,8 +128,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 25-Sep-2023"
-set LMS_SCRIPT_BUILD=20230925
+set LMS_SCRIPT_VERSION="CheckLMS Script 28-Sep-2023"
+set LMS_SCRIPT_BUILD=20230928
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -5649,126 +5653,198 @@ echo -------------------------------------------------------                    
 echo Start at !DATE! !TIME! .... Analyze 'SIEMBT.log'                                                                        >> !REPORT_LOGFILE! 2>&1
 echo     Analyze 'SIEMBT.log' ...
 echo Analyze 'SIEMBT.log' ...                                                                                                >> !REPORT_LOGFILE! 2>&1
+
+rem set default values
+set LMS_SIEMBT_FNLS_PORT=[n/a]
+set LMS_SIEMBT_VD_PORT=[n/a]
+set LMS_SIEMBT_HOSTNAME=[n/a]
+set LMS_SIEMBT_HYPERVISOR=[n/a]
+set LMS_SIEMBT_HOSTIDS=[n/a]
+set LMS_SIEMBT_STARTTIME=[n/a]
+
 IF EXIST "!REPORT_LOG_PATH!\SIEMBT.log" (
-	FOR /F "usebackq" %%A IN ('!REPORT_LOG_PATH!\SIEMBT.log') DO set SIEMBTLOG_FILESIZE=%%~zA
-	echo     Filesize of SIEMBT.log is !SIEMBTLOG_FILESIZE! bytes !                                                          >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! ....                                                                                         >> !REPORT_LOGFILE! 2>&1
-	if /I !SIEMBTLOG_FILESIZE! GEQ !LOG_FILESIZE_LIMIT! (
-		echo     ATTENTION: Filesize of SIEMBT.log with !SIEMBTLOG_FILESIZE! bytes, is exceeding critical limit of !LOG_FILESIZE_LIMIT! bytes!
 
-		echo     ATTENTION: Filesize of SIEMBT.log with !SIEMBTLOG_FILESIZE! bytes, is exceeding critical limit of !LOG_FILESIZE_LIMIT! bytes!   >> !REPORT_LOGFILE! 2>&1
-		echo     Because filesize of SIEMBT.log with !SIEMBTLOG_FILESIZE! bytes exceeds critical limit it is not further processed!              >> !REPORT_LOGFILE! 2>&1
-		
-		rem set default values, as we cannot retrieve real values from SIEMBT.log
-		set LMS_SIEMBT_FNLS_PORT=[not available as SIEMBT.log is too large.]
-		set LMS_SIEMBT_VD_PORT=[not available as SIEMBT.log is too large.]
-		set LMS_SIEMBT_HOSTNAME=[not available as SIEMBT.log is too large.]
-		set LMS_SIEMBT_HYPERVISOR=[not available as SIEMBT.log is too large.]
-		set LMS_SIEMBT_HOSTIDS=[not available as SIEMBT.log is too large.]
-		set LMS_SIEMBT_STARTTIME=[not available as SIEMBT.log is too large.]
+	IF EXIST "!LMS_DOWNLOAD_PATH!\ExtractHostInfo.ps1" (
+		set LMS_EXTRACTHOSTINFO_SCRIPT=!LMS_DOWNLOAD_PATH!\ExtractHostInfo.ps1
+	) else IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\ExtractHostInfo.ps1" (
+		set LMS_EXTRACTHOSTINFO_SCRIPT=!ProgramFiles!\Siemens\LMS\scripts\ExtractHostInfo.ps1
+	)
+	IF EXIST "!LMS_EXTRACTHOSTINFO_SCRIPT!" (
+		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Start at !DATE! !TIME! .... Analyze 'SIEMBT.log', extract 'host info' information.                              >> !REPORT_LOGFILE! 2>&1
+		echo RUN: powershell -Command "& '!LMS_EXTRACTHOSTINFO_SCRIPT!' -skipErrors:$false; exit $LASTEXITCODE"              >> !REPORT_LOGFILE! 2>&1
+		powershell -Command "& '!LMS_EXTRACTHOSTINFO_SCRIPT!' -skipErrors:$false; exit $LASTEXITCODE"  > !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt 2>&1
 
+		IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt" (
+			type "!CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt"                                                            >> !REPORT_LOGFILE! 2>&1
+
+			rem Extract important identifiers from SIEMBT_HostInfo.txt
+			for /f "tokens=3* eol=@ delims= " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt ^|find /I "Host used in license file"') do for /f "tokens=5* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HOSTNAME=%%B
+			for /f "tokens=3* eol=@ delims= " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt ^|find /I "Running on Hypervisor"') do for /f "tokens=3* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HYPERVISOR=%%B
+			for /f "tokens=3* eol=@ delims= " %%A in ('type !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt ^|find /I "HostID of the License Server"') do for /f "tokens=5* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HOSTIDS=%%B
+			echo LMS_SIEMBT_HOSTNAME=!LMS_SIEMBT_HOSTNAME! / LMS_SIEMBT_HYPERVISOR=!LMS_SIEMBT_HYPERVISOR! / LMS_SIEMBT_HOSTIDS=!LMS_SIEMBT_HOSTIDS!  >> !REPORT_LOGFILE! 2>&1
+			echo LMS_SIEMBT_HOSTNAME=!LMS_SIEMBT_HOSTNAME! / LMS_SIEMBT_HYPERVISOR=!LMS_SIEMBT_HYPERVISOR! / LMS_SIEMBT_HOSTIDS=!LMS_SIEMBT_HOSTIDS!   at !DATE! / !TIME! / retrieved from SIEMBT_HostInfo.txt file >> !REPORT_LOG_PATH!\SIEMBTID.txt 2>&1
+			echo LMS_SIEMBT_HOSTNAME=!LMS_SIEMBT_HOSTNAME! / LMS_SIEMBT_HYPERVISOR=!LMS_SIEMBT_HYPERVISOR! / LMS_SIEMBT_HOSTIDS=!LMS_SIEMBT_HOSTIDS!   at !DATE! / !TIME! / retrieved from SIEMBT_HostInfo.txt file >  !REPORT_LOG_PATH!\SIEMBTID_Latest.txt 2>&1
+
+		) else (
+			echo     ATTENTION: No 'Host Info' found, '!CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt' not available.        >> !REPORT_LOGFILE! 2>&1
+		)
 	) else (
-		rem Extract listening ports from SIEMBT.log
-		for /f "tokens=6* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\SIEMBT.log ^|find /I "(@lmgrd-SLOG@) Listening port"') do set LMS_SIEMBT_FNLS_PORT=%%A
-		for /f "tokens=6* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\SIEMBT.log ^|find /I "(@SIEMBT-SLOG@) Listening port"') do set LMS_SIEMBT_VD_PORT=%%A
-		
-		rem Extract important identifiers from SIEMBT.log
-		for /f "tokens=3* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\SIEMBT.log ^|find /I "Host used in license file"') do for /f "tokens=5* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HOSTNAME=%%B
-		for /f "tokens=3* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\SIEMBT.log ^|find /I "Running on Hypervisor"') do for /f "tokens=3* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HYPERVISOR=%%B
-		for /f "tokens=3* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\SIEMBT.log ^|find /I "HostID of the License Server"') do for /f "tokens=5* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HOSTIDS=%%B
-		for /f "tokens=3* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\SIEMBT.log ^|find /I "Start-Date"') do for /f "tokens=1* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_STARTTIME=%%B
-		echo LMS_SIEMBT_HOSTNAME=!LMS_SIEMBT_HOSTNAME! / LMS_SIEMBT_HYPERVISOR=!LMS_SIEMBT_HYPERVISOR! / LMS_SIEMBT_HOSTIDS=!LMS_SIEMBT_HOSTIDS! / LMS_SIEMBT_STARTTIME='!LMS_SIEMBT_STARTTIME!' >> !REPORT_LOGFILE! 2>&1
-		echo LMS_SIEMBT_HOSTNAME=!LMS_SIEMBT_HOSTNAME! / LMS_SIEMBT_HYPERVISOR=!LMS_SIEMBT_HYPERVISOR! / LMS_SIEMBT_HOSTIDS=!LMS_SIEMBT_HOSTIDS! / LMS_SIEMBT_STARTTIME='!LMS_SIEMBT_STARTTIME!'  at !DATE! / !TIME! / retrieved from SIEMBT.log file >> !REPORT_LOG_PATH!\SIEMBTID.txt 2>&1
-		echo LMS_SIEMBT_HOSTNAME=!LMS_SIEMBT_HOSTNAME! / LMS_SIEMBT_HYPERVISOR=!LMS_SIEMBT_HYPERVISOR! / LMS_SIEMBT_HOSTIDS=!LMS_SIEMBT_HOSTIDS! / LMS_SIEMBT_STARTTIME='!LMS_SIEMBT_STARTTIME!'  at !DATE! / !TIME! / retrieved from SIEMBT.log file >  !REPORT_LOG_PATH!\SIEMBTID_Latest.txt 2>&1
+		echo     'ExtractHostInfo.ps1' script not found.                                                                     >> !REPORT_LOGFILE! 2>&1
+	)
 
-		echo -- extract ERROR messages from SIEMBT.log [start] --                                                            >> !REPORT_LOGFILE! 2>&1
-		Type "!REPORT_LOG_PATH!\SIEMBT.log" | findstr "ERROR:"                                                               >> !REPORT_LOGFILE! 2>&1
-		echo -- extract ERROR messages from SIEMBT.log [end] --                                                              >> !REPORT_LOGFILE! 2>&1
+	IF EXIST "!REPORT_LOG_PATH!\SIEMBT_GenInfo.txt" (
+		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Analyze 'SIEMBT.log', list '!REPORT_LOG_PATH!\SIEMBT_GenInfo.txt' ...                                           >> !REPORT_LOGFILE! 2>&1
+		type "!REPORT_LOG_PATH!\SIEMBT_GenInfo.txt"                                                                          >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo     ATTENTION: '!REPORT_LOG_PATH!\SIEMBT_GenInfo.txt' not available.                                            >> !REPORT_LOGFILE! 2>&1
+	)
+	IF EXIST "!REPORT_LOG_PATH!\SIEMBT_HostInfo.txt" (
+		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
+		echo Analyze 'SIEMBT.log', list '!REPORT_LOG_PATH!\SIEMBT_HostInfo.txt' ...                                          >> !REPORT_LOGFILE! 2>&1
+		type "!REPORT_LOG_PATH!\SIEMBT_HostInfo.txt"                                                                         >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo     ATTENTION: '!REPORT_LOG_PATH!\SIEMBT_HostInfo.txt' not available.                                           >> !REPORT_LOGFILE! 2>&1
+	)
+
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Analyze 'SIEMBT.log', extract pooling information.                                      >> !REPORT_LOGFILE! 2>&1
+	echo     Analyze 'SIEMBT.log', extract pooling information ...
+	echo Analyze 'SIEMBT.log', extract pooling information ...                                                               >> !REPORT_LOGFILE! 2>&1
+	IF EXIST "!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1" (
+		set LMS_EXTRACTPOOLINFO_SCRIPT=!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1
+	) else IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\ExtractPoolingInformation.ps1" (
+		set LMS_EXTRACTPOOLINFO_SCRIPT=!ProgramFiles!\Siemens\LMS\scripts\ExtractPoolingInformation.ps1
+	)
+	IF EXIST "!LMS_EXTRACTPOOLINFO_SCRIPT!" (
+		echo RUN: powershell -Command "& '!LMS_EXTRACTPOOLINFO_SCRIPT!'; exit $LASTEXITCODE"                                 >> !REPORT_LOGFILE! 2>&1
+		powershell -Command "& '!LMS_EXTRACTPOOLINFO_SCRIPT!'; exit $LASTEXITCODE"                                           >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo     'ExtractPoolingInformation.ps1' script not found.                                                           >> !REPORT_LOGFILE! 2>&1
+	)
+
+	rem SIEMBT.log (extracted errors)
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... LOG FILE: SIEMBT.log [extract errors]                                                   >> !REPORT_LOGFILE! 2>&1
+	echo -- extract ERROR messages from SIEMBT.log [start] --                                                                >> !REPORT_LOGFILE! 2>&1
+	IF EXIST "!REPORT_LOG_PATH!\SIEMBT_Errors.log" (
+		type "!REPORT_LOG_PATH!\SIEMBT_Errors.log"                                                                           >> !REPORT_LOGFILE! 2>&1
+	) else (
+		echo     ATTENTION: No error file found '!REPORT_LOG_PATH!\SIEMBT_Errors.log'!                                       >> !REPORT_LOGFILE! 2>&1
+	)
+	echo -- extract ERROR messages from SIEMBT.log [end] --                                                                  >> !REPORT_LOGFILE! 2>&1
+
+	rem SIEMBT.log
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... LOG FILE: SIEMBT.log [last !LOG_FILE_LINES! lines]                                      >> !REPORT_LOGFILE! 2>&1
+	echo LOG FILE: SIEMBT.log [last !LOG_FILE_LINES! lines]                                                                  >> !REPORT_LOGFILE! 2>&1
+	powershell -command "& {Get-Content '!REPORT_LOG_PATH!\SIEMBT.log' | Select-Object -last !LOG_FILE_LINES!}"              >> !REPORT_LOGFILE! 2>&1
+
+
+	if not defined LMS_EXTRACTHOSTINFO_SCRIPT (
+		rem #########################################################
+		rem NOTE: Legacy code, no longer used ... just kept in case the PowerShell scripts are not there ;-)
+		echo #########################################################                                                       >> !REPORT_LOGFILE! 2>&1
+		FOR /F "usebackq" %%A IN ('!REPORT_LOG_PATH!\SIEMBT.log') DO set SIEMBTLOG_FILESIZE=%%~zA
+		echo     Filesize of SIEMBT.log is !SIEMBTLOG_FILESIZE! bytes !                                                      >> !REPORT_LOGFILE! 2>&1
 		echo Start at !DATE! !TIME! ....                                                                                     >> !REPORT_LOGFILE! 2>&1
+		if /I !SIEMBTLOG_FILESIZE! GEQ !LOG_FILESIZE_LIMIT! (
+			echo     ATTENTION: Filesize of SIEMBT.log with !SIEMBTLOG_FILESIZE! bytes, is exceeding critical limit of !LOG_FILESIZE_LIMIT! bytes!
 
-		if not defined LMS_CHECK_ID (
-			rem Extract "Host Info"
-			echo     Extract 'Host Info' ...
-			echo Extract 'Host Info' ...                                                                                     >> !REPORT_LOGFILE! 2>&1
+			echo     ATTENTION: Filesize of SIEMBT.log with !SIEMBTLOG_FILESIZE! bytes, is exceeding critical limit of !LOG_FILESIZE_LIMIT! bytes!   >> !REPORT_LOGFILE! 2>&1
+			echo     Because filesize of SIEMBT.log with !SIEMBTLOG_FILESIZE! bytes exceeds critical limit it is not further processed!              >> !REPORT_LOGFILE! 2>&1
+			
+			rem set default values, as we cannot retrieve real values from SIEMBT.log
+			set LMS_SIEMBT_FNLS_PORT=[not available as SIEMBT.log is too large.]
+			set LMS_SIEMBT_VD_PORT=[not available as SIEMBT.log is too large.]
+			set LMS_SIEMBT_HOSTNAME=[not available as SIEMBT.log is too large.]
+			set LMS_SIEMBT_HYPERVISOR=[not available as SIEMBT.log is too large.]
+			set LMS_SIEMBT_HOSTIDS=[not available as SIEMBT.log is too large.]
+			set LMS_SIEMBT_STARTTIME=[not available as SIEMBT.log is too large.]
 
-			IF EXIST "!LMS_DOWNLOAD_PATH!\ExtractHostInfo.ps1" (
-				set LMS_EXTRACTHOSTINFO_SCRIPT=!LMS_DOWNLOAD_PATH!\ExtractHostInfo.ps1
-			) else IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\ExtractHostInfo.ps1" (
-				set LMS_EXTRACTHOSTINFO_SCRIPT=!ProgramFiles!\Siemens\LMS\scripts\ExtractHostInfo.ps1
-			)
-			IF EXIST "!LMS_EXTRACTHOSTINFO_SCRIPT!" (
-				echo RUN: powershell -Command "& '!LMS_EXTRACTHOSTINFO_SCRIPT!'; exit $LASTEXITCODE"                         >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "& '!LMS_EXTRACTHOSTINFO_SCRIPT!'; exit $LASTEXITCODE"  > !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt 2>&1
-			) else (
-				echo     'ExtractHostInfo.ps1' script not found.                                                             >> !REPORT_LOGFILE! 2>&1
+		) else (
+			rem Extract listening ports from SIEMBT.log
+			for /f "tokens=6* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\SIEMBT.log ^|find /I "(@lmgrd-SLOG@) Listening port"') do set LMS_SIEMBT_FNLS_PORT=%%A
+			for /f "tokens=6* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\SIEMBT.log ^|find /I "(@SIEMBT-SLOG@) Listening port"') do set LMS_SIEMBT_VD_PORT=%%A
+			
+			rem Extract important identifiers from SIEMBT.log
+			for /f "tokens=3* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\SIEMBT.log ^|find /I "Host used in license file"') do for /f "tokens=5* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HOSTNAME=%%B
+			for /f "tokens=3* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\SIEMBT.log ^|find /I "Running on Hypervisor"') do for /f "tokens=3* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HYPERVISOR=%%B
+			for /f "tokens=3* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\SIEMBT.log ^|find /I "HostID of the License Server"') do for /f "tokens=5* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_HOSTIDS=%%B
+			for /f "tokens=3* eol=@ delims= " %%A in ('type !REPORT_LOG_PATH!\SIEMBT.log ^|find /I "Start-Date"') do for /f "tokens=1* eol=@ delims=: " %%A in ("%%B") do set LMS_SIEMBT_STARTTIME=%%B
+			echo LMS_SIEMBT_HOSTNAME=!LMS_SIEMBT_HOSTNAME! / LMS_SIEMBT_HYPERVISOR=!LMS_SIEMBT_HYPERVISOR! / LMS_SIEMBT_HOSTIDS=!LMS_SIEMBT_HOSTIDS! / LMS_SIEMBT_STARTTIME='!LMS_SIEMBT_STARTTIME!' >> !REPORT_LOGFILE! 2>&1
+			echo LMS_SIEMBT_HOSTNAME=!LMS_SIEMBT_HOSTNAME! / LMS_SIEMBT_HYPERVISOR=!LMS_SIEMBT_HYPERVISOR! / LMS_SIEMBT_HOSTIDS=!LMS_SIEMBT_HOSTIDS! / LMS_SIEMBT_STARTTIME='!LMS_SIEMBT_STARTTIME!'  at !DATE! / !TIME! / retrieved from SIEMBT.log file >> !REPORT_LOG_PATH!\SIEMBTID.txt 2>&1
+			echo LMS_SIEMBT_HOSTNAME=!LMS_SIEMBT_HOSTNAME! / LMS_SIEMBT_HYPERVISOR=!LMS_SIEMBT_HYPERVISOR! / LMS_SIEMBT_HOSTIDS=!LMS_SIEMBT_HOSTIDS! / LMS_SIEMBT_STARTTIME='!LMS_SIEMBT_STARTTIME!'  at !DATE! / !TIME! / retrieved from SIEMBT.log file >  !REPORT_LOG_PATH!\SIEMBTID_Latest.txt 2>&1
 
-				rem #########################################################
-				rem NOTE: The implementation below is VERY slow, it has been replaced by 'ExtractHostInfo.ps1' ... just kept in case the script is not there ;-)
-				Set LMS_START_LOG=0
-				del "!CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt" >nul 2>&1
-				Set LMS_HOSTINFO_FOUND=
-				FOR /F "eol=@ delims=" %%i IN ('type !REPORT_LOG_PATH!\SIEMBT.log') DO ( 
-					if not defined LMS_HOSTINFO_FOUND (
-						ECHO "%%i" | FINDSTR /C:"=== Host Info ===" 1>nul 
-						if !ERRORLEVEL!==0 (
-							echo Start of 'Host Info' section found ... > !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt 2>&1
-							Set LMS_START_LOG=1
-						)
-						if !LMS_START_LOG!==1 (
-							echo %%i                                    >> !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt 2>&1
-							
-							rem check for end of 'Host Info' block
-							ECHO "%%i" | FINDSTR /C:"===============================================" 1>nul 
+			echo -- extract ERROR messages from SIEMBT.log [start] --                                                        >> !REPORT_LOGFILE! 2>&1
+			Type "!REPORT_LOG_PATH!\SIEMBT.log" | findstr "ERROR:"                                                           >> !REPORT_LOGFILE! 2>&1
+			echo -- extract ERROR messages from SIEMBT.log [end] --                                                          >> !REPORT_LOGFILE! 2>&1
+			echo Start at !DATE! !TIME! ....                                                                                 >> !REPORT_LOGFILE! 2>&1
+
+			if not defined LMS_CHECK_ID (
+				rem Extract "Host Info"
+				echo     Extract 'Host Info' ...
+				echo Extract 'Host Info' ...                                                                                 >> !REPORT_LOGFILE! 2>&1
+
+				IF EXIST "!LMS_DOWNLOAD_PATH!\ExtractHostInfo.ps1" (
+					set LMS_EXTRACTHOSTINFO_SCRIPT=!LMS_DOWNLOAD_PATH!\ExtractHostInfo.ps1
+				) else IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\ExtractHostInfo.ps1" (
+					set LMS_EXTRACTHOSTINFO_SCRIPT=!ProgramFiles!\Siemens\LMS\scripts\ExtractHostInfo.ps1
+				)
+				IF EXIST "!LMS_EXTRACTHOSTINFO_SCRIPT!" (
+					echo RUN: powershell -Command "& '!LMS_EXTRACTHOSTINFO_SCRIPT!'; exit $LASTEXITCODE"                     >> !REPORT_LOGFILE! 2>&1
+					powershell -Command "& '!LMS_EXTRACTHOSTINFO_SCRIPT!'; exit $LASTEXITCODE"  > !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt 2>&1
+				) else (
+					echo     'ExtractHostInfo.ps1' script not found.                                                         >> !REPORT_LOGFILE! 2>&1
+
+					rem #########################################################
+					rem NOTE: The implementation below is VERY slow, it has been replaced by 'ExtractHostInfo.ps1' ... just kept in case the script is not there ;-)
+					Set LMS_START_LOG=0
+					del "!CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt" >nul 2>&1
+					Set LMS_HOSTINFO_FOUND=
+					FOR /F "eol=@ delims=" %%i IN ('type !REPORT_LOG_PATH!\SIEMBT.log') DO ( 
+						if not defined LMS_HOSTINFO_FOUND (
+							ECHO "%%i" | FINDSTR /C:"=== Host Info ===" 1>nul 
 							if !ERRORLEVEL!==0 (
-								echo End of 'Host Info' section found ...   >> !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt 2>&1
-								Set LMS_START_LOG=0
-								Set LMS_HOSTINFO_FOUND=1
-								goto break_hostinfo_for_loop 
+								echo Start of 'Host Info' section found ... > !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt 2>&1
+								Set LMS_START_LOG=1
+							)
+							if !LMS_START_LOG!==1 (
+								echo %%i                                    >> !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt 2>&1
+								
+								rem check for end of 'Host Info' block
+								ECHO "%%i" | FINDSTR /C:"===============================================" 1>nul 
+								if !ERRORLEVEL!==0 (
+									echo End of 'Host Info' section found ...   >> !CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt 2>&1
+									Set LMS_START_LOG=0
+									Set LMS_HOSTINFO_FOUND=1
+									goto break_hostinfo_for_loop 
+								)
 							)
 						)
 					)
+					:break_hostinfo_for_loop 
+					rem #########################################################
+
 				)
-				:break_hostinfo_for_loop 
-				rem #########################################################
-
+				
+				IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt" (
+					type "!CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt"                                                    >> !REPORT_LOGFILE! 2>&1
+				) else (
+					echo     ATTENTION: No 'Host Info' found in '!CHECKLMS_REPORT_LOG_PATH!\SIEMBT.log'!                     >> !REPORT_LOGFILE! 2>&1
+				)
+				IF EXIST "!REPORT_LOG_PATH!\SIEMBT_HostInfo.txt" (
+					type "!REPORT_LOG_PATH!\SIEMBT_HostInfo.txt"                                                             >> !REPORT_LOGFILE! 2>&1
+				) else (
+					echo     ATTENTION: No 'Host Info' found in '!REPORT_LOG_PATH!\SIEMBT.log'!                              >> !REPORT_LOGFILE! 2>&1
+				)
 			)
-			
-			IF EXIST "!CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt" (
-				type "!CHECKLMS_REPORT_LOG_PATH!\SIEMBT_HostInfo.txt"                                                        >> !REPORT_LOGFILE! 2>&1
-			) else (
-				echo     ATTENTION: No 'Host Info' found in '!CHECKLMS_REPORT_LOG_PATH!\SIEMBT.log'!                         >> !REPORT_LOGFILE! 2>&1
-			)
-			IF EXIST "!REPORT_LOG_PATH!\SIEMBT_HostInfo.txt" (
-				type "!REPORT_LOG_PATH!\SIEMBT_HostInfo.txt"                                                                 >> !REPORT_LOGFILE! 2>&1
-			) else (
-				echo     ATTENTION: No 'Host Info' found in '!REPORT_LOG_PATH!\SIEMBT.log'!                                  >> !REPORT_LOGFILE! 2>&1
-			)
-
-			echo -------------------------------------------------------                                                     >> !REPORT_LOGFILE! 2>&1
-			echo Start at !DATE! !TIME! .... Analyze 'SIEMBT.log', extract pooling information.                              >> !REPORT_LOGFILE! 2>&1
-			echo     Analyze 'SIEMBT.log', extract pooling information ...
-			echo Analyze 'SIEMBT.log', extract pooling information ...                                                       >> !REPORT_LOGFILE! 2>&1
-			IF EXIST "!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1" (
-				set LMS_EXTRACTPOOLINFO_SCRIPT=!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1
-			) else IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\ExtractPoolingInformation.ps1" (
-				set LMS_EXTRACTPOOLINFO_SCRIPT=!ProgramFiles!\Siemens\LMS\scripts\ExtractPoolingInformation.ps1
-			)
-			IF EXIST "!LMS_EXTRACTPOOLINFO_SCRIPT!" (
-				echo RUN: powershell -Command "& '!LMS_EXTRACTPOOLINFO_SCRIPT!'; exit $LASTEXITCODE"                         >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "& '!LMS_EXTRACTPOOLINFO_SCRIPT!'; exit $LASTEXITCODE"                                   >> !REPORT_LOGFILE! 2>&1
-			) else (
-				echo     'ExtractPoolingInformation.ps1' script not found.                                                   >> !REPORT_LOGFILE! 2>&1
-			)
-
-			rem SIEMBT.log
-			echo -------------------------------------------------------                                                     >> !REPORT_LOGFILE! 2>&1
-			echo Start at !DATE! !TIME! .... LOG FILE: SIEMBT.log [last !LOG_FILE_LINES! lines]                              >> !REPORT_LOGFILE! 2>&1
-			echo LOG FILE: SIEMBT.log [last !LOG_FILE_LINES! lines]                                                          >> !REPORT_LOGFILE! 2>&1
-			powershell -command "& {Get-Content '!REPORT_LOG_PATH!\SIEMBT.log' | Select-Object -last !LOG_FILE_LINES!}"      >> !REPORT_LOGFILE! 2>&1
-
 		)
+		echo #########################################################                                                       >> !REPORT_LOGFILE! 2>&1
+		rem #########################################################
 	)
-
+	
 ) else (
 	echo     !REPORT_LOG_PATH!\SIEMBT.log not found.                                                                         >> !REPORT_LOGFILE! 2>&1
 )
