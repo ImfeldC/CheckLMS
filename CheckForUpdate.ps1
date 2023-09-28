@@ -52,7 +52,10 @@ param(
 # '20230804': Revert back to use Start-BitsTransfer to download file from OSD, instead of Net.WebClient (see also '20221005')
 # '20230913': Add copyright notice of Siemens 
 # '20230921': Fix: 2355024: 'Running on Hypervisor' NOT found
-$scriptVersion = '20230021'
+# '20230926': Read "program data" path from environment
+#             Consider 'SIEMBT_HostInfo.txt' to read-out host info (in case it doesn't exist in 'SIEMBT.log')
+#
+$scriptVersion = '20230026'
 
 $global:ExitCode=0
 # Old API URL -> $OSD_APIURL="https://www.automation.siemens.com/softwareupdater/public/api/updates"
@@ -349,15 +352,32 @@ if ( $operatingsystem -eq '' )
 }
 
 # Determine hypervisor (using SIEMBT logfile)
-if ( Test-Path 'C:\ProgramData\Siemens\LMS\Logs\SIEMBT.log' ) {
-	$A = Get-ChildItem -Path C:\ProgramData\Siemens\LMS\Logs\SIEMBT.log | Select-String -Pattern 'Running on Hypervisor:(.+)'
+$programDataPath = $env:ProgramData 
+if ( Test-Path "$programDataPath\Siemens\LMS\Logs\SIEMBT.log" ) {
+	#Log-Message "File 'SIEMBT.log' exists ..."
+	$A = Get-ChildItem -Path $programDataPath\Siemens\LMS\Logs\SIEMBT.log | Select-String -Pattern 'Running on Hypervisor:(.+)'
 	if( $A ) {
 		if( $A[0] -match 'Running on Hypervisor:\s(?<Hypervisor>.+)' )
 		{
 			$LMS_SIEMBT_HYPERVISOR = $Matches.Hypervisor
+			Log-Message "Hypervisior '$LMS_SIEMBT_HYPERVISOR' found in file 'SIEMBT.log' ..."
 		}
 	} else {
-		$LMS_SIEMBT_HYPERVISOR = "n/a"
+		if ( Test-Path "$programDataPath\Siemens\LMS\Logs\SIEMBT_HostInfo.txt" ) {
+			#Log-Message "File 'SIEMBT_HostInfo.txt' exists ..."
+			$A = Get-ChildItem -Path $programDataPath\Siemens\LMS\Logs\SIEMBT_HostInfo.txt | Select-String -Pattern 'Running on Hypervisor:(.+)'
+			if( $A ) {
+				if( $A[0] -match 'Running on Hypervisor:\s(?<Hypervisor>.+)' )
+				{
+					$LMS_SIEMBT_HYPERVISOR = $Matches.Hypervisor
+					Log-Message "Hypervisior '$LMS_SIEMBT_HYPERVISOR' found in file 'SIEMBT_HostInfo.txt' ..."
+				}
+			} else {
+				$LMS_SIEMBT_HYPERVISOR = "n/a"
+			}
+		} else {
+			$LMS_SIEMBT_HYPERVISOR = "n/a"
+		}
 	}
 } else {
 	$LMS_SIEMBT_HYPERVISOR = "n/a"
