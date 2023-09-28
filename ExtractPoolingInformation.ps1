@@ -1,3 +1,10 @@
+#region Parameters
+param(
+	[string]$logfilename = "SIEMBT.log",
+	[string]$logpath = "",
+	[bool]$Verbose = $true
+)
+#endregion
 # ---------------------------------------------------------------------------------------
 # © Siemens 2023
 #
@@ -13,11 +20,12 @@
 # ---------------------------------------------------------------------------------------
 #
 # '20230913': Initial version (created with help of Azure OpneAI studio)
+# '20230927': Consider 'rollover' and load older backup files for further analysis.
+#             Add command line option $Verbose, to enable/disable trace messages. Per default the traces are enabled. To set use command line option: -Verbose:$false
+#             Add command line option $logfilename and $logpath, to specifiy which file in which folder to analyze. Default is: "$env:ProgramData\Siemens\LMS\Logs\SIEMBT.log"
+#             -> Example to set: powershell -Command "& 'ExtractPoolingInformation.ps1' -logpath:'C:\CheckScriptArchive\Logs'"
 #
-$scriptVersion = '20230913'
-
-$logFile = "C:\ProgramData\Siemens\LMS\Logs\SIEMBT.log"  
-$searchPattern = "\r\n(.*?) Pooling (.*?)  and (.*?) \r\n.*? Updating feature (.*?)\r\n"
+$scriptVersion = '20230927'
 
 # Function to print-out messages, including <date> and <time> information.
 $scriptName = $MyInvocation.MyCommand.Name
@@ -33,19 +41,54 @@ function Log-Message
     Write-Output ("[$scriptName/$scriptVersion] {0} - {1}" -f (Get-Date), $LogMessage)
 }
 
-Log-Message "Start script ..."  
+if($Verbose) { Log-Message "Start script ..." }
 
-# Öffnen Sie die Log-Datei und lesen Sie den Inhalt in eine einzige Zeichenfolge  
-$content = Get-Content $logFile | Out-String  
-  
-# Suchen Sie nach dem Muster in der Zeichenfolge  
-$matches = Select-String $searchPattern -InputObject $content -AllMatches | % { $_.Matches }  
-  
-# Wenn Übereinstimmungen gefunden wurden, geben Sie sie aus  
-if ($matches) {  
-    $matches | ForEach-Object { Log-Message "Feature found with 'Pooling' at $($_.Groups[1].Value): $($_.Groups[4].Value) ( $($_.Groups[2].Value) / $($_.Groups[3].Value) )" }  
-}  
-else {  
-    Log-Message "No matches found."  
-}  
-Log-Message "Finish script ..."  
+if( [string]::IsNullOrEmpty($logpath) )
+{
+	$programDataPath = $env:ProgramData 
+	$logpath = "$programDataPath\Siemens\LMS\Logs\"
+	if($Verbose) { Log-Message "LogPath: $logpath" }
+}
+
+$logpath = $logpath.TrimEnd("\")
+$logFile = "$logpath\$logfilename"  
+$searchPattern = "\r\n(.*?) Pooling (.*?)  and (.*?) \r\n.*? Updating feature (.*?)\r\n"
+$searchPatternBackupFile = "The debug log back-up is available in (C:.*)\r\n"
+
+do {
+	if (Test-Path $logFile) {  
+		# Open the logfile and read them into one line
+		Log-Message "Open file: $logFile" 
+		$content = Get-Content $logFile | Out-String  
+		  
+		# Suchen Sie nach dem Muster in der Zeichenfolge  
+		$matches = Select-String $searchPattern -InputObject $content -AllMatches | % { $_.Matches }  
+		  
+		# Wenn Übereinstimmungen gefunden wurden, geben Sie sie aus  
+		if ($matches) {  
+			$matches | ForEach-Object { Log-Message "Feature found with 'Pooling' at $($_.Groups[1].Value): $($_.Groups[4].Value) ( $($_.Groups[2].Value) / $($_.Groups[3].Value) )" }  
+		}  
+		else {  
+			if($Verbose) { Log-Message "No matches found." } 
+		}  
+
+		# Search for 'backup file' in open logfile  
+		$matchesBackupFiles = Select-String $searchPatternBackupFile -InputObject $content -AllMatches | % { $_.Matches }  
+		# If 'backup file' is found ....  
+		if ($matchesBackupFiles) {  
+			#$matchesBackupFiles | ForEach-Object { Log-Message "Backup File: $($_.Groups[1].Value)" }  
+			
+			$backupFile = $matchesBackupFiles[0].Groups[1].Value
+			if($Verbose) { Log-Message "Backup File found: $backupFile (in $logFile)" }
+			$logFile = $backupFile
+		} else {  
+			$backupFile = ""
+			if($Verbose) { Log-Message "Backup Files: No matches found." }
+		}  
+	}  else {
+		$backupFile = ""
+		if($Verbose) { Log-Message "File not found: $logFile" }
+	}
+} while ( -not [string]::IsNullOrEmpty($backupFile) )
+
+if($Verbose) { Log-Message "Finish script ..." }
