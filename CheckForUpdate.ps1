@@ -55,7 +55,7 @@ param(
 # '20230926': Read "program data" path from environment
 #             Consider 'SIEMBT_HostInfo.txt' to read-out host info (in case it doesn't exist in 'SIEMBT.log')
 #
-$scriptVersion = '20230026'
+$scriptVersion = '20230926'
 
 $global:ExitCode=0
 # Old API URL -> $OSD_APIURL="https://www.automation.siemens.com/softwareupdater/public/api/updates"
