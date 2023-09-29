@@ -92,6 +92,8 @@ rem     27-Sep-2023:
 rem        - Rewrite analysis of SIEMBT.log, use only PowerShell scripts (replace/remove legacy code directly implemented in CheckLMS.bat script)
 rem     28-Sep-2023:
 rem        - Consider extract of errors from SIEMBT logfiles (nad possible rollover logfiles)
+rem     29-Sep-2023:
+rem        - Download PowerShell scripts always (even if they already exists), to make sure that always newest script is used.
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -128,8 +130,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 28-Sep-2023"
-set LMS_SCRIPT_BUILD=20230928
+set LMS_SCRIPT_VERSION="CheckLMS Script 29-Sep-2023"
+set LMS_SCRIPT_BUILD=20230929
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -1620,38 +1622,32 @@ if not defined LMS_SKIPDOWNLOAD (
 			)
 			
 
-			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1" (
-				set LMS_DOWNLOAD_LINK=https://raw.githubusercontent.com/ImfeldC/CheckLMS/master/ExtractPoolingInformation.ps1
-				echo     Download additional powershell script from github: !LMS_DOWNLOAD_LINK!
-				echo Download additional powershell script from github: !LMS_DOWNLOAD_LINK!                                             >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1')" > !CHECKLMS_REPORT_LOG_PATH!\download_extractpoolinfo_git.txt 2>&1
-				if !ERRORLEVEL!==0 (
-					echo     Download PASSED, script available at '!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1'                   >> !REPORT_LOGFILE! 2>&1
-				) else if !ERRORLEVEL!==1 (
-					echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                       >> !REPORT_LOGFILE! 2>&1
-				)
+			set LMS_DOWNLOAD_LINK=https://raw.githubusercontent.com/ImfeldC/CheckLMS/master/ExtractPoolingInformation.ps1
+			echo     Download additional powershell script from github: !LMS_DOWNLOAD_LINK!
+			echo Download additional powershell script from github: !LMS_DOWNLOAD_LINK!                                             >> !REPORT_LOGFILE! 2>&1
+			powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1')" > !CHECKLMS_REPORT_LOG_PATH!\download_extractpoolinfo_git.txt 2>&1
+			if !ERRORLEVEL!==0 (
+				echo     Download PASSED, script available at '!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1'                   >> !REPORT_LOGFILE! 2>&1
+			) else if !ERRORLEVEL!==1 (
+				echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                       >> !REPORT_LOGFILE! 2>&1
 			)
-			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\ExtractHostInfo.ps1" (
-				set LMS_DOWNLOAD_LINK=https://raw.githubusercontent.com/ImfeldC/CheckLMS/master/ExtractHostInfo.ps1
-				echo     Download additional powershell script from github: !LMS_DOWNLOAD_LINK!
-				echo Download additional powershell script from github: !LMS_DOWNLOAD_LINK!                                             >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\ExtractHostInfo.ps1')" > !CHECKLMS_REPORT_LOG_PATH!\download_extracthostinfo_git.txt 2>&1
-				if !ERRORLEVEL!==0 (
-					echo     Download PASSED, script available at '!LMS_DOWNLOAD_PATH!\ExtractHostInfo.ps1'                             >> !REPORT_LOGFILE! 2>&1
-				) else if !ERRORLEVEL!==1 (
-					echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                       >> !REPORT_LOGFILE! 2>&1
-				)
+			set LMS_DOWNLOAD_LINK=https://raw.githubusercontent.com/ImfeldC/CheckLMS/master/ExtractHostInfo.ps1
+			echo     Download additional powershell script from github: !LMS_DOWNLOAD_LINK!
+			echo Download additional powershell script from github: !LMS_DOWNLOAD_LINK!                                             >> !REPORT_LOGFILE! 2>&1
+			powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\ExtractHostInfo.ps1')" > !CHECKLMS_REPORT_LOG_PATH!\download_extracthostinfo_git.txt 2>&1
+			if !ERRORLEVEL!==0 (
+				echo     Download PASSED, script available at '!LMS_DOWNLOAD_PATH!\ExtractHostInfo.ps1'                             >> !REPORT_LOGFILE! 2>&1
+			) else if !ERRORLEVEL!==1 (
+				echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                       >> !REPORT_LOGFILE! 2>&1
 			)
-			IF NOT EXIST "!LMS_DOWNLOAD_PATH!\ExtractLogFileConfig.ps1" (
-				set LMS_DOWNLOAD_LINK=https://raw.githubusercontent.com/ImfeldC/CheckLMS/master/ExtractLogFileConfig.ps1
-				echo     Download additional powershell script from github: !LMS_DOWNLOAD_LINK!
-				echo Download additional powershell script from github: !LMS_DOWNLOAD_LINK!                                             >> !REPORT_LOGFILE! 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\ExtractLogFileConfig.ps1')" > !CHECKLMS_REPORT_LOG_PATH!\download_extractlogfileconfig_git.txt 2>&1
-				if !ERRORLEVEL!==0 (
-					echo     Download PASSED, script available at '!LMS_DOWNLOAD_PATH!\ExtractLogFileConfig.ps1'                        >> !REPORT_LOGFILE! 2>&1
-				) else if !ERRORLEVEL!==1 (
-					echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                       >> !REPORT_LOGFILE! 2>&1
-				)
+			set LMS_DOWNLOAD_LINK=https://raw.githubusercontent.com/ImfeldC/CheckLMS/master/ExtractLogFileConfig.ps1
+			echo     Download additional powershell script from github: !LMS_DOWNLOAD_LINK!
+			echo Download additional powershell script from github: !LMS_DOWNLOAD_LINK!                                             >> !REPORT_LOGFILE! 2>&1
+			powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\ExtractLogFileConfig.ps1')" > !CHECKLMS_REPORT_LOG_PATH!\download_extractlogfileconfig_git.txt 2>&1
+			if !ERRORLEVEL!==0 (
+				echo     Download PASSED, script available at '!LMS_DOWNLOAD_PATH!\ExtractLogFileConfig.ps1'                        >> !REPORT_LOGFILE! 2>&1
+			) else if !ERRORLEVEL!==1 (
+				echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                       >> !REPORT_LOGFILE! 2>&1
 			)
 			
 		)
