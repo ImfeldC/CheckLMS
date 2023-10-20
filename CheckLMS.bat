@@ -96,6 +96,8 @@ rem     29-Sep-2023:
 rem        - Download PowerShell scripts always (even if they already exists), to make sure that always newest script is used.
 rem     17-Oct-2023:
 rem        - read-out content of 'c:\GMSProjects\GMSMainPorject\licenses' (related to Desigo CC installations)
+rem     20-Oct-2023:
+rem        - Support 'SetOnlineCheckUser.ps1' (Defect 2368196)
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -132,8 +134,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 17-Oct-2023"
-set LMS_SCRIPT_BUILD=20231017
+set LMS_SCRIPT_VERSION="CheckLMS Script 20-Oct-2023"
+set LMS_SCRIPT_BUILD=20231020
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -1651,7 +1653,16 @@ if not defined LMS_SKIPDOWNLOAD (
 			) else if !ERRORLEVEL!==1 (
 				echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                       >> !REPORT_LOGFILE! 2>&1
 			)
-			
+			set LMS_DOWNLOAD_LINK=https://raw.githubusercontent.com/ImfeldC/CheckLMS/master/SetOnlineCheckUser.ps1
+			echo     Download additional powershell script from github: !LMS_DOWNLOAD_LINK!
+			echo Download additional powershell script from github: !LMS_DOWNLOAD_LINK!                                             >> !REPORT_LOGFILE! 2>&1
+			powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\SetOnlineCheckUser.ps1')" > !CHECKLMS_REPORT_LOG_PATH!\download_SetOnlineCheckUser_git.txt 2>&1
+			if !ERRORLEVEL!==0 (
+				echo     Download PASSED, script available at '!LMS_DOWNLOAD_PATH!\SetOnlineCheckUser.ps1'                          >> !REPORT_LOGFILE! 2>&1
+			) else if !ERRORLEVEL!==1 (
+				echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                       >> !REPORT_LOGFILE! 2>&1
+			)
+
 		)
 	) else (
 		echo     Don't download additional libraries and files, because no internet connection available.
