@@ -98,6 +98,11 @@ rem     17-Oct-2023:
 rem        - read-out content of 'c:\GMSProjects\GMSMainPorject\licenses' (related to Desigo CC installations)
 rem     20-Oct-2023:
 rem        - Support 'SetOnlineCheckUser.ps1' (Defect 2368196)
+rem     27-Oct-2023:
+rem        - Change IP check from http to https (Fix: Defect 2376762)
+rem        - Remove check against: http://www.ifconfig.io/  (Fix: Defect 2376762)
+rem        - Remove check against: https://ipinfo.io/org  (Fix: Defect 2376762)
+rem        - add further URLs: https://ip6.me/api/ and https://ip6only.me/api/
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -134,8 +139,8 @@ rem          Debug Options:
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 20-Oct-2023"
-set LMS_SCRIPT_BUILD=20231020
+set LMS_SCRIPT_VERSION="CheckLMS Script 27-Oct-2023"
+set LMS_SCRIPT_BUILD=20231027
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -3087,19 +3092,47 @@ if not defined LMS_SKIPWINDOWS (
 	echo ---------------- Displays Windows IP Configuration: ipconfig /all                         >> !REPORT_LOGFILE! 2>&1
 	echo     Displays Windows IP Configuration: ipconfig /all
 	ipconfig /all                                                                                  >> !REPORT_LOGFILE! 2>&1
-	echo ---------------- Retrieve public IP address: from http://ip4only.me/api/                  >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! .... Connection Test, check http://ip4only.me/api/                 >> !REPORT_LOGFILE! 2>&1
-	powershell -Command "(New-Object Net.WebClient).DownloadFile('http://ip4only.me/api/', '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ip4only.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_ip4only_log.txt 2>&1
+	echo ---------------- Retrieve public IP address: from https://ip4only.me/api/                 >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Connection Test, check https://ip4only.me/api/                >> !REPORT_LOGFILE! 2>&1
+	powershell -Command "(New-Object Net.WebClient).DownloadFile('https://ip4only.me/api/', '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ip4only.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_ip4only.log 2>&1
 	if !ERRORLEVEL!==0 (
 		rem Connection Test: PASSED
-		echo     Connection Test PASSED, can access http://ip4only.me/api/
-		echo Connection Test PASSED, can access http://ip4only.me/api/                             >> !REPORT_LOGFILE! 2>&1
+		echo     Connection Test PASSED, can access https://ip4only.me/api/
+		echo Connection Test PASSED, can access https://ip4only.me/api/                            >> !REPORT_LOGFILE! 2>&1
 		Type "!CHECKLMS_REPORT_LOG_PATH!\connection_test_ip4only.txt"                              >> !REPORT_LOGFILE! 2>&1
 	) else if !ERRORLEVEL!==1 (
 		rem Connection Test: FAILED
-		echo     Connection Test FAILED, cannot access http://ip4only.me/api/
-		echo Connection Test FAILED, cannot access http://ip4only.me/api/                          >> !REPORT_LOGFILE! 2>&1
-		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_ip4only_log.txt                            >> !REPORT_LOGFILE! 2>&1
+		echo     Connection Test FAILED, cannot access https://ip4only.me/api/
+		echo Connection Test FAILED, cannot access https://ip4only.me/api/                         >> !REPORT_LOGFILE! 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_ip4only.log                                >> !REPORT_LOGFILE! 2>&1
+	)
+	echo ---------------- Retrieve public IP address: from https://ip6.me/api/                     >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Connection Test, check https://ip6.me/api/                    >> !REPORT_LOGFILE! 2>&1
+	powershell -Command "(New-Object Net.WebClient).DownloadFile('https://ip6.me/api/', '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ip6.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_ip6.log 2>&1
+	if !ERRORLEVEL!==0 (
+		rem Connection Test: PASSED
+		echo     Connection Test PASSED, can access https://ip6.me/api/
+		echo Connection Test PASSED, can access https://ip6.me/api/                                >> !REPORT_LOGFILE! 2>&1
+		Type "!CHECKLMS_REPORT_LOG_PATH!\connection_test_ip6.txt"                                  >> !REPORT_LOGFILE! 2>&1
+	) else if !ERRORLEVEL!==1 (
+		rem Connection Test: FAILED
+		echo     Connection Test FAILED, cannot access https://ip6.me/api/
+		echo Connection Test FAILED, cannot access https://ip6.me/api/                             >> !REPORT_LOGFILE! 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_ip6.log                                    >> !REPORT_LOGFILE! 2>&1
+	)
+	echo ---------------- Retrieve public IP address: from https://ip6only.me/api/                 >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... Connection Test, check https://ip6only.me/api/                >> !REPORT_LOGFILE! 2>&1
+	powershell -Command "(New-Object Net.WebClient).DownloadFile('https://ip6only.me/api/', '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ip6only.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_ip6only.log 2>&1
+	if !ERRORLEVEL!==0 (
+		rem Connection Test: PASSED
+		echo     Connection Test PASSED, can access https://ip6only.me/api/
+		echo Connection Test PASSED, can access https://ip6only.me/api/                            >> !REPORT_LOGFILE! 2>&1
+		Type "!CHECKLMS_REPORT_LOG_PATH!\connection_test_ip6only.txt"                              >> !REPORT_LOGFILE! 2>&1
+	) else if !ERRORLEVEL!==1 (
+		rem Connection Test: FAILED
+		echo     Connection Test FAILED, cannot access https://ip6only.me/api/
+		echo Connection Test FAILED, cannot access https://ip6only.me/api/                         >> !REPORT_LOGFILE! 2>&1
+		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_ip6only.log                                >> !REPORT_LOGFILE! 2>&1
 	)
 	echo ---------------- Retrieve public IP address: from https://api.ipify.org                   >> !REPORT_LOGFILE! 2>&1
 	echo Start at !DATE! !TIME! .... Connection Test, check https://api.ipify.org                  >> !REPORT_LOGFILE! 2>&1
@@ -3115,34 +3148,6 @@ if not defined LMS_SKIPWINDOWS (
 		echo     Connection Test FAILED, cannot access https://api.ipify.org
 		echo Connection Test FAILED, cannot access https://api.ipify.org                           >> !REPORT_LOGFILE! 2>&1
 		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_ipify_log.txt                              >> !REPORT_LOGFILE! 2>&1
-	)
-	echo ---------------- Retrieve public IP address: from http://www.ifconfig.io/                 >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! .... Connection Test, check http://www.ifconfig.io/                >> !REPORT_LOGFILE! 2>&1
-	powershell -Command "(New-Object Net.WebClient).DownloadFile('http://www.ifconfig.io/', '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ifconfig.html')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_ifconfig_log.txt 2>&1
-	if !ERRORLEVEL!==0 (
-		rem Connection Test: PASSED
-		echo     Connection Test PASSED, can access http://www.ifconfig.io/
-		echo Connection Test PASSED, can access http://www.ifconfig.io/                            >> !REPORT_LOGFILE! 2>&1
-		echo     Details, see '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ifconfig.html'           >> !REPORT_LOGFILE! 2>&1
-	) else if !ERRORLEVEL!==1 (
-		rem Connection Test: FAILED
-		echo     Connection Test FAILED, cannot access http://www.ifconfig.io/
-		echo Connection Test FAILED, cannot access http://www.ifconfig.io/                         >> !REPORT_LOGFILE! 2>&1
-		echo     Details, see '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ifconfig_log.txt'        >> !REPORT_LOGFILE! 2>&1
-	)
-	echo ---------------- Retrieve ISP name: from https://ipinfo.io/org                            >> !REPORT_LOGFILE! 2>&1
-	echo Start at !DATE! !TIME! .... Connection Test, check https://ipinfo.io/org                  >> !REPORT_LOGFILE! 2>&1
-	powershell -Command "(New-Object Net.WebClient).DownloadFile('https://ipinfo.io/org', '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ipinfo.txt')" >!CHECKLMS_REPORT_LOG_PATH!\connection_test_ipinfo_log.txt 2>&1
-	if !ERRORLEVEL!==0 (
-		rem Connection Test: PASSED
-		echo     Connection Test PASSED, can access https://ipinfo.io/org
-		echo Connection Test PASSED, can access https://ipinfo.io/org                              >> !REPORT_LOGFILE! 2>&1
-		type !CHECKLMS_REPORT_LOG_PATH!\connection_test_ipinfo.txt                                 >> !REPORT_LOGFILE! 2>&1
-	) else if !ERRORLEVEL!==1 (
-		rem Connection Test: FAILED
-		echo     Connection Test FAILED, cannot access https://ipinfo.io/org
-		echo Connection Test FAILED, cannot access https://ipinfo.io/org                           >> !REPORT_LOGFILE! 2>&1
-		echo     Details, see '!CHECKLMS_REPORT_LOG_PATH!\connection_test_ipinfo_log.txt'          >> !REPORT_LOGFILE! 2>&1
 	)
 	echo Start at !DATE! !TIME! ....                                                               >> !REPORT_LOGFILE! 2>&1
 ) else (
