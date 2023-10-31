@@ -105,6 +105,9 @@ rem        - Remove check against: https://ipinfo.io/org  (Fix: Defect 2376762)
 rem        - add further URLs: https://ip6.me/api/ and https://ip6only.me/api/
 rem     30-Oct-2023:
 rem        - Re-add: https://ipinfo.io/org  (Fix: Defect 2376762)
+rem     31-Oct-2023:
+rem        - Implement EULA 'dialog' at script start
+rem        - Implement /accepteula to programmatically accept the EULA and skip 'EULA accept' dialog.
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -113,36 +116,39 @@ rem        - To run the script w/o window, execute:
 rem              "!ProgramFiles!\Siemens\LMS\bin\Launcher.exe" "!ProgramFiles!\Siemens\LMS\scripts\CheckLMS.bat" /nouserinput /B
 rem              NOTE: the /B option needs to be the last option, as it is used by launcher app.
 rem        - The following command line options are supported:
-rem              - /showversion                 shows the script version. NOTE: The download of newer scripts is executed.
-rem              - /info "Any text"             Adds this text to the output, e.g. reference to field issue /info "SR1-XXXX"
+rem              - /accepteula                  accepts programmatically the EULA and script skips 'EULA accept' dialog.
 rem              - /nouserinput                 supresses any user input (mainly the stop command at the end of the script)
 rem              - /nowait                      supresses any user input and any further "wait" commands 
 rem              - /cleanup                     starts additional clean-up commands.
 rem              - /logfilename <logfilename>   specifies the name and location of the logfile
+rem              - /donotstartnewerscript       don't start newer script even if available (mainly to ensure proper handling of command line options) 
+rem          'Run' Options:
+rem              - /showversion                 shows the script version. NOTE: The download of newer scripts is executed.
+rem              - /checkdownload               perform downloads and print file versions.
+rem              - /extend                      run extended content, increases script running time!
+rem          'Skip' Options:
 rem              - /skipdownload                skip section which performs download.
 rem              - /skipnetstat                 skip section which performs netstat commands. 
 rem              - /skipcontest                 skip section which performs connection tests.
-rem              - /extend                      run extended content, increases script running time!
-rem              - /donotstartnewerscript       don't start newer script even if available (mainly to ensure proper handling of command line options) 
-rem              - /checkdownload               perform downloads and print file versions.
-rem              - /setfirewall                 sets firewall for external access to LMS. 
-rem              - /startdemovd                 to start the demo vendor daemon provided by Flexera.
-rem              - /stopdemovd                  to stop the demo vendor daemon provided by Flexera.
 rem          CheckID Options:
 rem              - /checkid                     check machine identifiers, like UMN, VMGENID, ...
 rem              - /setcheckidtask              sets periodic task to run checklms.bat with /checkid option.
 rem              - /delcheckidtask              delete periodic checkid task, see option /setcheckidtask
-rem          Install Options:
+rem          Install & Config Options:
+rem              - /info "Any text"             Adds this text to the output, e.g. reference to field issue /info "SR1-XXXX"
+rem              - /setfirewall                 sets firewall for external access to LMS. 
 rem              - /installlms                  installs (or updates) LMS client, with newest available released client version
 rem              - /removelms                   de-installs LMS client
 rem              - /installdongledriver         installs downloaded dongle driver.
 rem              - /removedongledriver          remove installed dongle driver.
 rem          Debug Options:
+rem              - /startdemovd                 to start the demo vendor daemon provided by Flexera.
+rem              - /stopdemovd                  to stop the demo vendor daemon provided by Flexera.
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 30-Oct-2023"
-set LMS_SCRIPT_BUILD=20231030
+set LMS_SCRIPT_VERSION="CheckLMS Script 31-Oct-2023"
+set LMS_SCRIPT_BUILD=20231031
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -418,6 +424,9 @@ FOR %%A IN (%*) DO (
 	) else (
 		set var=!var:~1!
 		echo     var=!var!
+		if "!var!"=="accepteula" (
+			set LMS_ACCEPTEULA=1
+		)
 		if "!var!"=="showversion" (
 			set LMS_SHOW_VERSION=1
 			set LMS_NOUSERINPUT=1
@@ -450,8 +459,11 @@ FOR %%A IN (%*) DO (
 		)
 		if "!var!"=="checkdownload" (
 			set LMS_CHECK_DOWNLOAD=1
+			rem this prevents from creating logfile archive
+			set LMS_CHECK_ID=1
 		)
 		if "!var!"=="checkid" (
+			set LMS_ACCEPTEULA=1
 			set LMS_CHECK_ID=1
 			set LMS_SKIPDOWNLOAD=1
 			set LMS_SKIPUNZIP=1
@@ -1025,10 +1037,60 @@ IF "%~1"=="" (
 	echo =  Command Line Options: %*                                                                                         >> !REPORT_LOGFILE! 2>&1
 )
 if defined LMS_SCRIPT_RUN_AS_ADMINISTRATOR (
-	echo =  Script started with : Administrator privilege                                                                   >> !REPORT_LOGFILE! 2>&1
+	echo =  Script started with : Administrator privilege                                                                    >> !REPORT_LOGFILE! 2>&1
 ) else (
-	echo =  Script started with : normal privilege                                                                          >> !REPORT_LOGFILE! 2>&1
+	echo =  Script started with : normal privilege                                                                           >> !REPORT_LOGFILE! 2>&1
 )
+
+
+echo Start at !DATE! !TIME! ....    E N D   U S E R   L I C E N S E   A G R E E M E N T                                      >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================
+echo =   E N D   U S E R   L I C E N S E   A G R E E M E N T                      =
+echo ==============================================================================
+echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
+echo =   E N D   U S E R   L I C E N S E   A G R E E M E N T                      =                                          >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
+
+echo Please read the EULA before proceeding ...  
+IF EXIST "!DOCUMENTATION_PATH!\LMS EULA.pdf" (
+	echo To read the EULA, open: !DOCUMENTATION_PATH!\LMS EULA.pdf  
+	echo To read the EULA, open: !DOCUMENTATION_PATH!\LMS EULA.pdf                                                           >> !REPORT_LOGFILE! 2>&1
+)
+echo.
+if not defined LMS_ACCEPTEULA (
+	set /p acceptEULA=Please enter YES to accept the EULA:   
+) else (
+	set acceptEULA=YES
+)
+if /I "!acceptEULA!"=="YES" (  
+    echo EULA accepted. Continuing with the processing...  
+    echo EULA accepted. Continuing with the processing... User input was: '!acceptEULA!'                                     >> !REPORT_LOGFILE! 2>&1  
+) else (  
+    echo EULA not accepted. Exiting...  
+    echo EULA not accepted. Exiting... User input was: '!acceptEULA!'                                                        >> !REPORT_LOGFILE! 2>&1 
+
+	echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
+	echo ==                                                                                                                  >> !REPORT_LOGFILE! 2>&1
+	echo ==   E U L A   N O T   A C C E P T E D  -  S T O P   E X E C U T I O N                                              >> !REPORT_LOGFILE! 2>&1
+	echo ==                                                                                                                  >> !REPORT_LOGFILE! 2>&1
+	echo ==============================================================================                                      >> !REPORT_LOGFILE! 2>&1
+	echo Report end at !DATE! !TIME!, report started at !LMS_REPORT_START! ....                                              >> !REPORT_LOGFILE! 2>&1
+	if "!LMS_SCHEDTASK_PREV_STATUS!" == "Ready" (
+		rem enable scheduled task during execution of script; if it was enabled at script start ..
+		echo Re-enable scheduled task '!LMS_SCHEDTASK_CHECKID_FULLNAME!', previous state was '!LMS_SCHEDTASK_PREV_STATUS!'   >> !REPORT_LOGFILE! 2>&1
+		schtasks /change /TN !LMS_SCHEDTASK_CHECKID_FULLNAME! /ENABLE >nul 2>&1
+	)
+	rem save (single) report in full report file
+	Type !REPORT_LOGFILE! >> %REPORT_FULL_LOGFILE%
+	
+	if not defined LMS_NOUSERINPUT (
+		set /p DUMMY=Hit ENTER to continue...
+	)
+	exit
+	rem STOP EXECUTION HERE
+
+)
+echo Start at !DATE! !TIME! ....    E U L A   A C C E P T E D  /  S H O W   I N F O                                          >> !REPORT_LOGFILE! 2>&1
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 if defined LMS_SET_INFO (
 	echo Info: [!LMS_REPORT_START!] !LMS_SET_INFO! ....                                                                      >> !REPORT_LOGFILE! 2>&1
