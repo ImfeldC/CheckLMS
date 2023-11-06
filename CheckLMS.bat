@@ -108,6 +108,9 @@ rem        - Re-add: https://ipinfo.io/org  (Fix: Defect 2376762)
 rem     31-Oct-2023:
 rem        - Implement EULA 'dialog' at script start
 rem        - Implement /accepteula to programmatically accept the EULA and skip 'EULA accept' dialog.
+rem     06-Nov-2023:
+rem        - remove unused variable: LMS_CONTEST_SIEMENSINTERNAL
+rem        - remove CheckLMS.config (Fix: Defect 2376759)
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -147,8 +150,8 @@ rem              - /stopdemovd                  to stop the demo vendor daemon p
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 31-Oct-2023"
-set LMS_SCRIPT_BUILD=20231031
+set LMS_SCRIPT_VERSION="CheckLMS Script 06-Nov-2023"
+set LMS_SCRIPT_BUILD=20231106
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -188,10 +191,7 @@ rem set CHECKLMS_EXTERNAL_SHARE=https://d32nyvdepsrb0n.cloudfront.net/
 set CHECKLMS_EXTERNAL_SHARE=https://licensemanagementsystem.s3.eu-west-1.amazonaws.com/
 
 rem CheckLMS configuration (Siemens internal only)
-rem set CHECKLMS_CONFIG=https://wiki.siemens.com/download/attachments/313230891/CheckLMS.config
-rem set CHECKLMS_CONFIG=https://static.siemens.com/btdownloads/lms/CheckLMS/CheckLMS.config
-rem set CHECKLMS_CONFIG=https://d32nyvdepsrb0n.cloudfront.net/lms/CheckLMS/CheckLMS.config
-set CHECKLMS_CONFIG=https://licensemanagementsystem.s3.eu-west-1.amazonaws.com/lms/CheckLMS/CheckLMS.config
+set CHECKLMS_CONFIG=
 
 rem Connection Test to CheckLMS share
 rem Internal share names are retrieved from CheckLMS.config
@@ -2121,50 +2121,54 @@ rem * Siemens internal share, to upload logfile archive at the end of script exe
 rem *
 if not defined LMS_SKIPDOWNLOAD (
 	echo ... check Siemens internal resources ...
-	set LMS_CONTEST_SIEMENSINTERNAL=Unknown
-	rem retrieve CheckLMS configuration file
-	powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_CONFIG!', '!LMS_DOWNLOAD_PATH!\CheckLMS.config')"   > !CHECKLMS_REPORT_LOG_PATH!\connection_test_siemensinternal.txt 2>&1
-	if !ERRORLEVEL!==0 (
-		rem Connection Test: PASSED
-		echo     Connection Test PASSED, can access '!CHECKLMS_CONFIG!'
-		echo Connection Test PASSED, can access '!CHECKLMS_CONFIG!'                                                             >> !REPORT_LOGFILE! 2>&1
-		set LMS_CONTEST_SIEMENSINTERNAL=Passed
-		
-		rem read CheckLMS configuration file
-		IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS.config" (
-			for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS.config ^|find /I "CHECKLMS_PUBLIC_SHARE="') do if not defined CHECKLMS_PUBLIC_SHARE set CHECKLMS_PUBLIC_SHARE=%%i
-			echo     CheckLMS configuration downloaded. Public Share is '!CHECKLMS_PUBLIC_SHARE!'.
-			echo     CheckLMS configuration downloaded. Public Share is '!CHECKLMS_PUBLIC_SHARE!'.                              >> !REPORT_LOGFILE! 2>&1
-		) else (
-			rem Connection Test: FAILED
-			echo     Connection Test FAILED, cannot open '!LMS_DOWNLOAD_PATH!\CheckLMS.config'
-			echo Connection Test FAILED, cannot open '!LMS_DOWNLOAD_PATH!\CheckLMS.config'                                      >> !REPORT_LOGFILE! 2>&1
-			set LMS_CONTEST_SIEMENSINTERNAL=Failed
-		)
-		
-	) else if !ERRORLEVEL!==1 (
-		rem Connection Test: FAILED
-		echo     Connection Test FAILED, cannot access '!CHECKLMS_CONFIG!'
-		echo Connection Test FAILED, cannot access '!CHECKLMS_CONFIG!'                                                          >> !REPORT_LOGFILE! 2>&1
-		set LMS_CONTEST_SIEMENSINTERNAL=Failed
-	)
-
-	rem Connection Test to CheckLMS share
-	set SiemensConnectionTestStatus=Unknown
-	if defined CHECKLMS_PUBLIC_SHARE (
-		IF EXIST "!CHECKLMS_PUBLIC_SHARE!\!CHECKLMS_CONNECTION_TEST_FILE!" (
+	if defined CHECKLMS_CONFIG (
+		rem retrieve CheckLMS configuration file
+		powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_CONFIG!', '!LMS_DOWNLOAD_PATH!\CheckLMS.config')"   > !CHECKLMS_REPORT_LOG_PATH!\connection_test_siemensinternal.txt 2>&1
+		if !ERRORLEVEL!==0 (
 			rem Connection Test: PASSED
-			echo     Connection Test to public share PASSED, can access '!CHECKLMS_CONNECTION_TEST_FILE!'
-			echo Connection Test to public share PASSED, can access !CHECKLMS_PUBLIC_SHARE!\!CHECKLMS_CONNECTION_TEST_FILE!     >> !REPORT_LOGFILE! 2>&1
-			set SiemensConnectionTestStatus=Passed
-		) else (
+			echo     Connection Test PASSED, can access '!CHECKLMS_CONFIG!'
+			echo Connection Test PASSED, can access '!CHECKLMS_CONFIG!'                                                             >> !REPORT_LOGFILE! 2>&1
+			
+			rem read CheckLMS configuration file
+			IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS.config" (
+				for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS.config ^|find /I "CHECKLMS_PUBLIC_SHARE="') do if not defined CHECKLMS_PUBLIC_SHARE set CHECKLMS_PUBLIC_SHARE=%%i
+				echo     CheckLMS configuration downloaded. Public Share is '!CHECKLMS_PUBLIC_SHARE!'.
+				echo     CheckLMS configuration downloaded. Public Share is '!CHECKLMS_PUBLIC_SHARE!'.                              >> !REPORT_LOGFILE! 2>&1
+			) else (
+				rem Connection Test: FAILED
+				echo     Connection Test FAILED, cannot open '!LMS_DOWNLOAD_PATH!\CheckLMS.config'
+				echo Connection Test FAILED, cannot open '!LMS_DOWNLOAD_PATH!\CheckLMS.config'                                      >> !REPORT_LOGFILE! 2>&1
+			)
+			
+		) else if !ERRORLEVEL!==1 (
 			rem Connection Test: FAILED
-			echo     Connection Test to public share FAILED, cannot access '!CHECKLMS_CONNECTION_TEST_FILE!'
-			echo Connection Test to public share FAILED, cannot access !CHECKLMS_PUBLIC_SHARE!\!CHECKLMS_CONNECTION_TEST_FILE!  >> !REPORT_LOGFILE! 2>&1
-			set SiemensConnectionTestStatus=Failed
+			echo     Connection Test FAILED, cannot access '!CHECKLMS_CONFIG!'
+			echo Connection Test FAILED, cannot access '!CHECKLMS_CONFIG!'                                                          >> !REPORT_LOGFILE! 2>&1
 		)
+
+		rem Connection Test to CheckLMS share
+		set SiemensConnectionTestStatus=Unknown
+		if defined CHECKLMS_PUBLIC_SHARE (
+			IF EXIST "!CHECKLMS_PUBLIC_SHARE!\!CHECKLMS_CONNECTION_TEST_FILE!" (
+				rem Connection Test: PASSED
+				echo     Connection Test to public share PASSED, can access '!CHECKLMS_CONNECTION_TEST_FILE!'
+				echo Connection Test to public share PASSED, can access !CHECKLMS_PUBLIC_SHARE!\!CHECKLMS_CONNECTION_TEST_FILE!     >> !REPORT_LOGFILE! 2>&1
+				set SiemensConnectionTestStatus=Passed
+			) else (
+				rem Connection Test: FAILED
+				echo     Connection Test to public share FAILED, cannot access '!CHECKLMS_CONNECTION_TEST_FILE!'
+				echo Connection Test to public share FAILED, cannot access !CHECKLMS_PUBLIC_SHARE!\!CHECKLMS_CONNECTION_TEST_FILE!  >> !REPORT_LOGFILE! 2>&1
+				set SiemensConnectionTestStatus=Failed
+			)
+		) else (
+			echo Connection Test to public share NOT POSSIBLE, no share name defined.                                               >> !REPORT_LOGFILE! 2>&1
+		)
+
 	) else (
-		echo Connection Test to public share NOT POSSIBLE, no share name defined.                                               >> !REPORT_LOGFILE! 2>&1
+		rem Connection Test: FAILED
+		echo     Connection Test SKIPPED, no config file defined.
+		echo Connection Test SKIPPED, no config file defined.                                                                       >> !REPORT_LOGFILE! 2>&1
+		set SiemensConnectionTestStatus=NotConfigured
 	)
 )
 
