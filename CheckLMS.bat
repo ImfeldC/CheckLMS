@@ -112,7 +112,11 @@ rem     06-Nov-2023:
 rem        - remove unused variable: LMS_CONTEST_SIEMENSINTERNAL
 rem        - remove CheckLMS.config (Fix: Defect 2376759)
 rem     07-Nov-2023:
-rem        - Fix typo: GMSMainPorject -> GMSMainProject
+rem        - Fix typo: GMSMainPorject -> GMSMainProject (Fix: Defect 2312977)
+rem        - Add "CheckLMS Info" section header
+rem        - Remove NO LONGER USED EXE DOWNLOAD of FNP SDK, as UNZIP tool is also provided
+rem        - Remove support for FNP SDK 11.14.0.0 & 11.16.0.0; support only FNP 11.16.2.0 (or newer), set them on general rule.
+rem        - Delete local available FNP SDK [ZIP and EXE] and its unzipped content.
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -933,50 +937,9 @@ if not defined FNPVersion (
 set LMS_SERVERTOOL_DW=
 set LMS_SERVERTOOL_DW_PATH=
 if defined FNPVersion (
-	if "!FNPVersion!" == "11.17.2.0" (
-		rem FNP 11.17.2.0 used in LMS 2.5
-		set LMS_SERVERTOOL_DW=SiemensFNP-11.17.2.0-Binaries
-		rem the process architecture is no longer considered; we distribute only 32-bit tools
-		set LMS_SERVERTOOL_DW_PATH=!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!\
-	)
-	if "!FNPVersion!" == "11.17.0.0" (
-		set LMS_SERVERTOOL_DW=SiemensFNP-11.17.0.0-Binaries
-		rem the process architecture is no longer considered; we distribute only 32-bit tools
-		set LMS_SERVERTOOL_DW_PATH=!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!\
-	)
-	if "!FNPVersion!" == "11.16.6.0" (
-		set LMS_SERVERTOOL_DW=SiemensFNP-11.16.6.0-Binaries
-		rem the process architecture is no longer considered; we distribute only 32-bit tools
-		set LMS_SERVERTOOL_DW_PATH=!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!\
-	)
-	if "!FNPVersion!" == "11.16.2.0" (
-		set LMS_SERVERTOOL_DW=SiemensFNP-11.16.2.0-Binaries
-		rem the process architecture is no longer considered; we distribute only 32-bit tools
-		set LMS_SERVERTOOL_DW_PATH=!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!\
-	)
-	if "!FNPVersion!" == "11.16.0.0" (
-		set LMS_SERVERTOOL_DW=SiemensFNP-11.16.0.0-Distr03
-		if "!PROCESSOR_ARCHITECTURE!" == "x86" (
-			set LMS_SERVERTOOL_DW_PATH=!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!\11.16.0.0\x86
-		) else (
-			set LMS_SERVERTOOL_DW_PATH=!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!\11.16.0.0\x64
-		)
-	)
-	if "!FNPVersion!" == "11.14.0.0" (
-		set LMS_SERVERTOOL_DW=SiemensFNP-11.14.0.0-Distr01
-		if "!PROCESSOR_ARCHITECTURE!" == "x86" (
-			set LMS_SERVERTOOL_DW_PATH=!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!\11.14.0.0\x86
-		) else (
-			set LMS_SERVERTOOL_DW_PATH=!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!\11.14.0.0\x64
-		)
-	)
-
-	rem if dowload path not already set, set them on general rule.
-	if not defined LMS_SERVERTOOL_DW (
-		rem FNP 11.18.0.0 (or newer) used in LMS 2.6 (or newer)
-		set LMS_SERVERTOOL_DW=SiemensFNP-!FNPVersion!-Binaries
-		set LMS_SERVERTOOL_DW_PATH=!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!\
-	)
+	rem FNP 11.16.2.0 (or newer), set them on general rule.
+	set LMS_SERVERTOOL_DW=SiemensFNP-!FNPVersion!-Binaries
+	set LMS_SERVERTOOL_DW_PATH=!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!\
 ) else (
     echo This is not a valid LMS Installation, cannot read FNP version. 
 )
@@ -1093,7 +1056,15 @@ if /I "!acceptEULA!"=="YES" (
 
 )
 echo Start at !DATE! !TIME! ....    E U L A   A C C E P T E D  /  S H O W   I N F O                                          >> !REPORT_LOGFILE! 2>&1
+
+
+echo ==============================================================================
+echo =   C H E C K  L M S  I N F O                                                =
+echo ==============================================================================
 echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
+echo =   C H E C K  L M S  I N F O                                                =                                          >> !REPORT_LOGFILE! 2>&1
+echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
+echo ... checklms info section ...
 if defined LMS_SET_INFO (
 	echo Info: [!LMS_REPORT_START!] !LMS_SET_INFO! ....                                                                      >> !REPORT_LOGFILE! 2>&1
 	echo [!LMS_REPORT_START!] !LMS_SET_INFO! >> "!DOCUMENTATION_PATH!\info.txt" 2>&1
@@ -1104,7 +1075,6 @@ IF EXIST "!DOCUMENTATION_PATH!\info.txt" (
 	echo .                                                                                                                   >> !REPORT_LOGFILE! 2>&1
 	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
 )
-
 IF EXIST "!ProgramFiles!\7-Zip\7z.exe" (
 	set UNZIP_TOOL=!ProgramFiles!\7-Zip\7z.exe
 ) else IF EXIST "!ProgramFiles!\Siemens\SSU\bin\7z.exe" (
@@ -1119,6 +1089,34 @@ if NOT defined UNZIP_TOOL (
 	"!UNZIP_TOOL!" -version    >> "!CHECKLMS_REPORT_LOG_PATH!\unziptool_version.log" 2>&1
 )
 powershell -Command "Get-Command  Expand-Archive"   >> "!CHECKLMS_REPORT_LOG_PATH!\expandarchive_version.log" 2>&1
+
+echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+Echo Delete local available FNP SDK [ZIP and EXE] and its unzipped content.                                                  >> !REPORT_LOGFILE! 2>&1
+DIR /B /S "!LMS_DOWNLOAD_PATH!\SiemensFNP-*-Binaries.zip" > nul 2>&1
+if !ERRORLEVEL!==0 (
+	echo Search files of "!LMS_DOWNLOAD_PATH!\SiemensFNP-*-Binaries.zip"                                                     >> !REPORT_LOGFILE! 2>&1
+	FOR /F "tokens=*" %%G IN ('DIR /B /S "!LMS_DOWNLOAD_PATH!\SiemensFNP-*-Binaries.zip"') DO (
+		ECHO   DEL /S /Q "%%G"                                                                                               >> !REPORT_LOGFILE! 2>&1
+		DEL /S /Q "%%G"                                                                                                      >> !REPORT_LOGFILE! 2>&1
+	)
+)
+DIR /B /S "!LMS_DOWNLOAD_PATH!\SiemensFNP-*-Binaries.exe" > nul 2>&1
+if !ERRORLEVEL!==0 (
+	echo Search files of "!LMS_DOWNLOAD_PATH!\SiemensFNP-*-Binaries.exe"                                                     >> !REPORT_LOGFILE! 2>&1
+	FOR /F "tokens=*" %%G IN ('DIR /B /S "!LMS_DOWNLOAD_PATH!\SiemensFNP-*-Binaries.exe"') DO (
+		ECHO   DEL /S /Q "%%G"                                                                                               >> !REPORT_LOGFILE! 2>&1
+		DEL /S /Q "%%G"                                                                                                      >> !REPORT_LOGFILE! 2>&1
+	)
+)
+DIR /B /AD /S "!LMS_DOWNLOAD_PATH!\SiemensFNP-*-Binaries" > nul 2>&1
+if !ERRORLEVEL!==0 (
+	echo Search folders of "!LMS_DOWNLOAD_PATH!\SiemensFNP-*-Binaries"                                                       >> !REPORT_LOGFILE! 2>&1
+	FOR /F "tokens=*" %%G IN ('DIR /B /AD /S "!LMS_DOWNLOAD_PATH!\SiemensFNP-*-Binaries"') DO (
+		ECHO   RMDIR /S /Q "%%G"                                                                                             >> !REPORT_LOGFILE! 2>&1
+		RMDIR /S /Q "%%G"                                                                                                    >> !REPORT_LOGFILE! 2>&1
+	)
+)
+echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 
 if "!LMS_BUILD_VERSION!" NEQ "N/A" (
 	REM Check: not 2.5.824 AND not 2.6.849 AND not 2.7.872 AND less or equal than 2.7.871  --> DEPRECATED (per Jan-2023)
@@ -1478,27 +1476,6 @@ if not defined LMS_SKIPDOWNLOAD (
 				) else (
 					rem echo     Don't download FNP Siemens Library [ZIP], because they exist already.
 					echo Don't download FNP Siemens Library [ZIP], because they exist already.                                              >> !REPORT_LOGFILE! 2>&1
-				)
-			) else (
-				rem 
-				rem NO LONGER USED EXE DOWNLOAD, as UNZIP tool is also provided 
-				rem 
-				rem Download and unzip FNP toolkit [as EXE]
-				IF NOT EXIST "!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.exe" (
-					echo     Download FNP Siemens Library: !LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.exe
-					echo Download FNP Siemens Library: !LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.exe                                                                                                           >> !REPORT_LOGFILE! 2>&1
-					powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/FNP/!LMS_SERVERTOOL_DW!.exe', '!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.exe')"   >> !REPORT_LOGFILE! 2>&1
-
-					REM Unzip FNP Siemens Library
-					REM see https://stackoverflow.com/questions/17687390/how-do-i-silently-install-a-7-zip-self-extracting-archive-to-a-specific-director for more information
-					IF EXIST "!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.exe" (
-						echo     Extract FNP Siemens Library: !LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.exe
-						echo Extract FNP Siemens Library: !LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.exe                                       >> !REPORT_LOGFILE! 2>&1
-						!LMS_DOWNLOAD_PATH!\!LMS_SERVERTOOL_DW!.exe -y -o"!LMS_DOWNLOAD_PATH!\"                                             > !CHECKLMS_REPORT_LOG_PATH!\unzip_fnp_library_exe.txt 2>&1
-					)
-				) else (
-					rem echo     Don't download FNP Siemens Library [EXE], because they exist already.
-					echo Don't download FNP Siemens Library [EXE], because they exist already.                                              >> !REPORT_LOGFILE! 2>&1
 				)
 			)
 		)	
