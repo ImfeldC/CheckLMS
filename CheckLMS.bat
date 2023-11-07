@@ -95,7 +95,7 @@ rem        - Consider extract of errors from SIEMBT logfiles (nad possible rollo
 rem     29-Sep-2023:
 rem        - Download PowerShell scripts always (even if they already exists), to make sure that always newest script is used.
 rem     17-Oct-2023:
-rem        - read-out content of 'c:\GMSProjects\GMSMainPorject\licenses' (related to Desigo CC installations)
+rem        - read-out content of 'c:\GMSProjects\GMSMainProject\licenses' (related to Desigo CC installations)
 rem     20-Oct-2023:
 rem        - Support 'SetOnlineCheckUser.ps1' (Defect 2368196)
 rem     27-Oct-2023:
@@ -111,6 +111,8 @@ rem        - Implement /accepteula to programmatically accept the EULA and skip 
 rem     06-Nov-2023:
 rem        - remove unused variable: LMS_CONTEST_SIEMENSINTERNAL
 rem        - remove CheckLMS.config (Fix: Defect 2376759)
+rem     07-Nov-2023:
+rem        - Fix typo: GMSMainPorject -> GMSMainProject
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -150,8 +152,8 @@ rem              - /stopdemovd                  to stop the demo vendor daemon p
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 06-Nov-2023"
-set LMS_SCRIPT_BUILD=20231106
+set LMS_SCRIPT_VERSION="CheckLMS Script 07-Nov-2023"
+set LMS_SCRIPT_BUILD=20231107
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -7993,8 +7995,8 @@ if not defined LMS_SKIPPRODUCTS (
 		echo Content of folder: "!GMS_PVSSInstallLocation!\log\" incl. sub-folders                                           >> !REPORT_LOGFILE! 2>&1
 		dir /S /A /X /4 /W "!GMS_PVSSInstallLocation!\log\\"                                                                 >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
-		echo Content of folder: "!GMS_InstallDir!\GMSMainPorject\licenses\" incl. sub-folders                                >> !REPORT_LOGFILE! 2>&1
-		dir /S /A /X /4 /W "!GMS_InstallDir!\GMSMainPorject\licenses\"                                                       >> !REPORT_LOGFILE! 2>&1
+		echo Content of folder: "!GMS_InstallDir!\GMSMainProject\licenses\" incl. sub-folders                                >> !REPORT_LOGFILE! 2>&1
+		dir /S /A /X /4 /W "!GMS_InstallDir!\GMSMainProject\licenses\"                                                       >> !REPORT_LOGFILE! 2>&1
 		echo -------------------------------------------------------                                                         >> !REPORT_LOGFILE! 2>&1
 		echo Start at !DATE! !TIME! ....                                                                                     >> !REPORT_LOGFILE! 2>&1
 	) else (
