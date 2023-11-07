@@ -116,7 +116,7 @@ rem        - Fix typo: GMSMainPorject -> GMSMainProject (Fix: Defect 2312977)
 rem        - Add "CheckLMS Info" section header
 rem        - Remove NO LONGER USED EXE DOWNLOAD of FNP SDK, as UNZIP tool is also provided
 rem        - Remove support for FNP SDK 11.14.0.0 & 11.16.0.0; support only FNP 11.16.2.0 (or newer), set them on general rule.
-rem        - Delete local available FNP SDK [ZIP and EXE] and its unzipped content.
+rem        - Delete local available FNP SDK [ZIP and EXE] and its unzipped content. (Fix: Defect 2385072)
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
