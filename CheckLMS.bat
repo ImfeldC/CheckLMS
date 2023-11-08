@@ -117,6 +117,8 @@ rem        - Add "CheckLMS Info" section header
 rem        - Remove NO LONGER USED EXE DOWNLOAD of FNP SDK, as UNZIP tool is also provided
 rem        - Remove support for FNP SDK 11.14.0.0 & 11.16.0.0; support only FNP 11.16.2.0 (or newer), set them on general rule.
 rem        - Delete local available FNP SDK [ZIP and EXE] and its unzipped content. (Fix: Defect 2385072)
+rem     08-Nov-2023:
+rem        - Replace S3/CloudFront URL with common alies: https://static.siemens.com/
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -156,8 +158,8 @@ rem              - /stopdemovd                  to stop the demo vendor daemon p
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 07-Nov-2023"
-set LMS_SCRIPT_BUILD=20231107
+set LMS_SCRIPT_VERSION="CheckLMS Script 08-Nov-2023"
+set LMS_SCRIPT_BUILD=20231108
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -192,9 +194,7 @@ SETLOCAL EnableDelayedExpansion
 setlocal ENABLEEXTENSIONS
 
 rem External public download location
-rem set CHECKLMS_EXTERNAL_SHARE=https://static.siemens.com/btdownloads/
-rem set CHECKLMS_EXTERNAL_SHARE=https://d32nyvdepsrb0n.cloudfront.net/
-set CHECKLMS_EXTERNAL_SHARE=https://licensemanagementsystem.s3.eu-west-1.amazonaws.com/
+set CHECKLMS_EXTERNAL_SHARE=https://static.siemens.com/
 
 rem CheckLMS configuration (Siemens internal only)
 set CHECKLMS_CONFIG=
