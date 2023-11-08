@@ -59,11 +59,13 @@ param(
 #             Enhance the script to extract also the FNLS and VD port.
 # '20230928': Extend to retreive also errors (from SIEMBT.log and rollover files) and store them in 'SIEMBT_Errors.log' (per default disabled, enable them with command line option: -skipErrors:$false )
 #             Extract start date & time and PID of vendor daemon (VD) and Flexnet Licensign Service (FLNS)
+# '20231108': Add output to scriptLogFile: "$env:ProgramData\Siemens\LMS\Logs\ExtractHostInfo.log"
 #
-$scriptVersion = '20230928'
+$scriptVersion = '20231108'
 
 # Function to print-out messages, including <date> and <time> information.
 $scriptName = $MyInvocation.MyCommand.Name
+$scriptLogFile = "$env:ProgramData\Siemens\LMS\Logs\ExtractHostInfo.log"  
 function Log-Message
 {
     [CmdletBinding()]
@@ -73,10 +75,16 @@ function Log-Message
         [string]$LogMessage
     )
 
-    Write-Output ("[$scriptName/$scriptVersion] {0} - {1}" -f (Get-Date), $LogMessage)
+	$logEntry = "[$scriptName/$scriptVersion] $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - $LogMessage"  
+	Write-Output $logEntry
+	Add-Content -Path $scriptLogFile -Value $logEntry -Encoding UTF8 
 }
 
-if($Verbose) { Log-Message "Start script (skipErrors=$skipErrors) ..." }
+if($Verbose) { 
+	Log-Message "Start script (skipErrors=$skipErrors) ..." 
+	$encoding = [Console]::OutputEncoding  
+	Log-Message "Verwendetes Encoding: $encoding"
+}
 
 $programDataPath = $env:ProgramData 
 if( [string]::IsNullOrEmpty($logpath) )
