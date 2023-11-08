@@ -118,7 +118,7 @@ rem        - Remove NO LONGER USED EXE DOWNLOAD of FNP SDK, as UNZIP tool is als
 rem        - Remove support for FNP SDK 11.14.0.0 & 11.16.0.0; support only FNP 11.16.2.0 (or newer), set them on general rule.
 rem        - Delete local available FNP SDK [ZIP and EXE] and its unzipped content. (Fix: Defect 2385072)
 rem     08-Nov-2023:
-rem        - Replace S3/CloudFront URL with common alies: https://static.siemens.com/
+rem        - Replace S3/CloudFront URL with common alias: https://static.siemens.com/
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
