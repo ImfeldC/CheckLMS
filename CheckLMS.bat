@@ -119,6 +119,9 @@ rem        - Remove support for FNP SDK 11.14.0.0 & 11.16.0.0; support only FNP 
 rem        - Delete local available FNP SDK [ZIP and EXE] and its unzipped content. (Fix: Defect 2385072)
 rem     08-Nov-2023:
 rem        - Replace S3/CloudFront URL with common alias: https://static.siemens.com/
+rem     09-Nov-2023:
+rem        - Add 'PeriodicTask' and retrieve detail information.
+rem        - Fix deletion of "del /Q /F !CHECKLMS_ALM_PATH!\ALM\ >nul 2>&1" (Fix: Defect 2387187)
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -158,8 +161,8 @@ rem              - /stopdemovd                  to stop the demo vendor daemon p
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 08-Nov-2023"
-set LMS_SCRIPT_BUILD=20231108
+set LMS_SCRIPT_VERSION="CheckLMS Script 09-Nov-2023"
+set LMS_SCRIPT_BUILD=20231109
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -302,43 +305,6 @@ if /I "!EOL_FILE_STYLE!" EQU "False" (
 	rem STOP EXECUTION HERE
 )
 
-rem clean-up files downloaded used with older CheckLMS script
-rem **** DO NOT DELETE, AS OLDER SCRIPTS STILL START THOSE FILES ****
-rem rmdir /S /Q !LMS_DOWNLOAD_PATH!\git >nul 2>&1
-rem del !LMS_DOWNLOAD_PATH!\CheckLMS.exe >nul 2>&1
-
-rem clean-up logfiles created with older CheckLMS script
-del !REPORT_LOG_PATH!\eventlog_*.txt >nul 2>&1
-del !REPORT_LOG_PATH!\aksdrvsetup*.log >nul 2>&1
-del !REPORT_LOG_PATH!\LMSSetupLogFilesFound.txt >nul 2>&1
-del !REPORT_LOG_PATH!\servercomptranutil*.txt >nul 2>&1
-del !REPORT_LOG_PATH!\appactutil*.txt >nul 2>&1
-del !REPORT_LOG_PATH!\FlexeraLogFilesFound.txt >nul 2>&1
-del !REPORT_LOG_PATH!\lmvminfo*.txt >nul 2>&1
-del !REPORT_LOG_PATH!\tfsFilesFound.txt >nul 2>&1
-del !REPORT_LOG_PATH!\license_all*.txt >nul 2>&1
-del !REPORT_LOG_PATH!\schtasks*.log >nul 2>&1
-del !REPORT_LOG_PATH!\firewall*.txt >nul 2>&1
-del !REPORT_LOG_PATH!\tasklist*.txt >nul 2>&1
-del !REPORT_LOG_PATH!\wmic*.txt >nul 2>&1
-del !REPORT_LOG_PATH!\WMICReport.log >nul 2>&1
-del !REPORT_LOG_PATH!\LmsCfg.txt >nul 2>&1
-del !REPORT_LOG_PATH!\getservice.txt >nul 2>&1
-del !REPORT_LOG_PATH!\InstalledProgramsReport.log >nul 2>&1
-del !REPORT_LOG_PATH!\InstalledPowershellCommandlets.txt >nul 2>&1
-del !REPORT_LOG_PATH!\dongledriver_diagnostics.html >nul 2>&1
-del !REPORT_LOG_PATH!\SIEMBT_*_event.log >nul 2>&1
-del !REPORT_LOG_PATH!\yes.txt >nul 2>&1
-del !CHECKLMS_REPORT_LOG_PATH!\desigcc_reistry.txt >nul 2>&1
-del !CHECKLMS_REPORT_LOG_PATH!\desigocc_installed_EM.txt >nul 2>&1
-del !CHECKLMS_REPORT_LOG_PATH!\pending_req_*.xml >nul 2>&1
-del !CHECKLMS_REPORT_LOG_PATH!\connection_test_*.txt >nul 2>&1
-del !CHECKLMS_ALM_PATH!\ALM\ >nul 2>&1
-
-rem remove former used local path (clean-up no longer used data)
-rmdir /S /Q !REPORT_LOG_PATH!\CrashDumps >nul 2>&1
-del !REPORT_LOG_PATH!\CrashDumpFilesFound.txt >nul 2>&1
-
 set CHECKLMS_CRASH_DUMP_PATH=!CHECKLMS_REPORT_LOG_PATH!\CrashDumps
 rmdir /S /Q !CHECKLMS_CRASH_DUMP_PATH!\ >nul 2>&1
 IF NOT EXIST "%CHECKLMS_CRASH_DUMP_PATH%\" (
@@ -363,6 +329,43 @@ IF NOT EXIST "!CHECKLMS_ALM_PATH!\" (
 	rem echo Create new folder: !CHECKLMS_ALM_PATH!\
     mkdir !CHECKLMS_ALM_PATH!\ >nul 2>&1
 )
+
+rem clean-up files downloaded used with older CheckLMS script
+rem **** DO NOT DELETE, AS OLDER SCRIPTS STILL START THOSE FILES ****
+rem rmdir /S /Q !LMS_DOWNLOAD_PATH!\git >nul 2>&1
+rem del !LMS_DOWNLOAD_PATH!\CheckLMS.exe >nul 2>&1
+
+rem clean-up logfiles created with older CheckLMS script
+del /Q /F !REPORT_LOG_PATH!\eventlog_*.txt >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\aksdrvsetup*.log >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\LMSSetupLogFilesFound.txt >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\servercomptranutil*.txt >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\appactutil*.txt >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\FlexeraLogFilesFound.txt >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\lmvminfo*.txt >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\tfsFilesFound.txt >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\license_all*.txt >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\schtasks*.log >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\firewall*.txt >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\tasklist*.txt >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\wmic*.txt >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\WMICReport.log >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\LmsCfg.txt >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\getservice.txt >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\InstalledProgramsReport.log >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\InstalledPowershellCommandlets.txt >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\dongledriver_diagnostics.html >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\SIEMBT_*_event.log >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\yes.txt >nul 2>&1
+del /Q /F !CHECKLMS_REPORT_LOG_PATH!\desigcc_reistry.txt >nul 2>&1
+del /Q /F !CHECKLMS_REPORT_LOG_PATH!\desigocc_installed_EM.txt >nul 2>&1
+del /Q /F !CHECKLMS_REPORT_LOG_PATH!\pending_req_*.xml >nul 2>&1
+del /Q /F !CHECKLMS_REPORT_LOG_PATH!\connection_test_*.txt >nul 2>&1
+del /Q /F !CHECKLMS_ALM_PATH!\ALM\ >nul 2>&1
+
+rem remove former used local path (clean-up no longer used data)
+rmdir /S /Q !REPORT_LOG_PATH!\CrashDumps >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\CrashDumpFilesFound.txt >nul 2>&1
 
 rem Check flexera command line tools path 
 set LMS_SERVERTOOL_PATH=!ProgramFiles_x86!\Siemens\LMS\server
@@ -3573,6 +3576,10 @@ if not defined LMS_SKIPSCHEDTASK (
 	echo ... get details for 'WeeklyTask' scheduled task ...
 	echo Get details for 'WeeklyTask' scheduled task ...                                              >> !REPORT_LOGFILE! 2>&1
 	schtasks /query /FO LIST /V /tn "\Siemens\Lms\WeeklyTask"                                         >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                      >> !REPORT_LOGFILE! 2>&1
+	echo ... get details for 'PeriodicTask' scheduled task ...
+	echo Get details for 'PeriodicTask' scheduled task ...                                            >> !REPORT_LOGFILE! 2>&1
+	schtasks /query /FO LIST /V /tn "\Siemens\Lms\PeriodicTask"                                       >> !REPORT_LOGFILE! 2>&1
 	echo Start at !DATE! !TIME! ....                                                                  >> !REPORT_LOGFILE! 2>&1
 ) else (
 	echo !SHOW_YELLOW!    SKIPPED scheduled task section. The script didn't execute the scheduled task commands. !SHOW_NORMAL!
