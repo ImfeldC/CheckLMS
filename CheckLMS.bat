@@ -122,6 +122,8 @@ rem        - Replace S3/CloudFront URL with common alias: https://static.siemens
 rem     09-Nov-2023:
 rem        - Add 'PeriodicTask' and retrieve detail information.
 rem        - Fix deletion of "del /Q /F !CHECKLMS_ALM_PATH!\ALM\ >nul 2>&1" (Fix: Defect 2387187)
+rem     10-Nov-2023:
+rem        - move content after download section, to be able to update "errorneous" files before "errorneous" part get executed.
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -161,8 +163,8 @@ rem              - /stopdemovd                  to stop the demo vendor daemon p
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 09-Nov-2023"
-set LMS_SCRIPT_BUILD=20231109
+set LMS_SCRIPT_VERSION="CheckLMS Script 10-Nov-2023"
+set LMS_SCRIPT_BUILD=20231110
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -271,15 +273,6 @@ rem Check & create download path for CheckLMS
 IF NOT EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS" (
 	mkdir !LMS_DOWNLOAD_PATH!\CheckLMS\ >nul 2>&1
 )
-IF NOT EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\git" (
-	mkdir !LMS_DOWNLOAD_PATH!\CheckLMS\git\ >nul 2>&1
-)
-IF NOT EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\bat" (
-	mkdir !LMS_DOWNLOAD_PATH!\CheckLMS\bat\ >nul 2>&1
-)
-IF NOT EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\exe" (
-	mkdir !LMS_DOWNLOAD_PATH!\CheckLMS\exe\ >nul 2>&1
-)
 IF NOT EXIST "!LMS_DOWNLOAD_PATH!\LMSSetup" (
 	rem echo Create new folder: !LMS_DOWNLOAD_PATH!\LMSSetup\
 	mkdir !LMS_DOWNLOAD_PATH!\LMSSetup\ >nul 2>&1
@@ -329,43 +322,6 @@ IF NOT EXIST "!CHECKLMS_ALM_PATH!\" (
 	rem echo Create new folder: !CHECKLMS_ALM_PATH!\
     mkdir !CHECKLMS_ALM_PATH!\ >nul 2>&1
 )
-
-rem clean-up files downloaded used with older CheckLMS script
-rem **** DO NOT DELETE, AS OLDER SCRIPTS STILL START THOSE FILES ****
-rem rmdir /S /Q !LMS_DOWNLOAD_PATH!\git >nul 2>&1
-rem del !LMS_DOWNLOAD_PATH!\CheckLMS.exe >nul 2>&1
-
-rem clean-up logfiles created with older CheckLMS script
-del /Q /F !REPORT_LOG_PATH!\eventlog_*.txt >nul 2>&1
-del /Q /F !REPORT_LOG_PATH!\aksdrvsetup*.log >nul 2>&1
-del /Q /F !REPORT_LOG_PATH!\LMSSetupLogFilesFound.txt >nul 2>&1
-del /Q /F !REPORT_LOG_PATH!\servercomptranutil*.txt >nul 2>&1
-del /Q /F !REPORT_LOG_PATH!\appactutil*.txt >nul 2>&1
-del /Q /F !REPORT_LOG_PATH!\FlexeraLogFilesFound.txt >nul 2>&1
-del /Q /F !REPORT_LOG_PATH!\lmvminfo*.txt >nul 2>&1
-del /Q /F !REPORT_LOG_PATH!\tfsFilesFound.txt >nul 2>&1
-del /Q /F !REPORT_LOG_PATH!\license_all*.txt >nul 2>&1
-del /Q /F !REPORT_LOG_PATH!\schtasks*.log >nul 2>&1
-del /Q /F !REPORT_LOG_PATH!\firewall*.txt >nul 2>&1
-del /Q /F !REPORT_LOG_PATH!\tasklist*.txt >nul 2>&1
-del /Q /F !REPORT_LOG_PATH!\wmic*.txt >nul 2>&1
-del /Q /F !REPORT_LOG_PATH!\WMICReport.log >nul 2>&1
-del /Q /F !REPORT_LOG_PATH!\LmsCfg.txt >nul 2>&1
-del /Q /F !REPORT_LOG_PATH!\getservice.txt >nul 2>&1
-del /Q /F !REPORT_LOG_PATH!\InstalledProgramsReport.log >nul 2>&1
-del /Q /F !REPORT_LOG_PATH!\InstalledPowershellCommandlets.txt >nul 2>&1
-del /Q /F !REPORT_LOG_PATH!\dongledriver_diagnostics.html >nul 2>&1
-del /Q /F !REPORT_LOG_PATH!\SIEMBT_*_event.log >nul 2>&1
-del /Q /F !REPORT_LOG_PATH!\yes.txt >nul 2>&1
-del /Q /F !CHECKLMS_REPORT_LOG_PATH!\desigcc_reistry.txt >nul 2>&1
-del /Q /F !CHECKLMS_REPORT_LOG_PATH!\desigocc_installed_EM.txt >nul 2>&1
-del /Q /F !CHECKLMS_REPORT_LOG_PATH!\pending_req_*.xml >nul 2>&1
-del /Q /F !CHECKLMS_REPORT_LOG_PATH!\connection_test_*.txt >nul 2>&1
-del /Q /F !CHECKLMS_ALM_PATH!\ALM\ >nul 2>&1
-
-rem remove former used local path (clean-up no longer used data)
-rmdir /S /Q !REPORT_LOG_PATH!\CrashDumps >nul 2>&1
-del /Q /F !REPORT_LOG_PATH!\CrashDumpFilesFound.txt >nul 2>&1
 
 rem Check flexera command line tools path 
 set LMS_SERVERTOOL_PATH=!ProgramFiles_x86!\Siemens\LMS\server
@@ -567,156 +523,6 @@ if defined LMS_CHECK_ID (
 rem ----- avoid access to the main logfile BEFORE ths line -----
 rem Frist access to logfile, create an empty file
 echo.> !REPORT_LOGFILE! 2>&1
-
-REM -- .NET Framework Version
-REM see https://docs.microsoft.com/en-us/dotnet/framework/migration-guide/how-to-determine-which-versions-are-installed
-REM Decimal values in hex:
-rem -- .NET Framework 4.8.1: 533320, 533325
-rem -- .NET Framework 4.8  : 528449, 528049, 528040, 528372
-rem -- .NET Framework 4.7.2: 461814->70BF6, 461808->70BF0, 
-rem -- .NET Framework 4.7.1: 461310->709FE, 461308->709FC
-rem -- .NET Framework 4.7  : 460805->70805, 460798->707FE
-rem -- .NET Framework 4.6.2: 394806->60636, 394802->60632
-rem -- .NET Framework 4.6.1: 394271->6041F, 394254->6040E
-rem -- .NET Framework 4.6  : 393297->60051, 393295->6004F
-rem -- .NET Framework 4.5.2: 379893->5CBF5
-rem -- .NET Framework 4.5.1: 378758->5C786, 378675->5C733
-rem -- .NET Framework 4.5  : 378389->5C615
-rem -- -NET Framework Versions before 4.5 are not considered
-set NETVersion=
-set NETVersionHex=
-set NETVersionDec=
-set KEY_NAME=HKLM\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full
-set VALUE_NAME=Release
-for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
-	set NETVersionHex=%%A
-	rem convert hex in decimal (see https://stackoverflow.com/questions/9453246/reg-query-returning-hexadecimal-value)
-	set /A NETVersionDec=%%A
-)
-if "!NETVersionDec!" == "533320" (
-	rem On Windows 11 2022 Update: 533320
-	set NETVersion=4.8.1
-)
-if "!NETVersionDec!" == "533325" (
-	rem All other Windows operating systems: 533325
-	set NETVersion=4.8.1
-)
-if "!NETVersionDec!" == "528449" (
-	rem On Windows 11 and Windows Server 2022: 528449
-	set NETVersion=4.8
-)
-if "!NETVersionDec!" == "528049" (
-	rem On all others Windows operating systems (including other Windows 10 operating systems): 528049
-	set NETVersion=4.8
-)
-if "!NETVersionDec!" == "528040" (
-	rem On Windows 10 May 2019 Update and Windows 10 November 2019 Update: 528040
-	set NETVersion=4.8
-)
-if "!NETVersionDec!" == "528372" (
-	rem On Windows 10 May 2020 Update and Windows 10 October 2020 Update and Windows 10 May 2021 Update: 528372
-	set NETVersion=4.8
-)
-if "!NETVersionDec!" == "461814" (
-	rem On all Windows operating systems other than Windows 10 April 2018 Update and Windows Server, version 1803: 461814
-	set NETVersion=4.7.2
-)
-if "!NETVersionDec!" == "461808" (
-	rem On Windows 10 April 2018 Update and Windows Server, version 1803: 461808
-	set NETVersion=4.7.2
-)
-if "!NETVersionDec!" == "461310" (
-	rem On all other Windows operating systems (including other Windows 10 operating systems): 461310
-	set NETVersion=4.7.1
-)
-if "!NETVersionDec!" == "461308" (
-	rem On Windows 10 Fall Creators Update and Windows Server, version 1709: 461308
-	set NETVersion=4.7.1
-)
-if "!NETVersionDec!" == "460805" (
-	rem On all other Windows operating systems (including other Windows 10 operating systems): 460805
-	set NETVersion=4.7
-)
-if "!NETVersionDec!" == "460798" (
-	rem On Windows 10 Creators Update: 460798
-	set NETVersion=4.7
-)
-if "!NETVersionDec!" == "394806" (
-	rem On all other Windows operating systems (including other Windows 10 operating systems): 394806
-	set NETVersion=4.6.2
-)
-if "!NETVersionDec!" == "394802" (
-	rem On Windows 10 Anniversary Update and Windows Server 2016: 394802
-	set NETVersion=4.6.2
-)
-if "!NETVersionDec!" == "394271" (
-	rem On all other Windows operating systems (including Windows 10): 394271
-	set NETVersion=4.6.1
-)
-if "!NETVersionDec!" == "394254" (
-	rem On Windows 10 November Update systems: 394254
-	set NETVersion=4.6.1
-)
-if "!NETVersionDec!" == "393297" (
-	rem On all other Windows operating systems: 393297
-	set NETVersion=4.6
-)
-if "!NETVersionDec!" == "393295" (
-	rem On Windows 10: 393295
-	set NETVersion=4.6
-)
-if "!NETVersionDec!" == "379893" (
-	rem All Windows operating systems: 379893
-	set NETVersion=4.5.2
-)
-if "!NETVersionDec!" == "378758" (
-	rem On all other Windows operating systems: 378758
-	set NETVersion=4.5.1
-)
-if "!NETVersionDec!" == "378675" (
-	rem On Windows 8.1 and Windows Server 2012 R2: 378675
-	set NETVersion=4.5.1
-)
-if "!NETVersionDec!" == "378389" (
-	rem All Windows operating systems: 378389
-	set NETVersion=4.5
-)
-if not defined NETVersion (
-  set NETVersion=Smaller than 4.5
-)
-
-REM -- VC++ redistributable package
-rem see https://stackoverflow.com/questions/46178559/how-to-detect-if-visual-c-2017-redistributable-is-installed
-rem see https://en.wikipedia.org/wiki/Microsoft_Visual_C%2B%2B
-if "!PROCESSOR_ARCHITECTURE!" == "x86" (
-	set KEY_NAME=HKLM\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x86
-) else (
-	set KEY_NAME=HKLM\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64
-)
-set VALUE_NAME=Version
-set VC_REDIST_VERSION=
-for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
-	set VC_REDIST_VERSION=%%A
-)
-set VALUE_NAME=Major
-set VC_REDIST_MAJ_VERSION=
-for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
-	rem convert hex in decimal (see https://stackoverflow.com/questions/9453246/reg-query-returning-hexadecimal-value)
-	set /A VC_REDIST_MAJ_VERSION=%%A
-)
-set VALUE_NAME=Minor
-set VC_REDIST_MIN_VERSION=
-for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
-	rem convert hex in decimal (see https://stackoverflow.com/questions/9453246/reg-query-returning-hexadecimal-value)
-	set /A VC_REDIST_MIN_VERSION=%%A
-)
-set VALUE_NAME=Bld
-set VC_REDIST_BUILD_VERSION=
-for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
-	rem convert hex in decimal (see https://stackoverflow.com/questions/9453246/reg-query-returning-hexadecimal-value)
-	set /A VC_REDIST_BUILD_VERSION=%%A
-)
-
 
 REM -- OS Version and Productname
 set KEY_NAME=HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion
@@ -1072,12 +878,6 @@ if defined LMS_SET_INFO (
 	echo Info: [!LMS_REPORT_START!] !LMS_SET_INFO! ....                                                                      >> !REPORT_LOGFILE! 2>&1
 	echo [!LMS_REPORT_START!] !LMS_SET_INFO! >> "!DOCUMENTATION_PATH!\info.txt" 2>&1
 )
-IF EXIST "!DOCUMENTATION_PATH!\info.txt" (
-	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-	Type "!DOCUMENTATION_PATH!\info.txt"                                                                                     >> !REPORT_LOGFILE! 2>&1
-	echo .                                                                                                                   >> !REPORT_LOGFILE! 2>&1
-	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
-)
 IF EXIST "!ProgramFiles!\7-Zip\7z.exe" (
 	set UNZIP_TOOL=!ProgramFiles!\7-Zip\7z.exe
 ) else IF EXIST "!ProgramFiles!\Siemens\SSU\bin\7z.exe" (
@@ -1093,114 +893,6 @@ if NOT defined UNZIP_TOOL (
 )
 powershell -Command "Get-Command  Expand-Archive"   >> "!CHECKLMS_REPORT_LOG_PATH!\expandarchive_version.log" 2>&1
 
-echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-Echo Delete local available FNP SDK [ZIP and EXE] and its unzipped content.                                                  >> !REPORT_LOGFILE! 2>&1
-DIR /B /S "!LMS_DOWNLOAD_PATH!\SiemensFNP-*-Binaries.zip" > nul 2>&1
-if !ERRORLEVEL!==0 (
-	echo Search files of "!LMS_DOWNLOAD_PATH!\SiemensFNP-*-Binaries.zip"                                                     >> !REPORT_LOGFILE! 2>&1
-	FOR /F "tokens=*" %%G IN ('DIR /B /S "!LMS_DOWNLOAD_PATH!\SiemensFNP-*-Binaries.zip"') DO (
-		ECHO   DEL /S /Q "%%G"                                                                                               >> !REPORT_LOGFILE! 2>&1
-		DEL /S /Q "%%G"                                                                                                      >> !REPORT_LOGFILE! 2>&1
-	)
-)
-DIR /B /S "!LMS_DOWNLOAD_PATH!\SiemensFNP-*-Binaries.exe" > nul 2>&1
-if !ERRORLEVEL!==0 (
-	echo Search files of "!LMS_DOWNLOAD_PATH!\SiemensFNP-*-Binaries.exe"                                                     >> !REPORT_LOGFILE! 2>&1
-	FOR /F "tokens=*" %%G IN ('DIR /B /S "!LMS_DOWNLOAD_PATH!\SiemensFNP-*-Binaries.exe"') DO (
-		ECHO   DEL /S /Q "%%G"                                                                                               >> !REPORT_LOGFILE! 2>&1
-		DEL /S /Q "%%G"                                                                                                      >> !REPORT_LOGFILE! 2>&1
-	)
-)
-DIR /B /AD /S "!LMS_DOWNLOAD_PATH!\SiemensFNP-*-Binaries" > nul 2>&1
-if !ERRORLEVEL!==0 (
-	echo Search folders of "!LMS_DOWNLOAD_PATH!\SiemensFNP-*-Binaries"                                                       >> !REPORT_LOGFILE! 2>&1
-	FOR /F "tokens=*" %%G IN ('DIR /B /AD /S "!LMS_DOWNLOAD_PATH!\SiemensFNP-*-Binaries"') DO (
-		ECHO   RMDIR /S /Q "%%G"                                                                                             >> !REPORT_LOGFILE! 2>&1
-		RMDIR /S /Q "%%G"                                                                                                    >> !REPORT_LOGFILE! 2>&1
-	)
-)
-echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-
-if "!LMS_BUILD_VERSION!" NEQ "N/A" (
-	REM Check: not 2.5.824 AND not 2.6.849 AND not 2.7.872 AND less or equal than 2.7.871  --> DEPRECATED (per Jan-2023)
-	REM See https://support.industry.siemens.com/cs/document/109738214/
-	if /I !LMS_BUILD_VERSION! NEQ 824 (
-		if /I !LMS_BUILD_VERSION! NEQ 849 (
-			if /I !LMS_BUILD_VERSION! NEQ 872 (
-					if /I !LMS_BUILD_VERSION! LEQ 871 (
-						REM LMS Version 2.7.871 or older (lower build number)
-						echo !SHOW_RED!    NOTE: The LMS version !LMS_VERSION! which you are using is DEPRECATED, pls update your system. !SHOW_NORMAL!
-						echo NOTE: The LMS version !LMS_VERSION! which you are using is DEPRECATED, pls update your system.      >> !REPORT_LOGFILE! 2>&1
-					) else (
-						REM Check: ... less than MOST_RECENT_LMS_BUILD --> IN TEST
-						if /I !LMS_BUILD_VERSION! LSS !MOST_RECENT_LMS_BUILD! (
-							echo !SHOW_YELLOW!    WARNING: The LMS version !LMS_VERSION! which you are using is a field test version, pls update your system to final version !MOST_RECENT_LMS_VERSION!. !SHOW_NORMAL!
-							echo WARNING: The LMS version !LMS_VERSION! which you are using is a field test version, pls update your system to final version !MOST_RECENT_LMS_VERSION!. >> !REPORT_LOGFILE! 2>&1
-						)
-					)
-			) else (
-				REM LMS Version 2.7.872
-				echo NOTE: The LMS version !LMS_VERSION! which you are using is officially supported. 						 >> !REPORT_LOGFILE! 2>&1
-				set LMS_VERSION_IS_SUPPORTED=1
-			)
-		) else (
-			REM LMS Version 2.6.849
-			echo NOTE: The LMS version !LMS_VERSION! which you are using is officially supported. 							 >> !REPORT_LOGFILE! 2>&1
-			set LMS_VERSION_IS_SUPPORTED=1
-		)
-	) else (
-		REM LMS Version 2.5.824
-		echo NOTE: The LMS version !LMS_VERSION! which you are using is officially supported. 								 >> !REPORT_LOGFILE! 2>&1
-		set LMS_VERSION_IS_SUPPORTED=1
-	)
-) else (
-	REM LMS Version not defined
-	echo NOTE: This is not a valid LMS Installation! LMS Version: !LMS_VERSION!              								 >> !REPORT_LOGFILE! 2>&1
-)
-echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
-echo     Check Script Version: !LMS_SCRIPT_VERSION! [!LMS_SCRIPT_BUILD!]
-if defined OS_PRODUCTNAME (
-	echo     OS Product Name: !OS_PRODUCTNAME!
-	echo OS Product Name: !OS_PRODUCTNAME!                                                                                   >> !REPORT_LOGFILE! 2>&1
-) else (
-	echo     OS Product Name: was not able to determine OS version. OS_PRODUCTNAME is missing.
-	echo OS Product Name: was not able to determine OS version. OS_PRODUCTNAME is missing.                                   >> !REPORT_LOGFILE! 2>&1
-)
-if defined OS_VERSION (
-	echo     OS Version: !OS_VERSION!
-	echo OS Version: !OS_VERSION!                                                                                            >> !REPORT_LOGFILE! 2>&1
-) else (
-	echo     OS Version: was not able to determine OS version. OS_VERSION is missing.
-	echo OS Version: was not able to determine OS version. OS_VERSION is missing.                                            >> !REPORT_LOGFILE! 2>&1
-)
-if defined OS_MAJ_VERSION (
-	echo     OS Version: !OS_MAJ_VERSION!.!OS_MIN_VERSION!
-	echo OS Version: !OS_MAJ_VERSION!.!OS_MIN_VERSION!                                                                       >> !REPORT_LOGFILE! 2>&1
-) else (
-	echo     OS Version: was not able to determine OS version. OS_MAJ_VERSION is missing.
-	echo OS Version: was not able to determine OS version. OS_MAJ_VERSION is missing.                                        >> !REPORT_LOGFILE! 2>&1
-)
-if defined FNPVersion (
-	echo     Installed FNP Version: !FNPVersion!
-	echo Installed FNP Version: !FNPVersion!                                                                                 >> !REPORT_LOGFILE! 2>&1
-) else (
-	echo     Installed FNP Version: was not able to determine installed FNP version.
-	echo Installed FNP Version: was not able to determine installed FNP version.                                             >> !REPORT_LOGFILE! 2>&1
-)
-if defined NETVersion (
-	echo     Installed .NET Version: !NETVersion!
-	echo Installed .NET Version: !NETVersion!                                                                                >> !REPORT_LOGFILE! 2>&1
-) else (
-	echo     Installed .NET Version: was not able to determine installed version.
-	echo Installed .NET Version: was not able to determine installed version.                                                >> !REPORT_LOGFILE! 2>&1
-)
-if defined VC_REDIST_VERSION (
-	echo     Installed VC++ redistributable package: !VC_REDIST_VERSION!
-	echo Installed VC++ redistributable package: !VC_REDIST_VERSION! [!VC_REDIST_MAJ_VERSION!.!VC_REDIST_MIN_VERSION!.!VC_REDIST_BUILD_VERSION!]  >> !REPORT_LOGFILE! 2>&1
-) else (
-	echo     Installed VC++ redistributable package: was not able to determine installed version.
-	echo Installed VC++ redistributable package: was not able to determine installed version.                                >> !REPORT_LOGFILE! 2>&1
-)
 echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 if not defined LMS_SKIPDOWNLOAD (
 	echo Start at !DATE! !TIME! .... Connection Test to BT download site                           >> !REPORT_LOGFILE! 2>&1
@@ -1239,6 +931,9 @@ if not defined LMS_SKIPDOWNLOAD (
 				set LMS_DOWNLOAD_LINK=https://raw.githubusercontent.com/ImfeldC/CheckLMS/master/CheckLMS.bat
 				echo     Download newest LMS check script from github: !LMS_DOWNLOAD_LINK!
 				echo Download newest LMS check script: !LMS_DOWNLOAD_LINK!                                                                                                                 >> !REPORT_LOGFILE! 2>&1
+				IF NOT EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\git" (
+					mkdir !LMS_DOWNLOAD_PATH!\CheckLMS\git\ >nul 2>&1
+				)
 				del !LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat >nul 2>&1
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat')" > !CHECKLMS_REPORT_LOG_PATH!\download_checklms_git.txt 2>&1
 				if !ERRORLEVEL!==0 (
@@ -1274,6 +969,9 @@ if not defined LMS_SKIPDOWNLOAD (
 				set LMS_DOWNLOAD_LINK=!CHECKLMS_EXTERNAL_SHARE!lms/CheckLMS/CheckLMS.bat
 			 	echo     Download newest LMS check script: !LMS_DOWNLOAD_LINK!
 			 	echo Download newest LMS check script: !LMS_DOWNLOAD_LINK!                                                                                                                 >> !REPORT_LOGFILE! 2>&1
+				IF NOT EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\bat" (
+					mkdir !LMS_DOWNLOAD_PATH!\CheckLMS\bat\ >nul 2>&1
+				)
 			 	del !LMS_DOWNLOAD_PATH!\CheckLMS\bat\CheckLMS.bat >nul 2>&1
 			 	powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\CheckLMS\bat\CheckLMS.bat')"                                      >> !REPORT_LOGFILE! 2>&1
 				if !ERRORLEVEL!==0 (
@@ -2097,6 +1795,327 @@ if defined LMS_GOTO (
 	echo -------------------------------------------- >> !REPORT_LOGFILE! 2>&1
 	goto !LMS_GOTO!
 )
+
+echo ... retrieve basic information ...
+
+IF EXIST "!DOCUMENTATION_PATH!\info.txt" (
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+	Type "!DOCUMENTATION_PATH!\info.txt"                                                                                     >> !REPORT_LOGFILE! 2>&1
+	echo .                                                                                                                   >> !REPORT_LOGFILE! 2>&1
+	echo -------------------------------------------------------                                                             >> !REPORT_LOGFILE! 2>&1
+)
+
+if "!LMS_BUILD_VERSION!" NEQ "N/A" (
+	REM Check: not 2.5.824 AND not 2.6.849 AND not 2.7.872 AND less or equal than 2.7.871  --> DEPRECATED (per Jan-2023)
+	REM See https://support.industry.siemens.com/cs/document/109738214/
+	if /I !LMS_BUILD_VERSION! NEQ 824 (
+		if /I !LMS_BUILD_VERSION! NEQ 849 (
+			if /I !LMS_BUILD_VERSION! NEQ 872 (
+					if /I !LMS_BUILD_VERSION! LEQ 871 (
+						REM LMS Version 2.7.871 or older (lower build number)
+						echo !SHOW_RED!    NOTE: The LMS version !LMS_VERSION! which you are using is DEPRECATED, pls update your system. !SHOW_NORMAL!
+						echo NOTE: The LMS version !LMS_VERSION! which you are using is DEPRECATED, pls update your system.      >> !REPORT_LOGFILE! 2>&1
+					) else (
+						REM Check: ... less than MOST_RECENT_LMS_BUILD --> IN TEST
+						if /I !LMS_BUILD_VERSION! LSS !MOST_RECENT_LMS_BUILD! (
+							echo !SHOW_YELLOW!    WARNING: The LMS version !LMS_VERSION! which you are using is a field test version, pls update your system to final version !MOST_RECENT_LMS_VERSION!. !SHOW_NORMAL!
+							echo WARNING: The LMS version !LMS_VERSION! which you are using is a field test version, pls update your system to final version !MOST_RECENT_LMS_VERSION!. >> !REPORT_LOGFILE! 2>&1
+						) else (
+							echo !SHOW_YELLOW!    WARNING: The LMS version !LMS_VERSION! which you are using is a field test version, pls update your system to final version once available. !SHOW_NORMAL!
+							echo WARNING: The LMS version !LMS_VERSION! which you are using is a field test version, pls update your system to final version once available. >> !REPORT_LOGFILE! 2>&1
+						)
+					)
+			) else (
+				REM LMS Version 2.7.872
+				echo NOTE: The LMS version !LMS_VERSION! which you are using is officially supported. 						 >> !REPORT_LOGFILE! 2>&1
+				set LMS_VERSION_IS_SUPPORTED=1
+			)
+		) else (
+			REM LMS Version 2.6.849
+			echo NOTE: The LMS version !LMS_VERSION! which you are using is officially supported. 							 >> !REPORT_LOGFILE! 2>&1
+			set LMS_VERSION_IS_SUPPORTED=1
+		)
+	) else (
+		REM LMS Version 2.5.824
+		echo NOTE: The LMS version !LMS_VERSION! which you are using is officially supported. 								 >> !REPORT_LOGFILE! 2>&1
+		set LMS_VERSION_IS_SUPPORTED=1
+	)
+) else (
+	REM LMS Version not defined
+	echo NOTE: This is not a valid LMS Installation! LMS Version: !LMS_VERSION!              								 >> !REPORT_LOGFILE! 2>&1
+)
+echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+echo     Check Script Version: !LMS_SCRIPT_VERSION! [!LMS_SCRIPT_BUILD!]
+if defined OS_PRODUCTNAME (
+	echo     OS Product Name: !OS_PRODUCTNAME!
+	echo OS Product Name: !OS_PRODUCTNAME!                                                                                   >> !REPORT_LOGFILE! 2>&1
+) else (
+	echo     OS Product Name: was not able to determine OS version. OS_PRODUCTNAME is missing.
+	echo OS Product Name: was not able to determine OS version. OS_PRODUCTNAME is missing.                                   >> !REPORT_LOGFILE! 2>&1
+)
+if defined OS_VERSION (
+	echo     OS Version: !OS_VERSION!
+	echo OS Version: !OS_VERSION!                                                                                            >> !REPORT_LOGFILE! 2>&1
+) else (
+	echo     OS Version: was not able to determine OS version. OS_VERSION is missing.
+	echo OS Version: was not able to determine OS version. OS_VERSION is missing.                                            >> !REPORT_LOGFILE! 2>&1
+)
+if defined OS_MAJ_VERSION (
+	echo     OS Version: !OS_MAJ_VERSION!.!OS_MIN_VERSION!
+	echo OS Version: !OS_MAJ_VERSION!.!OS_MIN_VERSION!                                                                       >> !REPORT_LOGFILE! 2>&1
+) else (
+	echo     OS Version: was not able to determine OS version. OS_MAJ_VERSION is missing.
+	echo OS Version: was not able to determine OS version. OS_MAJ_VERSION is missing.                                        >> !REPORT_LOGFILE! 2>&1
+)
+if defined FNPVersion (
+	echo     Installed FNP Version: !FNPVersion!
+	echo Installed FNP Version: !FNPVersion!                                                                                 >> !REPORT_LOGFILE! 2>&1
+) else (
+	echo     Installed FNP Version: was not able to determine installed FNP version.
+	echo Installed FNP Version: was not able to determine installed FNP version.                                             >> !REPORT_LOGFILE! 2>&1
+)
+echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+
+REM -- .NET Framework Version
+REM see https://docs.microsoft.com/en-us/dotnet/framework/migration-guide/how-to-determine-which-versions-are-installed
+REM Decimal values in hex:
+rem -- .NET Framework 4.8.1: 533320, 533325
+rem -- .NET Framework 4.8  : 528449, 528049, 528040, 528372
+rem -- .NET Framework 4.7.2: 461814->70BF6, 461808->70BF0, 
+rem -- .NET Framework 4.7.1: 461310->709FE, 461308->709FC
+rem -- .NET Framework 4.7  : 460805->70805, 460798->707FE
+rem -- .NET Framework 4.6.2: 394806->60636, 394802->60632
+rem -- .NET Framework 4.6.1: 394271->6041F, 394254->6040E
+rem -- .NET Framework 4.6  : 393297->60051, 393295->6004F
+rem -- .NET Framework 4.5.2: 379893->5CBF5
+rem -- .NET Framework 4.5.1: 378758->5C786, 378675->5C733
+rem -- .NET Framework 4.5  : 378389->5C615
+rem -- -NET Framework Versions before 4.5 are not considered
+echo ... detect installed .NET framework version ...
+set NETVersion=
+set NETVersionHex=
+set NETVersionDec=
+set KEY_NAME=HKLM\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full
+set VALUE_NAME=Release
+for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
+	set NETVersionHex=%%A
+	rem convert hex in decimal (see https://stackoverflow.com/questions/9453246/reg-query-returning-hexadecimal-value)
+	set /A NETVersionDec=%%A
+)
+if "!NETVersionDec!" == "533320" (
+	rem On Windows 11 2022 Update: 533320
+	set NETVersion=4.8.1
+)
+if "!NETVersionDec!" == "533325" (
+	rem All other Windows operating systems: 533325
+	set NETVersion=4.8.1
+)
+if "!NETVersionDec!" == "528449" (
+	rem On Windows 11 and Windows Server 2022: 528449
+	set NETVersion=4.8
+)
+if "!NETVersionDec!" == "528049" (
+	rem On all others Windows operating systems (including other Windows 10 operating systems): 528049
+	set NETVersion=4.8
+)
+if "!NETVersionDec!" == "528040" (
+	rem On Windows 10 May 2019 Update and Windows 10 November 2019 Update: 528040
+	set NETVersion=4.8
+)
+if "!NETVersionDec!" == "528372" (
+	rem On Windows 10 May 2020 Update and Windows 10 October 2020 Update and Windows 10 May 2021 Update: 528372
+	set NETVersion=4.8
+)
+if "!NETVersionDec!" == "461814" (
+	rem On all Windows operating systems other than Windows 10 April 2018 Update and Windows Server, version 1803: 461814
+	set NETVersion=4.7.2
+)
+if "!NETVersionDec!" == "461808" (
+	rem On Windows 10 April 2018 Update and Windows Server, version 1803: 461808
+	set NETVersion=4.7.2
+)
+if "!NETVersionDec!" == "461310" (
+	rem On all other Windows operating systems (including other Windows 10 operating systems): 461310
+	set NETVersion=4.7.1
+)
+if "!NETVersionDec!" == "461308" (
+	rem On Windows 10 Fall Creators Update and Windows Server, version 1709: 461308
+	set NETVersion=4.7.1
+)
+if "!NETVersionDec!" == "460805" (
+	rem On all other Windows operating systems (including other Windows 10 operating systems): 460805
+	set NETVersion=4.7
+)
+if "!NETVersionDec!" == "460798" (
+	rem On Windows 10 Creators Update: 460798
+	set NETVersion=4.7
+)
+if "!NETVersionDec!" == "394806" (
+	rem On all other Windows operating systems (including other Windows 10 operating systems): 394806
+	set NETVersion=4.6.2
+)
+if "!NETVersionDec!" == "394802" (
+	rem On Windows 10 Anniversary Update and Windows Server 2016: 394802
+	set NETVersion=4.6.2
+)
+if "!NETVersionDec!" == "394271" (
+	rem On all other Windows operating systems (including Windows 10): 394271
+	set NETVersion=4.6.1
+)
+if "!NETVersionDec!" == "394254" (
+	rem On Windows 10 November Update systems: 394254
+	set NETVersion=4.6.1
+)
+if "!NETVersionDec!" == "393297" (
+	rem On all other Windows operating systems: 393297
+	set NETVersion=4.6
+)
+if "!NETVersionDec!" == "393295" (
+	rem On Windows 10: 393295
+	set NETVersion=4.6
+)
+if "!NETVersionDec!" == "379893" (
+	rem All Windows operating systems: 379893
+	set NETVersion=4.5.2
+)
+if "!NETVersionDec!" == "378758" (
+	rem On all other Windows operating systems: 378758
+	set NETVersion=4.5.1
+)
+if "!NETVersionDec!" == "378675" (
+	rem On Windows 8.1 and Windows Server 2012 R2: 378675
+	set NETVersion=4.5.1
+)
+if "!NETVersionDec!" == "378389" (
+	rem All Windows operating systems: 378389
+	set NETVersion=4.5
+)
+if not defined NETVersion (
+  set NETVersion=Smaller than 4.5
+)
+if defined NETVersion (
+	echo     Installed .NET Version: !NETVersion!
+	echo Installed .NET Version: !NETVersion!                                                                                >> !REPORT_LOGFILE! 2>&1
+) else (
+	echo     Installed .NET Version: was not able to determine installed version.
+	echo Installed .NET Version: was not able to determine installed version.                                                >> !REPORT_LOGFILE! 2>&1
+)
+
+echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+
+REM -- VC++ redistributable package
+rem see https://stackoverflow.com/questions/46178559/how-to-detect-if-visual-c-2017-redistributable-is-installed
+rem see https://en.wikipedia.org/wiki/Microsoft_Visual_C%2B%2B
+if "!PROCESSOR_ARCHITECTURE!" == "x86" (
+	set KEY_NAME=HKLM\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x86
+) else (
+	set KEY_NAME=HKLM\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64
+)
+set VALUE_NAME=Version
+set VC_REDIST_VERSION=
+for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
+	set VC_REDIST_VERSION=%%A
+)
+set VALUE_NAME=Major
+set VC_REDIST_MAJ_VERSION=
+for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
+	rem convert hex in decimal (see https://stackoverflow.com/questions/9453246/reg-query-returning-hexadecimal-value)
+	set /A VC_REDIST_MAJ_VERSION=%%A
+)
+set VALUE_NAME=Minor
+set VC_REDIST_MIN_VERSION=
+for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
+	rem convert hex in decimal (see https://stackoverflow.com/questions/9453246/reg-query-returning-hexadecimal-value)
+	set /A VC_REDIST_MIN_VERSION=%%A
+)
+set VALUE_NAME=Bld
+set VC_REDIST_BUILD_VERSION=
+for /F "usebackq tokens=3" %%A IN (`reg query "!KEY_NAME!" /v "!VALUE_NAME!" 2^>nul ^| find /I "!VALUE_NAME!"`) do (
+	rem convert hex in decimal (see https://stackoverflow.com/questions/9453246/reg-query-returning-hexadecimal-value)
+	set /A VC_REDIST_BUILD_VERSION=%%A
+)
+if defined VC_REDIST_VERSION (
+	echo     Installed VC++ redistributable package: !VC_REDIST_VERSION!
+	echo Installed VC++ redistributable package: !VC_REDIST_VERSION! [!VC_REDIST_MAJ_VERSION!.!VC_REDIST_MIN_VERSION!.!VC_REDIST_BUILD_VERSION!]  >> !REPORT_LOGFILE! 2>&1
+) else (
+	echo     Installed VC++ redistributable package: was not able to determine installed version.
+	echo Installed VC++ redistributable package: was not able to determine installed version.                                >> !REPORT_LOGFILE! 2>&1
+)
+
+echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+
+
+rem #### Delete former used temporary files ####
+echo ... delete former used temporary files ...
+Echo Delete former used temporary files.                                                                                     >> !REPORT_LOGFILE! 2>&1
+
+rem clean-up files downloaded used with older CheckLMS script
+rem **** DO NOT DELETE, AS OLDER SCRIPTS STILL START THOSE FILES ****
+rem rmdir /S /Q !LMS_DOWNLOAD_PATH!\git >nul 2>&1
+rem del !LMS_DOWNLOAD_PATH!\CheckLMS.exe >nul 2>&1
+
+rem clean-up logfiles created with older CheckLMS script
+del /Q /F !REPORT_LOG_PATH!\eventlog_*.txt >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\aksdrvsetup*.log >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\LMSSetupLogFilesFound.txt >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\servercomptranutil*.txt >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\appactutil*.txt >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\FlexeraLogFilesFound.txt >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\lmvminfo*.txt >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\tfsFilesFound.txt >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\license_all*.txt >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\schtasks*.log >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\firewall*.txt >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\tasklist*.txt >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\wmic*.txt >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\WMICReport.log >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\LmsCfg.txt >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\getservice.txt >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\InstalledProgramsReport.log >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\InstalledPowershellCommandlets.txt >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\dongledriver_diagnostics.html >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\SIEMBT_*_event.log >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\yes.txt >nul 2>&1
+del /Q /F !CHECKLMS_REPORT_LOG_PATH!\desigcc_reistry.txt >nul 2>&1
+del /Q /F !CHECKLMS_REPORT_LOG_PATH!\desigocc_installed_EM.txt >nul 2>&1
+del /Q /F !CHECKLMS_REPORT_LOG_PATH!\pending_req_*.xml >nul 2>&1
+del /Q /F !CHECKLMS_REPORT_LOG_PATH!\connection_test_*.txt >nul 2>&1
+del /Q /F !CHECKLMS_ALM_PATH!\ALM\ >nul 2>&1
+
+rem remove former used local path (clean-up no longer used data)
+rmdir /S /Q !REPORT_LOG_PATH!\CrashDumps >nul 2>&1
+del /Q /F !REPORT_LOG_PATH!\CrashDumpFilesFound.txt >nul 2>&1
+
+rem #### Delete former used temporary files ####
+
+echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
+echo ... delete local available FNP SDK [ZIP and EXE] and its unzipped content ...
+Echo Delete local available FNP SDK [ZIP and EXE] and its unzipped content.                                                  >> !REPORT_LOGFILE! 2>&1
+DIR /B /S "!LMS_DOWNLOAD_PATH!\SiemensFNP-*-Binaries.zip" > nul 2>&1
+if !ERRORLEVEL!==0 (
+	echo Search files of "!LMS_DOWNLOAD_PATH!\SiemensFNP-*-Binaries.zip"                                                     >> !REPORT_LOGFILE! 2>&1
+	FOR /F "tokens=*" %%G IN ('DIR /B /S "!LMS_DOWNLOAD_PATH!\SiemensFNP-*-Binaries.zip"') DO (
+		ECHO   DEL /S /Q "%%G"                                                                                               >> !REPORT_LOGFILE! 2>&1
+		DEL /S /Q "%%G"                                                                                                      >> !REPORT_LOGFILE! 2>&1
+	)
+)
+DIR /B /S "!LMS_DOWNLOAD_PATH!\SiemensFNP-*-Binaries.exe" > nul 2>&1
+if !ERRORLEVEL!==0 (
+	echo Search files of "!LMS_DOWNLOAD_PATH!\SiemensFNP-*-Binaries.exe"                                                     >> !REPORT_LOGFILE! 2>&1
+	FOR /F "tokens=*" %%G IN ('DIR /B /S "!LMS_DOWNLOAD_PATH!\SiemensFNP-*-Binaries.exe"') DO (
+		ECHO   DEL /S /Q "%%G"                                                                                               >> !REPORT_LOGFILE! 2>&1
+		DEL /S /Q "%%G"                                                                                                      >> !REPORT_LOGFILE! 2>&1
+	)
+)
+DIR /B /AD /S "!LMS_DOWNLOAD_PATH!\SiemensFNP-*-Binaries" > nul 2>&1
+if !ERRORLEVEL!==0 (
+	echo Search folders of "!LMS_DOWNLOAD_PATH!\SiemensFNP-*-Binaries"                                                       >> !REPORT_LOGFILE! 2>&1
+	FOR /F "tokens=*" %%G IN ('DIR /B /AD /S "!LMS_DOWNLOAD_PATH!\SiemensFNP-*-Binaries"') DO (
+		ECHO   RMDIR /S /Q "%%G"                                                                                             >> !REPORT_LOGFILE! 2>&1
+		RMDIR /S /Q "%%G"                                                                                                    >> !REPORT_LOGFILE! 2>&1
+	)
+)
+echo -------------------------------------------------------                                                                 >> !REPORT_LOGFILE! 2>&1
 
 rem *
 rem * Siemens internal share, to upload logfile archive at the end of script execution
