@@ -4,7 +4,9 @@
 # Solution from https://stackoverflow.com/questions/2969321/how-can-i-do-a-screen-capture-in-windows-powershell
 #
 # '20230606': Initial script added.
-$scriptVersion = '20230606'
+# '20231112': Replace 'Write-Output' with 'Write-Host', to ensure that function return is not poluted with log output.
+#
+$scriptVersion = '20231112'
 $global:ExitCode=0
 
 Add-Type -AssemblyName System.Windows.Forms,System.Drawing
@@ -20,7 +22,7 @@ function Log-Message
         [string]$LogMessage
     )
 
-    Write-Output ("[$scriptName/$scriptVersion] {0} - {1}" -f (Get-Date), $LogMessage)
+    Write-Host ("[$scriptName/$scriptVersion] {0} - {1}" -f (Get-Date), $LogMessage)
 }
 
 $screens = [Windows.Forms.Screen]::AllScreens

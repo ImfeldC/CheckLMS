@@ -24,8 +24,9 @@ param(
 #             Add command line option $Verbose, to enable/disable trace messages. Per default the traces are enabled. To set use command line option: -Verbose:$false
 #             Add command line option $logfilename and $logpath, to specifiy which file in which folder to analyze. Default is: "$env:ProgramData\Siemens\LMS\Logs\SIEMBT.log"
 #             -> Example to set: powershell -Command "& 'ExtractPoolingInformation.ps1' -logpath:'C:\CheckScriptArchive\Logs'"
+# '20231112': Replace 'Write-Output' with 'Write-Host', to ensure that function return is not poluted with log output.
 #
-$scriptVersion = '20230927'
+$scriptVersion = '20231112'
 
 # Function to print-out messages, including <date> and <time> information.
 $scriptName = $MyInvocation.MyCommand.Name
@@ -38,7 +39,7 @@ function Log-Message
         [string]$LogMessage
     )
 
-    Write-Output ("[$scriptName/$scriptVersion] {0} - {1}" -f (Get-Date), $LogMessage)
+    Write-Host ("[$scriptName/$scriptVersion] {0} - {1}" -f (Get-Date), $LogMessage)
 }
 
 if($Verbose) { Log-Message "Start script ..." }

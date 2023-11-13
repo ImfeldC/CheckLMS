@@ -54,8 +54,9 @@ param(
 # '20230921': Fix: 2355024: 'Running on Hypervisor' NOT found
 # '20230926': Read "program data" path from environment
 #             Consider 'SIEMBT_HostInfo.txt' to read-out host info (in case it doesn't exist in 'SIEMBT.log')
+# '20231112': Replace 'Write-Output' with 'Write-Host', to ensure that function return is not poluted with log output.
 #
-$scriptVersion = '20230926'
+$scriptVersion = '20231112'
 
 $global:ExitCode=0
 # Old API URL -> $OSD_APIURL="https://www.automation.siemens.com/softwareupdater/public/api/updates"
@@ -82,7 +83,7 @@ function Log-Message
         [string]$LogMessage
     )
 
-    Write-Output ("[$scriptName/$scriptVersion] {0} - {1}" -f (Get-Date), $LogMessage)
+    Write-Host ("[$scriptName/$scriptVersion] {0} - {1}" -f (Get-Date), $LogMessage)
 }
 
 # Function to send request to OSD server

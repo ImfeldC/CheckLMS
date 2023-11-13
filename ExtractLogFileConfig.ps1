@@ -6,8 +6,9 @@
 # ---------------------------------------------------------------------------------------
 #
 # '20230918': Initial version (created with help of Azure OpneAI studio)
+# '20231112': Replace 'Write-Output' with 'Write-Host', to ensure that function return is not poluted with log output.
 #
-$scriptVersion = '20230918'
+$scriptVersion = '20231112'
 # Function to print-out messages, including <date> and <time> information.
 $scriptName = $MyInvocation.MyCommand.Name
 function Log-Message {
@@ -19,7 +20,7 @@ function Log-Message {
     )
 
     $message = "[$scriptName/$scriptVersion] {0} - {1}" -f (Get-Date), $LogMessage
-	[System.Console]::WriteLine( $message )
+	Write-Host( $message )
 }
 
 Log-Message "Start script ..."  

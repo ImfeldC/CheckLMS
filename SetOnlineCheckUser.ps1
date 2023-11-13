@@ -7,8 +7,9 @@
 #
 # '20231019': Initial version (created by Andrej and attached to Defect 2368196)
 # '20231020': Adjust to Siemens style guide. Add enhanced error handling. Execution is logged into SetOnlineCheckUser.log
+# '20231112': Replace 'Write-Output' with 'Write-Host', to ensure that function return is not poluted with log output.
 #
-$scriptVersion = '20231020'
+$scriptVersion = '20231112'
 
 $programDataPath = $env:ProgramData 
 $logFile = "$programDataPath\Siemens\LMS\Logs\SetOnlineCheckUser.log"  
@@ -24,7 +25,7 @@ function Log-Message
         [string]$LogMessage
     )
 
-    #Write-Output ("[$scriptName/$scriptVersion] {0} - {1}" -f (Get-Date), $LogMessage)
+    Write-Host ("[$scriptName/$scriptVersion] {0} - {1}" -f (Get-Date), $LogMessage)
 	Add-Content -Path $logFile -Value "[$scriptName/$scriptVersion] $(Get-Date) - $LogMessage" -ErrorAction SilentlyContinue
 }
 

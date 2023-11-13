@@ -60,8 +60,9 @@ param(
 # '20230928': Extend to retreive also errors (from SIEMBT.log and rollover files) and store them in 'SIEMBT_Errors.log' (per default disabled, enable them with command line option: -skipErrors:$false )
 #             Extract start date & time and PID of vendor daemon (VD) and Flexnet Licensign Service (FLNS)
 # '20231108': Add output to scriptLogFile: "$env:ProgramData\Siemens\LMS\Logs\ExtractHostInfo.log"
+# '20231112': Replace 'Write-Output' with 'Write-Host', to ensure that function return is not poluted with log output.
 #
-$scriptVersion = '20231108'
+$scriptVersion = '20231112'
 
 # Function to print-out messages, including <date> and <time> information.
 $scriptName = $MyInvocation.MyCommand.Name
@@ -76,7 +77,7 @@ function Log-Message
     )
 
 	$logEntry = "[$scriptName/$scriptVersion] $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - $LogMessage"  
-	Write-Output $logEntry
+	Write-Host $logEntry
 	Add-Content -Path $scriptLogFile -Value $logEntry -Encoding UTF8 
 }
 
