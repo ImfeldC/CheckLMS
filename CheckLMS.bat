@@ -124,6 +124,8 @@ rem        - Add 'PeriodicTask' and retrieve detail information.
 rem        - Fix deletion of "del /Q /F !CHECKLMS_ALM_PATH!\ALM\ >nul 2>&1" (Fix: Defect 2387187)
 rem     10-Nov-2023:
 rem        - move content after download section, to be able to update "errorneous" files before "errorneous" part get executed.
+rem     14-Nov-2023:
+rem        - Support also "LMS EULA.rtf" and not only "LMS EULA.pdf"
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -163,8 +165,8 @@ rem              - /stopdemovd                  to stop the demo vendor daemon p
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 10-Nov-2023"
-set LMS_SCRIPT_BUILD=20231110
+set LMS_SCRIPT_VERSION="CheckLMS Script 14-Nov-2023"
+set LMS_SCRIPT_BUILD=20231114
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -829,6 +831,11 @@ echo Please read the EULA before proceeding ...
 IF EXIST "!DOCUMENTATION_PATH!\LMS EULA.pdf" (
 	echo To read the EULA, open: !DOCUMENTATION_PATH!\LMS EULA.pdf  
 	echo To read the EULA, open: !DOCUMENTATION_PATH!\LMS EULA.pdf                                                           >> !REPORT_LOGFILE! 2>&1
+) else (
+	IF EXIST "!DOCUMENTATION_PATH!\LMS EULA.rtf" (
+		echo To read the EULA, open: !DOCUMENTATION_PATH!\LMS EULA.rtf  
+		echo To read the EULA, open: !DOCUMENTATION_PATH!\LMS EULA.rtf                                                       >> !REPORT_LOGFILE! 2>&1
+	)
 )
 echo.
 if not defined LMS_ACCEPTEULA (
