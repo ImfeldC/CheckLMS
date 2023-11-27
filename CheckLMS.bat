@@ -126,6 +126,8 @@ rem     10-Nov-2023:
 rem        - move content after download section, to be able to update "errorneous" files before "errorneous" part get executed.
 rem     14-Nov-2023:
 rem        - Support also "LMS EULA.rtf" and not only "LMS EULA.pdf"
+rem     21-Nov-2023:
+rem        - Adjust slightly the output of date and time for 'retrieve dongle driver information'
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -165,8 +167,8 @@ rem              - /stopdemovd                  to stop the demo vendor daemon p
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 14-Nov-2023"
-set LMS_SCRIPT_BUILD=20231114
+set LMS_SCRIPT_VERSION="CheckLMS Script 21-Nov-2023"
+set LMS_SCRIPT_BUILD=20231121
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -4104,10 +4106,10 @@ if not defined LMS_SKIPLMS (
 	) else (
 		echo     LmuTool is not available with LMS !LMS_VERSION!, cannot perform operation.                                      >> !REPORT_LOGFILE! 2>&1 
 	)
-	echo Start at !DATE! !TIME! .... retrieve dongle driver information                                                          >> !REPORT_LOGFILE! 2>&1
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
 	echo LMS License Mode: %LMS_LICENSE_MODE% [read from registry]                                                               >> !REPORT_LOGFILE! 2>&1
 	echo ==============================================================================                                          >> !REPORT_LOGFILE! 2>&1
+	echo Start at !DATE! !TIME! .... retrieve dongle driver information                                                          >> !REPORT_LOGFILE! 2>&1
 	echo ... retrieve dongle driver information ...
 	if defined DONGLE_DRIVER_PKG_VERSION (
 		echo Dongle Driver: !DONGLE_DRIVER_VERSION! [!DONGLE_DRIVER_PKG_VERSION!] / Major=[!DONGLE_DRIVER_MAJ_VERSION!] / Minor=[!DONGLE_DRIVER_MIN_VERSION!] / installed !DONGLE_DRIVER_INST_COUNT! times     >> !REPORT_LOGFILE! 2>&1
