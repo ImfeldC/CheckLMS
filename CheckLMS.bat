@@ -2027,6 +2027,7 @@ del /Q /F !CHECKLMS_REPORT_LOG_PATH!\desigocc_installed_EM.txt >nul 2>&1
 del /Q /F !CHECKLMS_REPORT_LOG_PATH!\pending_req_*.xml >nul 2>&1
 del /Q /F !CHECKLMS_REPORT_LOG_PATH!\connection_test_*.txt >nul 2>&1
 del /Q /F !CHECKLMS_ALM_PATH!\ALM\ >nul 2>&1
+del /Q /F !LMS_DOWNLOAD_PATH!\*.ps1 >nul 2>&1
 
 rem remove former used local path (clean-up no longer used data)
 rmdir /S /Q !REPORT_LOG_PATH!\CrashDumps >nul 2>&1
@@ -5712,7 +5713,7 @@ set LMS_SIEMBT_STARTTIME=[n/a]
 IF EXIST "!REPORT_LOG_PATH!\SIEMBT.log" (
 
 	IF EXIST "!LMS_DOWNLOAD_PATH!\scripts\ExtractHostInfo.ps1" (
-		set LMS_EXTRACTHOSTINFO_SCRIPT=!LMS_DOWNLOAD_PATH!\ExtractHostInfo.ps1
+		set LMS_EXTRACTHOSTINFO_SCRIPT=!LMS_DOWNLOAD_PATH!\scripts\ExtractHostInfo.ps1
 	) else IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\ExtractHostInfo.ps1" (
 		set LMS_EXTRACTHOSTINFO_SCRIPT=!ProgramFiles!\Siemens\LMS\scripts\ExtractHostInfo.ps1
 	)
@@ -5760,7 +5761,7 @@ IF EXIST "!REPORT_LOG_PATH!\SIEMBT.log" (
 	echo     Analyze 'SIEMBT.log', extract pooling information ...
 	echo Analyze 'SIEMBT.log', extract pooling information ...                                                               >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!LMS_DOWNLOAD_PATH!\scripts\ExtractPoolingInformation.ps1" (
-		set LMS_EXTRACTPOOLINFO_SCRIPT=!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1
+		set LMS_EXTRACTPOOLINFO_SCRIPT=!LMS_DOWNLOAD_PATH!\scripts\ExtractPoolingInformation.ps1
 	) else IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\ExtractPoolingInformation.ps1" (
 		set LMS_EXTRACTPOOLINFO_SCRIPT=!ProgramFiles!\Siemens\LMS\scripts\ExtractPoolingInformation.ps1
 	)
@@ -7186,7 +7187,7 @@ if not defined LMS_SKIPLOGS (
 	echo ... read LMS logfiles not located in default LMS logfile folders ...
 	echo Read LMS logfiles not located in default LMS logfile folders                                                        >> !REPORT_LOGFILE! 2>&1
 	IF EXIST "!LMS_DOWNLOAD_PATH!\scripts\ExtractLogFileConfig.ps1" (
-		set LMS_EXTRACTLOGFILEINFO_SCRIPT=!LMS_DOWNLOAD_PATH!\ExtractLogFileConfig.ps1
+		set LMS_EXTRACTLOGFILEINFO_SCRIPT=!LMS_DOWNLOAD_PATH!\scripts\ExtractLogFileConfig.ps1
 	) else IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\ExtractLogFileConfig.ps1" (
 		set LMS_EXTRACTLOGFILEINFO_SCRIPT=!ProgramFiles!\Siemens\LMS\scripts\ExtractLogFileConfig.ps1
 	)
