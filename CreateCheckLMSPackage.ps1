@@ -65,9 +65,9 @@ if (Test-Path $sourcePath) {
         }  
     }  
  
- 	# Read-out version of LMS BgInfo Package
+ 	# Read-out version of LMS CheckLMS Package
 	$result = Get-CheckLMSVersionValues -filePath "$sourcePath"  
-	Write-Message "LMSBgInfo Version: '$($result.strVersion)'  ($($result.strBuild)) installed at '$($result.fileName)'" $scriptName $scriptVersion 
+	Write-Message "CheckLMS Version: '$($result.strVersion)'  ($($result.strBuild)) installed at '$($result.fileName)'" $scriptName $scriptVersion 
 
     # Create ZIP archive  
     Add-Type -A 'System.IO.Compression.FileSystem'  
@@ -77,8 +77,8 @@ if (Test-Path $sourcePath) {
     $reportFilePath = Join-Path (Split-Path $zipFilePath) "LMSBgInfoPackage.txt"  
     $reportContent = @()  
   
-    $reportContent += "LMS BgInfo package from '{0}'." -f $sourcePath
-    $reportContent += "LMSBgInfo Version: '$($result.strVersion)'  ($($result.lVersion))"
+    $reportContent += "LMS CheckLMS package from '{0}'." -f $sourcePath
+    $reportContent += "CheckLMS Version: '$($result.strVersion)'  ($($result.strBuild))"
     try {  
         # Filter files in the source directory based on specified extensions  
         $actFiles = Get-ChildItem -Path $sourcePath -File -Recurse   
@@ -132,13 +132,13 @@ if (Test-Path $sourcePath) {
     }  
 
     if (Test-Path $zipFilePath) {  
-		# Calculate hash from LMS bginfo ZIP package
+		# Calculate hash from LMS CheckLMS ZIP package
 		$zipFileHash = Get-FileHash -Path $zipFilePath
 		Write-Message "zipFileHash=$zipFileHash" $scriptName $scriptVersion
 
-		# Finalize the LMS bginfo package report
-		$reportContent += "LMS BgInfo package created at '{0}' on machine '{1}' by user '{2}'." -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss.ffff'), $env:COMPUTERNAME, $env:USERNAME
-		$reportContent += "LMS BgInfo ZIP package available at '{0}', with Hash={1}" -f $zipFilePath, $zipFileHash
+		# Finalize the LMS CheckLMS package report
+		$reportContent += "LMS CheckLMS package created at '{0}' on machine '{1}' by user '{2}'." -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss.ffff'), $env:COMPUTERNAME, $env:USERNAME
+		$reportContent += "LMS CheckLMS ZIP package available at '{0}', with Hash={1}" -f $zipFilePath, $zipFileHash
 	  
 		# Write the report content to the report file  
 		$reportContent | Out-File -FilePath $reportFilePath  
