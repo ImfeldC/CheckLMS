@@ -19,7 +19,7 @@ rem     07-Jan-2021: script released for LMS 2.5     (2.5.824)
 rem     24-Jan-2022: script released for LMS 2.6     (2.6.849)
 rem     23-Jan-2023: script released for LMS 2.7     (2.7.872)
 rem 
-rem     Full details see changelog.md (on https://github.com/ImfeldC/CheckLMS/blob/master/changelog.md )
+rem     Full details see changelog.md 
 rem
 rem     23-Jan-2023:
 rem        - set 2.7.872 as new 'most recent build'
@@ -128,6 +128,10 @@ rem     14-Nov-2023:
 rem        - Support also "LMS EULA.rtf" and not only "LMS EULA.pdf"
 rem     21-Nov-2023:
 rem        - Adjust slightly the output of date and time for 'retrieve dongle driver information'
+rem     28-Nov-2023:
+rem        - replace 'static.siemens.com' with 'downloads.siemens.cloud'
+rem     01-Dec-2023:
+rem        - do no longer download newest CheckLMS.bat from github, use common share downloads.siemens.cloud only.
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -167,8 +171,8 @@ rem              - /stopdemovd                  to stop the demo vendor daemon p
 rem              - /goto <gotolabel>            jump to a dedicated part within script.
 rem  
 rem
-set LMS_SCRIPT_VERSION="CheckLMS Script 21-Nov-2023"
-set LMS_SCRIPT_BUILD=20231121
+set LMS_SCRIPT_VERSION="CheckLMS Script 01-Dec-2023"
+set LMS_SCRIPT_BUILD=20231201
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
 
 rem https://stackoverflow.com/questions/15815719/how-do-i-get-the-drive-letter-a-batch-script-is-running-from
@@ -203,7 +207,7 @@ SETLOCAL EnableDelayedExpansion
 setlocal ENABLEEXTENSIONS
 
 rem External public download location
-set CHECKLMS_EXTERNAL_SHARE=https://static.siemens.com/
+set CHECKLMS_EXTERNAL_SHARE=https://downloads.siemens.cloud/
 
 rem CheckLMS configuration (Siemens internal only)
 set CHECKLMS_CONFIG=
@@ -934,44 +938,6 @@ if not defined LMS_SKIPDOWNLOAD (
 				echo Check script on '!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat' ...                                                                                                       >> !REPORT_LOGFILE! 2>&1
 				for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD set LMS_SCRIPT_BUILD_DOWNLOAD=%%i
 			)	
-
-			rem Download newest LMS check script from github 'CheckLMS.bat'
-			if not defined LMS_DONOTSTARTNEWERSCRIPT (
-				set LMS_DOWNLOAD_LINK=https://raw.githubusercontent.com/ImfeldC/CheckLMS/master/CheckLMS.bat
-				echo     Download newest LMS check script from github: !LMS_DOWNLOAD_LINK!
-				echo Download newest LMS check script: !LMS_DOWNLOAD_LINK!                                                                                                                 >> !REPORT_LOGFILE! 2>&1
-				IF NOT EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\git" (
-					mkdir !LMS_DOWNLOAD_PATH!\CheckLMS\git\ >nul 2>&1
-				)
-				del !LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat >nul 2>&1
-				powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat')" > !CHECKLMS_REPORT_LOG_PATH!\download_checklms_git.txt 2>&1
-				if !ERRORLEVEL!==0 (
-					echo     Download PASSED, file available at '!LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat'                                                                            >> !REPORT_LOGFILE! 2>&1
-				) else if !ERRORLEVEL!==1 (
-					echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                                                                          >> !REPORT_LOGFILE! 2>&1
-				)
-				IF EXIST "!LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat" (
-					rem CheckLMS.bat has been downloaded from github
-					for /f "tokens=2 delims== eol=@" %%i in ('type !LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat ^|find /I "LMS_SCRIPT_BUILD="') do if not defined LMS_SCRIPT_BUILD_DOWNLOAD_GIT set LMS_SCRIPT_BUILD_DOWNLOAD_GIT=%%i
-					echo     Check script downloaded from github. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_GIT!, Running script version: !LMS_SCRIPT_BUILD!.                    >> !REPORT_LOGFILE! 2>&1
-					IF defined LMS_SCRIPT_BUILD_DOWNLOAD (
-						if /I !LMS_SCRIPT_BUILD_DOWNLOAD_GIT! GTR !LMS_SCRIPT_BUILD_DOWNLOAD! (
-							echo Newer check script copied. Download script version: !LMS_SCRIPT_BUILD_DOWNLOAD_GIT!, Previous script version: !LMS_SCRIPT_BUILD_DOWNLOAD!.                >> !REPORT_LOGFILE! 2>&1
-							rem copy /Y "!LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat" "!LMS_DOWNLOAD_PATH!\CheckLMS\"                                                                        >> !REPORT_LOGFILE! 2>&1
-							rem make sure that 'windows style' line endings are used
-							Powershell -ExecutionPolicy Bypass -Command "& {Get-Content '!LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat' | Set-Content -path '!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat'}"
-							set LMS_SCRIPT_BUILD_DOWNLOAD=!LMS_SCRIPT_BUILD_DOWNLOAD_GIT!
-						)
-					) else (
-						rem copy /Y "!LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat" "!LMS_DOWNLOAD_PATH!\CheckLMS\"                                                                            >> !REPORT_LOGFILE! 2>&1
-						rem make sure that 'windows style' line endings are used
-						Powershell -ExecutionPolicy Bypass -Command "& {Get-Content '!LMS_DOWNLOAD_PATH!\CheckLMS\git\CheckLMS.bat' | Set-Content -path '!LMS_DOWNLOAD_PATH!\CheckLMS\CheckLMS.bat'}"
-						set LMS_SCRIPT_BUILD_DOWNLOAD=!LMS_SCRIPT_BUILD_DOWNLOAD_GIT!
-					)
-				)			
-			) else (
-				echo Skip download from github,  because option 'donotstartnewerscript' is set. '%0'                                                                                       >> !REPORT_LOGFILE! 2>&1
-			) 
 
 			rem Download newest LMS check script from download share as 'CheckLMS.bat'
 			if not defined LMS_DONOTSTARTNEWERSCRIPT (
