@@ -132,6 +132,7 @@ rem     28-Nov-2023:
 rem        - replace 'static.siemens.com' with 'downloads.siemens.cloud'
 rem     01-Dec-2023:
 rem        - do no longer download newest CheckLMS.bat from github, use common share downloads.siemens.cloud only.
+rem        - do no longer download bewest scripts from github, download them new from downloads.siemens.cloud
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -1348,43 +1349,12 @@ if not defined LMS_SKIPDOWNLOAD (
 				echo Download 'counted.lic': !LMS_DOWNLOAD_PATH!\counted.lic                                                            >> !REPORT_LOGFILE! 2>&1
 				powershell -Command "(New-Object Net.WebClient).DownloadFile('!CHECKLMS_EXTERNAL_SHARE!lms/FNP/counted.lic', '!LMS_DOWNLOAD_PATH!\counted.lic')"   >> !REPORT_LOGFILE! 2>&1
 			)
-			
 
-			set LMS_DOWNLOAD_LINK=https://raw.githubusercontent.com/ImfeldC/CheckLMS/master/ExtractPoolingInformation.ps1
-			echo     Download additional powershell script from github: !LMS_DOWNLOAD_LINK!
-			echo Download additional powershell script from github: !LMS_DOWNLOAD_LINK!                                             >> !REPORT_LOGFILE! 2>&1
-			powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1')" > !CHECKLMS_REPORT_LOG_PATH!\download_extractpoolinfo_git.txt 2>&1
-			if !ERRORLEVEL!==0 (
-				echo     Download PASSED, script available at '!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1'                   >> !REPORT_LOGFILE! 2>&1
-			) else if !ERRORLEVEL!==1 (
-				echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                       >> !REPORT_LOGFILE! 2>&1
-			)
-			set LMS_DOWNLOAD_LINK=https://raw.githubusercontent.com/ImfeldC/CheckLMS/master/ExtractHostInfo.ps1
-			echo     Download additional powershell script from github: !LMS_DOWNLOAD_LINK!
-			echo Download additional powershell script from github: !LMS_DOWNLOAD_LINK!                                             >> !REPORT_LOGFILE! 2>&1
-			powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\ExtractHostInfo.ps1')" > !CHECKLMS_REPORT_LOG_PATH!\download_extracthostinfo_git.txt 2>&1
-			if !ERRORLEVEL!==0 (
-				echo     Download PASSED, script available at '!LMS_DOWNLOAD_PATH!\ExtractHostInfo.ps1'                             >> !REPORT_LOGFILE! 2>&1
-			) else if !ERRORLEVEL!==1 (
-				echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                       >> !REPORT_LOGFILE! 2>&1
-			)
-			set LMS_DOWNLOAD_LINK=https://raw.githubusercontent.com/ImfeldC/CheckLMS/master/ExtractLogFileConfig.ps1
-			echo     Download additional powershell script from github: !LMS_DOWNLOAD_LINK!
-			echo Download additional powershell script from github: !LMS_DOWNLOAD_LINK!                                             >> !REPORT_LOGFILE! 2>&1
-			powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\ExtractLogFileConfig.ps1')" > !CHECKLMS_REPORT_LOG_PATH!\download_extractlogfileconfig_git.txt 2>&1
-			if !ERRORLEVEL!==0 (
-				echo     Download PASSED, script available at '!LMS_DOWNLOAD_PATH!\ExtractLogFileConfig.ps1'                        >> !REPORT_LOGFILE! 2>&1
-			) else if !ERRORLEVEL!==1 (
-				echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                       >> !REPORT_LOGFILE! 2>&1
-			)
-			set LMS_DOWNLOAD_LINK=https://raw.githubusercontent.com/ImfeldC/CheckLMS/master/SetOnlineCheckUser.ps1
-			echo     Download additional powershell script from github: !LMS_DOWNLOAD_LINK!
-			echo Download additional powershell script from github: !LMS_DOWNLOAD_LINK!                                             >> !REPORT_LOGFILE! 2>&1
-			powershell -Command "(New-Object Net.WebClient).DownloadFile('!LMS_DOWNLOAD_LINK!', '!LMS_DOWNLOAD_PATH!\SetOnlineCheckUser.ps1')" > !CHECKLMS_REPORT_LOG_PATH!\download_SetOnlineCheckUser_git.txt 2>&1
-			if !ERRORLEVEL!==0 (
-				echo     Download PASSED, script available at '!LMS_DOWNLOAD_PATH!\SetOnlineCheckUser.ps1'                          >> !REPORT_LOGFILE! 2>&1
-			) else if !ERRORLEVEL!==1 (
-				echo     Download FAILED, cannot access '!LMS_DOWNLOAD_LINK!'                                                       >> !REPORT_LOGFILE! 2>&1
+			IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\downloadFile.ps1" (
+				echo RUN: powershell -Command "& '!ProgramFiles!\Siemens\LMS\scripts\downloadFile.ps1'; exit $LASTEXITCODE"         >> !REPORT_LOGFILE! 2>&1
+				powershell -Command "& '!ProgramFiles!\Siemens\LMS\scripts\downloadFile.ps1' -DownloadURL !CHECKLMS_EXTERNAL_SHARE!lms/scripts/LMSScripts.zip -TargetFile !LMS_DOWNLOAD_PATH!\LMSScripts.zip -ExtractPath !LMS_DOWNLOAD_PATH!\scripts -ForceDownload; exit $LASTEXITCODE"   >> !REPORT_LOGFILE! 2>&1
+			) else (
+				echo ERROR: Cannot execute powershell script 'downloadFile.ps1', it doesn't exist at '!ProgramFiles!\Siemens\LMS\scripts\downloadFile.ps1'.    >> !REPORT_LOGFILE! 2>&1
 			)
 
 		)
