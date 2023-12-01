@@ -133,6 +133,7 @@ rem        - replace 'static.siemens.com' with 'downloads.siemens.cloud'
 rem     01-Dec-2023:
 rem        - do no longer download newest CheckLMS.bat from github, use common share downloads.siemens.cloud only.
 rem        - do no longer download bewest scripts from github, download them new from downloads.siemens.cloud
+rem        - use PS1 scripts from new download location: C:\ProgramData\Siemens\LMS\Download\scripts
 rem
 rem     SCRIPT USAGE:
 rem        - Call script w/o any parameter is the default and collects relevant system information.
@@ -5710,7 +5711,7 @@ set LMS_SIEMBT_STARTTIME=[n/a]
 
 IF EXIST "!REPORT_LOG_PATH!\SIEMBT.log" (
 
-	IF EXIST "!LMS_DOWNLOAD_PATH!\ExtractHostInfo.ps1" (
+	IF EXIST "!LMS_DOWNLOAD_PATH!\scripts\ExtractHostInfo.ps1" (
 		set LMS_EXTRACTHOSTINFO_SCRIPT=!LMS_DOWNLOAD_PATH!\ExtractHostInfo.ps1
 	) else IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\ExtractHostInfo.ps1" (
 		set LMS_EXTRACTHOSTINFO_SCRIPT=!ProgramFiles!\Siemens\LMS\scripts\ExtractHostInfo.ps1
@@ -5758,7 +5759,7 @@ IF EXIST "!REPORT_LOG_PATH!\SIEMBT.log" (
 	echo Start at !DATE! !TIME! .... Analyze 'SIEMBT.log', extract pooling information.                                      >> !REPORT_LOGFILE! 2>&1
 	echo     Analyze 'SIEMBT.log', extract pooling information ...
 	echo Analyze 'SIEMBT.log', extract pooling information ...                                                               >> !REPORT_LOGFILE! 2>&1
-	IF EXIST "!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1" (
+	IF EXIST "!LMS_DOWNLOAD_PATH!\scripts\ExtractPoolingInformation.ps1" (
 		set LMS_EXTRACTPOOLINFO_SCRIPT=!LMS_DOWNLOAD_PATH!\ExtractPoolingInformation.ps1
 	) else IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\ExtractPoolingInformation.ps1" (
 		set LMS_EXTRACTPOOLINFO_SCRIPT=!ProgramFiles!\Siemens\LMS\scripts\ExtractPoolingInformation.ps1
@@ -5833,7 +5834,7 @@ IF EXIST "!REPORT_LOG_PATH!\SIEMBT.log" (
 				echo     Extract 'Host Info' ...
 				echo Extract 'Host Info' ...                                                                                 >> !REPORT_LOGFILE! 2>&1
 
-				IF EXIST "!LMS_DOWNLOAD_PATH!\ExtractHostInfo.ps1" (
+				IF EXIST "!LMS_DOWNLOAD_PATH!\scripts\ExtractHostInfo.ps1" (
 					set LMS_EXTRACTHOSTINFO_SCRIPT=!LMS_DOWNLOAD_PATH!\ExtractHostInfo.ps1
 				) else IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\ExtractHostInfo.ps1" (
 					set LMS_EXTRACTHOSTINFO_SCRIPT=!ProgramFiles!\Siemens\LMS\scripts\ExtractHostInfo.ps1
@@ -7184,7 +7185,7 @@ echo ===========================================================================
 if not defined LMS_SKIPLOGS (
 	echo ... read LMS logfiles not located in default LMS logfile folders ...
 	echo Read LMS logfiles not located in default LMS logfile folders                                                        >> !REPORT_LOGFILE! 2>&1
-	IF EXIST "!LMS_DOWNLOAD_PATH!\ExtractLogFileConfig.ps1" (
+	IF EXIST "!LMS_DOWNLOAD_PATH!\scripts\ExtractLogFileConfig.ps1" (
 		set LMS_EXTRACTLOGFILEINFO_SCRIPT=!LMS_DOWNLOAD_PATH!\ExtractLogFileConfig.ps1
 	) else IF EXIST "!ProgramFiles!\Siemens\LMS\scripts\ExtractLogFileConfig.ps1" (
 		set LMS_EXTRACTLOGFILEINFO_SCRIPT=!ProgramFiles!\Siemens\LMS\scripts\ExtractLogFileConfig.ps1
