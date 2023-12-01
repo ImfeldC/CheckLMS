@@ -6,6 +6,9 @@ param (
     [Parameter(Mandatory=$false, Position=1)]  
     [string]$zipFilePath = "$env:ProgramData\Siemens\LMS\Logs\CheckLMS.zip",  
   
+    [Parameter(Mandatory=$false, Position=2)]  
+    [string]$modulePath = "$env:ProgramFiles\Siemens\LMS\scripts",  
+  
     [switch]$Force,  
     [switch]$Upload  
 )  
@@ -22,6 +25,7 @@ param (
 # Purpose/Change: 
 # '20231129': Initial script to create CheckLMS package  
 # '20231201': First running version, to create CheckLMS packages  
+#             Introduce 'modulePath' to specify path where to load common PS function module.
 #
 $scriptVersion = '20231201'
 
@@ -36,14 +40,17 @@ $files = @("CheckLMS.bat")
 Get-Module | Remove-Module
 #$modulePath = Split-Path -Path $MyInvocation.MyCommand.Path -Parent 
 #$modulePath = "$env:ProgramFiles\Siemens\LMS\scripts" 
-$modulePath = "C:\UserData\imfeldc\OneDrive - Siemens AG\scripts"
+#$modulePath = "C:\UserData\imfeldc\OneDrive - Siemens AG\scripts"
 Import-Module -Name "$modulePath\CommonPSFunctions.psm1"  -DisableNameChecking
 
 
+if( $modulePath -eq "." ) {
+	$modulePath = $PWD.Path
+}
 if( $sourcePath -eq "." ) {
 	$sourcePath = $PWD.Path
 }
-Write-Message "Start CreateCheckLMSPackage script ... with option sourcePath=$sourcePath, zipFilePath=$zipFilePath, Force=$Force, Upload=$Upload" $scriptName $scriptVersion 
+Write-Message "Start CreateCheckLMSPackage script ... with option sourcePath=$sourcePath, zipFilePath=$zipFilePath, modulePath=$modulePath, Force=$Force, Upload=$Upload" $scriptName $scriptVersion 
 
 # Check if the source directory exists  
 if (Test-Path $sourcePath) {  
