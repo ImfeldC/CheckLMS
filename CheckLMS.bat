@@ -9,8 +9,11 @@ rem Transmittal, reproduction, dissemination and/or editing of this document as 
 rem Offenders will be held liable for payment of damages. All rights created by patent grant orregistration of a utility model or design patent are reserved.
 rem ---------------------------------------------------------------------------------------
 rem 
-rem === DEPRCEATE THIS REPO ===
+rem ===    THIS REPO HAS BEEN MOVED    ===
+rem === THE CONTENT HERE IS DEPRECATED ===
 rem
+rem The new location is: https://code.siemens.com/licensemanagementsystem/checklms/-/raw/master/CheckLMS.bat (Siemens internal only!)
+rem 
 set LMS_SCRIPT_VERSION="CheckLMS Script 01-Dec-2023"
 set LMS_SCRIPT_BUILD=20231201
 set LMS_SCRIPT_PRODUCTID=6cf968fa-ffad-4593-9ecb-7a6f3ea07501
